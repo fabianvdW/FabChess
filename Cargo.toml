@@ -1,5 +1,5 @@
 [package]
-name = "SchachReworked"
+name = "schach_reworked"
 version = "0.1.0"
 authors = ["fabianvdW"]
 edition = "2018"
