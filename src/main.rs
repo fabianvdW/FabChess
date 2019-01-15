@@ -44,8 +44,9 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
 }
 
 pub fn perft(g: &GameState, depth: usize) -> u64 {
-    if depth == 0 {
-        return 1;
+    if depth == 1 {
+        let (vm,_ic)= movegen::generate_moves(&g);
+        return vm.len() as u64;
     } else {
         let mut res = 0;
         let (valid_moves, incheck) = movegen::generate_moves(&g);
