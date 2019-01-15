@@ -10,6 +10,8 @@ rand = "0.6.4"
 [profile.release]
 opt-level=3
 debug=false
+codegen-units=1
+lto=true
 [profile.test]
 opt-level=3
 debug=true
