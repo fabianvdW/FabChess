@@ -58,16 +58,20 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
     bitboards::south_east_one(pawns)
 }
 
+#[inline(always)]
 pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, piece_type: &PieceType, move_type: GameMoveType) {
     while to_board != 0u64 {
         let idx = to_board.trailing_zeros() as usize;
+        let  move_t_cl = move_type.clone();
+        let pt_cl= piece_type.clone();
         move_list.push(GameMove {
             from,
             to: idx,
-            move_type: move_type.clone(),
-            piece_type: piece_type.clone(),
+            move_type: move_t_cl,
+            piece_type: pt_cl
         });
         to_board ^= 1u64 << idx;
+        //to_board&= to_board-1;
     }
 }
 
@@ -553,14 +557,14 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         //Single push
         {
             let my_pawns_single_push = if color_to_move == 0 { w_single_push_pawn_targets(my_pawns, empty) } else { b_single_push_pawn_targets(my_pawns, empty) } & push_mask;
-            let mut my_pawns_no_promotion = my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let mut my_pawns_promotion = my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_no_promotion = my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_promotion = my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
             add_quiet_pawn_single_pushes(my_pawns_no_promotion, &color_to_move, &mut move_list);
             add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 8usize);
         }
         //Double push
         {
-            let mut my_pawns_double_push = if color_to_move == 0 { w_double_push_pawn_targets(my_pawns, empty) } else { b_double_push_pawn_targets(my_pawns, empty) } & push_mask;
+            let my_pawns_double_push = if color_to_move == 0 { w_double_push_pawn_targets(my_pawns, empty) } else { b_double_push_pawn_targets(my_pawns, empty) } & push_mask;
             add_quiet_pawn_double_pushes(my_pawns_double_push, &color_to_move, &mut move_list);
         }
         //Capture west
@@ -568,8 +572,8 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             let my_pawns_west_targets = if color_to_move == 0 { w_pawn_west_targets(my_pawns) } else { b_pawn_west_targets(my_pawns) };
             let my_pawns_west_normal_captures = my_pawns_west_targets & capture_mask & enemy_pieces;
             //Checking for promotion on capture
-            let mut my_pawns_no_promotion = my_pawns_west_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let mut my_pawns_promotion = my_pawns_west_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_no_promotion = my_pawns_west_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_promotion = my_pawns_west_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
             //Capture
             add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 7usize);
             //Promotion capture
@@ -578,7 +582,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
 
             //En passant
             //We can capture en passant, if its in capture mask aswell
-            let mut my_pawns_west_enpassants = my_pawns_west_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            let my_pawns_west_enpassants = my_pawns_west_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
             add_en_passants(my_pawns_west_enpassants, &color_to_move, &mut move_list, 7usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
         //Capture east
@@ -586,13 +590,13 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             let my_pawns_east_targets = if color_to_move == 0 { w_pawn_east_targets(my_pawns) } else { b_pawn_east_targets(my_pawns) };
             let my_pawns_east_normal_captures = my_pawns_east_targets & capture_mask & enemy_pieces;
             //Checking for promotion on capture
-            let mut my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let mut my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
 
             add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 9usize);
             add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 9usize);
             //En passants
-            let mut my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            let  my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
             add_en_passants(my_pawns_east_enpassants, &color_to_move, &mut move_list, 9usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
     }
@@ -684,6 +688,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     (move_list, num_checkers > 0)
 }
 
+#[inline(always)]
 pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
     while single_push_board != 0u64 {
         let idx = single_push_board.trailing_zeros() as usize;
@@ -697,6 +702,7 @@ pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &
     }
 }
 
+#[inline(always)]
 pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
     while double_push_board != 0u64 {
         let idx = double_push_board.trailing_zeros() as usize;
@@ -710,6 +716,7 @@ pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &
     }
 }
 
+#[inline(always)]
 pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
     while promotion_board != 0u64 {
         let idx = promotion_board.trailing_zeros() as usize;
@@ -741,6 +748,7 @@ pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_
     }
 }
 
+#[inline(always)]
 pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
     while capture_board != 0u64 {
         let idx = capture_board.trailing_zeros() as usize;
@@ -754,6 +762,7 @@ pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list
     }
 }
 
+#[inline(always)]
 pub fn add_en_passants(mut enpassant_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize, all_pieces_without_my_king: u64, enemy_rooks: u64, my_king_idx: usize) {
     while enpassant_board != 0u64 {
         let index = enpassant_board.trailing_zeros() as usize;

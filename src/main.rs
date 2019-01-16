@@ -19,9 +19,9 @@ fn main() {
     println!("Initialization Time: {}ms", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64);
     let now = Instant::now();
     //d7b5
-    //let g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let g= GameState::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-    let nodes = perft_div(&g, 6);
+    let g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    //let g= GameState::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+    let nodes = perft_div(&g, 5);
     println!("{}", nodes);
     //misc::STD_FEN);
     //println!("{:}",GameState::from_fen(misc::STD_FEN));
