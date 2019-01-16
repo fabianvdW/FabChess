@@ -1,35 +1,38 @@
 use std::fmt::{Formatter, Display, Result, Debug};
+
 #[derive(Clone)]
 pub enum GameMoveType {
     Quiet,
     Capture,
     EnPassant,
     Castle,
-    Promotion(PieceType)
+    Promotion(PieceType),
 }
-#[derive(Clone,Debug)]
-pub enum PieceType{
+
+#[derive(Clone, Debug)]
+pub enum PieceType {
     King,
     Pawn,
     Knight,
     Bishop,
     Rook,
-    Queen
+    Queen,
 }
+
 pub struct GameMove {
     pub from: usize,
     pub to: usize,
     pub move_type: GameMoveType,
-    pub piece_type:PieceType
+    pub piece_type: PieceType,
 }
 
 impl Debug for GameMove {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
-        res_str.push_str(&format!("{}{}{}{}", file_to_string(self.from % 8), self.from / 8 +1, file_to_string(self.to % 8), self.to / 8 +1));
+        res_str.push_str(&format!("{}{}{}{}", file_to_string(self.from % 8), self.from / 8 + 1, file_to_string(self.to % 8), self.to / 8 + 1));
         match &self.move_type {
-            GameMoveType::Quiet=>{res_str.push_str("")},
-            _=>{}
+            GameMoveType::Quiet => { res_str.push_str("") }
+            _ => {}
         };
         write!(formatter, "{}", res_str)
     }
@@ -45,7 +48,7 @@ fn file_to_string(file: usize) -> &'static str {
         5 => "f",
         6 => "g",
         7 => "h",
-        _=>panic!("invalid file")
+        _ => panic!("invalid file")
     }
 }
 

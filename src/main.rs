@@ -20,15 +20,16 @@ fn main() {
     let now = Instant::now();
     //d7b5
     let g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let nodes= perft_div(&g,7);
+    //let g= GameState::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+    let nodes = perft_div(&g, 5);
     println!("{}", nodes);
     //misc::STD_FEN);
     //println!("{:}",GameState::from_fen(misc::STD_FEN));
     //println!("{:}",GameState::standard());
     let new_now = Instant::now();
-    let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64/ 1000.0;
+    let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64);
-    println!("NPS: {}",nodes as f64/time_passed);
+    println!("NPS: {}", nodes as f64 / time_passed);
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
@@ -45,7 +46,7 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
 
 pub fn perft(g: &GameState, depth: usize) -> u64 {
     if depth == 1 {
-        let (vm,_ic)= movegen::generate_moves(&g);
+        let (vm, _ic) = movegen::generate_moves(&g);
         return vm.len() as u64;
     } else {
         let mut res = 0;

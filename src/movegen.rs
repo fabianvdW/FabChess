@@ -58,16 +58,20 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
     bitboards::south_east_one(pawns)
 }
 
+#[inline(always)]
 pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, piece_type: &PieceType, move_type: GameMoveType) {
     while to_board != 0u64 {
         let idx = to_board.trailing_zeros() as usize;
+        let  move_t_cl = move_type.clone();
+        let pt_cl= piece_type.clone();
         move_list.push(GameMove {
             from,
             to: idx,
-            move_type: move_type.clone(),
-            piece_type: piece_type.clone(),
+            move_type: move_t_cl,
+            piece_type: pt_cl
         });
         to_board ^= 1u64 << idx;
+        //to_board&= to_board-1;
     }
 }
 
@@ -80,7 +84,7 @@ pub fn make_move(g: &game_state::GameState, mv: &game_state::GameMove) -> game_s
         GameMoveType::Castle => make_castle_move(&g, &mv),
         GameMoveType::Promotion(PieceType::Queen) | GameMoveType::Promotion(PieceType::Rook) | GameMoveType::Promotion(PieceType::Bishop) | GameMoveType::Promotion(PieceType::Knight)
         => make_promotion_move(&g, &mv),
-        _ => panic!("Invalid move tpye")
+        _ => panic!("Invalid move type")
     }
 }
 
@@ -147,6 +151,8 @@ pub fn make_quiet_move(g: &game_state::GameState, mv: &game_state::GameMove) -> 
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
 
+    //Check new castle rights
+    //The enemies castle right's can't change on a quiet move
     let (castle_white_kingside, castle_white_queenside) = if g.color_to_move == 0 {
         check_castle_flags(g.castle_white_kingside, g.castle_white_queenside, &mv, g.color_to_move, pieces)
     } else { (g.castle_white_kingside, g.castle_white_queenside) };
@@ -154,6 +160,7 @@ pub fn make_quiet_move(g: &game_state::GameState, mv: &game_state::GameMove) -> 
         (g.castle_black_kingside, g.castle_black_queenside)
     } else { check_castle_flags(g.castle_black_kingside, g.castle_black_queenside, &mv, g.color_to_move, pieces) };
 
+    //This will be taken care of later
     let mut en_passant = 0u64;
 
     let mut half_moves = g.half_moves + 1;
@@ -170,7 +177,10 @@ pub fn make_quiet_move(g: &game_state::GameState, mv: &game_state::GameMove) -> 
         }
         _ => {}
     };
+
+    //If black was to move, increase full moves by one
     let full_moves = g.full_moves + g.color_to_move;
+    //Create new game state object
     game_state::GameState {
         color_to_move,
         pieces,
@@ -267,8 +277,9 @@ pub fn make_enpassant_move(g: &game_state::GameState, mv: &game_state::GameMove)
 pub fn make_castle_move(g: &game_state::GameState, mv: &game_state::GameMove) -> game_state::GameState {
     let color_to_move = 1 - g.color_to_move;
     let mut pieces = g.pieces.clone();
-    //Make the move
+    //Move the king
     move_piece(&mut pieces, &mv, g.color_to_move);
+
     //Move the rook
     //Determine if its kingside or queenside castle
     //Kingside
@@ -328,10 +339,28 @@ pub fn make_promotion_move(g: &game_state::GameState, mv: &game_state::GameMove)
         GameMoveType::Promotion(PieceType::Rook) => { 3 }
         _ => panic!("Invalid Type")
     }][g.color_to_move] |= bitboards::SQUARES[mv.to];
-    let castle_white_kingside = g.castle_white_kingside;
-    let castle_white_queenside = g.castle_white_queenside;
-    let castle_black_kingside = g.castle_black_kingside;
-    let castle_black_queenside = g.castle_black_queenside;
+
+    let mut castle_white_kingside = g.castle_white_kingside;
+    let mut castle_white_queenside = g.castle_white_queenside;
+    let mut castle_black_kingside = g.castle_black_kingside;
+    let mut castle_black_queenside = g.castle_black_queenside;
+
+    if g.color_to_move == 0 {
+        //Check that blacks rook didn't get captured
+        if pieces[3][1] & bitboards::SQUARES[56] == 0 {
+            castle_black_queenside = false;
+        }
+        if pieces[3][1] & bitboards::SQUARES[63] == 0 {
+            castle_black_kingside = false;
+        }
+    } else {
+        if pieces[3][0] & bitboards::SQUARES[0] == 0 {
+            castle_white_queenside = false;
+        }
+        if pieces[3][0] & bitboards::SQUARES[7] == 0 {
+            castle_white_kingside = false;
+        }
+    }
 
     let en_passant = 0u64;
 
@@ -352,8 +381,8 @@ pub fn make_promotion_move(g: &game_state::GameState, mv: &game_state::GameMove)
 }
 
 pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
-    //Clean this mess up
-    //Its working tho :)
+    //Following this guide:
+    // https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/
 
     let mut move_list: Vec<GameMove> = Vec::with_capacity(60);
     let color_to_move = g.color_to_move;
@@ -370,7 +399,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     let mut my_bishops = g.pieces[2][color_to_move] | g.pieces[4][color_to_move];
 
     let mut my_rooks = g.pieces[3][color_to_move] | g.pieces[4][color_to_move];
-    //Need this to xor out queens
+    //Need this to xor out queens later, when we look at pinned pieces
     let my_queens = g.pieces[4][color_to_move];
 
     //Get enemy pieces
@@ -452,7 +481,6 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         while rooks_on_xray != 0 {
             let rook_position = rooks_on_xray.trailing_zeros() as usize;
             rooks_on_xray &= rooks_on_xray - 1;
-            //Dont forget to or the slider, since we can capture it
             let ray = get_rook_ray(rook_attacks_from_my_king_postion | xray_rooks, rook_position, my_king_idx);
             let pinned_piece = ray & my_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
@@ -464,6 +492,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
                 }
                 my_rooks ^= pinned_piece;
                 add_moves(&mut move_list, pinned_piece_position, ray & !pinned_piece & push_mask, &piece_type, GameMoveType::Quiet);
+                //Don't forget that we can capture the rook aswell
                 add_moves(&mut move_list, pinned_piece_position, bitboards::SQUARES[rook_position] & capture_mask, &piece_type, GameMoveType::Capture);
                 continue;
             }
@@ -528,14 +557,14 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         //Single push
         {
             let my_pawns_single_push = if color_to_move == 0 { w_single_push_pawn_targets(my_pawns, empty) } else { b_single_push_pawn_targets(my_pawns, empty) } & push_mask;
-            let mut my_pawns_no_promotion = my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let mut my_pawns_promotion = my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_no_promotion = my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_promotion = my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
             add_quiet_pawn_single_pushes(my_pawns_no_promotion, &color_to_move, &mut move_list);
             add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 8usize);
         }
         //Double push
         {
-            let mut my_pawns_double_push = if color_to_move == 0 { w_double_push_pawn_targets(my_pawns, empty) } else { b_double_push_pawn_targets(my_pawns, empty) } & push_mask;
+            let my_pawns_double_push = if color_to_move == 0 { w_double_push_pawn_targets(my_pawns, empty) } else { b_double_push_pawn_targets(my_pawns, empty) } & push_mask;
             add_quiet_pawn_double_pushes(my_pawns_double_push, &color_to_move, &mut move_list);
         }
         //Capture west
@@ -543,8 +572,8 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             let my_pawns_west_targets = if color_to_move == 0 { w_pawn_west_targets(my_pawns) } else { b_pawn_west_targets(my_pawns) };
             let my_pawns_west_normal_captures = my_pawns_west_targets & capture_mask & enemy_pieces;
             //Checking for promotion on capture
-            let mut my_pawns_no_promotion = my_pawns_west_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let mut my_pawns_promotion = my_pawns_west_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_no_promotion = my_pawns_west_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_promotion = my_pawns_west_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
             //Capture
             add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 7usize);
             //Promotion capture
@@ -553,7 +582,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
 
             //En passant
             //We can capture en passant, if its in capture mask aswell
-            let mut my_pawns_west_enpassants = my_pawns_west_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            let my_pawns_west_enpassants = my_pawns_west_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
             add_en_passants(my_pawns_west_enpassants, &color_to_move, &mut move_list, 7usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
         //Capture east
@@ -561,13 +590,13 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             let my_pawns_east_targets = if color_to_move == 0 { w_pawn_east_targets(my_pawns) } else { b_pawn_east_targets(my_pawns) };
             let my_pawns_east_normal_captures = my_pawns_east_targets & capture_mask & enemy_pieces;
             //Checking for promotion on capture
-            let mut my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let mut my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
 
             add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 9usize);
             add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 9usize);
             //En passants
-            let mut my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            let  my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
             add_en_passants(my_pawns_east_enpassants, &color_to_move, &mut move_list, 9usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
     }
@@ -609,9 +638,8 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             my_rooks ^= 1u64 << index;
         }
     }
+    //Castles
     if num_checkers == 0 {
-        //Castles
-        //missing
         if g.color_to_move == 0 {
             //Make sure there is no piece in between and safe squares
             if g.castle_white_kingside {
@@ -660,6 +688,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     (move_list, num_checkers > 0)
 }
 
+#[inline(always)]
 pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
     while single_push_board != 0u64 {
         let idx = single_push_board.trailing_zeros() as usize;
@@ -673,6 +702,7 @@ pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &
     }
 }
 
+#[inline(always)]
 pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
     while double_push_board != 0u64 {
         let idx = double_push_board.trailing_zeros() as usize;
@@ -686,6 +716,7 @@ pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &
     }
 }
 
+#[inline(always)]
 pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
     while promotion_board != 0u64 {
         let idx = promotion_board.trailing_zeros() as usize;
@@ -717,6 +748,7 @@ pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_
     }
 }
 
+#[inline(always)]
 pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
     while capture_board != 0u64 {
         let idx = capture_board.trailing_zeros() as usize;
@@ -730,6 +762,7 @@ pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list
     }
 }
 
+#[inline(always)]
 pub fn add_en_passants(mut enpassant_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize, all_pieces_without_my_king: u64, enemy_rooks: u64, my_king_idx: usize) {
     while enpassant_board != 0u64 {
         let index = enpassant_board.trailing_zeros() as usize;
@@ -851,46 +884,46 @@ pub fn attackers_from_black(square_board: u64, square: usize, black_pawns: u64, 
     (attackers, slider_flag, bishop_slider)
 }
 
-pub fn get_w_attacked_squares(white_king_idx: usize, white_pawns: u64, mut white_knights: u64,mut white_bishops: u64,mut white_rooks: u64, blocked_squares: u64) -> u64 {
+pub fn get_w_attacked_squares(white_king_idx: usize, white_pawns: u64, mut white_knights: u64, mut white_bishops: u64, mut white_rooks: u64, blocked_squares: u64) -> u64 {
     let mut res = 0u64;
     res |= king_attack(white_king_idx);
     res |= w_pawn_west_targets(white_pawns) | w_pawn_east_targets(white_pawns);
-    while white_knights!=0u64{
-        let sq = 63usize-white_knights.leading_zeros() as usize;
+    while white_knights != 0u64 {
+        let sq = 63usize - white_knights.leading_zeros() as usize;
         res |= knight_attack(sq);
-        white_knights ^= 1u64<<sq;
+        white_knights ^= 1u64 << sq;
     }
-    while white_bishops!=0u64{
-        let sq = 63usize-white_bishops.leading_zeros() as usize;
-        res |= bishop_attack(sq,blocked_squares);
-        white_bishops ^= 1u64<<sq;
+    while white_bishops != 0u64 {
+        let sq = 63usize - white_bishops.leading_zeros() as usize;
+        res |= bishop_attack(sq, blocked_squares);
+        white_bishops ^= 1u64 << sq;
     }
-    while white_rooks!=0u64{
-        let sq = 63usize-white_rooks.leading_zeros() as usize;
-        res |= rook_attack(sq,blocked_squares);
-        white_rooks ^= 1u64<<sq;
+    while white_rooks != 0u64 {
+        let sq = 63usize - white_rooks.leading_zeros() as usize;
+        res |= rook_attack(sq, blocked_squares);
+        white_rooks ^= 1u64 << sq;
     }
     res
 }
 
-pub fn get_b_attacked_squares(black_king_idx: usize, black_pawns: u64, mut black_knights: u64,mut black_bishops: u64, mut black_rooks: u64, blocked_squares: u64) -> u64 {
+pub fn get_b_attacked_squares(black_king_idx: usize, black_pawns: u64, mut black_knights: u64, mut black_bishops: u64, mut black_rooks: u64, blocked_squares: u64) -> u64 {
     let mut res = 0u64;
     res |= king_attack(black_king_idx);
     res |= b_pawn_west_targets(black_pawns) | b_pawn_east_targets(black_pawns);
-    while black_knights!=0u64{
+    while black_knights != 0u64 {
         let sq = black_knights.trailing_zeros() as usize;
         res |= knight_attack(sq);
-        black_knights ^= 1u64<<sq;
+        black_knights ^= 1u64 << sq;
     }
-    while black_bishops!=0u64{
+    while black_bishops != 0u64 {
         let sq = black_bishops.trailing_zeros() as usize;
-        res |= bishop_attack(sq,blocked_squares);
-        black_bishops ^= 1u64<<sq;
+        res |= bishop_attack(sq, blocked_squares);
+        black_bishops ^= 1u64 << sq;
     }
-    while black_rooks!=0u64{
+    while black_rooks != 0u64 {
         let sq = black_rooks.trailing_zeros() as usize;
-        res |= rook_attack(sq,blocked_squares);
-        black_rooks ^= 1u64<<sq;
+        res |= rook_attack(sq, blocked_squares);
+        black_rooks ^= 1u64 << sq;
     }
     res
 }
