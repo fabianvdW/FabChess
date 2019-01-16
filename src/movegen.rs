@@ -58,18 +58,20 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
     bitboards::south_east_one(pawns)
 }
 
-pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, to_board: u64, piece_type: &PieceType, move_type: GameMoveType) {
-    let to_list = game_state::GameState::serialize_board_white(to_board);
-    for to in to_list {
+pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, piece_type: &PieceType, move_type: GameMoveType) {
+    while to_board != 0u64 {
+        let idx = to_board.trailing_zeros() as usize;
         move_list.push(GameMove {
             from,
-            to,
+            to: idx,
             move_type: move_type.clone(),
             piece_type: piece_type.clone(),
-        })
+        });
+        to_board ^= 1u64 << idx;
     }
 }
 
+//Make moves
 pub fn make_move(g: &game_state::GameState, mv: &game_state::GameMove) -> game_state::GameState {
     match mv.move_type {
         GameMoveType::Quiet => make_quiet_move(&g, &mv),
@@ -93,6 +95,8 @@ pub fn move_piece(pieces: &mut [[u64; 2]; 6], mv: &game_state::GameMove, move_co
     };
     pieces[index][move_color] ^= bitboards::SQUARES[mv.from];
     pieces[index][move_color] |= bitboards::SQUARES[mv.to];
+    //pieces[index][move_color] ^= 1u64<<mv.from;
+    //pieces[index][move_color] |= 1u64<<mv.to;
 }
 
 pub fn delete_piece(pieces: &mut [[u64; 2]; 6], delete_square: usize, delete_color: usize) {
@@ -351,7 +355,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     //Clean this mess up
     //Its working tho :)
 
-    let mut move_list: Vec<GameMove> = Vec::with_capacity(48);
+    let mut move_list: Vec<GameMove> = Vec::with_capacity(60);
     let color_to_move = g.color_to_move;
     let enemy_color = 1 - color_to_move;
 
@@ -400,13 +404,16 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     let possible_king_moves = king_attack(my_king_idx) & !unsafe_white_squares & not_my_pieces;
     add_moves(&mut move_list, my_king_idx, possible_king_moves & not_enemy_pieces, &PieceType::King, GameMoveType::Quiet);
     add_moves(&mut move_list, my_king_idx, possible_king_moves & enemy_pieces, &PieceType::King, GameMoveType::Capture);
-
-    let (king_attackers_board, checking_piece_is_slider, checking_piece_slider_is_bishop) = if color_to_move == 0 {
-        attackers_from_black(my_king, my_king_idx, enemy_pawns, enemy_knights
-                             , enemy_bishops, enemy_rooks, all_pieces)
+    let (king_attackers_board, checking_piece_is_slider, checking_piece_slider_is_bishop) = if unsafe_white_squares & my_king == 0 {
+        (0u64, false, false)
     } else {
-        attackers_from_white(my_king, my_king_idx, enemy_pawns, enemy_knights
-                             , enemy_bishops, enemy_rooks, all_pieces)
+        if color_to_move == 0 {
+            attackers_from_black(my_king, my_king_idx, enemy_pawns, enemy_knights
+                                 , enemy_bishops, enemy_rooks, all_pieces)
+        } else {
+            attackers_from_white(my_king, my_king_idx, enemy_pawns, enemy_knights
+                                 , enemy_bishops, enemy_rooks, all_pieces)
+        }
     };
 
     let num_checkers = king_attackers_board.count_ones();
@@ -521,223 +528,85 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         //Single push
         {
             let my_pawns_single_push = if color_to_move == 0 { w_single_push_pawn_targets(my_pawns, empty) } else { b_single_push_pawn_targets(my_pawns, empty) } & push_mask;
-            let my_pawns_no_promotion = my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let my_pawns_promotion = my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_no_promotion);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 8 } else { t + 8 },
-                    to: t,
-                    move_type: GameMoveType::Quiet,
-                    piece_type: PieceType::Pawn,
-                });
-            }
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_promotion);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 8 } else { t + 8 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Queen),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 8 } else { t + 8 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Rook),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 8 } else { t + 8 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Bishop),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 8 } else { t + 8 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Knight),
-                    piece_type: PieceType::Pawn,
-                });
-            }
+            let mut my_pawns_no_promotion = my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let mut my_pawns_promotion = my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            add_quiet_pawn_single_pushes(my_pawns_no_promotion, &color_to_move, &mut move_list);
+            add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 8usize);
         }
         //Double push
         {
-            let my_pawns_double_push = if color_to_move == 0 { w_double_push_pawn_targets(my_pawns, empty) } else { b_double_push_pawn_targets(my_pawns, empty) } & push_mask;
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_double_push);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 16 } else { t + 16 },
-                    to: t,
-                    move_type: GameMoveType::Quiet,
-                    piece_type: PieceType::Pawn,
-                })
-            }
+            let mut my_pawns_double_push = if color_to_move == 0 { w_double_push_pawn_targets(my_pawns, empty) } else { b_double_push_pawn_targets(my_pawns, empty) } & push_mask;
+            add_quiet_pawn_double_pushes(my_pawns_double_push, &color_to_move, &mut move_list);
         }
         //Capture west
         {
             let my_pawns_west_targets = if color_to_move == 0 { w_pawn_west_targets(my_pawns) } else { b_pawn_west_targets(my_pawns) };
             let my_pawns_west_normal_captures = my_pawns_west_targets & capture_mask & enemy_pieces;
             //Checking for promotion on capture
-            let my_pawns_no_promotion = my_pawns_west_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let my_pawns_promotion = my_pawns_west_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            //Non promotion capture
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_no_promotion);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 7 } else { t + 7 },
-                    to: t,
-                    move_type: GameMoveType::Capture,
-                    piece_type: PieceType::Pawn,
-                })
-            }
+            let mut my_pawns_no_promotion = my_pawns_west_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let mut my_pawns_promotion = my_pawns_west_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            //Capture
+            add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 7usize);
             //Promotion capture
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_promotion);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 7 } else { t + 7 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Queen),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 7 } else { t + 7 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Rook),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 7 } else { t + 7 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Bishop),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 7 } else { t + 7 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Knight),
-                    piece_type: PieceType::Pawn,
-                });
-            }
+            add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 7usize);
+
 
             //En passant
             //We can capture en passant, if its in capture mask aswell
-            let my_pawns_west_enpassants = my_pawns_west_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_west_enpassants);
-            for t in target_squares {
-                //Check if rare case didn't happen
-                //Remove t-7,t-8 or t+7,t+8
-                let all_pieces_without_en_passants = all_pieces_without_my_king & !bitboards::SQUARES[if color_to_move == 0 { t - 7 } else { t + 7 }]
-                    & !bitboards::SQUARES[if color_to_move == 0 { t - 8 } else { t + 8 }];
-                if rook_attack(my_king_idx, all_pieces_without_en_passants) & (!bitboards::FILES[my_king_idx % 8]) & enemy_rooks != 0 {
-                    continue;
-                }
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 7 } else { t + 7 },
-                    to: t,
-                    move_type: GameMoveType::EnPassant,
-                    piece_type: PieceType::Pawn,
-                })
-            }
+            let mut my_pawns_west_enpassants = my_pawns_west_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            add_en_passants(my_pawns_west_enpassants, &color_to_move, &mut move_list, 7usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
         //Capture east
         {
             let my_pawns_east_targets = if color_to_move == 0 { w_pawn_east_targets(my_pawns) } else { b_pawn_east_targets(my_pawns) };
             let my_pawns_east_normal_captures = my_pawns_east_targets & capture_mask & enemy_pieces;
             //Checking for promotion on capture
-            let my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            let my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            //No promotion
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_no_promotion);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 9 } else { t + 9 },
-                    to: t,
-                    move_type: GameMoveType::Capture,
-                    piece_type: PieceType::Pawn,
-                })
-            }
-            //Promotion capture
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_promotion);
-            for t in target_squares {
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 9 } else { t + 9 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Queen),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 9 } else { t + 9 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Rook),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 9 } else { t + 9 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Bishop),
-                    piece_type: PieceType::Pawn,
-                });
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 9 } else { t + 9 },
-                    to: t,
-                    move_type: GameMoveType::Promotion(PieceType::Knight),
-                    piece_type: PieceType::Pawn,
-                });
-            }
+            let mut my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+            let mut my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
 
+            add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 9usize);
+            add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 9usize);
             //En passants
-            let my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
-            let target_squares = game_state::GameState::serialize_board_white(my_pawns_east_enpassants);
-            for t in target_squares {
-                //Check if rare case didn't happen
-                //Remove t-7,t-8 or t+7,t+8
-                let all_pieces_without_en_passants = all_pieces_without_my_king & !bitboards::SQUARES[if color_to_move == 0 { t - 9 } else { t + 9 }]
-                    & !bitboards::SQUARES[if color_to_move == 0 { t - 8 } else { t + 8 }];
-                if rook_attack(my_king_idx, all_pieces_without_en_passants) & (!bitboards::FILES[my_king_idx % 8]) & enemy_rooks != 0 {
-                    continue;
-                }
-                move_list.push(GameMove {
-                    from: if color_to_move == 0 { t - 9 } else { t + 9 },
-                    to: t,
-                    move_type: GameMoveType::EnPassant,
-                    piece_type: PieceType::Pawn,
-                })
-            }
+            let mut my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            add_en_passants(my_pawns_east_enpassants, &color_to_move, &mut move_list, 9usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
     }
     //Knights
     {
-        let my_knights_idx = if color_to_move == 0 { game_state::GameState::serialize_board_white(my_knights) } else { game_state::GameState::serialize_board_black(my_knights) };
-        for knight_source in my_knights_idx {
-            let my_knight_attacks = knight_attack(knight_source) & not_my_pieces;
+        while my_knights != 0u64 {
+            let index = if color_to_move == 0 { 63usize - my_knights.leading_zeros() as usize } else { my_knights.trailing_zeros() as usize };
+            let my_knight_attacks = knight_attack(index) & not_my_pieces;
             let my_knight_captures = my_knight_attacks & enemy_pieces & capture_mask;
-            add_moves(&mut move_list, knight_source, my_knight_captures, &PieceType::Knight, GameMoveType::Capture);
+            add_moves(&mut move_list, index, my_knight_captures, &PieceType::Knight, GameMoveType::Capture);
             let my_knight_quiets = my_knight_attacks & !enemy_pieces & push_mask;
-            add_moves(&mut move_list, knight_source, my_knight_quiets, &PieceType::Knight, GameMoveType::Quiet);
+            add_moves(&mut move_list, index, my_knight_quiets, &PieceType::Knight, GameMoveType::Quiet);
+            my_knights ^= 1u64 << index;
         }
     }
     //Bishops
     {
-        let my_bishops_idx = if color_to_move == 0 { game_state::GameState::serialize_board_white(my_bishops) } else { game_state::GameState::serialize_board_black(my_bishops) };
-        for bishop_source in my_bishops_idx {
-            let my_bishop_attack = bishop_attack(bishop_source, all_pieces) & not_my_pieces;
+        while my_bishops != 0u64 {
+            let index = if color_to_move == 0 { 63usize - my_bishops.leading_zeros() as usize } else { my_bishops.trailing_zeros() as usize };
+            let my_bishop_attack = bishop_attack(index, all_pieces) & not_my_pieces;
             let my_bishop_capture = my_bishop_attack & enemy_pieces & capture_mask;
-            let piece_type = if bitboards::SQUARES[bishop_source] & my_queens != 0 { PieceType::Queen } else { PieceType::Bishop };
-            add_moves(&mut move_list, bishop_source, my_bishop_capture, &piece_type, GameMoveType::Capture);
+            let piece_type = if bitboards::SQUARES[index] & my_queens != 0 { PieceType::Queen } else { PieceType::Bishop };
+            add_moves(&mut move_list, index, my_bishop_capture, &piece_type, GameMoveType::Capture);
             let my_bishop_quiet = my_bishop_attack & !enemy_pieces & push_mask;
-            add_moves(&mut move_list, bishop_source, my_bishop_quiet, &piece_type, GameMoveType::Quiet);
+            add_moves(&mut move_list, index, my_bishop_quiet, &piece_type, GameMoveType::Quiet);
+            my_bishops ^= 1u64 << index;
         }
     }
     //Rooks
     {
-        let my_rooks_idx = if color_to_move == 0 { game_state::GameState::serialize_board_white(my_rooks) } else { game_state::GameState::serialize_board_black(my_rooks) };
-        for rook_source in my_rooks_idx {
-            let my_rook_attack = rook_attack(rook_source, all_pieces) & not_my_pieces;
+        while my_rooks != 0u64 {
+            let index = if color_to_move == 0 { 63usize - my_rooks.leading_zeros() as usize } else { my_rooks.trailing_zeros() as usize };
+            let my_rook_attack = rook_attack(index, all_pieces) & not_my_pieces;
             let my_rook_capture = my_rook_attack & enemy_pieces & capture_mask;
-            let piece_type = if bitboards::SQUARES[rook_source] & my_queens != 0 { PieceType::Queen } else { PieceType::Rook };
-            add_moves(&mut move_list, rook_source, my_rook_capture, &piece_type, GameMoveType::Capture);
+            let piece_type = if bitboards::SQUARES[index] & my_queens != 0 { PieceType::Queen } else { PieceType::Rook };
+            add_moves(&mut move_list, index, my_rook_capture, &piece_type, GameMoveType::Capture);
             let my_rook_quiets = my_rook_attack & !enemy_pieces & push_mask;
-            add_moves(&mut move_list, rook_source, my_rook_quiets, &piece_type, GameMoveType::Quiet);
+            add_moves(&mut move_list, index, my_rook_quiets, &piece_type, GameMoveType::Quiet);
+            my_rooks ^= 1u64 << index;
         }
     }
     if num_checkers == 0 {
@@ -789,6 +658,96 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         }
     }
     (move_list, num_checkers > 0)
+}
+
+pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
+    while single_push_board != 0u64 {
+        let idx = single_push_board.trailing_zeros() as usize;
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - 8 } else { idx + 8 },
+            to: idx,
+            move_type: GameMoveType::Quiet,
+            piece_type: PieceType::Pawn,
+        });
+        single_push_board ^= 1 << idx;
+    }
+}
+
+pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
+    while double_push_board != 0u64 {
+        let idx = double_push_board.trailing_zeros() as usize;
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - 16 } else { idx + 16 },
+            to: idx,
+            move_type: GameMoveType::Quiet,
+            piece_type: PieceType::Pawn,
+        });
+        double_push_board ^= 1 << idx;
+    }
+}
+
+pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
+    while promotion_board != 0u64 {
+        let idx = promotion_board.trailing_zeros() as usize;
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - source_shift } else { idx + source_shift },
+            to: idx,
+            move_type: GameMoveType::Promotion(PieceType::Queen),
+            piece_type: PieceType::Pawn,
+        });
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - source_shift } else { idx + source_shift },
+            to: idx,
+            move_type: GameMoveType::Promotion(PieceType::Rook),
+            piece_type: PieceType::Pawn,
+        });
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - source_shift } else { idx + source_shift },
+            to: idx,
+            move_type: GameMoveType::Promotion(PieceType::Bishop),
+            piece_type: PieceType::Pawn,
+        });
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - source_shift } else { idx + source_shift },
+            to: idx,
+            move_type: GameMoveType::Promotion(PieceType::Knight),
+            piece_type: PieceType::Pawn,
+        });
+        promotion_board ^= 1 << idx;
+    }
+}
+
+pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
+    while capture_board != 0u64 {
+        let idx = capture_board.trailing_zeros() as usize;
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { idx - source_shift } else { idx + source_shift },
+            to: idx,
+            move_type: GameMoveType::Capture,
+            piece_type: PieceType::Pawn,
+        });
+        capture_board ^= 1 << idx;
+    }
+}
+
+pub fn add_en_passants(mut enpassant_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize, all_pieces_without_my_king: u64, enemy_rooks: u64, my_king_idx: usize) {
+    while enpassant_board != 0u64 {
+        let index = enpassant_board.trailing_zeros() as usize;
+        enpassant_board ^= 1u64 << index;
+        //Check if rare case didn't happen
+        //Remove t-7,t-8 or t+7,t+8
+        let all_pieces_without_en_passants = all_pieces_without_my_king & !bitboards::SQUARES[if *color_to_move == 0 { index - source_shift } else { index + source_shift }]
+            & !bitboards::SQUARES[if *color_to_move == 0 { index - 8 } else { index + 8 }];
+        if rook_attack(my_king_idx, all_pieces_without_en_passants) & (!bitboards::FILES[my_king_idx % 8]) & enemy_rooks != 0 {
+            continue;
+        }
+        move_list.push(GameMove {
+            from: if *color_to_move == 0 { index - source_shift } else { index + source_shift },
+            to: index,
+            move_type: GameMoveType::EnPassant,
+            piece_type: PieceType::Pawn,
+        });
+    }
 }
 
 pub fn xray_rook_attacks(attacks: u64, occupied_square: u64, one_time_blockers: u64, rook_square: usize) -> u64 {
@@ -892,40 +851,46 @@ pub fn attackers_from_black(square_board: u64, square: usize, black_pawns: u64, 
     (attackers, slider_flag, bishop_slider)
 }
 
-pub fn get_w_attacked_squares(white_king_idx: usize, white_pawns: u64, white_knights: u64, white_bishops: u64, white_rooks: u64, blocked_squares: u64) -> u64 {
+pub fn get_w_attacked_squares(white_king_idx: usize, white_pawns: u64, mut white_knights: u64,mut white_bishops: u64,mut white_rooks: u64, blocked_squares: u64) -> u64 {
     let mut res = 0u64;
     res |= king_attack(white_king_idx);
     res |= w_pawn_west_targets(white_pawns) | w_pawn_east_targets(white_pawns);
-    let serialized_knights = game_state::GameState::serialize_board_white(white_knights);
-    for sq in serialized_knights {
+    while white_knights!=0u64{
+        let sq = 63usize-white_knights.leading_zeros() as usize;
         res |= knight_attack(sq);
+        white_knights ^= 1u64<<sq;
     }
-    let serialized_bishops = game_state::GameState::serialize_board_white(white_bishops);
-    for sq in serialized_bishops {
-        res |= bishop_attack(sq, blocked_squares);
+    while white_bishops!=0u64{
+        let sq = 63usize-white_bishops.leading_zeros() as usize;
+        res |= bishop_attack(sq,blocked_squares);
+        white_bishops ^= 1u64<<sq;
     }
-    let serialized_rooks = game_state::GameState::serialize_board_white(white_rooks);
-    for sq in serialized_rooks {
-        res |= rook_attack(sq, blocked_squares);
+    while white_rooks!=0u64{
+        let sq = 63usize-white_rooks.leading_zeros() as usize;
+        res |= rook_attack(sq,blocked_squares);
+        white_rooks ^= 1u64<<sq;
     }
     res
 }
 
-pub fn get_b_attacked_squares(black_king_idx: usize, black_pawns: u64, black_knights: u64, black_bishops: u64, black_rooks: u64, blocked_squares: u64) -> u64 {
+pub fn get_b_attacked_squares(black_king_idx: usize, black_pawns: u64, mut black_knights: u64,mut black_bishops: u64, mut black_rooks: u64, blocked_squares: u64) -> u64 {
     let mut res = 0u64;
     res |= king_attack(black_king_idx);
     res |= b_pawn_west_targets(black_pawns) | b_pawn_east_targets(black_pawns);
-    let serialized_knights = game_state::GameState::serialize_board_black(black_knights);
-    for sq in serialized_knights {
+    while black_knights!=0u64{
+        let sq = black_knights.trailing_zeros() as usize;
         res |= knight_attack(sq);
+        black_knights ^= 1u64<<sq;
     }
-    let serialized_bishops = game_state::GameState::serialize_board_black(black_bishops);
-    for sq in serialized_bishops {
-        res |= bishop_attack(sq, blocked_squares);
+    while black_bishops!=0u64{
+        let sq = black_bishops.trailing_zeros() as usize;
+        res |= bishop_attack(sq,blocked_squares);
+        black_bishops ^= 1u64<<sq;
     }
-    let serialized_rooks = game_state::GameState::serialize_board_black(black_rooks);
-    for sq in serialized_rooks {
-        res |= rook_attack(sq, blocked_squares);
+    while black_rooks!=0u64{
+        let sq = black_rooks.trailing_zeros() as usize;
+        res |= rook_attack(sq,blocked_squares);
+        black_rooks ^= 1u64<<sq;
     }
     res
 }

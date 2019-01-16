@@ -20,7 +20,7 @@ fn main() {
     let now = Instant::now();
     //d7b5
     let g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let nodes= perft_div(&g,6);
+    let nodes= perft_div(&g,7);
     println!("{}", nodes);
     //misc::STD_FEN);
     //println!("{:}",GameState::from_fen(misc::STD_FEN));
@@ -80,8 +80,10 @@ mod tests {
         assert_eq!(9, perft(&GameState::from_fen("2r5/3pk3/8/2P5/8/2K5/8/8 w - - 5 4"), 1));
         assert_eq!(62379, perft(&GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), 3));
         assert_eq!(89890, perft(&GameState::from_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), 3));
+
         assert_eq!(1134888, perft(&GameState::from_fen("3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1"), 6));
         assert_eq!(1015133, perft(&GameState::from_fen("8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1"), 6));
+
         assert_eq!(1440467, perft(&GameState::from_fen("8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1"), 6));
         assert_eq!(661072, perft(&GameState::from_fen("5k2/8/8/8/8/8/8/4K2R w K - 0 1"), 6));
         assert_eq!(803711, perft(&GameState::from_fen("3k4/8/8/8/8/8/8/R3K3 w Q - 0 1"), 6));
