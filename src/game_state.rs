@@ -311,24 +311,6 @@ impl GameState {
             full_moves: 1usize,
         }
     }
-    pub fn serialize_board_black(mut board: u64) -> Vec<usize> {
-        let mut res: Vec<usize> = Vec::with_capacity(8);
-        while board != 0 {
-            let idx = board.trailing_zeros() as usize;
-            res.push(idx);
-            board ^= 1u64 << idx;
-        }
-        res
-    }
-    pub fn serialize_board_white(mut board: u64) -> Vec<usize> {
-        let mut res: Vec<usize> = Vec::with_capacity(8);
-        while board != 0 {
-            let idx = 63 - board.leading_zeros() as usize;
-            res.push(idx);
-            board ^= 1u64 << idx;
-        }
-        res
-    }
 }
 
 impl Display for GameState {
