@@ -446,6 +446,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     };
 
     let num_checkers = king_attackers_board.count_ones();
+    //Double check
     if num_checkers > 1 { //Then only king moves are possible anyway
         return (move_list, true);
     }

@@ -1,0 +1,42 @@
+pub fn generate_moves(g: &GameState) -> (Vec<GameMove>){
+
+	let mut move_list = Vec::with_capacity(60);
+	//Calculate unsafe squares for my king
+	let unsafe_squares :u64 = calculate_unsafe_squares(&g);
+	add_moves(get_possible_king_moves(unsafe_squares, &g), &mut move_list);
+	
+	//Calculate checks
+	let checks = get_checkers(&g);
+	let num_checkers= checks.count_ones();
+	
+	if num_checkers> 1{
+		//In double-check, only king moves are possible
+		return move_list;
+	}
+	
+	//Make sure to evade checks by pushing in the way of the check giving slider
+	//Or capturing the check giving piece
+	//The two following masks will be just be anded to all possible target squares
+	let mut capture_mask :u64 = 0xFFFFFFFFFFFFFFFFu64;
+	let mut push_mask = 0xFFFFFFFFFFFFFFFu64;
+	if num_checkers ==1{
+		capture_mask= checks;
+		if is_slider(checks,&g){
+			push_mask= slider_ray_towards_king();
+		}
+	}
+
+	let pinned_pieces:u64 =calculate_pinned_pieces(&g);
+	add_moves(calculate_pinned_moves(pinned_pieces,&g),&mut move_list);
+	//Remove pinned pieces from my pieces
+	my_pieces ^= pinned_pieces;
+	
+	//Rest of moves
+	add_moves(castle_moves(&g),&mut move_list);
+	add_moves(pawn_moves(&g),&mut move_list);
+	add_moves(bishop_moves(&g),&mut move_list);
+	add_moves(rook_moves(&g),&mut move_list);
+	add_moves(queen_moves(&g),&mut move_list);
+	add_moves(knight_moves(&g),&mut move_list);
+	
+}
