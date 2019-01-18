@@ -1,0 +1,5 @@
+TODO
+
+Try doing/undoing move in an incremental way.
+This reduces alot of copying which affects speed.
+Also benefical for Zobrist Keys.

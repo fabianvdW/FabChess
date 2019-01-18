@@ -617,26 +617,28 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     {
         while my_bishops != 0u64 {
             let index = if color_to_move == 0 { 63usize - my_bishops.leading_zeros() as usize } else { my_bishops.trailing_zeros() as usize };
+            let piece= 1u64<<index;
             let my_bishop_attack = bishop_attack(index, all_pieces) & not_my_pieces;
             let my_bishop_capture = my_bishop_attack & enemy_pieces & capture_mask;
-            let piece_type = if bitboards::SQUARES[index] & my_queens != 0 { PieceType::Queen } else { PieceType::Bishop };
+            let piece_type = if piece & my_queens != 0 { PieceType::Queen } else { PieceType::Bishop };
             add_moves(&mut move_list, index, my_bishop_capture, &piece_type, GameMoveType::Capture);
             let my_bishop_quiet = my_bishop_attack & !enemy_pieces & push_mask;
             add_moves(&mut move_list, index, my_bishop_quiet, &piece_type, GameMoveType::Quiet);
-            my_bishops ^= 1u64 << index;
+            my_bishops ^= piece;
         }
     }
     //Rooks
     {
         while my_rooks != 0u64 {
             let index = if color_to_move == 0 { 63usize - my_rooks.leading_zeros() as usize } else { my_rooks.trailing_zeros() as usize };
+            let piece= 1u64<<index;
             let my_rook_attack = rook_attack(index, all_pieces) & not_my_pieces;
             let my_rook_capture = my_rook_attack & enemy_pieces & capture_mask;
-            let piece_type = if bitboards::SQUARES[index] & my_queens != 0 { PieceType::Queen } else { PieceType::Rook };
+            let piece_type = if piece& my_queens != 0 { PieceType::Queen } else { PieceType::Rook };
             add_moves(&mut move_list, index, my_rook_capture, &piece_type, GameMoveType::Capture);
             let my_rook_quiets = my_rook_attack & !enemy_pieces & push_mask;
             add_moves(&mut move_list, index, my_rook_quiets, &piece_type, GameMoveType::Quiet);
-            my_rooks ^= 1u64 << index;
+            my_rooks ^= piece;
         }
     }
     //Castles
