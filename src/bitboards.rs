@@ -1,5 +1,4 @@
 use rand::Rng;
-
 static mut ROOK_BITS: [usize; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12,
     11, 10, 10, 10, 10, 10, 10, 11,
@@ -38,6 +37,11 @@ lazy_static! {
     pub static ref FILES_GREATER_THAN:[u64;8]= init_files_greater_than();
     pub static ref RANKS_LESS_THAN:[u64;8]= init_ranks_less_than();
     pub static ref RANKS_GREATER_THAN:[u64;8]= init_ranks_greater_than();
+    pub static ref UPPER_HALF:u64 = init_upper_half();
+    pub static ref LOWER_HALF:u64 = init_lower_half();
+    pub static ref DIAGONALLY_ADJACENT:[u64;64] = init_diagonally_adjacent();
+    pub static ref SHIELDING_PAWNS_WHITE:[u64;64]= init_shielding_pawns_white();
+    pub static ref SHIELDING_PAWNS_BLACK:[u64;64]= init_shielding_pawns_black();
 }
 pub struct Magic {
     pub occupancy_mask: u64,
@@ -67,6 +71,11 @@ pub fn init_all() {
     FILES_GREATER_THAN.len();
     RANKS_LESS_THAN.len();
     RANKS_GREATER_THAN.len();
+    UPPER_HALF.count_ones();
+    LOWER_HALF.count_ones();
+    DIAGONALLY_ADJACENT.len();
+    SHIELDING_PAWNS_WHITE.len();
+    SHIELDING_PAWNS_BLACK.len();
 }
 
 //Rook-specific magic
@@ -418,37 +427,80 @@ pub fn initialize_not_squares() -> [u64; 64] {
     res
 }
 
+pub fn nort_fill(mut gen:u64) -> u64{
+    gen |= gen<<8;
+    gen |= gen<<16;
+    gen |= gen<<32;
+    gen
+}
+
+pub fn sout_fill(mut gen:u64) -> u64{
+    gen |= gen>>8;
+    gen |= gen>>16;
+    gen |= gen>>32;
+    gen
+}
+
+pub fn file_fill(gen:u64)->u64{
+    nort_fill(gen)|sout_fill(gen)
+}
+
+pub fn w_front_span(wpawns:u64)->u64{
+    north_one(nort_fill(wpawns))
+}
+
+pub fn b_front_span(bpawns:u64)->u64{
+    south_one(sout_fill(bpawns))
+}
+
+pub fn w_rear_span(wpawns:u64)->u64{
+    south_one(sout_fill(wpawns))
+}
+
+pub fn b_rear_span(bpawns:u64)->u64{
+    north_one(nort_fill(bpawns))
+}
+
+#[inline(always)]
 pub fn north_one(board: u64) -> u64 {
     board << 8
 }
 
+#[inline(always)]
 pub fn north_east_one(board: u64) -> u64 {
     (board & NOT_FILES[7]) << 9
 }
 
+#[inline(always)]
 pub fn north_west_one(board: u64) -> u64 {
     (board & NOT_FILES[0]) << 7
 }
 
+#[inline(always)]
 pub fn south_one(board: u64) -> u64 {
     board >> 8
 }
 
+#[inline(always)]
 pub fn south_east_one(board: u64) -> u64 {
     (board & NOT_FILES[7]) >> 7
 }
 
+#[inline(always)]
 pub fn south_west_one(board: u64) -> u64 {
     (board & NOT_FILES[0]) >> 9
 }
 
+#[inline(always)]
 pub fn west_one(board: u64) -> u64 {
     (board & NOT_FILES[0]) >> 1
 }
 
+#[inline(always)]
 pub fn east_one(board: u64) -> u64 {
     (board & NOT_FILES[7]) << 1
 }
+
 
 pub fn king_attack(mut king_board: u64) -> u64 {
     let mut attacks = east_one(king_board) | west_one(king_board);
@@ -528,6 +580,45 @@ pub fn init_ranks_greater_than() -> [u64; 8] {
     res
 }
 
+pub fn init_upper_half() -> u64{
+    RANKS_GREATER_THAN[3]
+}
+
+pub fn init_lower_half() -> u64{
+    RANKS_LESS_THAN[4]
+}
+
+pub fn init_diagonally_adjacent() ->[u64;64]{
+    let mut res  =[0u64;64];
+    for sq in 0..64{
+        let board = 1u64<<sq;
+        res[sq]= north_east_one(board)|north_west_one(board)|south_east_one(board)|south_west_one(board);
+    }
+    println!("Finished Initializing Diagonally Adjacent Board!");
+    res
+}
+
+pub fn init_shielding_pawns_white() -> [u64;64]{
+    let mut res = [0u64;64];
+    for sq in 0..64{
+        let king = 1u64<<sq;
+        let shield= king<<8|north_west_one(king)|north_east_one(king);
+        res[sq]= shield|shield<<8;
+    }
+    println!("Finished Initializing Shielding PawnsWhite Board!");
+    res
+}
+
+pub fn init_shielding_pawns_black() -> [u64;64]{
+    let mut res = [0u64;64];
+    for sq in 0..64{
+        let king = 1u64<<sq;
+        let shield= king>>8|south_west_one(king)|south_east_one(king);
+        res[sq]= shield|shield>>8;
+    }
+    println!("Finished Initializing Shielding PawnsBlack Board!");
+    res
+}
 //Misc
 pub fn to_string_board(board: u64) -> String {
     let mut res_str: String = String::new();
