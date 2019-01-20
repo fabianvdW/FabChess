@@ -21,7 +21,7 @@ fn main() {
     let now = Instant::now();
 
     //let g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let g= GameState::from_fen("2kr4/p1r1bp1p/3qb1p1/p1p5/4Q3/2P1BB2/5PPP/1R3RK1 w - - 4 25");
+    let g= GameState::from_fen("r4rk1/2p1bppp/p1n5/1p1qPb2/3B4/1PPp1N2/1P3PPP/RB1Q1RK1 w - - 5 17");
     //let g= GameState::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
     //let nodes = perft_div(&g, 2);
     //println!("{}", nodes);

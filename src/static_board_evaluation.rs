@@ -44,24 +44,24 @@ const KNIGHT_PIECE_VALUE_EG: f64 = 500.0;
 const KNIGHT_VALUE_WITH_PAWNS: [f64; 17] = [-30.0, -27.5, -25.0, -22.5, -20.0, -17.5, -15.0, -12.5, -10.0, -7.5, -5.0, -2.5, 0.0, 2.5, 5.0, 7.5, 10.0];
 const KNIGHT_SUPPORTED_BY_PAWN: f64 = 30.0;
 const PSQT_KNIGHT_MG: [[f64; 8]; 8] = [
-    [-150.0,-95.0,-75.0,-75.0,-75.0,-75.0,-95.0,-150.0],
-    [ -95.0,-50.0,-20.0,  0.0,  0.0,-20.0,-50.0, -95.0],
-    [ -75.0,-20.0, 10.0, 20.0, 20.0, 10.0,-20.0, -75.0],
-    [ -75.0,  0.0, 20.0, 40.0, 40.0, 20.0,  0.0, -75.0],
-    [ -75.0,  0.0, 20.0, 40.0, 40.0, 20.0,  0.0, -75.0],
-    [ -75.0,-20.0, 10.0, 20.0, 20.0, 10.0,-20.0, -75.0],
-    [ -95.0,-50.0,-20.0,  0.0,  0.0,-20.0,-50.0, -95.0],
-    [-150.0,-95.0,-75.0,-75.0,-75.0,-75.0,-95.0,-150.0],
+    [ -50.0,-40.0,-30.0,-30.0,-30.0,-30.0,-40.0, -50.0],
+    [ -40.0,-20.0,  0.0,  5.0,  5.0,  0.0,-20.0, -40.0],
+    [ -30.0,  0.0, 10.0, 20.0, 20.0, 10.0,  0.0, -30.0],
+    [ -30.0,  5.0, 20.0, 40.0, 40.0, 20.0,  5.0, -30.0],
+    [ -30.0,  5.0, 20.0, 40.0, 40.0, 20.0,  5.0, -30.0],
+    [ -30.0,  0.0, 10.0, 20.0, 20.0, 10.0,  0.0, -30.0],
+    [ -40.0,-20.0, 0.0,  5.0,  5.0,   0.0,-20.0, -40.0],
+    [ -50.0,-40.0,-30.0,-30.0,-30.0,-30.0,-40.0, -50.0],
 ];
 const PSQT_KNIGHT_EG: [[f64;8];8]=[
-    [ -75.0,-95.0,-75.0,-75.0,-75.0,-75.0,-95.0, -75.0],
-    [ -47.5,-25.0,-10.0,  0.0,  0.0,-10.0,-25.0, -47.5],
-    [ -37.5,-10.0,  5.0, 10.0, 10.0,  5.0,-10.0, -37.5],
-    [ -37.5,  0.0, 10.0, 20.0, 20.0, 10.0,  0.0, -37.5],
-    [ -37.5,  0.0, 10.0, 20.0, 20.0, 10.0,  0.0, -37.5],
-    [ -37.5,-10.0,  5.0, 10.0, 10.0,  5.0,-10.0, -37.5],
-    [ -47.5,-25.0,-10.0,  0.0,  0.0,-10.0,-25.0, -47.5],
-    [ -75.0,-95.0,-75.0,-75.0,-75.0,-75.0,-95.0, -75.0],
+    [ -50.0,-40.0,-30.0,-30.0,-30.0,-30.0,-40.0, -50.0],
+    [ -40.0,-25.0,-10.0,  0.0,  0.0,-10.0,-25.0, -40.0],
+    [ -30.0,-10.0,  5.0, 10.0, 10.0,  5.0,-10.0, -30.0],
+    [ -30.0,  0.0, 10.0, 20.0, 20.0, 10.0,  0.0, -30.0],
+    [ -30.0,  0.0, 10.0, 20.0, 20.0, 10.0,  0.0, -30.0],
+    [ -30.0,-10.0,  5.0, 10.0, 10.0,  5.0,-10.0, -30.0],
+    [ -40.0,-25.0,-10.0,  0.0,  0.0,-10.0,-25.0, -40.0],
+    [ -50.0,-40.0,-30.0,-30.0,-30.0,-30.0,-40.0, -50.0],
 ];
 //Bishop constants
 const BISHOP_PIECE_VALUE_EG: f64 = 510.0;
@@ -415,14 +415,14 @@ pub fn knight_eval(mut knight:u64,my_pawns_attacks:u64,my_pawns:u64,enemy_pawns:
         amount_of_knights+=1;
         knight ^=1u64<<idx;
     }
-    let mg= mg_psqt+amount_of_knights as f64 * KNIGHT_PIECE_VALUE_MG+supported_knights as f64*KNIGHT_SUPPORTED_BY_PAWN+KNIGHT_VALUE_WITH_PAWNS[pawns_insg];
-    let eg= eg_psqt+amount_of_knights as f64 * KNIGHT_PIECE_VALUE_EG+supported_knights as f64*KNIGHT_SUPPORTED_BY_PAWN+KNIGHT_VALUE_WITH_PAWNS[pawns_insg];
+    let mg= mg_psqt+amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_MG+KNIGHT_VALUE_WITH_PAWNS[pawns_insg])+supported_knights as f64*KNIGHT_SUPPORTED_BY_PAWN;
+    let eg= eg_psqt+amount_of_knights as f64 *(KNIGHT_PIECE_VALUE_EG+KNIGHT_VALUE_WITH_PAWNS[pawns_insg])+supported_knights as f64*KNIGHT_SUPPORTED_BY_PAWN;
     if VERBOSE{
         println!("------------------------------------------------");
         println!("\tKnights-MidGame");
         println!("\t\tAmount of Knights:     \t{} -> {}",amount_of_knights,amount_of_knights as f64 * KNIGHT_PIECE_VALUE_MG);
         println!("\t\tSupported Knights:     \t{} -> {}",supported_knights,supported_knights as f64*KNIGHT_SUPPORTED_BY_PAWN);
-        println!("\t\tKnight decreased Value:\t{}",KNIGHT_VALUE_WITH_PAWNS[pawns_insg]);
+        println!("\t\tKnight decreased Value:\t{} -> {}",KNIGHT_VALUE_WITH_PAWNS[pawns_insg],amount_of_knights as f64* KNIGHT_VALUE_WITH_PAWNS[pawns_insg]);
         println!("\t\tPSQT-Value:            \t{}",mg_psqt);
         println!("\tSum: {}",mg);
         println!("------------------------------------------------");
