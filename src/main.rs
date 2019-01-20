@@ -6,6 +6,7 @@ mod game_state;
 mod misc;
 mod bitboards;
 mod movegen;
+mod static_board_evaluation;
 
 use self::game_state::GameState;
 use std::time::Instant;
@@ -20,16 +21,19 @@ fn main() {
     let now = Instant::now();
 
     //let g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let g= GameState::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-    let nodes = perft_div(&g, 6);
-    println!("{}", nodes);
+    let g= GameState::from_fen("r4rk1/2p1bppp/p1n5/1p1qPb2/3B4/1PPp1N2/1P3PPP/RB1Q1RK1 w - - 5 17");
+    //let g= GameState::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+    //let nodes = perft_div(&g, 2);
+    //println!("{}", nodes);
     //misc::STD_FEN);
     //println!("{:}",GameState::from_fen(misc::STD_FEN));
     //println!("{:}",GameState::standard());
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64);
-    println!("NPS: {}", nodes as f64 / time_passed);
+    //println!("NPS: {}", nodes as f64 / time_passed);
+
+    println!("{}",static_board_evaluation::eval_game_state(&g));
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {

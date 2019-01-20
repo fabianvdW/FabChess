@@ -1,0 +1,46 @@
+Notes for static Eval in centipawns.
+PSQT for Opening and Endgame
+----------------------
+Pawns:
+Middle/Opening
+100cp each
+Ending
+150cp each
+--Double Pawns
+--Isolated Pawns
+--Backwards Pawns
+++Passed Pawns(PSQT)
+--Passed Blocked Pawns
+PSQT for Advancement
+----------------------
+Knights:
+Middle/Opening
+500cp each
+Ending
+500cp each
+PSQT for Center
+----------------------
+Bishops:
+Middle/Opening
+510cp each
+Ending
+510cp each
+++Bonus for bishop pair 50cp
+--Mobility when blocked by pawns
+----------------------
+Rooks:
+Middle/Opening
+710cp each
+Ending
+920cp each
+++7th Rank
+++Empty File
+----------------------
+Queens:
+Middle/Opening
+1500cp each
+Ending
+1600cp each
+----------------------
+King-Safety:
+----------------------
