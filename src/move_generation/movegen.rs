@@ -1,6 +1,6 @@
-use super::bitboards;
-use super::game_state::{self, GameMove, GameMoveType, PieceType};
-
+use super::super::bitboards;
+use super::super::board_representation::game_state::{self, GameMove, GameMoveType, PieceType};
+use super::magic::{self,Magic};
 //Move GEn
 //King- Piece-Wise by lookup
 //Knight-Piece-Wise by lookup
@@ -11,11 +11,11 @@ pub fn king_attack(square: usize) -> u64 {
 }
 
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
-    bitboards::Magic::get_attacks(&bitboards::MAGICS_BISHOPS[square], all_pieces)
+    Magic::get_attacks(&magic::MAGICS_BISHOPS[square], all_pieces)
 }
 
 pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
-    bitboards::Magic::get_attacks(&bitboards::MAGICS_ROOKS[square], all_pieces)
+    Magic::get_attacks(&magic::MAGICS_ROOKS[square], all_pieces)
 }
 
 pub fn knight_attack(square: usize) -> u64 {
