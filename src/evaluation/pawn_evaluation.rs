@@ -1,4 +1,4 @@
-use super::{bitboards, VERBOSE, Evaluation, ParallelEvaluation, MidGameDisplay, EndGameDisplay};
+use super::{bitboards, Evaluation, MidGameDisplay, EndGameDisplay};
 
 const PAWN_PIECE_VALUE_MG: f64 = 100.0;
 const PAWN_PIECE_VALUE_EG: f64 = 150.0;
@@ -8,27 +8,6 @@ const PAWN_ISOLATED_VALUE_MG: f64 = -5.0;
 const PAWN_ISOLATED_VALUE_EG: f64 = -15.0;
 const PAWN_BACKWARD_VALUE_MG: f64 = -10.0;
 const PAWN_BACKWARD_VALUE_EG: f64 = -25.0;
-
-const PSQT_PAWN_MG: [[f64; 8]; 8] = [
-    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    [-5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0],
-    [-7.0, 3.0, 6.0, 10.0, 10.0, 6.0, 3.0, -7.0],
-    [-14.0, -7.0, 15.0, 20.0, 20.0, 15.0, -7.0, -14.0],
-    [-10.0, -2.0, 1.0, 12.0, 12.0, 1.0, -2.0, -10.0],
-    [-7.0, -1.0, 0.0, 5.0, 5.0, 0.0, -1.0, -7.0],
-    [-3.0, 10.0, 5.0, 5.0, 5.0, 5.0, 10.0, -3.0],
-    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-];
-const PSQT_PAWN_EG: [[f64; 8]; 8] = [
-    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    [-20.0, -20.0, -20.0, -20.0, -20.0, -20.0, -20.0, -20.0],
-    [-10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0],
-    [-5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0, -5.0],
-    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
-    [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
-    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-];
 
 pub struct PawnEvaluation {
     amount_of_pawns: u32,
@@ -57,7 +36,7 @@ impl Evaluation for PawnEvaluation {
 }
 
 impl MidGameDisplay for PawnEvaluation {
-    fn display(&self) -> String {
+    fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tPawns-MidGame");
         println!("\t\tAmount of Pawns: {} -> {}", self.amount_of_pawns, self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_MG);
@@ -70,7 +49,7 @@ impl MidGameDisplay for PawnEvaluation {
 }
 
 impl EndGameDisplay for PawnEvaluation {
-    fn display(&self) -> String {
+    fn display_eg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tPawns-EndGame");
         println!("\t\tAmount of Pawns: {} -> {}", self.amount_of_pawns, self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_EG);

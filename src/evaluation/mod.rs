@@ -4,7 +4,7 @@ pub mod bishop_evaluation;
 pub mod rook_evaluation;
 pub mod queen_evaluation;
 pub mod king_evaluation;
-pub mod piece_evaluation;
+pub mod psqt_evaluation;
 pub mod passed_evaluation;
 
 const VERBOSE: bool = true;
@@ -19,6 +19,7 @@ use self::bishop_evaluation::{bishop_eval, BISHOP_PIECE_VALUE_MG};
 use self::rook_evaluation::{rook_eval, ROOK_PIECE_VALUE_MG};
 use self::queen_evaluation::{queen_eval, QUEEN_PIECE_VALUE_MG};
 use self::king_evaluation::king_eval;
+use self::psqt_evaluation::psqt_eval;
 
 pub trait Evaluation {
     fn eval_mg(&self) -> f64;
@@ -30,11 +31,11 @@ pub trait ParallelEvaluation {
 }
 
 pub trait MidGameDisplay {
-    fn display(&self) -> String;
+    fn display_mg(&self) -> String;
 }
 
 pub trait EndGameDisplay {
-    fn display(&self) -> String;
+    fn display_eg(&self) -> String;
 }
 
 pub fn eval_game_state(g: &GameState) -> f64 {
@@ -97,10 +98,10 @@ pub fn eval_game_state(g: &GameState) -> f64 {
 
         let white_pawns_eval = pawn_eval_white(w_pawns, w_pawns_front_span, w_pawns_attack_span, black_pawn_attacks);
         let black_pawns_eval = pawn_eval_black(b_pawns, b_pawns_front_span, b_pawns_attack_span, white_pawn_attacks);
-        let white_passed_eval = passed_eval_white(w_pawns, b_pawns_all_front_spans, black_pieces);
-        let black_passed_eval = passed_eval_black(b_pawns, w_pawns_all_front_spans, white_pieces);
-        mg_eval += white_pawns_eval.eval_mg() + white_passed_eval.eval_mg() - black_pawns_eval.eval_mg() - black_passed_eval.eval_mg();
-        eg_eval += white_pawns_eval.eval_eg() + white_passed_eval.eval_eg() - black_pawns_eval.eval_eg() - black_passed_eval.eval_eg();
+        let (white_passed_eval_mg, white_passed_eval_eg) = passed_eval_white(w_pawns, b_pawns_all_front_spans, black_pieces).eval_mg_eg();
+        let (black_passed_eval_mg, black_passed_eval_eg) = passed_eval_black(b_pawns, w_pawns_all_front_spans, white_pieces).eval_mg_eg();
+        mg_eval += white_pawns_eval.eval_mg() + white_passed_eval_mg - black_pawns_eval.eval_mg() - black_passed_eval_mg;
+        eg_eval += white_pawns_eval.eval_eg() + white_passed_eval_eg - black_pawns_eval.eval_eg() - black_passed_eval_eg;
     }
     //Knights
     {
@@ -136,6 +137,13 @@ pub fn eval_game_state(g: &GameState) -> f64 {
         let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false);
         mg_eval += white_king_eval.eval_mg() - black_king_eval.eval_mg();
         eg_eval += white_king_eval.eval_eg() - black_king_eval.eval_eg();
+    }
+    //PSQT
+    {
+        let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt_eval(w_pawns, w_knights, w_bishops, w_rooks, w_queens, w_king, true).eval_mg_eg();
+        let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt_eval(b_pawns, b_knights, b_bishops, b_rooks, b_queens, b_king, false).eval_mg_eg();
+        mg_eval += white_psqt_eval_mg - black_psqt_eval_mg;
+        eg_eval += white_psqt_eval_eg - black_psqt_eval_eg;
     }
     let res = (mg_eval * phase + eg_eval * (128.0 - phase)) / 128.0;
     if VERBOSE {

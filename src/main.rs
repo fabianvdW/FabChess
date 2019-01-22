@@ -24,9 +24,8 @@ fn main() {
 
     let g= GameState::from_fen("r4rk1/2p1bppp/p1n5/1p1qPb2/3B4/1PPp1N2/1P3PPP/RB1Q1RK1 w - - 5 17");
     //let g= GameState::from_fen(misc::STD_FEN);
-    //let nodes = perft_div(&g, 7);
+    //let nodes = perft_div(&g, 6);
     //println!("{}", nodes);
-
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed*1000.0);

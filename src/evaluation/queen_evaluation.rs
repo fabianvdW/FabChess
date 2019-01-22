@@ -1,4 +1,4 @@
-use super::{VERBOSE, Evaluation, MidGameDisplay, EndGameDisplay};
+use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
 pub const QUEEN_PIECE_VALUE_MG: f64 = 1500.0;
 pub const QUEEN_PIECE_VALUE_EG: f64 = 1600.0;
@@ -21,7 +21,7 @@ impl Evaluation for QueenEvaluation {
 }
 
 impl MidGameDisplay for QueenEvaluation {
-    fn display(&self) -> String {
+    fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tQueens-MidGame");
         println!("\t\tAmount of Queens: {} -> {}", self.amount_of_queens, self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_MG);
@@ -31,7 +31,7 @@ impl MidGameDisplay for QueenEvaluation {
 }
 
 impl EndGameDisplay for QueenEvaluation {
-    fn display(&self) -> String {
+    fn display_eg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tQueens-EndGame");
         println!("\t\tAmount of Queens: {} -> {}", self.amount_of_queens, self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_EG);

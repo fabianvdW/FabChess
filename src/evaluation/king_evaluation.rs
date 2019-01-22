@@ -1,25 +1,5 @@
-use super::{bitboards, VERBOSE, Evaluation, MidGameDisplay, EndGameDisplay};
+use super::{bitboards, Evaluation, MidGameDisplay, EndGameDisplay};
 
-const PSQT_KING_MG: [[f64; 8]; 8] = [
-    [40.0, 60.0, 20.0, 0.0, 0.0, 20.0, 60.0, 40.0],
-    [40.0, 40.0, 0.0, 0.0, 0.0, 0.0, 20.0, 20.0],
-    [-20.0, -40.0, -40.0, -40.0, -40.0, -40.0, -40.0, -20.0],
-    [-40.0, -60.0, -60.0, -80.0, -80.0, -60.0, -60.0, -40.0],
-    [-60.0, -80.0, -80.0, -100.0, -100.0, -80.0, -80.0, -60.0],
-    [-60.0, -80.0, -80.0, -100.0, -100.0, -80.0, -80.0, -60.0],
-    [-60.0, -80.0, -80.0, -100.0, -100.0, -80.0, -80.0, -60.0],
-    [-60.0, -80.0, -80.0, -100.0, -100.0, -80.0, -80.0, -60.0],
-];
-const PSQT_KING_EG: [[f64; 8]; 8] = [
-    [-100.0, -60.0, -60.0, -60.0, -60.0, -60.0, -60.0, -100.0],
-    [-60.0, -60.0, 0.0, 0.0, 0.0, 0.0, -60.0, -60.0],
-    [-60.0, -20.0, 40.0, 60.0, 60.0, 40.0, -20.0, -60.0],
-    [-60.0, -20.0, 60.0, 80.0, 80.0, 60.0, -20.0, -60.0],
-    [-60.0, -20.0, 60.0, 80.0, 80.0, 60.0, -20.0, -60.0],
-    [-60.0, -20.0, 40.0, 60.0, 60.0, 40.0, -20.0, -60.0],
-    [-60.0, -40.0, -20.0, 0.0, 0.0, -20.0, -40.0, -60.0],
-    [-100.0, -80.0, -60.0, -40.0, -40.0, -60.0, -80.0, -100.0]
-];
 const SHIELDING_PAWN_MISSING_MG: f64 = -20.0;
 const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: f64 = -40.0;
 
@@ -41,7 +21,7 @@ impl Evaluation for KingEvaluation {
 }
 
 impl MidGameDisplay for KingEvaluation {
-    fn display(&self) -> String {
+    fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tKing-MidGame");
         println!("\t\tShielding Pawns missing:              {} -> {}", self.shielding_pawns_missing, self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG);
@@ -52,7 +32,7 @@ impl MidGameDisplay for KingEvaluation {
 }
 
 impl EndGameDisplay for KingEvaluation {
-    fn display(&self) -> String {
+    fn display_eg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tKing-EndGame");
         println!("\tSum: {}", self.eval_eg());

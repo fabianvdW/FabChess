@@ -75,7 +75,7 @@ impl ParallelEvaluation for PassedEvaluation {
 }
 
 impl MidGameDisplay for PassedEvaluation {
-    fn display(&self) -> String {
+    fn display_mg(&self) -> String {
         let mut cp = self.copy();
         let mut passer_score = 0.0;
         while cp.passed_pawns != 0u64 {
@@ -100,7 +100,7 @@ impl MidGameDisplay for PassedEvaluation {
 }
 
 impl EndGameDisplay for PassedEvaluation {
-    fn display(&self) -> String {
+    fn display_eg(&self) -> String {
         let mut cp = self.copy();
         let mut passer_score = 0.0;
         while cp.passed_pawns != 0u64 {

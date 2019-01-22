@@ -1,7 +1,8 @@
-use super::{bitboards, VERBOSE, Evaluation, MidGameDisplay, EndGameDisplay};
+use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
 pub const ROOK_PIECE_VALUE_MG: f64 = 710.0;
 pub const ROOK_PIECE_VALUE_EG: f64 = 920.0;
+
 pub const ROOK_ON_OPEN_FILE_BONUS: f64 = 20.0;
 pub const ROOK_ON_SEVENTH: f64 = 10.0;
 
@@ -23,7 +24,7 @@ impl Evaluation for RookEvaluation {
 }
 
 impl MidGameDisplay for RookEvaluation {
-    fn display(&self) -> String {
+    fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tRooks-MidGame");
         println!("\t\tAmount of Rooks: {} -> {}", self.amount_of_rooks, self.amount_of_rooks as f64 * ROOK_PIECE_VALUE_MG);
@@ -33,7 +34,7 @@ impl MidGameDisplay for RookEvaluation {
 }
 
 impl EndGameDisplay for RookEvaluation {
-    fn display(&self) -> String {
+    fn display_eg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tRooks-EndGame");
         println!("\t\tAmount of Rooks: {} -> {}", self.amount_of_rooks, self.amount_of_rooks as f64 * ROOK_PIECE_VALUE_EG);

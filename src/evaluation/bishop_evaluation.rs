@@ -1,31 +1,9 @@
-use super::{bitboards, VERBOSE, Evaluation, MidGameDisplay, EndGameDisplay};
+use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
 pub const BISHOP_PIECE_VALUE_EG: f64 = 510.0;
 pub const BISHOP_PIECE_VALUE_MG: f64 = 510.0;
 pub const BISHOP_PAIR_BONUS: f64 = 50.0;
 pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS: [f64; 5] = [30.0, 15.0, 0.0, -15.0, -30.0];
-
-pub const PSQT_BISHOP_MG: [[f64; 8]; 8] = [
-    [-50.0, -10.0, -10.0, -30.0, -30.0, -10.0, -10.0, -50.0],
-    [-30.0, 10.0, 15.0, 0.0, 0.0, 15.0, 10.0, -30.0],
-    [-10.0, 10.0, 15.0, 10.0, 10.0, 15.0, 10.0, -10.0],
-    [-10.0, 15.0, 20.0, 25.0, 25.0, 20.0, 0.0, -10.0],
-    [-10.0, 10.0, 20.0, 25.0, 25.0, 20.0, 0.0, -10.0],
-    [-10.0, 10.0, 15.0, 10.0, 10.0, 15.0, 10.0, -10.0],
-    [-30.0, 10.0, 15.0, 0.0, 0.0, 15.0, 10.0, -30.0],
-    [-50.0, -10.0, -10.0, -30.0, -30.0, -10.0, -10.0, -50.0],
-];
-
-pub const PSQT_BISHOP_EG: [[f64; 8]; 8] = [
-    [-50.0, -30.0, -30.0, -20.0, -20.0, -30.0, -30.0, -50.0],
-    [-30.0, -10.0, -10.0, 5.0, 5.0, -10.0, -10.0, -30.0],
-    [-20.0, 0.0, 0.0, 12.0, 12.0, 0.0, 0.0, -20.0],
-    [-20.0, 0.0, 0.0, 12.0, 12.0, 0.0, 0.0, -20.0],
-    [-20.0, 0.0, 0.0, 12.0, 12.0, 0.0, 0.0, -20.0],
-    [-20.0, 0.0, 0.0, 12.0, 12.0, 0.0, 0.0, -20.0],
-    [-30.0, -10.0, -10.0, 5.0, 5.0, -10.0, -10.0, -30.0],
-    [-50.0, -30.0, -30.0, -20.0, -20.0, -30.0, -30.0, -50.0],
-];
 
 pub struct BishopEvaluation {
     amount_of_bishops: u32,
@@ -52,7 +30,7 @@ impl Evaluation for BishopEvaluation {
 }
 
 impl MidGameDisplay for BishopEvaluation {
-    fn display(&self) -> String {
+    fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tBishops-MidGame");
         println!("\t\tAmount of Bishops: {} -> {}", self.amount_of_bishops, self.amount_of_bishops as f64 * BISHOP_PIECE_VALUE_MG);
@@ -65,7 +43,7 @@ impl MidGameDisplay for BishopEvaluation {
 }
 
 impl EndGameDisplay for BishopEvaluation {
-    fn display(&self) -> String {
+    fn display_eg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tBishops-EndGame");
         println!("\t\tAmount of Bishops: {} -> {}", self.amount_of_bishops, self.amount_of_bishops as f64 * BISHOP_PIECE_VALUE_EG);
