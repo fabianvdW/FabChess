@@ -15,14 +15,14 @@ use super::logging::log;
 use super::move_generation::movegen;
 use super::board_representation::game_state::GameState;
 use super::bitboards;
-use self::pawn_evaluation::{pawn_eval_white, pawn_eval_black};
-use self::passed_evaluation::{passed_eval_white, passed_eval_black};
-use self::knight_evaluation::{knight_eval, KNIGHT_PIECE_VALUE_MG};
-use self::bishop_evaluation::{bishop_eval, BISHOP_PIECE_VALUE_MG};
-use self::rook_evaluation::{rook_eval, ROOK_PIECE_VALUE_MG};
-use self::queen_evaluation::{queen_eval, QUEEN_PIECE_VALUE_MG};
-use self::king_evaluation::king_eval;
-use self::psqt_evaluation::psqt_eval;
+use self::pawn_evaluation::{pawn_eval_white, pawn_eval_black, PawnEvaluation};
+use self::passed_evaluation::{passed_eval_white, passed_eval_black, PassedEvaluation};
+use self::knight_evaluation::{knight_eval, KNIGHT_PIECE_VALUE_MG, KnightEvaluation};
+use self::bishop_evaluation::{bishop_eval, BISHOP_PIECE_VALUE_MG, BishopEvaluation};
+use self::rook_evaluation::{rook_eval, ROOK_PIECE_VALUE_MG, RookEvaluation};
+use self::queen_evaluation::{queen_eval, QUEEN_PIECE_VALUE_MG, QueenEvaluation};
+use self::king_evaluation::{king_eval, KingEvaluation};
+use self::psqt_evaluation::{psqt_eval, PSQT};
 
 pub trait Evaluation {
     fn eval_mg(&self) -> f64;
@@ -182,211 +182,15 @@ pub fn eval_game_state(g: &GameState) -> f64 {
     }
     let res = (mg_eval * phase + eg_eval * (128.0 - phase)) / 128.0;
     if VERBOSE {
-        let mut verbose_mg = 0.0;
-        let mut verbose_eg = 0.0;
-        //Pawns
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_pawns_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_pawns_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_pawns_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_pawns_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_pawns_eval_mg, black_pawns_eval_mg, verbose_mg + white_pawns_eval_mg - black_pawns_eval_mg));
-                verbose_mg += white_pawns_eval_mg - black_pawns_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_pawns_eval_eg, black_pawns_eval_eg, verbose_eg + white_pawns_eval_eg - black_pawns_eval_eg));
-                verbose_eg += white_pawns_eval_eg - black_pawns_eval_eg;
-            }
-        }
-        //Passed
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_passed_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_passed_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_passed_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_passed_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_passed_eval_mg, black_passed_eval_mg, verbose_mg + white_passed_eval_mg - black_passed_eval_mg));
-                verbose_mg += white_passed_eval_mg - black_passed_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_passed_eval_eg, black_passed_eval_eg, verbose_eg + white_passed_eval_eg - black_passed_eval_eg));
-                verbose_eg += white_passed_eval_eg - black_passed_eval_eg;
-            }
-        }
-        //Knights
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_knights_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_knights_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_knights_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_knights_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_knights_eval_mg, black_knights_eval_mg, verbose_mg + white_knights_eval_mg - black_knights_eval_mg));
-                verbose_mg += white_knights_eval_mg - black_knights_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_knights_eval_eg, black_knights_eval_eg, verbose_eg + white_knights_eval_eg - black_knights_eval_eg));
-                verbose_eg += white_knights_eval_eg - black_knights_eval_eg;
-            }
-        }
-        //Bishops
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_bishops_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_bishops_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_bishops_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_bishops_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_bishops_eval_mg, black_bishops_eval_mg, verbose_mg + white_bishops_eval_mg - black_bishops_eval_mg));
-                verbose_mg += white_bishops_eval_mg - black_bishops_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_bishops_eval_eg, black_bishops_eval_eg, verbose_eg + white_bishops_eval_eg - black_bishops_eval_eg));
-                verbose_eg += white_bishops_eval_eg - black_bishops_eval_eg;
-            }
-        }
-        //Rooks
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_rooks_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_rooks_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_rooks_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_rooks_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_rooks_eval_mg, black_rooks_eval_mg, verbose_mg + white_rooks_eval_mg - black_rooks_eval_mg));
-                verbose_mg += white_rooks_eval_mg - black_rooks_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_rooks_eval_eg, black_rooks_eval_eg, verbose_eg + white_rooks_eval_eg - black_rooks_eval_eg));
-                verbose_eg += white_rooks_eval_eg - black_rooks_eval_eg;
-            }
-        }
-        //Queen(s)
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_queen_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_queen_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_queen_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_queen_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_queen_eval_mg, black_queen_eval_mg, verbose_mg + white_queen_eval_mg - black_queen_eval_mg));
-                verbose_mg += white_queen_eval_mg - black_queen_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_queen_eval_eg, black_queen_eval_eg, verbose_eg + white_queen_eval_eg - black_queen_eval_eg));
-                verbose_eg += white_queen_eval_eg - black_queen_eval_eg;
-            }
-        }
-        //King safety
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_king_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_king_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_king_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_king_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_king_eval_mg, black_king_eval_mg, verbose_mg + white_king_eval_mg - black_king_eval_mg));
-                verbose_mg += white_king_eval_mg - black_king_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_king_eval_eg, black_king_eval_eg, verbose_eg + white_king_eval_eg - black_king_eval_eg));
-                verbose_eg += white_king_eval_eg - black_king_eval_eg;
-            }
-        }
-        //PSQT
-        {
-            log("White\n");
-            if phase != 0.0 {
-                log(&white_psqt_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&white_psqt_eval.display_eg());
-            }
-            log("Black\n");
-            if phase != 0.0 {
-                log(&black_psqt_eval.display_mg());
-            }
-            if phase != 128.0 {
-                log(&black_psqt_eval.display_eg());
-            }
-            if phase != 0.0 {
-                log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_psqt_eval_mg, black_psqt_eval_mg, verbose_mg + white_psqt_eval_mg - black_psqt_eval_mg));
-                verbose_mg += white_psqt_eval_mg - black_psqt_eval_mg;
-            }
-            if phase != 128.0 {
-                log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_psqt_eval_eg, black_psqt_eval_eg, verbose_eg + white_psqt_eval_eg - black_psqt_eval_eg));
-                verbose_eg += white_psqt_eval_eg - black_psqt_eval_eg;
-            }
-        }
-        log(&format!("Phase: {}\n", phase));
-        log(&format!("=> ({} * {} + {}*(128-{}))/128={}\n", mg_eval, phase, eg_eval, phase, res));
-        log(&format!("{}", res / 100.0));
+        make_log(&white_pawns_eval, white_pawns_eval_mg, white_pawns_eval_eg, &black_pawns_eval, black_pawns_eval_mg, black_pawns_eval_eg,
+                 &white_passed_eval, white_passed_eval_mg, white_passed_eval_eg, &black_passed_eval, black_passed_eval_mg, black_passed_eval_eg,
+                 &white_knights_eval, white_knights_eval_mg, white_knights_eval_eg, &black_knights_eval, black_knights_eval_mg, black_knights_eval_eg,
+                 &white_bishops_eval, white_bishops_eval_mg, white_bishops_eval_eg, &black_bishops_eval, black_bishops_eval_mg, black_bishops_eval_eg,
+                 &white_rooks_eval, white_rooks_eval_mg, white_rooks_eval_eg, &black_rooks_eval, black_rooks_eval_mg, black_rooks_eval_eg,
+                 &white_queen_eval, white_queen_eval_mg, white_queen_eval_eg, &black_queen_eval, black_queen_eval_mg, black_queen_eval_eg,
+                 &white_king_eval, white_king_eval_mg, white_king_eval_eg, &black_king_eval, black_king_eval_mg, black_king_eval_eg,
+                 &white_psqt_eval, white_psqt_eval_mg, white_psqt_eval_eg, &black_psqt_eval, black_psqt_eval_mg, black_psqt_eval_eg,
+                 phase, mg_eval, eg_eval, res);
     }
     res / 100.0
 }
@@ -404,4 +208,228 @@ pub fn calculate_phase(w_queens: u64, b_queens: u64, w_knights: u64, b_knights: 
         npm = MG_LIMIT;
     }
     (npm - EG_LIMIT) * 128.0 / (MG_LIMIT - EG_LIMIT)
+}
+
+pub fn make_log(white_pawns_eval: &PawnEvaluation, white_pawns_eval_mg: f64, white_pawns_eval_eg: f64,
+                black_pawns_eval: &PawnEvaluation, black_pawns_eval_mg: f64, black_pawns_eval_eg: f64,
+                white_passed_eval: &PassedEvaluation, white_passed_eval_mg: f64, white_passed_eval_eg: f64,
+                black_passed_eval: &PassedEvaluation, black_passed_eval_mg: f64, black_passed_eval_eg: f64,
+                white_knights_eval: &KnightEvaluation, white_knights_eval_mg: f64, white_knights_eval_eg: f64,
+                black_knights_eval: &KnightEvaluation, black_knights_eval_mg: f64, black_knights_eval_eg: f64,
+                white_bishops_eval: &BishopEvaluation, white_bishops_eval_mg: f64, white_bishops_eval_eg: f64,
+                black_bishops_eval: &BishopEvaluation, black_bishops_eval_mg: f64, black_bishops_eval_eg: f64,
+                white_rooks_eval: &RookEvaluation, white_rooks_eval_mg: f64, white_rooks_eval_eg: f64,
+                black_rooks_eval: &RookEvaluation, black_rooks_eval_mg: f64, black_rooks_eval_eg: f64,
+                white_queen_eval: &QueenEvaluation, white_queen_eval_mg: f64, white_queen_eval_eg: f64,
+                black_queen_eval: &QueenEvaluation, black_queen_eval_mg: f64, black_queen_eval_eg: f64,
+                white_king_eval: &KingEvaluation, white_king_eval_mg: f64, white_king_eval_eg: f64,
+                black_king_eval: &KingEvaluation, black_king_eval_mg: f64, black_king_eval_eg: f64,
+                white_psqt_eval: &PSQT, white_psqt_eval_mg: f64, white_psqt_eval_eg: f64,
+                black_psqt_eval: &PSQT, black_psqt_eval_mg: f64, black_psqt_eval_eg: f64,
+                phase: f64, mg_eval: f64, eg_eval: f64, res: f64) {
+    let mut verbose_mg = 0.0;
+    let mut verbose_eg = 0.0;
+    //Pawns
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_pawns_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_pawns_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_pawns_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_pawns_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_pawns_eval_mg, black_pawns_eval_mg, verbose_mg + white_pawns_eval_mg - black_pawns_eval_mg));
+            verbose_mg += white_pawns_eval_mg - black_pawns_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_pawns_eval_eg, black_pawns_eval_eg, verbose_eg + white_pawns_eval_eg - black_pawns_eval_eg));
+            verbose_eg += white_pawns_eval_eg - black_pawns_eval_eg;
+        }
+    }
+    //Passed
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_passed_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_passed_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_passed_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_passed_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_passed_eval_mg, black_passed_eval_mg, verbose_mg + white_passed_eval_mg - black_passed_eval_mg));
+            verbose_mg += white_passed_eval_mg - black_passed_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_passed_eval_eg, black_passed_eval_eg, verbose_eg + white_passed_eval_eg - black_passed_eval_eg));
+            verbose_eg += white_passed_eval_eg - black_passed_eval_eg;
+        }
+    }
+    //Knights
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_knights_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_knights_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_knights_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_knights_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_knights_eval_mg, black_knights_eval_mg, verbose_mg + white_knights_eval_mg - black_knights_eval_mg));
+            verbose_mg += white_knights_eval_mg - black_knights_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_knights_eval_eg, black_knights_eval_eg, verbose_eg + white_knights_eval_eg - black_knights_eval_eg));
+            verbose_eg += white_knights_eval_eg - black_knights_eval_eg;
+        }
+    }
+    //Bishops
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_bishops_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_bishops_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_bishops_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_bishops_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_bishops_eval_mg, black_bishops_eval_mg, verbose_mg + white_bishops_eval_mg - black_bishops_eval_mg));
+            verbose_mg += white_bishops_eval_mg - black_bishops_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_bishops_eval_eg, black_bishops_eval_eg, verbose_eg + white_bishops_eval_eg - black_bishops_eval_eg));
+            verbose_eg += white_bishops_eval_eg - black_bishops_eval_eg;
+        }
+    }
+    //Rooks
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_rooks_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_rooks_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_rooks_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_rooks_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_rooks_eval_mg, black_rooks_eval_mg, verbose_mg + white_rooks_eval_mg - black_rooks_eval_mg));
+            verbose_mg += white_rooks_eval_mg - black_rooks_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_rooks_eval_eg, black_rooks_eval_eg, verbose_eg + white_rooks_eval_eg - black_rooks_eval_eg));
+            verbose_eg += white_rooks_eval_eg - black_rooks_eval_eg;
+        }
+    }
+    //Queen(s)
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_queen_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_queen_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_queen_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_queen_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_queen_eval_mg, black_queen_eval_mg, verbose_mg + white_queen_eval_mg - black_queen_eval_mg));
+            verbose_mg += white_queen_eval_mg - black_queen_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_queen_eval_eg, black_queen_eval_eg, verbose_eg + white_queen_eval_eg - black_queen_eval_eg));
+            verbose_eg += white_queen_eval_eg - black_queen_eval_eg;
+        }
+    }
+    //King safety
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_king_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_king_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_king_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_king_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_king_eval_mg, black_king_eval_mg, verbose_mg + white_king_eval_mg - black_king_eval_mg));
+            verbose_mg += white_king_eval_mg - black_king_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_king_eval_eg, black_king_eval_eg, verbose_eg + white_king_eval_eg - black_king_eval_eg));
+            verbose_eg += white_king_eval_eg - black_king_eval_eg;
+        }
+    }
+    //PSQT
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_psqt_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_psqt_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_psqt_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_psqt_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_psqt_eval_mg, black_psqt_eval_mg, verbose_mg + white_psqt_eval_mg - black_psqt_eval_mg));
+            verbose_mg += white_psqt_eval_mg - black_psqt_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_psqt_eval_eg, black_psqt_eval_eg, verbose_eg + white_psqt_eval_eg - black_psqt_eval_eg));
+            verbose_eg += white_psqt_eval_eg - black_psqt_eval_eg;
+        }
+    }
+    log(&format!("Phase: {}\n", phase));
+    log(&format!("=> ({} * {} + {}*(128-{}))/128={}\n", mg_eval, phase, eg_eval, phase, res));
+    log(&format!("{}", res / 100.0));
 }
