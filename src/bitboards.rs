@@ -37,7 +37,6 @@ pub fn init_bitboards() {
     SHIELDING_PAWNS_BLACK.len();
 }
 
-//Initializing General BitBoards
 pub fn initialize_files() -> [u64; 8] {
     let mut res = [0u64; 8];
     for file in 0..8 {

@@ -1,4 +1,4 @@
-pub const STD_FEN:&str ="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+pub const STD_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 #[allow(dead_code)]
 pub fn to_string_board(board: u64) -> String {

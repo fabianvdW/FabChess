@@ -1,6 +1,7 @@
 use super::super::bitboards;
 use super::super::board_representation::game_state::{self, GameMove, GameMoveType, PieceType};
-use super::magic::{self,Magic};
+use super::magic::{self, Magic};
+
 //Move GEn
 //King- Piece-Wise by lookup
 //Knight-Piece-Wise by lookup
@@ -62,13 +63,13 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
 pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, piece_type: &PieceType, move_type: GameMoveType) {
     while to_board != 0u64 {
         let idx = to_board.trailing_zeros() as usize;
-        let  move_t_cl = move_type.clone();
-        let pt_cl= piece_type.clone();
+        let move_t_cl = move_type.clone();
+        let pt_cl = piece_type.clone();
         move_list.push(GameMove {
             from,
             to: idx,
             move_type: move_t_cl,
-            piece_type: pt_cl
+            piece_type: pt_cl,
         });
         to_board ^= 1u64 << idx;
         //to_board&= to_board-1;
@@ -180,7 +181,6 @@ pub fn make_quiet_move(g: &game_state::GameState, mv: &game_state::GameMove) -> 
 
     //If black was to move, increase full moves by one
     let full_moves = g.full_moves + g.color_to_move;
-    //Create new game state object
     game_state::GameState {
         color_to_move,
         pieces,
@@ -281,15 +281,13 @@ pub fn make_castle_move(g: &game_state::GameState, mv: &game_state::GameMove) ->
     move_piece(&mut pieces, &mv, g.color_to_move);
 
     //Move the rook
-    //Determine if its kingside or queenside castle
-    //Kingside
     if mv.to == 58 {
         pieces[3][1] ^= bitboards::SQUARES[56];
         pieces[3][1] |= bitboards::SQUARES[59];
     } else if mv.to == 2 {
         pieces[3][0] ^= bitboards::SQUARES[0];
         pieces[3][0] |= bitboards::SQUARES[3];
-    } else if mv.to == 62 {//Queenside
+    } else if mv.to == 62 {
         pieces[3][1] ^= bitboards::SQUARES[63];
         pieces[3][1] |= bitboards::SQUARES[61];
     } else if mv.to == 6 {
@@ -597,7 +595,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 9usize);
             add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 9usize);
             //En passants
-            let  my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
+            let my_pawns_east_enpassants = my_pawns_east_targets & g.en_passant & if color_to_move == 0 { capture_mask << 8 } else { capture_mask >> 8 };
             add_en_passants(my_pawns_east_enpassants, &color_to_move, &mut move_list, 9usize, all_pieces_without_my_king, enemy_rooks, my_king_idx);
         }
     }
@@ -617,7 +615,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     {
         while my_bishops != 0u64 {
             let index = if color_to_move == 0 { 63usize - my_bishops.leading_zeros() as usize } else { my_bishops.trailing_zeros() as usize };
-            let piece= 1u64<<index;
+            let piece = 1u64 << index;
             let my_bishop_attack = bishop_attack(index, all_pieces) & not_my_pieces;
             let my_bishop_capture = my_bishop_attack & enemy_pieces & capture_mask;
             let piece_type = if piece & my_queens != 0 { PieceType::Queen } else { PieceType::Bishop };
@@ -631,10 +629,10 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     {
         while my_rooks != 0u64 {
             let index = if color_to_move == 0 { 63usize - my_rooks.leading_zeros() as usize } else { my_rooks.trailing_zeros() as usize };
-            let piece= 1u64<<index;
+            let piece = 1u64 << index;
             let my_rook_attack = rook_attack(index, all_pieces) & not_my_pieces;
             let my_rook_capture = my_rook_attack & enemy_pieces & capture_mask;
-            let piece_type = if piece& my_queens != 0 { PieceType::Queen } else { PieceType::Rook };
+            let piece_type = if piece & my_queens != 0 { PieceType::Queen } else { PieceType::Rook };
             add_moves(&mut move_list, index, my_rook_capture, &piece_type, GameMoveType::Capture);
             let my_rook_quiets = my_rook_attack & !enemy_pieces & push_mask;
             add_moves(&mut move_list, index, my_rook_quiets, &piece_type, GameMoveType::Quiet);

@@ -3,9 +3,6 @@ use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 pub const ROOK_PIECE_VALUE_MG: f64 = 710.0;
 pub const ROOK_PIECE_VALUE_EG: f64 = 920.0;
 
-pub const ROOK_ON_OPEN_FILE_BONUS: f64 = 20.0;
-pub const ROOK_ON_SEVENTH: f64 = 10.0;
-
 pub struct RookEvaluation {
     amount_of_rooks: u32
 }
@@ -44,6 +41,5 @@ impl EndGameDisplay for RookEvaluation {
 }
 
 pub fn rook_eval(rook: u64) -> RookEvaluation {
-    //missing Rooks on open file and rooks on sevent rank
     RookEvaluation { amount_of_rooks: rook.count_ones() }
 }

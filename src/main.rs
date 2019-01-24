@@ -24,7 +24,7 @@ fn main() {
     log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
     let now = Instant::now();
 
-    let g = GameState::from_fen("r4rk1/2p1bppp/p1n5/1p1qPb2/3B4/1PPp1N2/1P3PPP/RB1Q1RK1 w - - 5 17");
+    let g = GameState::from_fen("7n/P2bqP2/1K4k1/Ppp2N1r/8/6nP/2p5/4R3 w - - 0 1");
     //let g= GameState::from_fen(misc::STD_FEN);
     //let nodes = perft_div(&g, 7);
     //println!("{}", nodes);
@@ -38,7 +38,7 @@ fn main() {
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let mut count = 0u64;
-    let (valid_moves, in_check) = movegen::generate_moves(&g);
+    let (valid_moves, _in_check) = movegen::generate_moves(&g);
     for mv in valid_moves {
         let next_g = movegen::make_move(&g, &mv);
         let res = perft(&next_g, depth - 1);
@@ -54,7 +54,7 @@ pub fn perft(g: &GameState, depth: usize) -> u64 {
         return vm.len() as u64;
     } else {
         let mut res = 0;
-        let (valid_moves, incheck) = movegen::generate_moves(&g);
+        let (valid_moves, _incheck) = movegen::generate_moves(&g);
         for mv in valid_moves {
             res += perft(&movegen::make_move(&g, &mv), depth - 1);
         }

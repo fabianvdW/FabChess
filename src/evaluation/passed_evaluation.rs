@@ -126,12 +126,12 @@ impl EndGameDisplay for PassedEvaluation {
 
 pub fn passed_eval_white(w_pawns: u64, b_pawns_all_front_spans: u64, enemy_pieces: u64) -> PassedEvaluation {
     let (passed_pawns, passed_not_blocked) = w_passed_pawns(w_pawns & !bitboards::w_rear_span(w_pawns), b_pawns_all_front_spans, enemy_pieces);
-    PassedEvaluation{passed_pawns,passed_not_blocked_pawns:passed_not_blocked,is_white:true}
+    PassedEvaluation { passed_pawns, passed_not_blocked_pawns: passed_not_blocked, is_white: true }
 }
 
 pub fn passed_eval_black(b_pawns: u64, w_pawns_all_front_spans: u64, enemy_pieces: u64) -> PassedEvaluation {
     let (passed_pawns, passed_not_blocked) = b_passed_pawns(b_pawns & !bitboards::b_rear_span(b_pawns), w_pawns_all_front_spans, enemy_pieces);
-    PassedEvaluation{passed_pawns,passed_not_blocked_pawns:passed_not_blocked,is_white:false}
+    PassedEvaluation { passed_pawns, passed_not_blocked_pawns: passed_not_blocked, is_white: false }
 }
 
 pub fn w_passed_pawns(w_pawns: u64, b_pawns_all_front_spans: u64, enemy_pieces: u64) -> (u64, u64) {

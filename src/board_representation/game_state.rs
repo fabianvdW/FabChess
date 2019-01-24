@@ -76,14 +76,10 @@ pub struct GameState {
     pub castle_black_kingside: bool,
     pub castle_black_queenside: bool,
 
-    //En passant flag
     pub en_passant: u64,
     //50 move draw counter
     pub half_moves: usize,
     pub full_moves: usize,
-    //Move-Gen
-    //King/Knight lookup
-    //Sliding by magic
 }
 
 impl GameState {
@@ -206,7 +202,7 @@ impl GameState {
         let castle_black_kingside = vec[2].contains("k");
         let castle_black_queenside = vec[2].contains("q");
 
-        //En Passant target square //Ignore
+        //En Passant target square
         let mut en_passant: u64 = 0u64;
         if vec[3] != "-" {
             let mut idx: usize = 0usize;

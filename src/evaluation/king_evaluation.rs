@@ -41,7 +41,6 @@ impl EndGameDisplay for KingEvaluation {
 }
 
 pub fn king_eval(king: u64, my_pawns: u64, enemy_pawns: u64, is_white: bool) -> KingEvaluation {
-    //Missing psqt
     let king_index = king.trailing_zeros() as usize;
     let mut shield = if is_white { bitboards::SHIELDING_PAWNS_WHITE[king_index] } else { bitboards::SHIELDING_PAWNS_BLACK[king_index] };
     let mut shields_missing = 0;

@@ -6,12 +6,12 @@ pub mod queen_evaluation;
 pub mod king_evaluation;
 pub mod psqt_evaluation;
 pub mod passed_evaluation;
+pub mod piecewise_evaluation;
 
-const VERBOSE: bool = true;
 const MG_LIMIT: f64 = 9100.0;
 const EG_LIMIT: f64 = 2350.0;
 
-use super::logging::log;
+use super::logging::{log, VERBOSE};
 use super::move_generation::movegen;
 use super::board_representation::game_state::GameState;
 use super::bitboards;
@@ -23,6 +23,7 @@ use self::rook_evaluation::{rook_eval, ROOK_PIECE_VALUE_MG, RookEvaluation};
 use self::queen_evaluation::{queen_eval, QUEEN_PIECE_VALUE_MG, QueenEvaluation};
 use self::king_evaluation::{king_eval, KingEvaluation};
 use self::psqt_evaluation::{psqt_eval, PSQT};
+use self::piecewise_evaluation::{piecewise_eval, PiecewiseEvaluation};
 
 pub trait Evaluation {
     fn eval_mg(&self) -> f64;
@@ -91,7 +92,8 @@ pub fn eval_game_state(g: &GameState) -> f64 {
     let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false);
     let white_psqt_eval = psqt_eval(w_pawns, w_knights, w_bishops, w_rooks, w_queens, w_king, true);
     let black_psqt_eval = psqt_eval(b_pawns, b_knights, b_bishops, b_rooks, b_queens, b_king, false);
-
+    let white_piecewise_eval = piecewise_eval(w_pawns, w_rooks, w_bishops, true, all_pawns);
+    let black_piecewise_eval = piecewise_eval(b_pawns, b_rooks, b_bishops, false, all_pawns);
 
     let phase = calculate_phase(w_queens, b_queens, w_knights, b_knights, w_bishops, b_bishops, w_rooks, b_rooks);
     let mut mg_eval = 0.0;
@@ -104,6 +106,7 @@ pub fn eval_game_state(g: &GameState) -> f64 {
     let (mut white_queen_eval_mg, mut white_queen_eval_eg, mut black_queen_eval_mg, mut black_queen_eval_eg) = (0.0, 0.0, 0.0, 0.0);
     let (mut white_king_eval_mg, mut white_king_eval_eg, mut black_king_eval_mg, mut black_king_eval_eg) = (0.0, 0.0, 0.0, 0.0);
     let (mut white_psqt_eval_mg, mut white_psqt_eval_eg, mut black_psqt_eval_mg, mut black_psqt_eval_eg) = (0.0, 0.0, 0.0, 0.0);
+    let (mut white_piecewise_eval_mg, mut white_piecewise_eval_eg, mut black_piecewise_eval_mg, mut black_piecewise_eval_eg) = (0.0, 0.0, 0.0, 0.0);
     //Non parallel eval
     {
         if phase != 128.0 {
@@ -164,22 +167,35 @@ pub fn eval_game_state(g: &GameState) -> f64 {
             let _e = black_psqt_eval.eval_mg_eg();
             black_psqt_eval_mg = _e.0;
             black_psqt_eval_eg = _e.1;
+            let _e = white_piecewise_eval.eval_mg_eg();
+            white_piecewise_eval_mg = _e.0;
+            white_piecewise_eval_eg = _e.1;
+            let _e = black_piecewise_eval.eval_mg_eg();
+            black_piecewise_eval_mg = _e.0;
+            black_piecewise_eval_eg = _e.1;
         } else if phase == 0.0 {
             white_passed_eval_eg = white_passed_eval.eval_eg();
             black_passed_eval_eg = black_passed_eval.eval_eg();
             white_psqt_eval_eg = white_psqt_eval.eval_eg();
             black_psqt_eval_eg = black_psqt_eval.eval_eg();
+            white_piecewise_eval_eg = white_piecewise_eval.eval_eg();
+            black_piecewise_eval_eg = black_piecewise_eval.eval_eg();
         } else if phase == 128.0 {
             white_passed_eval_mg = white_passed_eval.eval_mg();
             black_passed_eval_mg = black_passed_eval.eval_mg();
             white_psqt_eval_mg = white_psqt_eval.eval_mg();
             black_psqt_eval_mg = black_psqt_eval.eval_mg();
+            white_piecewise_eval_mg = white_piecewise_eval.eval_mg();
+            black_piecewise_eval_mg = black_piecewise_eval.eval_mg();
         }
         mg_eval += white_passed_eval_mg - black_passed_eval_mg;
         mg_eval += white_psqt_eval_mg - black_psqt_eval_mg;
+        mg_eval += white_piecewise_eval_mg - black_piecewise_eval_mg;
         eg_eval += white_passed_eval_eg - black_passed_eval_eg;
         eg_eval += white_psqt_eval_eg - black_psqt_eval_eg;
+        eg_eval += white_piecewise_eval_eg - black_piecewise_eval_eg;
     }
+    //Phasing is done the same way stockfish does it
     let res = (mg_eval * phase + eg_eval * (128.0 - phase)) / 128.0;
     if VERBOSE {
         make_log(&white_pawns_eval, white_pawns_eval_mg, white_pawns_eval_eg, &black_pawns_eval, black_pawns_eval_mg, black_pawns_eval_eg,
@@ -190,13 +206,13 @@ pub fn eval_game_state(g: &GameState) -> f64 {
                  &white_queen_eval, white_queen_eval_mg, white_queen_eval_eg, &black_queen_eval, black_queen_eval_mg, black_queen_eval_eg,
                  &white_king_eval, white_king_eval_mg, white_king_eval_eg, &black_king_eval, black_king_eval_mg, black_king_eval_eg,
                  &white_psqt_eval, white_psqt_eval_mg, white_psqt_eval_eg, &black_psqt_eval, black_psqt_eval_mg, black_psqt_eval_eg,
+                 &white_piecewise_eval, white_piecewise_eval_mg, white_piecewise_eval_eg, &black_piecewise_eval, black_piecewise_eval_mg, black_piecewise_eval_eg,
                  phase, mg_eval, eg_eval, res);
     }
     res / 100.0
 }
 
 pub fn calculate_phase(w_queens: u64, b_queens: u64, w_knights: u64, b_knights: u64, w_bishops: u64, b_bishops: u64, w_rooks: u64, b_rooks: u64) -> f64 {
-    //Calculate the Phase of the game
     let mut npm = (w_queens | b_queens).count_ones() as f64 * QUEEN_PIECE_VALUE_MG +
         (w_bishops | b_bishops).count_ones() as f64 * BISHOP_PIECE_VALUE_MG +
         (w_rooks | b_rooks).count_ones() as f64 * ROOK_PIECE_VALUE_MG +
@@ -226,6 +242,8 @@ pub fn make_log(white_pawns_eval: &PawnEvaluation, white_pawns_eval_mg: f64, whi
                 black_king_eval: &KingEvaluation, black_king_eval_mg: f64, black_king_eval_eg: f64,
                 white_psqt_eval: &PSQT, white_psqt_eval_mg: f64, white_psqt_eval_eg: f64,
                 black_psqt_eval: &PSQT, black_psqt_eval_mg: f64, black_psqt_eval_eg: f64,
+                white_piecewise_eval: &PiecewiseEvaluation, white_piecewise_eval_mg: f64, white_piecewise_eval_eg: f64,
+                black_piecewise_eval: &PiecewiseEvaluation, black_piecewise_eval_mg: f64, black_piecewise_eval_eg: f64,
                 phase: f64, mg_eval: f64, eg_eval: f64, res: f64) {
     let mut verbose_mg = 0.0;
     let mut verbose_eg = 0.0;
@@ -427,6 +445,31 @@ pub fn make_log(white_pawns_eval: &PawnEvaluation, white_pawns_eval_mg: f64, whi
         if phase != 128.0 {
             log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_psqt_eval_eg, black_psqt_eval_eg, verbose_eg + white_psqt_eval_eg - black_psqt_eval_eg));
             verbose_eg += white_psqt_eval_eg - black_psqt_eval_eg;
+        }
+    }
+    //Piecwise
+    {
+        log("White\n");
+        if phase != 0.0 {
+            log(&white_piecewise_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&white_piecewise_eval.display_eg());
+        }
+        log("Black\n");
+        if phase != 0.0 {
+            log(&black_piecewise_eval.display_mg());
+        }
+        if phase != 128.0 {
+            log(&black_piecewise_eval.display_eg());
+        }
+        if phase != 0.0 {
+            log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_piecewise_eval_mg, black_piecewise_eval_mg, verbose_mg + white_piecewise_eval_mg - black_piecewise_eval_mg));
+            verbose_mg += white_piecewise_eval_mg - black_piecewise_eval_mg;
+        }
+        if phase != 128.0 {
+            log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_piecewise_eval_eg, black_piecewise_eval_eg, verbose_eg + white_piecewise_eval_eg - black_piecewise_eval_eg));
+            verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
         }
     }
     log(&format!("Phase: {}\n", phase));

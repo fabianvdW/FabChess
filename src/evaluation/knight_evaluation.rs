@@ -31,7 +31,7 @@ impl MidGameDisplay for KnightEvaluation {
         let mut res_str = String::new();
         res_str.push_str("\tKnights-MidGame\n");
         res_str.push_str(&format!("\t\tAmount of Knights: {} * ({} + {}) -> {}\n", self.amount_of_knights, KNIGHT_PIECE_VALUE_MG, KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]
-                 , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])));
+                                  , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])));
         res_str.push_str(&format!("\t\tSupported Knights: {} -> {}\n", self.supported_knights, self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
@@ -43,7 +43,7 @@ impl EndGameDisplay for KnightEvaluation {
         let mut res_str = String::new();
         res_str.push_str("\tKnights-EndGame\n");
         res_str.push_str(&format!("\t\tAmount of Knights: {} * ({} + {}) -> {}\n", self.amount_of_knights, KNIGHT_PIECE_VALUE_EG, KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]
-                 , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])));
+                                  , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])));
         res_str.push_str(&format!("\t\tSupported Knights: {} -> {}\n", self.supported_knights, self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
