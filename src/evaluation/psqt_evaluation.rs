@@ -1,4 +1,4 @@
-use super::{Evaluation, ParallelEvaluation};
+use super::{Evaluation, ParallelEvaluation, MidGameDisplay, EndGameDisplay};
 
 const PSQT_PAWN_MG: [[f64; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -220,6 +220,100 @@ impl ParallelEvaluation for PSQT {
         mg_res += PSQT_KING_MG[king_position / 8][king_position % 8];
         eg_res += PSQT_KING_EG[king_position / 8][king_position % 8];
         (mg_res, eg_res)
+    }
+}
+
+impl MidGameDisplay for PSQT {
+    fn display_mg(&self) -> String {
+        let mut copy = self.copy();
+        let mut pawn_score = 0.0;
+        while copy.pawns != 0u64 {
+            let mut idx = copy.pawns.trailing_zeros() as usize;
+            copy.pawns ^= 1u64 << idx;
+            if !self.is_white {
+                idx = 63 - idx;
+            }
+            pawn_score += PSQT_PAWN_MG[idx / 8][idx % 8];
+        }
+        let mut knight_score = 0.0;
+        while copy.knights != 0u64 {
+            let mut idx = copy.knights.trailing_zeros() as usize;
+            copy.knights ^= 1u64 << idx;
+            if !self.is_white {
+                idx = 63 - idx;
+            }
+            knight_score += PSQT_KNIGHT_MG[idx / 8][idx % 8];
+        }
+        let mut bishop_score = 0.0;
+        while copy.bishops != 0u64 {
+            let mut idx = copy.bishops.trailing_zeros() as usize;
+            copy.bishops ^= 1u64 << idx;
+            if !self.is_white {
+                idx = 63 - idx;
+            }
+            bishop_score += PSQT_BISHOP_MG[idx / 8][idx % 8];
+        }
+        let mut king_position = copy.king.trailing_zeros() as usize;
+        if !self.is_white {
+            king_position = 63 - king_position;
+        }
+        let king_score = PSQT_KING_MG[king_position / 8][king_position % 8];
+
+        let mut res_str = String::new();
+        res_str.push_str("\tPSQT-MidGame\n");
+        res_str.push_str(&format!("\t\tPawns:    {} -> {}\n", self.pawns.count_ones(), pawn_score));
+        res_str.push_str(&format!("\t\tKnights:  {} -> {}\n", self.knights.count_ones(), knight_score));
+        res_str.push_str(&format!("\t\tBishops:  {} -> {}\n", self.bishops.count_ones(), bishop_score));
+        res_str.push_str(&format!("\t\tKing:          {}\n", king_score));
+        res_str.push_str(&format!("\tSum: {}\n", pawn_score + knight_score + bishop_score + king_score));
+        res_str
+    }
+}
+
+impl EndGameDisplay for PSQT {
+    fn display_eg(&self) -> String {
+        let mut copy = self.copy();
+        let mut pawn_score = 0.0;
+        while copy.pawns != 0u64 {
+            let mut idx = copy.pawns.trailing_zeros() as usize;
+            copy.pawns ^= 1u64 << idx;
+            if !self.is_white {
+                idx = 63 - idx;
+            }
+            pawn_score += PSQT_PAWN_EG[idx / 8][idx % 8];
+        }
+        let mut knight_score = 0.0;
+        while copy.knights != 0u64 {
+            let mut idx = copy.knights.trailing_zeros() as usize;
+            copy.knights ^= 1u64 << idx;
+            if !self.is_white {
+                idx = 63 - idx;
+            }
+            knight_score += PSQT_KNIGHT_EG[idx / 8][idx % 8];
+        }
+        let mut bishop_score = 0.0;
+        while copy.bishops != 0u64 {
+            let mut idx = copy.bishops.trailing_zeros() as usize;
+            copy.bishops ^= 1u64 << idx;
+            if !self.is_white {
+                idx = 63 - idx;
+            }
+            bishop_score += PSQT_BISHOP_EG[idx / 8][idx % 8];
+        }
+        let mut king_position = copy.king.trailing_zeros() as usize;
+        if !self.is_white {
+            king_position = 63 - king_position;
+        }
+        let king_score = PSQT_KING_EG[king_position / 8][king_position % 8];
+
+        let mut res_str = String::new();
+        res_str.push_str("\tPSQT-EndGame\n");
+        res_str.push_str(&format!("\t\tPawns:    {} -> {}\n", self.pawns.count_ones(), pawn_score));
+        res_str.push_str(&format!("\t\tKnights:  {} -> {}\n", self.knights.count_ones(), knight_score));
+        res_str.push_str(&format!("\t\tBishops:  {} -> {}\n", self.bishops.count_ones(), bishop_score));
+        res_str.push_str(&format!("\t\tKing:          {}\n", king_score));
+        res_str.push_str(&format!("\tSum: {}\n", pawn_score + knight_score + bishop_score + king_score));
+        res_str
     }
 }
 

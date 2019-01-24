@@ -1,3 +1,4 @@
+use super::log;
 lazy_static! {
     pub static ref FILES: [u64;8] = initialize_files();
     pub static ref NOT_FILES: [u64;8] = initialize_not_files();
@@ -35,6 +36,7 @@ pub fn init_bitboards() {
     SHIELDING_PAWNS_WHITE.len();
     SHIELDING_PAWNS_BLACK.len();
 }
+
 //Initializing General BitBoards
 pub fn initialize_files() -> [u64; 8] {
     let mut res = [0u64; 8];
@@ -45,7 +47,7 @@ pub fn initialize_files() -> [u64; 8] {
             res[file] = res[file - 1] << 1;
         }
     }
-    println!("Finished Initializing Files!");
+    log("Finished Initializing Files!");
     res
 }
 
@@ -54,7 +56,7 @@ pub fn initialize_not_files() -> [u64; 8] {
     for file in 0..8 {
         res[file] = !FILES[file];
     }
-    println!("Finished Initializing NOT Files!");
+    log("Finished Initializing NOT Files!");
     res
 }
 
@@ -67,7 +69,7 @@ pub fn initialize_ranks() -> [u64; 8] {
             res[rank] = res[rank - 1] << 8;
         }
     }
-    println!("Finished Initializing Ranks!");
+    log("Finished Initializing Ranks!");
     res
 }
 
@@ -76,7 +78,7 @@ pub fn initialize_squares() -> [u64; 64] {
     for squares in 0..64 {
         res[squares] = 1u64 << squares;
     }
-    println!("Finished Initializing Squares!");
+    log("Finished Initializing Squares!");
     res
 }
 
@@ -85,41 +87,41 @@ pub fn initialize_not_squares() -> [u64; 64] {
     for squares in 0..64 {
         res[squares] = !(1u64 << squares);
     }
-    println!("Finished Initializing NOT_Squares!");
+    log("Finished Initializing NOT_Squares!");
     res
 }
 
-pub fn nort_fill(mut gen:u64) -> u64{
-    gen |= gen<<8;
-    gen |= gen<<16;
-    gen |= gen<<32;
+pub fn nort_fill(mut gen: u64) -> u64 {
+    gen |= gen << 8;
+    gen |= gen << 16;
+    gen |= gen << 32;
     gen
 }
 
-pub fn sout_fill(mut gen:u64) -> u64{
-    gen |= gen>>8;
-    gen |= gen>>16;
-    gen |= gen>>32;
+pub fn sout_fill(mut gen: u64) -> u64 {
+    gen |= gen >> 8;
+    gen |= gen >> 16;
+    gen |= gen >> 32;
     gen
 }
 
-pub fn file_fill(gen:u64)->u64{
-    nort_fill(gen)|sout_fill(gen)
+pub fn file_fill(gen: u64) -> u64 {
+    nort_fill(gen) | sout_fill(gen)
 }
 
-pub fn w_front_span(wpawns:u64)->u64{
+pub fn w_front_span(wpawns: u64) -> u64 {
     north_one(nort_fill(wpawns))
 }
 
-pub fn b_front_span(bpawns:u64)->u64{
+pub fn b_front_span(bpawns: u64) -> u64 {
     south_one(sout_fill(bpawns))
 }
 
-pub fn w_rear_span(wpawns:u64)->u64{
+pub fn w_rear_span(wpawns: u64) -> u64 {
     south_one(sout_fill(wpawns))
 }
 
-pub fn b_rear_span(bpawns:u64)->u64{
+pub fn b_rear_span(bpawns: u64) -> u64 {
     north_one(nort_fill(bpawns))
 }
 
@@ -175,7 +177,7 @@ pub fn init_king_attacks() -> [u64; 64] {
     for square in 0..64 {
         res[square] = king_attack(1u64 << square);
     }
-    println!("Finished Initializing King Attacks!");
+    log("Finished Initializing King Attacks!");
     res
 }
 
@@ -197,7 +199,7 @@ pub fn init_knight_attacks() -> [u64; 64] {
     for square in 0..64 {
         res[square] = knight_attack(1u64 << square);
     }
-    println!("Finished Initializing Knight Attacks!");
+    log("Finished Initializing Knight Attacks!");
     res
 }
 
@@ -208,7 +210,7 @@ pub fn init_files_less_than() -> [u64; 8] {
             res[files] |= FILES[files_less_than];
         }
     }
-    println!("Finished Initializing FilesLessThan!");
+    log("Finished Initializing FilesLessThan!");
     res
 }
 
@@ -219,7 +221,7 @@ pub fn init_ranks_less_than() -> [u64; 8] {
             res[ranks] |= RANKS[ranks_less_than];
         }
     }
-    println!("Finished Initializing RanksLessThan!");
+    log("Finished Initializing RanksLessThan!");
     res
 }
 
@@ -228,7 +230,7 @@ pub fn init_files_greater_than() -> [u64; 8] {
     for files in 0..8 {
         res[files] = !FILES_LESS_THAN[files] & !FILES[files];
     }
-    println!("Finished Initializing FilesGreaterThan!");
+    log("Finished Initializing FilesGreaterThan!");
     res
 }
 
@@ -237,46 +239,46 @@ pub fn init_ranks_greater_than() -> [u64; 8] {
     for ranks in 0..8 {
         res[ranks] = !RANKS_LESS_THAN[ranks] & !RANKS[ranks];
     }
-    println!("Finished Initializing FilesGreaterThan!");
+    log("Finished Initializing FilesGreaterThan!");
     res
 }
 
-pub fn init_upper_half() -> u64{
+pub fn init_upper_half() -> u64 {
     RANKS_GREATER_THAN[3]
 }
 
-pub fn init_lower_half() -> u64{
+pub fn init_lower_half() -> u64 {
     RANKS_LESS_THAN[4]
 }
 
-pub fn init_diagonally_adjacent() ->[u64;64]{
-    let mut res  =[0u64;64];
-    for sq in 0..64{
-        let board = 1u64<<sq;
-        res[sq]= north_east_one(board)|north_west_one(board)|south_east_one(board)|south_west_one(board);
+pub fn init_diagonally_adjacent() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        let board = 1u64 << sq;
+        res[sq] = north_east_one(board) | north_west_one(board) | south_east_one(board) | south_west_one(board);
     }
-    println!("Finished Initializing Diagonally Adjacent Board!");
+    log("Finished Initializing Diagonally Adjacent Board!");
     res
 }
 
-pub fn init_shielding_pawns_white() -> [u64;64]{
-    let mut res = [0u64;64];
-    for sq in 0..64{
-        let king = 1u64<<sq;
-        let shield= king<<8|north_west_one(king)|north_east_one(king);
-        res[sq]= shield|shield<<8;
+pub fn init_shielding_pawns_white() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        let king = 1u64 << sq;
+        let shield = king << 8 | north_west_one(king) | north_east_one(king);
+        res[sq] = shield | shield << 8;
     }
-    println!("Finished Initializing Shielding PawnsWhite Board!");
+    log("Finished Initializing Shielding PawnsWhite Board!");
     res
 }
 
-pub fn init_shielding_pawns_black() -> [u64;64]{
-    let mut res = [0u64;64];
-    for sq in 0..64{
-        let king = 1u64<<sq;
-        let shield= king>>8|south_west_one(king)|south_east_one(king);
-        res[sq]= shield|shield>>8;
+pub fn init_shielding_pawns_black() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        let king = 1u64 << sq;
+        let shield = king >> 8 | south_west_one(king) | south_east_one(king);
+        res[sq] = shield | shield >> 8;
     }
-    println!("Finished Initializing Shielding PawnsBlack Board!");
+    log("Finished Initializing Shielding PawnsBlack Board!");
     res
 }

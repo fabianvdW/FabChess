@@ -29,11 +29,11 @@ impl Evaluation for KnightEvaluation {
 impl MidGameDisplay for KnightEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tKnights-MidGame");
-        println!("\t\tAmount of Knights: {} * ({} + {}) -> {}", self.amount_of_knights, KNIGHT_PIECE_VALUE_MG, KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]
-                 , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]));
-        println!("\t\tSupported Knights: {} -> {}", self.supported_knights, self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN);
-        println!("\tSum: {}", self.eval_mg());
+        res_str.push_str("\tKnights-MidGame\n");
+        res_str.push_str(&format!("\t\tAmount of Knights: {} * ({} + {}) -> {}\n", self.amount_of_knights, KNIGHT_PIECE_VALUE_MG, KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]
+                 , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])));
+        res_str.push_str(&format!("\t\tSupported Knights: {} -> {}\n", self.supported_knights, self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
     }
 }
@@ -41,11 +41,11 @@ impl MidGameDisplay for KnightEvaluation {
 impl EndGameDisplay for KnightEvaluation {
     fn display_eg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tKnights-EndGame");
-        println!("\t\tAmount of Knights: {} * ({} + {}) -> {}", self.amount_of_knights, KNIGHT_PIECE_VALUE_EG, KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]
-                 , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]));
-        println!("\t\tSupported Knights: {} -> {}", self.supported_knights, self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN);
-        println!("\tSum: {}", self.eval_eg());
+        res_str.push_str("\tKnights-EndGame\n");
+        res_str.push_str(&format!("\t\tAmount of Knights: {} * ({} + {}) -> {}\n", self.amount_of_knights, KNIGHT_PIECE_VALUE_EG, KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]
+                 , self.amount_of_knights as f64 * (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])));
+        res_str.push_str(&format!("\t\tSupported Knights: {} -> {}\n", self.supported_knights, self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
     }
 }

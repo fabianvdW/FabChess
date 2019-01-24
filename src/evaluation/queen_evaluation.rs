@@ -23,9 +23,9 @@ impl Evaluation for QueenEvaluation {
 impl MidGameDisplay for QueenEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tQueens-MidGame");
-        println!("\t\tAmount of Queens: {} -> {}", self.amount_of_queens, self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_MG);
-        println!("\tSum: {}", self.eval_mg());
+        res_str.push_str("\tQueens-MidGame\n");
+        res_str.push_str(&format!("\t\tAmount of Queens: {} -> {}\n", self.amount_of_queens, self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_MG));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
     }
 }
@@ -33,9 +33,9 @@ impl MidGameDisplay for QueenEvaluation {
 impl EndGameDisplay for QueenEvaluation {
     fn display_eg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tQueens-EndGame");
-        println!("\t\tAmount of Queens: {} -> {}", self.amount_of_queens, self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_EG);
-        println!("\tSum: {}", self.eval_eg());
+        res_str.push_str("\tQueens-EndGame\n");
+        res_str.push_str(&format!("\t\tAmount of Queens: {} -> {}\n", self.amount_of_queens, self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_EG));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
     }
 }

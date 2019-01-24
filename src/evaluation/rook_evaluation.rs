@@ -26,9 +26,9 @@ impl Evaluation for RookEvaluation {
 impl MidGameDisplay for RookEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tRooks-MidGame");
-        println!("\t\tAmount of Rooks: {} -> {}", self.amount_of_rooks, self.amount_of_rooks as f64 * ROOK_PIECE_VALUE_MG);
-        println!("\tSum: {}", self.eval_mg());
+        res_str.push_str("\tRooks-MidGame\n");
+        res_str.push_str(&format!("\t\tAmount of Rooks: {} -> {}\n", self.amount_of_rooks, self.amount_of_rooks as f64 * ROOK_PIECE_VALUE_MG));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
     }
 }
@@ -36,9 +36,9 @@ impl MidGameDisplay for RookEvaluation {
 impl EndGameDisplay for RookEvaluation {
     fn display_eg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tRooks-EndGame");
-        println!("\t\tAmount of Rooks: {} -> {}", self.amount_of_rooks, self.amount_of_rooks as f64 * ROOK_PIECE_VALUE_EG);
-        println!("\tSum: {}", self.eval_eg());
+        res_str.push_str("\tRooks-EndGame\n");
+        res_str.push_str(&format!("\t\tAmount of Rooks: {} -> {}\n", self.amount_of_rooks, self.amount_of_rooks as f64 * ROOK_PIECE_VALUE_EG));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
     }
 }

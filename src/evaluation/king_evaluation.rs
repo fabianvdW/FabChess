@@ -23,10 +23,10 @@ impl Evaluation for KingEvaluation {
 impl MidGameDisplay for KingEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tKing-MidGame");
-        println!("\t\tShielding Pawns missing:              {} -> {}", self.shielding_pawns_missing, self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG);
-        println!("\t\tShielding Pawns on open file missing: {} -> {}", self.shielding_pawns_missing_on_open_file, self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE);
-        println!("\tSum: {}", self.eval_mg());
+        res_str.push_str("\tKing-MidGame\n");
+        res_str.push_str(&format!("\t\tShielding Pawns missing:              {} -> {}\n", self.shielding_pawns_missing, self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG));
+        res_str.push_str(&format!("\t\tShielding Pawns on open file missing: {} -> {}\n", self.shielding_pawns_missing_on_open_file, self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
     }
 }
@@ -34,8 +34,8 @@ impl MidGameDisplay for KingEvaluation {
 impl EndGameDisplay for KingEvaluation {
     fn display_eg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tKing-EndGame");
-        println!("\tSum: {}", self.eval_eg());
+        res_str.push_str("\tKing-EndGame\n");
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
     }
 }

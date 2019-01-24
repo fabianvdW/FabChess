@@ -38,12 +38,12 @@ impl Evaluation for PawnEvaluation {
 impl MidGameDisplay for PawnEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tPawns-MidGame");
-        println!("\t\tAmount of Pawns: {} -> {}", self.amount_of_pawns, self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_MG);
-        println!("\t\tDoubled Pawns:           \t{} -> {}", self.doubled_pawns, self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_MG);
-        println!("\t\tIsolated Pawns:          \t{} -> {}", self.isolated_pawns, self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_MG);
-        println!("\t\tBackwards Pawns:         \t{} -> {}", self.backwards_pawns, self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_MG);
-        println!("\tSum: {}", self.eval_mg());
+        res_str.push_str("\tPawns-MidGame\n");
+        res_str.push_str(&format!("\t\tAmount of Pawns: {} -> {}\n", self.amount_of_pawns, self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_MG));
+        res_str.push_str(&format!("\t\tDoubled Pawns:   {} -> {}\n", self.doubled_pawns, self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_MG));
+        res_str.push_str(&format!("\t\tIsolated Pawns:  {} -> {}\n", self.isolated_pawns, self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_MG));
+        res_str.push_str(&format!("\t\tBackwards Pawns: {} -> {}\n", self.backwards_pawns, self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_MG));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
     }
 }
@@ -51,12 +51,12 @@ impl MidGameDisplay for PawnEvaluation {
 impl EndGameDisplay for PawnEvaluation {
     fn display_eg(&self) -> String {
         let mut res_str = String::new();
-        res_str.push_str("\tPawns-EndGame");
-        println!("\t\tAmount of Pawns: {} -> {}", self.amount_of_pawns, self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_EG);
-        println!("\t\tDoubled Pawns:           \t{} -> {}", self.doubled_pawns, self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_EG);
-        println!("\t\tIsolated Pawns:          \t{} -> {}", self.isolated_pawns, self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_EG);
-        println!("\t\tBackwards Pawns:         \t{} -> {}", self.backwards_pawns, self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_EG);
-        println!("\tSum: {}", self.eval_eg());
+        res_str.push_str("\tPawns-EndGame\n");
+        res_str.push_str(&format!("\t\tAmount of Pawns: {} -> {}\n", self.amount_of_pawns, self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_EG));
+        res_str.push_str(&format!("\t\tDoubled Pawns:   {} -> {}\n", self.doubled_pawns, self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_EG));
+        res_str.push_str(&format!("\t\tIsolated Pawns:  {} -> {}\n", self.isolated_pawns, self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_EG));
+        res_str.push_str(&format!("\t\tBackwards Pawns: {} -> {}\n", self.backwards_pawns, self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_EG));
+        res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
     }
 }

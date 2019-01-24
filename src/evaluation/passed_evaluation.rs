@@ -91,10 +91,10 @@ impl MidGameDisplay for PassedEvaluation {
         }
 
         let mut res_str = String::new();
-        res_str.push_str("\tPassed-MidGame");
-        println!("\t\tPassed Pawns: {} -> {}", self.passed_pawns.count_ones(), passer_score);
-        println!("\t\tPassed and not blocked Pawns:\t{} -> {}", self.passed_not_blocked_pawns.count_ones(), passed_not_blocked_score);
-        println!("\tSum: {}", passer_score + passed_not_blocked_score);
+        res_str.push_str("\tPassed-MidGame\n");
+        res_str.push_str(&format!("\t\tPassed Pawns:                  {} -> {}\n", self.passed_pawns.count_ones(), passer_score));
+        res_str.push_str(&format!("\t\tPassed and not blocked Pawns:  {} -> {}\n", self.passed_not_blocked_pawns.count_ones(), passed_not_blocked_score));
+        res_str.push_str(&format!("\tSum: {}\n", passer_score + passed_not_blocked_score));
         res_str
     }
 }
@@ -116,10 +116,10 @@ impl EndGameDisplay for PassedEvaluation {
         }
 
         let mut res_str = String::new();
-        res_str.push_str("\tPassed-EndGame");
-        println!("\t\tPassed Pawns: {} -> {}", self.passed_pawns.count_ones(), passer_score);
-        println!("\t\tPassed and not blocked Pawns:\t{} -> {}", self.passed_not_blocked_pawns.count_ones(), passed_not_blocked_score);
-        println!("\tSum: {}", passer_score + passed_not_blocked_score);
+        res_str.push_str("\tPassed-EndGame\n");
+        res_str.push_str(&format!("\t\tPassed Pawns:                  {} -> {}\n", self.passed_pawns.count_ones(), passer_score));
+        res_str.push_str(&format!("\t\tPassed and not blocked Pawns:  {} -> {}\n", self.passed_not_blocked_pawns.count_ones(), passed_not_blocked_score));
+        res_str.push_str(&format!("\tSum: {}\n", passer_score + passed_not_blocked_score));
         res_str
     }
 }

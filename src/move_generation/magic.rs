@@ -1,5 +1,6 @@
 use rand::Rng;
 use super::super::bitboards::{RANKS, FILES, NOT_SQUARES};
+use super::super::log;
 
 static mut ROOK_BITS: [usize; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12,
@@ -91,7 +92,7 @@ pub fn init_magics_rooks() -> Vec<Magic> {
             lookup_table,
         })
     }
-    println!("Finished Initializing Rook Attacks!");
+    log("Finished Initializing Rook Attacks!");
     res
 }
 
@@ -164,7 +165,7 @@ pub fn init_magics_bishops() -> Vec<Magic> {
             lookup_table,
         })
     }
-    println!("Finished Initializing Bishop Attacks!");
+    log("Finished Initializing Bishop Attacks!");
     res
 }
 

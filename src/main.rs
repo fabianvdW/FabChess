@@ -7,31 +7,33 @@ mod misc;
 mod bitboards;
 mod move_generation;
 mod evaluation;
+mod logging;
 
 use self::board_representation::game_state::GameState;
-use self::move_generation::{movegen};
+use self::move_generation::movegen;
 use std::time::Instant;
+use logging::log;
 
 fn main() {
     let now = Instant::now();
     bitboards::init_bitboards();
     move_generation::magic::init_magics();
-    println!("Should have initialized everything!");
+    log("Should have initialized everything!");
 
     let new_now = Instant::now();
-    println!("Initialization Time: {}ms", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64);
+    log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
     let now = Instant::now();
 
-    let g= GameState::from_fen("r4rk1/2p1bppp/p1n5/1p1qPb2/3B4/1PPp1N2/1P3PPP/RB1Q1RK1 w - - 5 17");
+    let g = GameState::from_fen("r4rk1/2p1bppp/p1n5/1p1qPb2/3B4/1PPp1N2/1P3PPP/RB1Q1RK1 w - - 5 17");
     //let g= GameState::from_fen(misc::STD_FEN);
-    //let nodes = perft_div(&g, 6);
+    //let nodes = perft_div(&g, 7);
     //println!("{}", nodes);
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
-    println!("Time: {}ms", time_passed*1000.0);
+    println!("Time: {}ms", time_passed * 1000.0);
     //println!("NPS: {}", nodes as f64 / time_passed);
 
-    println!("{}",evaluation::eval_game_state(&g));
+    println!("{}", evaluation::eval_game_state(&g));
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
