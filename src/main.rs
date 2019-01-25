@@ -24,16 +24,16 @@ fn main() {
     log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
     let now = Instant::now();
 
-    let g = GameState::from_fen("7n/P2bqP2/1K4k1/Ppp2N1r/8/6nP/2p5/4R3 w - - 0 1");
+    //let g = GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1");
     //let g= GameState::from_fen(misc::STD_FEN);
-    //let nodes = perft_div(&g, 7);
+    //let nodes = perft_div(&g, 1);
     //println!("{}", nodes);
+    misc::parse_pgn();
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed * 1000.0);
     //println!("NPS: {}", nodes as f64 / time_passed);
-
-    println!("{}", evaluation::eval_game_state(&g));
+    //println!("{}", evaluation::eval_game_state(&g));
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
@@ -53,6 +53,9 @@ pub fn perft(g: &GameState, depth: usize) -> u64 {
         let (vm, _ic) = movegen::generate_moves(&g);
         return vm.len() as u64;
     } else {
+        if depth == 0 {
+            return 1;
+        }
         let mut res = 0;
         let (valid_moves, _incheck) = movegen::generate_moves(&g);
         for mv in valid_moves {
@@ -66,6 +69,10 @@ pub fn perft(g: &GameState, depth: usize) -> u64 {
 mod tests {
     use super::perft;
     use super::GameState;
+    use crate::misc::{KING_BASE_PATH, GameParser, PGNParser};
+    use std::io::BufReader;
+    use std::fs::File;
+    use std::error::Error;
 
     #[test]
     fn perft_test() {
@@ -126,5 +133,41 @@ mod tests {
         assert_eq!(2079, perft(&GameState::from_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), 2));
         assert_eq!(89890, perft(&GameState::from_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), 3));
         assert_eq!(3894594, perft(&GameState::from_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), 4));
+        //Hall of Fame Bugs!
+        //63%9==63%7
+        assert_eq!(4, perft(&GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"), 1));
+        assert_eq!(198, perft(&GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"), 2));
+        assert_eq!(7605, perft(&GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"), 3));
+        assert_eq!(346440, perft(&GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"), 4));
+        assert_eq!(14660480, perft(&GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"), 5));
+        //Pawn promotion capture when pinned
+        assert_eq!(26, perft(&GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"), 1));
+        assert_eq!(613, perft(&GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"), 2));
+        assert_eq!(14277, perft(&GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"), 3));
+        assert_eq!(345436, perft(&GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"), 4));
+        assert_eq!(7804316, perft(&GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"), 5));
+        //Pawn enpassant capture when pinned
+        //Capture is possible when 1) on capture mask and 2) on ray or capturing the pinning piece
+        assert_eq!(48, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 1));
+        assert_eq!(1221, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 2));
+        assert_eq!(54983, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 3));
+        assert_eq!(1520218, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 4));
+        assert_eq!(67336445, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 5));
+    }
+
+    #[test]
+    pub fn pgn_test() {
+        for path in &KING_BASE_PATH {
+            let res = File::open(path);
+            let file = match res {
+                Err(why) => panic!("{}", why.description()),
+                Ok(file) => file
+            };
+            let reader = BufReader::new(file);
+            let parser = GameParser { pgn_parser: PGNParser { reader } };
+            for _game in parser.into_iter() {
+                //println!("{}", game.1);
+            }
+        }
     }
 }

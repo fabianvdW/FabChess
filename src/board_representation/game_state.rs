@@ -1,6 +1,6 @@
 use std::fmt::{Formatter, Display, Result, Debug};
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum GameMoveType {
     Quiet,
     Capture,
@@ -9,7 +9,7 @@ pub enum GameMoveType {
     Promotion(PieceType),
 }
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum PieceType {
     King,
     Pawn,
@@ -26,12 +26,23 @@ pub struct GameMove {
     pub piece_type: PieceType,
 }
 
+impl GameMove {
+    pub fn clone(&self) -> GameMove {
+        GameMove {
+            from: self.from,
+            to: self.to,
+            move_type: self.move_type.clone(),
+            piece_type: self.piece_type.clone(),
+        }
+    }
+}
+
 impl Debug for GameMove {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
         res_str.push_str(&format!("{}{}{}{}", file_to_string(self.from % 8), self.from / 8 + 1, file_to_string(self.to % 8), self.to / 8 + 1));
         match &self.move_type {
-            GameMoveType::Quiet => { res_str.push_str("") }
+            GameMoveType::Capture => { res_str.push_str("") }
             _ => {}
         };
         write!(formatter, "{}", res_str)
@@ -359,6 +370,7 @@ impl Display for GameState {
         res_str.push_str(&format!("En Passant Possible: {:x}\n", self.en_passant));
         res_str.push_str(&format!("Half-Counter: {}\n", self.half_moves));
         res_str.push_str(&format!("Full-Counter: {}\n", self.full_moves));
+        res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
         write!(formatter, "{}", res_str)
     }
 }

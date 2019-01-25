@@ -536,9 +536,14 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
                 my_pawns ^= pinned_piece;
                 let pawn_targets = if color_to_move == 0 { w_pawn_east_targets(pinned_piece) } else { b_pawn_east_targets(pinned_piece) } | if color_to_move == 0 { w_pawn_west_targets(pinned_piece) } else { b_pawn_west_targets(pinned_piece) };
                 let pawn_captures = pawn_targets & bitboards::SQUARES[bishop_position] & capture_mask;
-                //let pawn_enpassants = pawn_targets & g.en_passant;
-                add_moves(&mut move_list, pinned_piece_position, pawn_captures, &PieceType::Pawn, GameMoveType::Capture);
-                //add_moves(&mut move_list, pinned_piece_position, pawn_enpassants, &PieceType::Pawn, GameMoveType::EnPassant);
+                let pawn_normal_captures = pawn_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+                let pawn_promotion_captures = pawn_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
+                let source_shift = pawn_promotion_captures.trailing_zeros() as isize - pinned_piece_position as isize;
+                //println!("{}",misc::to_string_board(pawn_targets));
+                let pawn_enpassants = pawn_targets & g.en_passant & capture_mask & (bitboards::SQUARES[bishop_position]|ray);
+                add_moves(&mut move_list, pinned_piece_position, pawn_normal_captures, &PieceType::Pawn, GameMoveType::Capture);
+                add_promotion_push(pawn_promotion_captures, &color_to_move, &mut move_list, (source_shift * if color_to_move == 0 { 1 } else { -1 }) as usize);
+                add_moves(&mut move_list, pinned_piece_position, pawn_enpassants, &PieceType::Pawn, GameMoveType::EnPassant);
                 continue;
             }
             if pinned_piece & my_knights != 0 {
@@ -591,7 +596,6 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             //Checking for promotion on capture
             let my_pawns_no_promotion = my_pawns_east_normal_captures & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
             let my_pawns_promotion = my_pawns_east_normal_captures & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-
             add_pawn_capture(my_pawns_no_promotion, &color_to_move, &mut move_list, 9usize);
             add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 9usize);
             //En passants
@@ -823,22 +827,22 @@ pub fn get_bishop_ray(bishop_attack_in_all_directions: u64, target_square: usize
     let bishop_rank = bishop_square / 8;
     let bishop_file = bishop_square % 8;
     if diff > 0 {
-        if diff % 7 == 0 {
-            return bitboards::FILES_GREATER_THAN[target_file] & bitboards::FILES_LESS_THAN[bishop_file]
+        if diff % 9 == 0 {
+            return bitboards::FILES_LESS_THAN[target_file] & bitboards::FILES_GREATER_THAN[bishop_file]
                 & bitboards::RANKS_LESS_THAN[target_rank] & bitboards::RANKS_GREATER_THAN[bishop_rank]
                 & bishop_attack_in_all_directions;
         } else {
-            return bitboards::FILES_LESS_THAN[target_file] & bitboards::FILES_GREATER_THAN[bishop_file]
+            return bitboards::FILES_GREATER_THAN[target_file] & bitboards::FILES_LESS_THAN[bishop_file]
                 & bitboards::RANKS_LESS_THAN[target_rank] & bitboards::RANKS_GREATER_THAN[bishop_rank]
                 & bishop_attack_in_all_directions;
         }
     } else {
-        if diff % -7 == 0 {
-            return bitboards::FILES_LESS_THAN[target_file] & bitboards::FILES_GREATER_THAN[bishop_file]
+        if diff % -9 == 0 {
+            return bitboards::FILES_GREATER_THAN[target_file] & bitboards::FILES_LESS_THAN[bishop_file]
                 & bitboards::RANKS_GREATER_THAN[target_rank] & bitboards::RANKS_LESS_THAN[bishop_rank]
                 & bishop_attack_in_all_directions;
         } else {
-            return bitboards::FILES_GREATER_THAN[target_file] & bitboards::FILES_LESS_THAN[bishop_file]
+            return bitboards::FILES_LESS_THAN[target_file] & bitboards::FILES_GREATER_THAN[bishop_file]
                 & bitboards::RANKS_GREATER_THAN[target_rank] & bitboards::RANKS_LESS_THAN[bishop_rank]
                 & bishop_attack_in_all_directions;
         }
