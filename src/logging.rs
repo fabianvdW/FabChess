@@ -1,4 +1,4 @@
-pub const VERBOSE: bool = true;
+pub const VERBOSE: bool = false;
 pub const LOG_FILE: &str = "log.txt";
 pub const LOG_TO_STDOUT: bool = false;
 
@@ -17,13 +17,15 @@ pub fn init_log() -> File {
 }
 
 pub fn log(s: &str) {
-    if LOG_TO_STDOUT {
-        print!("{}", s);
-    } else {
-        let x = LOG.lock().unwrap().write(s.as_bytes());
-        match x {
-            Err(why) => panic!("Something went wrong, {}", why.description()),
-            Ok(_) => {}
-        };
+    if VERBOSE {
+        if LOG_TO_STDOUT {
+            print!("{}", s);
+        } else {
+            let x = LOG.lock().unwrap().write(s.as_bytes());
+            match x {
+                Err(why) => panic!("Something went wrong, {}", why.description()),
+                Ok(_) => {}
+            };
+        }
     }
 }

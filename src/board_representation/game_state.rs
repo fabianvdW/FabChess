@@ -307,6 +307,136 @@ impl GameState {
             en_passant,
         }
     }
+    pub fn to_fen(&self) -> String {
+        let mut res_str = String::new();
+        for rank in 0..8 {
+            let big_endian_rank = 7 - rank;
+            //bitscan forward
+            let mut file = 0;
+            let mut files_skipped = 0;
+            while file < 8 {
+                let shift = big_endian_rank * 8 + file;
+                file += 1;
+                files_skipped += 1;
+                if (self.pieces[0][0] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("P");
+                } else if (self.pieces[1][0] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("N");
+                } else if (self.pieces[2][0] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("B");
+                } else if (self.pieces[3][0] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("R");
+                } else if (self.pieces[4][0] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("Q");
+                } else if (self.pieces[5][0] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("K");
+                } else if (self.pieces[0][1] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("p");
+                } else if (self.pieces[1][1] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("n");
+                } else if (self.pieces[2][1] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("b");
+                } else if (self.pieces[3][1] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("r");
+                } else if (self.pieces[4][1] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("q");
+                } else if (self.pieces[5][1] >> shift) & 1u64 != 0u64 {
+                    if files_skipped != 1 {
+                        res_str.push_str(&format!("{}", files_skipped - 1));
+                    }
+                    files_skipped = 0;
+                    res_str.push_str("k");
+                }
+            }
+            if files_skipped != 0 {
+                res_str.push_str(&format!("{}", files_skipped));
+            }
+            if rank != 7 {
+                res_str.push_str("/");
+            }
+        }
+        res_str.push_str(" ");
+        if self.color_to_move == 0 {
+            res_str.push_str("w");
+        } else {
+            res_str.push_str("b");
+        }
+        res_str.push_str(" ");
+        if !(self.castle_white_kingside | self.castle_white_queenside | self.castle_black_kingside | self.castle_black_queenside) {
+            res_str.push_str("-");
+        } else {
+            if self.castle_white_kingside {
+                res_str.push_str("K");
+            }
+            if self.castle_white_queenside {
+                res_str.push_str("Q");
+            }
+            if self.castle_black_kingside {
+                res_str.push_str("k");
+            }
+            if self.castle_black_queenside {
+                res_str.push_str("q");
+            }
+        }
+        res_str.push_str(" ");
+
+        if self.en_passant == 0u64 {
+            res_str.push_str("-");
+        } else {
+            let idx = self.en_passant.trailing_zeros() as usize;
+            let rank = idx / 8;
+            let file = idx % 8;
+            res_str.push_str(&format!("{}{}", file_to_string(file), rank + 1));
+        }
+        res_str.push_str(" ");
+        res_str.push_str(&format!("{} ", self.half_moves));
+        res_str.push_str(&format!("{}", self.full_moves));
+        res_str
+    }
     pub fn standard() -> GameState {
         GameState {
             color_to_move: 0usize,
