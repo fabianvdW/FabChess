@@ -5,6 +5,7 @@ use super::{log, movegen};
 use std::io::BufReader;
 use std::prelude::v1::Vec;
 use super::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
+use super::evaluation;
 
 pub const STD_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const KING_BASE_PATH: [&str; 15] = [
@@ -45,7 +46,7 @@ pub fn to_string_board(board: u64) -> String {
     res_str
 }
 
-pub fn parse_pgn() {
+pub fn parse_pgn_find_static_eval_mistakes() {
     for path in &KING_BASE_PATH {
         let res = File::open(path);
         let file = match res {
@@ -55,7 +56,22 @@ pub fn parse_pgn() {
         let reader = BufReader::new(file);
         let parser = GameParser { pgn_parser: PGNParser { reader } };
         for _game in parser.into_iter() {
-            //println!("{}", game.1);
+            let last_game_state = &_game.1[_game.1.len() - 1];
+            let res = _game.2;
+            let eval = evaluation::eval_game_state(&last_game_state);
+            if res == 1 {
+                if eval < 0.0 {
+                    log(&format!("{} (1-0)\n",&last_game_state.to_fen()));
+                }
+            } else if res == 0 {
+                if eval.abs() > 1.0 {
+                    log(&format!("{} (1/2-1/2)\n",&last_game_state.to_fen()));
+                }
+            } else if res == -1 {
+                if eval > 0.0 {
+                    log(&format!("{} (0-1)\n",&last_game_state.to_fen()));
+                }
+            }
         }
     }
 }
@@ -79,7 +95,7 @@ impl Iterator for GameParser {
                     //Invalid state
                     return Some((vec_res, vec_gs, -2));
                 }
-                log(&format!("{}\n", game));
+                //log(&format!("{}\n", game));
                 let moves = game.split(" ").collect::<Vec<&str>>();
                 for idx in 0..moves.len() - 1 {
                     let move_str = moves[idx].rsplit(".").collect::<Vec<&str>>()[0];

@@ -24,17 +24,16 @@ fn main() {
     log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
     let now = Instant::now();
 
-    let g = GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1");
-    println!("{}", g.to_fen());
+    let g = GameState::from_fen("8/4k3/8/3p2p1/3Pb1P1/4PB1p/5K2/8 b - - 0 59");
+    println!("{}", evaluation::eval_game_state(&g));
     //let g= GameState::from_fen(misc::STD_FEN);
     //let nodes = perft_div(&g, 1);
     //println!("{}", nodes);
-    //misc::parse_pgn();
+    //misc::parse_pgn_find_static_eval_mistakes();
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed * 1000.0);
     //println!("NPS: {}", nodes as f64 / time_passed);
-    //println!("{}", evaluation::eval_game_state(&g));
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
