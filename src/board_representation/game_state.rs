@@ -487,67 +487,67 @@ impl GameState {
             hash ^= ZOBRIST_KEYS.w_pawns[idx];
             w_pawns ^= 1u64 << idx;
         }
-        let mut w_knights = pieces[0][0];
+        let mut w_knights = pieces[1][0];
         while w_knights != 0u64 {
             let idx = w_knights.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_knights[idx];
             w_knights ^= 1u64 << idx;
         }
-        let mut w_bishops = pieces[0][0];
+        let mut w_bishops = pieces[2][0];
         while w_bishops != 0u64 {
             let idx = w_bishops.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_bishops[idx];
             w_bishops ^= 1u64 << idx;
         }
-        let mut w_rooks = pieces[0][0];
+        let mut w_rooks = pieces[3][0];
         while w_rooks != 0u64 {
             let idx = w_rooks.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_rooks[idx];
             w_rooks ^= 1u64 << idx;
         }
-        let mut w_queens = pieces[0][0];
+        let mut w_queens = pieces[4][0];
         while w_queens != 0u64 {
             let idx = w_queens.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_queens[idx];
             w_queens ^= 1u64 << idx;
         }
-        let mut w_king = pieces[0][0];
+        let mut w_king = pieces[5][0];
         while w_king != 0u64 {
             let idx = w_king.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_king[idx];
             w_king ^= 1u64 << idx;
         }
-        let mut b_pawns = pieces[0][0];
+        let mut b_pawns = pieces[0][1];
         while b_pawns != 0u64 {
             let idx = b_pawns.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_pawns[idx];
             b_pawns ^= 1u64 << idx;
         }
-        let mut b_knights = pieces[0][0];
+        let mut b_knights = pieces[1][1];
         while b_knights != 0u64 {
             let idx = b_knights.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_knights[idx];
             b_knights ^= 1u64 << idx;
         }
-        let mut b_bishops = pieces[0][0];
+        let mut b_bishops = pieces[2][1];
         while b_bishops != 0u64 {
             let idx = b_bishops.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_bishops[idx];
             b_bishops ^= 1u64 << idx;
         }
-        let mut b_rooks = pieces[0][0];
+        let mut b_rooks = pieces[3][1];
         while b_rooks != 0u64 {
             let idx = b_rooks.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_rooks[idx];
             b_rooks ^= 1u64 << idx;
         }
-        let mut b_queens = pieces[0][0];
+        let mut b_queens = pieces[4][1];
         while b_queens != 0u64 {
             let idx = b_queens.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_queens[idx];
             b_queens ^= 1u64 << idx;
         }
-        let mut b_king = pieces[0][0];
+        let mut b_king = pieces[5][1];
         while b_king != 0u64 {
             let idx = b_king.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_king[idx];

@@ -29,7 +29,7 @@ fn main() {
     //println!("{}", g);
     //println!("{}", evaluation::eval_game_state(&g));
     let g = GameState::from_fen(misc::STD_FEN);
-    let nodes = perft_div(&g, 7);
+    //let nodes = perft_div(&g, 7);
     //println!("{}", nodes);
     //misc::parse_pgn_find_static_eval_mistakes();
     let new_now = Instant::now();
@@ -75,6 +75,8 @@ mod tests {
     use std::io::BufReader;
     use std::fs::File;
     use std::error::Error;
+    use rand::Rng;
+    use super::movegen;
 
     #[test]
     fn fen_test() {
@@ -188,6 +190,22 @@ mod tests {
         assert_eq!(54983, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 3));
         assert_eq!(1520218, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 4));
         assert_eq!(67336445, perft(&GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"), 5));
+    }
+
+    #[test]
+    fn zobrist_hash_test() {
+        let mut rng = rand::thread_rng();
+        for _i in 0..10000 {
+            let mut g = GameState::standard();
+            for _j in 0..200 {
+                assert_eq!(g.hash, GameState::calculate_zobrist_hash(g.color_to_move, g.pieces, g.castle_white_kingside, g.castle_white_queenside, g.castle_black_kingside, g.castle_black_queenside, g.en_passant));
+                let legal_moves = movegen::generate_moves(&g).0;
+                if legal_moves.len() == 0 {
+                    break;
+                }
+                g = movegen::make_move(&g, &legal_moves[rng.gen_range(0, legal_moves.len())])
+            }
+        }
     }
 
     #[test]
