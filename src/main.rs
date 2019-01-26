@@ -18,16 +18,18 @@ fn main() {
     let now = Instant::now();
     bitboards::init_bitboards();
     move_generation::magic::init_magics();
+    board_representation::zobrist_hashing::init_at_program_start();
     log("Should have initialized everything!");
 
     let new_now = Instant::now();
     log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
     let now = Instant::now();
 
-    let g = GameState::from_fen("8/4k3/8/3p2p1/3Pb1P1/4PB1p/5K2/8 b - - 0 59");
-    println!("{}", evaluation::eval_game_state(&g));
-    //let g= GameState::from_fen(misc::STD_FEN);
-    //let nodes = perft_div(&g, 1);
+    //let g = GameState::from_fen("8/4k3/8/3p2p1/3Pb1P1/4PB1p/5K2/8 b - - 0 59");
+    //println!("{}", g);
+    //println!("{}", evaluation::eval_game_state(&g));
+    let g = GameState::from_fen(misc::STD_FEN);
+    let nodes = perft_div(&g, 7);
     //println!("{}", nodes);
     //misc::parse_pgn_find_static_eval_mistakes();
     let new_now = Instant::now();
@@ -73,37 +75,38 @@ mod tests {
     use std::io::BufReader;
     use std::fs::File;
     use std::error::Error;
+
     #[test]
     fn fen_test() {
         let g = GameState::standard();
         assert_eq!(&g.to_fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        let fen ="4BR1N/1PPPQPp1/p1p2nPP/p1Pr1bp1/p1k3qB/1n1p2N1/1bP2pK1/5R2 w - - 0 1";
+        let fen = "4BR1N/1PPPQPp1/p1p2nPP/p1Pr1bp1/p1k3qB/1n1p2N1/1bP2pK1/5R2 w - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="1nb1B3/bk1P2p1/p3PBp1/p3r1PP/1p3n1N/1pRNqP1P/p2p1RPK/3Q2r1 w - - 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "1nb1B3/bk1P2p1/p3PBp1/p3r1PP/1p3n1N/1pRNqP1P/p2p1RPK/3Q2r1 w - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="8/1R2NP1N/pb1rPPK1/p1q1PpPQ/1Ppp3B/kpn2r2/nRBPP1p1/7b w - - 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "8/1R2NP1N/pb1rPPK1/p1q1PpPQ/1Ppp3B/kpn2r2/nRBPP1p1/7b w - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="4BK2/2rPnppR/pPkp2Rn/2p4P/p3pBqP/4PPPN/2rPp3/b2b1N2 w - - 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "4BK2/2rPnppR/pPkp2Rn/2p4P/p3pBqP/4PPPN/2rPp3/b2b1N2 w - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="6r1/B3P1p1/K1pP1kp1/Pp6/8/6N1/2P1p3/8 w - - 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "6r1/B3P1p1/K1pP1kp1/Pp6/8/6N1/2P1p3/8 w - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
-        let fen ="3Rr3/1R1PP3/2P2k2/5n2/p2p1N2/1P6/4K3/1r6 w - - 0 1";
+        assert_eq!(&g.to_fen(), fen);
+        let fen = "3Rr3/1R1PP3/2P2k2/5n2/p2p1N2/1P6/4K3/1r6 w - - 0 1";
         let g = GameState::from_fen(fen);
-        assert_eq!(&g.to_fen(),fen);
+        assert_eq!(&g.to_fen(), fen);
     }
 
     #[test]
@@ -202,5 +205,4 @@ mod tests {
             }
         }
     }
-
 }

@@ -9,8 +9,8 @@ lazy_static = "1.2.0"
 rand = "0.6.4"
 [profile.release]
 opt-level=3
-debug=true
-codegen-units=1
+debug=false
+codegen-units=10
 lto=true
 [profile.test]
 opt-level=3

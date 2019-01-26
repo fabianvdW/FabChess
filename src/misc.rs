@@ -193,7 +193,7 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
             let target_square = 8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
             for game_move in &available_moves {
                 if game_move.to == target_square && game_move.piece_type == moving_piece_type {
-                    if !is_promotion_move || is_promotion_move && game_move.move_type == GameMoveType::Promotion(promotion_piece.clone()) {
+                    if !is_promotion_move || is_promotion_move && match &game_move.move_type{GameMoveType::Promotion(piece,_)=>Some(piece),_=>None} == Some(&promotion_piece) {
                         let res = game_move.clone();
                         let state = movegen::make_move(&g, &res);
                         return (res, state);
@@ -207,7 +207,7 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 let file = match_file(first);
                 for game_move in &available_moves {
                     if game_move.to == target_square && game_move.piece_type == moving_piece_type && game_move.from % 8 == file {
-                        if !is_promotion_move || is_promotion_move && game_move.move_type == GameMoveType::Promotion(promotion_piece.clone()) {
+                        if !is_promotion_move || is_promotion_move && match &game_move.move_type{GameMoveType::Promotion(piece,_)=>Some(piece),_=>None} == Some(&promotion_piece) {
                             let res = game_move.clone();
                             let state = movegen::make_move(&g, &res);
                             return (res, state);
@@ -218,7 +218,7 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 let rank = match_rank(first);
                 for game_move in &available_moves {
                     if game_move.to == target_square && game_move.piece_type == moving_piece_type && game_move.from / 8 == rank {
-                        if !is_promotion_move || is_promotion_move && game_move.move_type == GameMoveType::Promotion(promotion_piece.clone()) {
+                        if !is_promotion_move || is_promotion_move && match &game_move.move_type{GameMoveType::Promotion(piece,_)=>Some(piece),_=>None} == Some(&promotion_piece) {
                             let res = game_move.clone();
                             let state = movegen::make_move(&g, &res);
                             return (res, state);

@@ -1,12 +1,13 @@
 use std::fmt::{Formatter, Display, Result, Debug};
+use super::zobrist_hashing::ZOBRIST_KEYS;
 
 #[derive(PartialEq, Clone)]
 pub enum GameMoveType {
     Quiet,
-    Capture,
+    Capture(PieceType),
     EnPassant,
     Castle,
-    Promotion(PieceType),
+    Promotion(PieceType, Option<PieceType>),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -42,7 +43,7 @@ impl Debug for GameMove {
         let mut res_str: String = String::new();
         res_str.push_str(&format!("{}{}{}{}", file_to_string(self.from % 8), self.from / 8 + 1, file_to_string(self.to % 8), self.to / 8 + 1));
         match &self.move_type {
-            GameMoveType::Capture => { res_str.push_str("") }
+            GameMoveType::Quiet => { res_str.push_str("") }
             _ => {}
         };
         write!(formatter, "{}", res_str)
@@ -91,6 +92,7 @@ pub struct GameState {
     //50 move draw counter
     pub half_moves: usize,
     pub full_moves: usize,
+    pub hash: u64,
 }
 
 impl GameState {
@@ -295,6 +297,7 @@ impl GameState {
 
             full_moves = vec[5].parse().unwrap();
         }
+        let hash = GameState::calculate_zobrist_hash(color_to_move, pieces_arr, castle_white_kingside, castle_white_queenside, castle_black_kingside, castle_black_queenside, en_passant);
         GameState {
             color_to_move,
             pieces: pieces_arr,
@@ -305,6 +308,7 @@ impl GameState {
             half_moves,
             full_moves,
             en_passant,
+            hash,
         }
     }
     pub fn to_fen(&self) -> String {
@@ -438,10 +442,13 @@ impl GameState {
         res_str
     }
     pub fn standard() -> GameState {
+        let color_to_move = 0usize;
+        let pieces = [[0xff00u64, 0xff000000000000u64], [0x42u64, 0x4200000000000000u64], [0x24u64, 0x2400000000000000u64], [0x81u64, 0x8100000000000000u64],
+            [0x8u64, 0x800000000000000u64], [0x10u64, 0x1000000000000000u64]];
+
         GameState {
-            color_to_move: 0usize,
-            pieces: [[0xff00u64, 0xff000000000000u64], [0x42u64, 0x4200000000000000u64], [0x24u64, 0x2400000000000000u64], [0x81u64, 0x8100000000000000u64],
-                [0x8u64, 0x800000000000000u64], [0x10u64, 0x1000000000000000u64]],
+            color_to_move,
+            pieces,
             castle_white_kingside: true,
             castle_white_queenside: true,
             castle_black_kingside: true,
@@ -449,7 +456,104 @@ impl GameState {
             en_passant: 0u64,
             half_moves: 0usize,
             full_moves: 1usize,
+            hash: GameState::calculate_zobrist_hash(color_to_move, pieces, true, true, true, true, 0u64),
         }
+    }
+    pub fn calculate_zobrist_hash(color_to_move: usize, pieces: [[u64; 2]; 6], cwk: bool, cwq: bool, cbk: bool, cbq: bool, ep: u64) -> u64 {
+        let mut hash = 0u64;
+        if color_to_move == 1 {
+            hash ^= ZOBRIST_KEYS.side_to_move;
+        }
+        if cwk {
+            hash ^= ZOBRIST_KEYS.castle_w_kingside;
+        }
+        if cwq {
+            hash ^= ZOBRIST_KEYS.castle_w_queenside;
+        }
+        if cbk {
+            hash ^= ZOBRIST_KEYS.castle_b_kingside;
+        }
+        if cbq {
+            hash ^= ZOBRIST_KEYS.castle_b_queenside;
+        }
+        if ep != 0u64 {
+            let file = ep.trailing_zeros() as usize % 8;
+            hash ^= ZOBRIST_KEYS.en_passant[file];
+        }
+        //W Pawns
+        let mut w_pawns = pieces[0][0];
+        while w_pawns != 0u64 {
+            let idx = w_pawns.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.w_pawns[idx];
+            w_pawns ^= 1u64 << idx;
+        }
+        let mut w_knights = pieces[0][0];
+        while w_knights != 0u64 {
+            let idx = w_knights.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.w_knights[idx];
+            w_knights ^= 1u64 << idx;
+        }
+        let mut w_bishops = pieces[0][0];
+        while w_bishops != 0u64 {
+            let idx = w_bishops.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.w_bishops[idx];
+            w_bishops ^= 1u64 << idx;
+        }
+        let mut w_rooks = pieces[0][0];
+        while w_rooks != 0u64 {
+            let idx = w_rooks.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.w_rooks[idx];
+            w_rooks ^= 1u64 << idx;
+        }
+        let mut w_queens = pieces[0][0];
+        while w_queens != 0u64 {
+            let idx = w_queens.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.w_queens[idx];
+            w_queens ^= 1u64 << idx;
+        }
+        let mut w_king = pieces[0][0];
+        while w_king != 0u64 {
+            let idx = w_king.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.w_king[idx];
+            w_king ^= 1u64 << idx;
+        }
+        let mut b_pawns = pieces[0][0];
+        while b_pawns != 0u64 {
+            let idx = b_pawns.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.b_pawns[idx];
+            b_pawns ^= 1u64 << idx;
+        }
+        let mut b_knights = pieces[0][0];
+        while b_knights != 0u64 {
+            let idx = b_knights.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.b_knights[idx];
+            b_knights ^= 1u64 << idx;
+        }
+        let mut b_bishops = pieces[0][0];
+        while b_bishops != 0u64 {
+            let idx = b_bishops.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.b_bishops[idx];
+            b_bishops ^= 1u64 << idx;
+        }
+        let mut b_rooks = pieces[0][0];
+        while b_rooks != 0u64 {
+            let idx = b_rooks.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.b_rooks[idx];
+            b_rooks ^= 1u64 << idx;
+        }
+        let mut b_queens = pieces[0][0];
+        while b_queens != 0u64 {
+            let idx = b_queens.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.b_queens[idx];
+            b_queens ^= 1u64 << idx;
+        }
+        let mut b_king = pieces[0][0];
+        while b_king != 0u64 {
+            let idx = b_king.trailing_zeros() as usize;
+            hash ^= ZOBRIST_KEYS.b_king[idx];
+            b_king ^= 1u64 << idx;
+        }
+        hash
     }
 }
 
@@ -501,6 +605,7 @@ impl Display for GameState {
         res_str.push_str(&format!("Half-Counter: {}\n", self.half_moves));
         res_str.push_str(&format!("Full-Counter: {}\n", self.full_moves));
         res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
+        res_str.push_str(&format!("Hash: {}\n", self.hash));
         write!(formatter, "{}", res_str)
     }
 }
@@ -528,6 +633,8 @@ impl Debug for GameState {
         res_str.push_str(&format!("En-Passant: 0x{:x}u64\n", self.en_passant));
         res_str.push_str(&format!("half_moves: {}\n", self.half_moves));
         res_str.push_str(&format!("full_moves: {}\n", self.full_moves));
+        res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
+        res_str.push_str(&format!("Hash: {}\n", self.hash));
         write!(formatter, "{}", res_str)
     }
 }
