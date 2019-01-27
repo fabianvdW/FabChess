@@ -1,7 +1,7 @@
 use std::fmt::{Formatter, Display, Result, Debug};
 use super::zobrist_hashing::ZOBRIST_KEYS;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum GameMoveType {
     Quiet,
     Capture(PieceType),

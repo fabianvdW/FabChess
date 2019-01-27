@@ -8,30 +8,26 @@ mod bitboards;
 mod move_generation;
 mod evaluation;
 mod logging;
+mod search;
 
 use self::board_representation::game_state::GameState;
 use self::move_generation::movegen;
 use std::time::Instant;
 use logging::log;
+use search::quiesence;
 
 fn main() {
     let now = Instant::now();
     bitboards::init_bitboards();
     move_generation::magic::init_magics();
     board_representation::zobrist_hashing::init_at_program_start();
+    search::init_constants();
     log("Should have initialized everything!");
 
     let new_now = Instant::now();
     log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
     let now = Instant::now();
-
-    //let g = GameState::from_fen("8/4k3/8/3p2p1/3Pb1P1/4PB1p/5K2/8 b - - 0 59");
-    //println!("{}", g);
-    //println!("{}", evaluation::eval_game_state(&g));
-    let g = GameState::from_fen(misc::STD_FEN);
-    //let nodes = perft_div(&g, 7);
-    //println!("{}", nodes);
-    //misc::parse_pgn_find_static_eval_mistakes();
+    
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed * 1000.0);
@@ -194,6 +190,7 @@ mod tests {
 
     #[test]
     fn zobrist_hash_test() {
+        //Tests incremental update of hash
         let mut rng = rand::thread_rng();
         for _i in 0..10000 {
             let mut g = GameState::standard();

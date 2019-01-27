@@ -13,7 +13,7 @@ const EG_LIMIT: f64 = 2350.0;
 
 use super::logging::{log, VERBOSE};
 use super::move_generation::movegen;
-use super::board_representation::game_state::GameState;
+use super::board_representation::game_state::{GameState, PieceType};
 use super::bitboards;
 use self::pawn_evaluation::{pawn_eval_white, pawn_eval_black, PawnEvaluation};
 use self::passed_evaluation::{passed_eval_white, passed_eval_black, PassedEvaluation};
@@ -42,7 +42,14 @@ pub trait EndGameDisplay {
     fn display_eg(&self) -> String;
 }
 
-pub fn eval_game_state(g: &GameState) -> f64 {
+pub struct EvaluationResult {
+    pub mg_eval: f64,
+    pub eg_eval: f64,
+    pub phase: f64,
+    pub final_eval: f64,
+}
+
+pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     let w_pawns = g.pieces[0][0];
     let w_knights = g.pieces[1][0];
     let w_bishops = g.pieces[2][0];
@@ -209,7 +216,7 @@ pub fn eval_game_state(g: &GameState) -> f64 {
                  &white_piecewise_eval, white_piecewise_eval_mg, white_piecewise_eval_eg, &black_piecewise_eval, black_piecewise_eval_mg, black_piecewise_eval_eg,
                  phase, mg_eval, eg_eval, res);
     }
-    res / 100.0
+    EvaluationResult { mg_eval, eg_eval, phase, final_eval: res / 100.0 }
 }
 
 pub fn calculate_phase(w_queens: u64, b_queens: u64, w_knights: u64, b_knights: u64, w_bishops: u64, b_bishops: u64, w_rooks: u64, b_rooks: u64) -> f64 {
@@ -224,6 +231,22 @@ pub fn calculate_phase(w_queens: u64, b_queens: u64, w_knights: u64, b_knights: 
         npm = MG_LIMIT;
     }
     (npm - EG_LIMIT) * 128.0 / (MG_LIMIT - EG_LIMIT)
+}
+
+pub fn piece_value(piece_type: &PieceType, phase: f64) -> f64 {
+    if *piece_type == PieceType::Pawn {
+        return (pawn_evaluation::PAWN_PIECE_VALUE_MG * phase + pawn_evaluation::PAWN_PIECE_VALUE_EG * (128.0 - phase)) / 128.0;
+    } else if *piece_type == PieceType::Knight {
+        return (knight_evaluation::KNIGHT_PIECE_VALUE_MG * phase + knight_evaluation::KNIGHT_PIECE_VALUE_EG * (128.0 - phase)) / 128.0;
+    } else if *piece_type == PieceType::Bishop {
+        return (bishop_evaluation::BISHOP_PIECE_VALUE_MG * phase + bishop_evaluation::BISHOP_PIECE_VALUE_EG * (128.0 - phase)) / 128.0;
+    } else if *piece_type == PieceType::Rook {
+        return (rook_evaluation::ROOK_PIECE_VALUE_MG * phase + rook_evaluation::ROOK_PIECE_VALUE_EG * (128.0 - phase)) / 128.0;
+    } else if *piece_type == PieceType::Queen {
+        return (queen_evaluation::QUEEN_PIECE_VALUE_MG * phase + queen_evaluation::QUEEN_PIECE_VALUE_EG * (128.0 - phase)) / 128.0;
+    } else {
+        panic!("Invalid piece type!");
+    }
 }
 
 pub fn make_log(white_pawns_eval: &PawnEvaluation, white_pawns_eval_mg: f64, white_pawns_eval_eg: f64,
