@@ -63,6 +63,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
     }
     let captured_piece = match &capture_move.move_type {
         GameMoveType::Capture(c) => c,
+        GameMoveType::EnPassant => &PieceType::Pawn,
         _ => panic!("No capture!")
     };
     eval + evaluation::piece_value(&captured_piece, phase) + 200.0 >= alpha
@@ -251,8 +252,8 @@ mod tests {
         let mut stats = SearchStatistics::new();
         let state = GameState::standard();
         let movegen = movegen::generate_moves(&state);
-        assert_eq!(q_search(-100000.0, 100000.0, &state, 1, 0, &mut stats, movegen.0, movegen.1,0),0.0);
-        assert_eq!(stats.seldepth,0);
-        assert_eq!(stats.nodes_searched,1);
+        assert_eq!(q_search(-100000.0, 100000.0, &state, 1, 0, &mut stats, movegen.0, movegen.1, 0), 0.0);
+        assert_eq!(stats.seldepth, 0);
+        assert_eq!(stats.nodes_searched, 1);
     }
 }

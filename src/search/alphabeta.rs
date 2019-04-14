@@ -3,12 +3,13 @@ use super::super::board_representation::game_state::{GameMove, GameMoveType, Pie
 use super::super::movegen;
 use super::quiesence::q_search;
 use super::statistics::SearchStatistics;
+use crate::evaluation::eval_game_state;
 
 pub const MATE_SCORE: f64 = 3000.0;
 
 pub fn search_gamestate(game_state: &GameState) {}
 
-pub fn principal_variation_search(alpha: f64, beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize) -> f64 {
+pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize) -> f64 {
     stats.add_normal_node(current_depth);
     let (legal_moves, in_check) = movegen::generate_moves(&game_state);
     let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check);
@@ -18,8 +19,18 @@ pub fn principal_variation_search(alpha: f64, beta: f64, depth_left: isize, game
     if depth_left <= 0 {
         stats.add_q_root();
         return q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth);
+        //return eval_game_state(&game_state).final_eval * color as f64;
     }
-    0.0
+    for mv in legal_moves {
+        let rating = -principal_variation_search(-beta, -alpha, depth_left - 1, &movegen::make_move(&game_state, &mv), -color, stats, current_depth + 1);
+        if rating > alpha {
+            alpha = rating;
+        }
+        if alpha >= beta {
+            return beta;
+        }
+    }
+    alpha
 }
 
 pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f64 {
