@@ -60,7 +60,7 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
     bitboards::south_east_one(pawns)
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, piece_type: &PieceType, move_type: GameMoveType) {
     while to_board != 0u64 {
         let idx = to_board.trailing_zeros() as usize;
@@ -77,7 +77,7 @@ pub fn add_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, 
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_capture_moves(move_list: &mut Vec<GameMove>, from: usize, mut to_board: u64, piece_type: &PieceType, enemy_pawns: u64, enemy_knights: u64, enemy_bishops: u64, enemy_rooks: u64, enemy_queens: u64) {
     while to_board != 0u64 {
         let idx = to_board.trailing_zeros() as usize;
@@ -103,7 +103,7 @@ pub fn make_move(g: &game_state::GameState, mv: &game_state::GameMove) -> game_s
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn move_piece_hash(move_color: usize, mv: &game_state::GameMove, mut hash: u64) -> u64 {
     if move_color == 0 {
         match mv.piece_type {
@@ -151,7 +151,7 @@ pub fn move_piece_hash(move_color: usize, mv: &game_state::GameMove, mut hash: u
     hash
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn enpassant_hash(old_en_passant: u64, new_en_passant: u64, mut hash: u64) -> u64 {
     if old_en_passant != 0u64 {
         hash ^= ZOBRIST_KEYS.en_passant[old_en_passant.trailing_zeros() as usize % 8];
@@ -162,7 +162,7 @@ pub fn enpassant_hash(old_en_passant: u64, new_en_passant: u64, mut hash: u64) -
     hash
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn castle_hash(ocwk: bool, ocwq: bool, ocbk: bool, ocbq: bool, ncwk: bool, ncwq: bool, ncbk: bool, ncbq: bool, mut hash: u64) -> u64 {
     if ocwk {
         if !ncwk {
@@ -187,7 +187,7 @@ pub fn castle_hash(ocwk: bool, ocwq: bool, ocbk: bool, ocbq: bool, ncwk: bool, n
     hash
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn delete_piece_hash(delete_square: usize, delete_color: usize, captured_piece: &PieceType, mut hash: u64) -> u64 {
     if delete_color == 0 {
         hash ^= match captured_piece {
@@ -211,7 +211,7 @@ pub fn delete_piece_hash(delete_square: usize, delete_color: usize, captured_pie
     hash
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn move_piece(pieces: &mut [[u64; 2]; 6], mv: &game_state::GameMove, move_color: usize) {
     let index = match mv.piece_type {
         PieceType::Pawn => 0,
@@ -227,7 +227,7 @@ pub fn move_piece(pieces: &mut [[u64; 2]; 6], mv: &game_state::GameMove, move_co
     //pieces[index][move_color] |= 1u64<<mv.to;
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn delete_piece(pieces: &mut [[u64; 2]; 6], captured_piece: &PieceType, delete_square: usize, delete_color: usize) {
     pieces[match captured_piece {
         PieceType::Pawn => 0,
@@ -874,7 +874,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     (move_list, num_checkers > 0)
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn find_captured_piece_type(to: usize, e_pawns: u64, e_knights: u64, e_bishops: u64, e_rooks: u64, e_queens: u64) -> PieceType {
     let to_board = 1u64 << to;
     if e_pawns & to_board != 0u64 {
@@ -893,7 +893,7 @@ pub fn find_captured_piece_type(to: usize, e_pawns: u64, e_knights: u64, e_bisho
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
     while single_push_board != 0u64 {
         let idx = single_push_board.trailing_zeros() as usize;
@@ -907,7 +907,7 @@ pub fn add_quiet_pawn_single_pushes(mut single_push_board: u64, color_to_move: &
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>) {
     while double_push_board != 0u64 {
         let idx = double_push_board.trailing_zeros() as usize;
@@ -921,7 +921,7 @@ pub fn add_quiet_pawn_double_pushes(mut double_push_board: u64, color_to_move: &
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize) {
     while promotion_board != 0u64 {
         let idx = promotion_board.trailing_zeros() as usize;
@@ -953,7 +953,7 @@ pub fn add_promotion_push(mut promotion_board: u64, color_to_move: &usize, move_
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_promotion_capture(mut promotion_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize, enemy_pawns: u64, enemy_knights: u64, enemy_bishops: u64, enemy_rooks: u64, enemy_queens: u64) {
     while promotion_board != 0u64 {
         let idx = promotion_board.trailing_zeros() as usize;
@@ -986,7 +986,7 @@ pub fn add_promotion_capture(mut promotion_board: u64, color_to_move: &usize, mo
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize, enemy_pawns: u64, enemy_knights: u64, enemy_bishops: u64, enemy_rooks: u64, enemy_queens: u64) {
     while capture_board != 0u64 {
         let idx = capture_board.trailing_zeros() as usize;
@@ -1000,7 +1000,7 @@ pub fn add_pawn_capture(mut capture_board: u64, color_to_move: &usize, move_list
     }
 }
 
-//[inline(always)]
+#[inline(always)]
 pub fn add_en_passants(mut enpassant_board: u64, color_to_move: &usize, move_list: &mut Vec<GameMove>, source_shift: usize, all_pieces_without_my_king: u64, enemy_rooks: u64, my_king_idx: usize) {
     while enpassant_board != 0u64 {
         let index = enpassant_board.trailing_zeros() as usize;

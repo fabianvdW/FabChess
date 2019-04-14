@@ -488,11 +488,11 @@ pub fn make_log(white_pawns_eval: &PawnEvaluation, white_pawns_eval_mg: f64, whi
         }
         if phase != 0.0 {
             log(&format!("MGEval: {} + {} - {} = {}\n", verbose_mg, white_piecewise_eval_mg, black_piecewise_eval_mg, verbose_mg + white_piecewise_eval_mg - black_piecewise_eval_mg));
-            verbose_mg += white_piecewise_eval_mg - black_piecewise_eval_mg;
+            //verbose_mg += white_piecewise_eval_mg - black_piecewise_eval_mg;
         }
         if phase != 128.0 {
             log(&format!("EGEval: {} + {} - {} = {}\n", verbose_eg, white_piecewise_eval_eg, black_piecewise_eval_eg, verbose_eg + white_piecewise_eval_eg - black_piecewise_eval_eg));
-            verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
+            //verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
         }
     }
     log(&format!("Phase: {}\n", phase));

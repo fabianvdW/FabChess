@@ -15,6 +15,7 @@ use self::move_generation::movegen;
 use std::time::Instant;
 use logging::log;
 use search::quiesence;
+use search::statistics;
 
 fn main() {
     let now = Instant::now();
@@ -26,12 +27,24 @@ fn main() {
 
     let new_now = Instant::now();
     log(&format!("Initialization Time: {}ms\n", new_now.duration_since(now).as_secs() * 1000 + new_now.duration_since(now).subsec_millis() as u64));
-    let now = Instant::now();
-    
+
+    /*let now = Instant::now();
+
+    let nodes = perft(&GameState::standard(),6);
+    println!("{}",nodes);
+
     let new_now = Instant::now();
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed * 1000.0);
-    //println!("NPS: {}", nodes as f64 / time_passed);
+    println!("NPS: {}", nodes as f64 / time_passed);*/
+
+    let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
+    let mut stats = statistics::SearchStatistics::new();
+    let gen = movegen::generate_moves(&state);
+    let score = quiesence::q_search(-100000.0, 100000.0, &state, -1, 0, &mut stats, gen.0, gen.1, 0);
+    stats.refresh_time_elapsed();
+    println!("{}", score);
+    println!("{}", stats);
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
@@ -206,6 +219,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn pgn_test() {
         for path in &KING_BASE_PATH {
             let res = File::open(path);

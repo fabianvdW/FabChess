@@ -1,4 +1,4 @@
-pub const VERBOSE: bool = true;
+pub const VERBOSE: bool = false;
 pub const LOG_FILE: &str = "log.txt";
 pub const LOG_TO_STDOUT: bool = false;
 
