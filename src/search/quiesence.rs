@@ -4,6 +4,7 @@ use super::super::move_generation::movegen;
 use super::alphabeta::{GameResult, check_end_condition, leaf_score};
 use super::statistics::SearchStatistics;
 use crate::bitboards;
+use super::GradedMove;
 
 lazy_static! {
 pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
@@ -25,23 +26,34 @@ pub fn q_search(mut alpha: f64, beta: f64, game_state: &GameState, color: isize,
     }
 
     //Missing: Sort moves. Could sort by SEE since we need it anyway
-    for capture_move in legal_moves {
-        if match capture_move.move_type {
+    let mut capture_moves = Vec::with_capacity(legal_moves.len());
+    for mv in legal_moves {
+        if match mv.move_type {
             GameMoveType::Quiet | GameMoveType::Castle | GameMoveType::Promotion(_, None) => true,
             _ => false
         } {
             continue;
         }
+        if let GameMoveType::EnPassant = mv.move_type {
+            capture_moves.push(GradedMove::new(mv, 100.0));
+        } else {
+            let score= see(&game_state,&mv);
+            capture_moves.push(GradedMove::new(mv, score));
+        }
+    }
 
-        if !passes_delta_pruning(&capture_move, evaluation.phase, stand_pat, alpha) {
+    capture_moves.sort();
+    for capture_move in capture_moves {
+        let mv = capture_move.mv;
+        if !passes_delta_pruning(&mv, evaluation.phase, stand_pat, alpha) {
             stats.add_q_delta_cutoff();
             continue;
         }
-        if capture_move.piece_type != PieceType::Pawn && see(&game_state, &capture_move) < 0.0 {
+        if mv.piece_type != PieceType::Pawn && capture_move.score < 0.0 {
             stats.add_q_see_cutoff();
             continue;
         }
-        let next_g = movegen::make_move(&game_state, &capture_move);
+        let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
         let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1);
         if score >= beta {
