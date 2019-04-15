@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 pub mod alphabeta;
 pub mod quiesence;
 pub mod statistics;
+pub mod cache;
 
 pub fn init_constants() {
     quiesence::PIECE_VALUES.len();
