@@ -38,10 +38,12 @@ fn main() {
     println!("Time: {}ms", time_passed * 1000.0);
     println!("NPS: {}", nodes as f64 / time_passed);*/
 
+    let mut ca = search::cache::Cache::new();
+    let mut search = search::search::Search::new(&mut ca);
     let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
     let mut stats = statistics::SearchStatistics::new();
     //let gen = movegen::generate_moves(&state);
-    let pv = principal_variation_search(-100000.0, 100000.0, 4, &state, -1, &mut stats, 0);
+    let pv = principal_variation_search(-100000.0, 100000.0, 5, &state, -1, &mut stats, 0, &mut search);
     let score = pv.score;
     stats.refresh_time_elapsed();
     println!("{}", score);

@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter, Result};
+use super::search::Search;
 use super::super::GameState;
 use super::super::board_representation::game_state::{GameMove, GameMoveType, PieceType};
 use super::super::movegen;
+use super::cache::CacheEntry;
 use super::quiesence::q_search;
 use super::statistics::SearchStatistics;
 use crate::evaluation::eval_game_state;
@@ -10,7 +12,7 @@ pub const MATE_SCORE: f64 = 3000.0;
 
 pub fn search_gamestate(game_state: &GameState) {}
 
-pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize) -> PrincipalVariation {
+pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
     let mut pv: PrincipalVariation = PrincipalVariation::new(depth_left as usize);
     let (legal_moves, in_check) = movegen::generate_moves(&game_state);
@@ -21,30 +23,97 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     }
     if depth_left <= 0 {
         stats.add_q_root();
-        pv.score = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth);
+        pv.score = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth, search);
         return pv;
         //return eval_game_state(&game_state).final_eval * color as f64;
     }
+
+    //Probe TT
+    {
+        let ce = search.cache.cache.get(game_state.hash as usize & super::cache::CACHE_MASK);
+        let ce = match ce {
+            Some(s) => s,
+            _ => panic!("Invalid cache "),
+        };
+        if let Some(s) = ce {
+            let ce: &CacheEntry = match ce {
+                Some(s) => s,
+                _ => panic!("Invalid "),
+            };
+            if ce.hash == game_state.hash {
+                if ce.occurences == 0 && ce.depth >= depth_left as u8 {
+                    if !ce.alpha && !ce.beta {
+                        pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                        pv.score = ce.score;
+                        return pv;
+                    } else {
+                        if ce.beta {
+                            if ce.score > alpha {
+                                alpha = ce.score;
+                            }
+                        } else {
+                            if ce.score < beta {
+                                beta = ce.score;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let mut index = 0;
     for mv in legal_moves {
-        let mut following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &movegen::make_move(&game_state, &mv), -color, stats, current_depth + 1);
+        let mut following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &movegen::make_move(&game_state, &mv), -color, stats, current_depth + 1, search);
         let rating = -following_pv.score;
-        if rating > alpha {
+        if rating > pv.score {
             pv.pv.clear();
             pv.pv.push(mv);
             pv.pv.append(&mut following_pv.pv);
+            pv.score = rating;
+        }
+        if rating > alpha {
             alpha = rating;
         }
         if alpha >= beta {
             stats.add_normal_node_beta_cutoff(index);
-            pv.score = beta;
-            return pv;
+            break;
         }
         index += 1;
     }
-    stats.add_normal_node_non_beta_cutoff();
-    pv.score = alpha;
+    if alpha < beta {
+        stats.add_normal_node_non_beta_cutoff();
+    }
+    //Make cache
+    make_cache(search, &pv, &game_state, alpha, beta, depth_left);
     return pv;
+}
+
+pub fn make_cache(search: &mut Search, pv: &PrincipalVariation, game_state: &GameState, alpha: f64, beta: f64, depth_left: isize) {
+    let beta_node: bool = pv.score >= beta;
+    let alpha_node: bool = pv.score < alpha;
+    let index = game_state.hash as usize & super::cache::CACHE_MASK;
+    let ce = search.cache.cache.get(game_state.hash as usize & super::cache::CACHE_MASK);
+    let ce = match ce {
+        Some(s) => s,
+        _ => panic!("Invalid cache "),
+    };
+    let new_entry = CacheEntry::new(&game_state, depth_left as usize, pv.score, alpha_node, beta_node, match pv.pv.get(0) {
+        Some(mv) => &mv,
+        _ => panic!("Invalid pv!")
+    });
+    if let None = ce {
+        search.cache.cache[index] = Some(new_entry);
+    } else {
+        let old_entry: &CacheEntry = match ce {
+            Some(s) => s,
+            _ => panic!("Invalid if let!")
+        };
+        //Make replacement scheme better
+        if old_entry.occurences == 0 && old_entry.depth <= depth_left as u8 {
+            search.cache.cache[index] = Some(new_entry);
+        }
+    }
 }
 
 pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f64 {

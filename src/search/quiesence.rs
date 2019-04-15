@@ -2,6 +2,9 @@ use super::super::board_representation::game_state::{GameState, GameMove, GameMo
 use super::super::evaluation::{eval_game_state, self};
 use super::super::move_generation::movegen;
 use super::alphabeta::{GameResult, check_end_condition, leaf_score};
+use super::search::Search;
+use super::alphabeta::PrincipalVariation;
+use super::cache::CacheEntry;
 use super::statistics::SearchStatistics;
 use crate::bitboards;
 use super::GradedMove;
@@ -10,7 +13,7 @@ lazy_static! {
 pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
 }
 
-pub fn q_search(mut alpha: f64, beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize) -> f64 {
+pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search) -> f64 {
     stats.add_q_node(current_depth);
     let evaluation = eval_game_state(&game_state);
     let stand_pat = evaluation.final_eval * color as f64;
@@ -42,6 +45,45 @@ pub fn q_search(mut alpha: f64, beta: f64, game_state: &GameState, color: isize,
         }
     }
 
+    //Probe TT
+    {
+        let ce = search.cache.cache.get(game_state.hash as usize & super::cache::CACHE_MASK);
+        let ce = match ce {
+            Some(s) => s,
+            _ => panic!("Invalid cache "),
+        };
+        if let Some(s) = ce {
+            let ce: &CacheEntry = match ce {
+                Some(s) => s,
+                _ => panic!("Invalid "),
+            };
+            if ce.hash == game_state.hash {
+                if ce.occurences == 0 && ce.depth >= depth_left as u8 {
+                    if !ce.alpha && !ce.beta {
+                        return ce.score;
+                    } else {
+                        if ce.beta {
+                            if ce.score > alpha {
+                                alpha = ce.score;
+                            }
+                        } else {
+                            if ce.score < beta {
+                                beta = ce.score;
+                            }
+                        }
+                    }
+                }
+                let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                for cmv in capture_moves.iter_mut() {
+                    if cmv.mv.from == mv.from && cmv.mv.to == mv.to && cmv.mv.move_type == mv.move_type {
+                        cmv.score += 10000.0;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     capture_moves.sort();
     let mut index = 0;
     for capture_move in capture_moves {
@@ -58,7 +100,7 @@ pub fn q_search(mut alpha: f64, beta: f64, game_state: &GameState, color: isize,
         }
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
-        let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1);
+        let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search);
         if score >= beta {
             stats.add_q_beta_cutoff(index);
             return beta;

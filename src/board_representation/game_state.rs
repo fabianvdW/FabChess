@@ -290,7 +290,7 @@ impl GameState {
             en_passant = 1u64 << idx;
         }
         let mut half_moves = 0;
-        let mut full_moves = 0;
+        let mut full_moves = 1;
         if vec.len() > 4 {
             //HalfMoveClock
             half_moves = vec[4].parse().unwrap();
