@@ -9,6 +9,12 @@ pub struct SearchStatistics {
     pub normal_nodes_searched: u64,
     pub q_delta_cutoffs: u64,
     pub q_see_cutoffs: u64,
+    pub q_beta_cutoffs: u64,
+    pub q_beta_cutoffs_index: [usize; 32],
+    pub q_non_beta_cutoffs: u64,
+    pub normal_nodes_beta_cutoffs: u64,
+    pub normal_nodes_beta_cutoffs_index: [usize; 32],
+    pub normal_nodes_non_beta_cutoffs: u64,
     pub time_elapsed: u64,
     pub start_time: Instant,
 }
@@ -23,6 +29,12 @@ impl SearchStatistics {
             normal_nodes_searched: 0,
             q_delta_cutoffs: 0,
             q_see_cutoffs: 0,
+            q_beta_cutoffs: 0,
+            q_beta_cutoffs_index: [0; 32],
+            q_non_beta_cutoffs: 0,
+            normal_nodes_beta_cutoffs: 0,
+            normal_nodes_non_beta_cutoffs: 0,
+            normal_nodes_beta_cutoffs_index: [0; 32],
             time_elapsed: 0,
             start_time: Instant::now(),
         }
@@ -48,12 +60,33 @@ impl SearchStatistics {
     }
     pub fn add_q_root(&mut self) {
         self.nodes_searched -= 1;
+        self.normal_nodes_searched -= 1;
     }
     pub fn add_q_delta_cutoff(&mut self) {
         self.q_delta_cutoffs += 1;
     }
     pub fn add_q_see_cutoff(&mut self) {
         self.q_see_cutoffs += 1;
+    }
+    pub fn add_q_beta_cutoff(&mut self, index: usize) {
+        self.q_beta_cutoffs += 1;
+        self.q_beta_cutoffs_index[index] += 1;
+    }
+    pub fn add_q_beta_noncutoff(&mut self) {
+        self.q_non_beta_cutoffs += 1;
+    }
+
+    pub fn add_normal_node_beta_cutoff(&mut self, index: usize) {
+        self.normal_nodes_beta_cutoffs += 1;
+        if index > 31 {
+            self.normal_nodes_beta_cutoffs_index[31] += 1;
+        } else {
+            self.normal_nodes_beta_cutoffs_index[index] += 1;
+        }
+    }
+
+    pub fn add_normal_node_non_beta_cutoff(&mut self) {
+        self.normal_nodes_non_beta_cutoffs += 1;
     }
 }
 
@@ -67,6 +100,13 @@ impl Display for SearchStatistics {
         res_str.push_str(&format!("Quiesence nodes: {} ({}%)\n", self.q_nodes_searched, (self.q_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Q-Search Delta cutoffs: {} ({}%)\n", self.q_delta_cutoffs, (self.q_delta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Q-Search SEE   cutoffs: {} ({}%)\n", self.q_see_cutoffs, (self.q_see_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Q-Search Beta  cutoffs: {} ({}%)\n", self.q_beta_cutoffs, (self.q_beta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Q-Search Beta  cutoffs: {:?}\n", self.q_beta_cutoffs_index));
+        res_str.push_str(&format!("Q-Search No    cutoffs: {} ({}%)\n", self.q_non_beta_cutoffs, (self.q_non_beta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal nodes: {} ({}%)\n", self.normal_nodes_searched, (self.normal_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {} ({}%)\n", self.normal_nodes_beta_cutoffs, (self.normal_nodes_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {:?}\n", self.normal_nodes_beta_cutoffs_index));
+        res_str.push_str(&format!("Normal-Search No    cutoffs: {} ({}%)\n", self.normal_nodes_non_beta_cutoffs, (self.normal_nodes_non_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)));
         write!(formatter, "{}", res_str)
     }
 }

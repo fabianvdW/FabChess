@@ -26,7 +26,7 @@ pub fn q_search(mut alpha: f64, beta: f64, game_state: &GameState, color: isize,
     }
 
     //Missing: Sort moves. Could sort by SEE since we need it anyway
-    let mut capture_moves = Vec::with_capacity(legal_moves.len());
+    let mut capture_moves = Vec::with_capacity(20);
     for mv in legal_moves {
         if match mv.move_type {
             GameMoveType::Quiet | GameMoveType::Castle | GameMoveType::Promotion(_, None) => true,
@@ -37,32 +37,38 @@ pub fn q_search(mut alpha: f64, beta: f64, game_state: &GameState, color: isize,
         if let GameMoveType::EnPassant = mv.move_type {
             capture_moves.push(GradedMove::new(mv, 100.0));
         } else {
-            let score= see(&game_state,&mv);
+            let score = see(&game_state, &mv, false);
             capture_moves.push(GradedMove::new(mv, score));
         }
     }
 
     capture_moves.sort();
+    let mut index = 0;
     for capture_move in capture_moves {
         let mv = capture_move.mv;
         if !passes_delta_pruning(&mv, evaluation.phase, stand_pat, alpha) {
             stats.add_q_delta_cutoff();
+            index += 1;
             continue;
         }
-        if mv.piece_type != PieceType::Pawn && capture_move.score < 0.0 {
+        if capture_move.score < 0.0 {
             stats.add_q_see_cutoff();
+            index += 1;
             continue;
         }
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
         let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1);
         if score >= beta {
+            stats.add_q_beta_cutoff(index);
             return beta;
         }
         if score > alpha {
             alpha = score;
         }
+        index += 1;
     }
+    stats.add_q_beta_noncutoff();
     alpha
 }
 
@@ -81,7 +87,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
     eval + evaluation::piece_value(&captured_piece, phase) + 200.0 >= alpha
 }
 
-pub fn see(game_state: &GameState, mv: &GameMove) -> f64 {
+pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
     let mut gain = Vec::with_capacity(32);
     let may_xray = game_state.pieces[0][0] | game_state.pieces[0][1] | game_state.pieces[2][0] | game_state.pieces[2][1] | game_state.pieces[3][0] | game_state.pieces[3][1] |
         game_state.pieces[4][0] | game_state.pieces[4][1];
@@ -104,9 +110,9 @@ pub fn see(game_state: &GameState, mv: &GameMove) -> f64 {
         deleted_pieces |= from_set;
         index += 1;
         gain.push(PIECE_VALUES[attacked_piece] - gain[index - 1]);
-        /*if (-gain[index - 1]).max(gain[index]) < 0.0 {
+        if !exact && (-gain[index - 1]).max(gain[index]) < 0.0 {
             break;
-        }*/
+        }
         attadef ^= from_set;
         occ ^= from_set;
         if from_set & may_xray != 0u64 {
@@ -202,61 +208,61 @@ mod tests {
             to: 36usize,
             move_type: GameMoveType::Capture(PieceType::Pawn),
             piece_type: PieceType::Rook,
-        }), 100.0);
+        }, true), 100.0);
         assert_eq!(see(&GameState::from_fen("1k2r3/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"), &GameMove {
             from: 4usize,
             to: 36usize,
             move_type: GameMoveType::Capture(PieceType::Pawn),
             piece_type: PieceType::Rook,
-        }), -400.0);
+        }, true), -400.0);
         assert_eq!(see(&GameState::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"), &GameMove {
             from: 19,
             to: 36,
             move_type: GameMoveType::Capture(PieceType::Pawn),
             piece_type: PieceType::Knight,
-        }), -200.0);
+        }, true), -200.0);
         assert_eq!(see(&GameState::from_fen("1k1r3q/1ppn3p/p4b2/4n3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"), &GameMove {
             from: 19,
             to: 36,
             move_type: GameMoveType::Capture(PieceType::Knight),
             piece_type: PieceType::Knight,
-        }), 0.0);
+        }, true), 0.0);
         assert_eq!(see(&GameState::from_fen("1k1r2q1/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"), &GameMove {
             from: 19,
             to: 36,
             move_type: GameMoveType::Capture(PieceType::Pawn),
             piece_type: PieceType::Knight,
-        }), -90.0);
+        }, true), -90.0);
         assert_eq!(see(&GameState::from_fen("8/8/3p4/4r3/2RKP3/5k2/8/8 b - -"), &GameMove {
             from: 36,
             to: 28,
             move_type: GameMoveType::Capture(PieceType::Pawn),
             piece_type: PieceType::Rook,
-        }), 100.0);
+        }, true), 100.0);
         assert_eq!(see(&GameState::from_fen("k7/8/5q2/8/3r4/2KQ4/8/8 w - -"), &GameMove {
             from: 19,
             to: 27,
             move_type: GameMoveType::Capture(PieceType::Rook),
             piece_type: PieceType::Queen,
-        }), 500.0);
+        }, true), 500.0);
         assert_eq!(see(&GameState::from_fen("8/8/5q2/2k5/3r4/2KQ4/8/8 w - -"), &GameMove {
             from: 19,
             to: 27,
             move_type: GameMoveType::Capture(PieceType::Rook),
             piece_type: PieceType::Queen,
-        }), -400.0);
+        }, true), -400.0);
         assert_eq!(see(&GameState::from_fen("4pq2/3P4/8/8/8/8/8/k1K5 w - -"), &GameMove {
             from: 51,
             to: 60,
             move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
             piece_type: PieceType::Pawn,
-        }), 0.0);
+        }, true), 0.0);
         assert_eq!(see(&GameState::from_fen("4pq2/3P4/2B5/8/8/8/8/k1K5 w - -"), &GameMove {
             from: 51,
             to: 60,
             move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
             piece_type: PieceType::Pawn,
-        }), 100.0);
+        }, true), 100.0);
     }
 
     #[test]
