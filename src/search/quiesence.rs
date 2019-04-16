@@ -9,6 +9,7 @@ use super::statistics::SearchStatistics;
 use crate::bitboards;
 use super::GradedMove;
 
+pub const DELTA_PRUNING: f64 = 2.0;
 lazy_static! {
 pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
 }
@@ -30,7 +31,12 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         alpha = stand_pat;
     }
 
-    //Missing: Sort moves. Could sort by SEE since we need it anyway
+    //Apply Big Delta Pruning
+    let diff = alpha - stand_pat - DELTA_PRUNING;
+    if diff > 0.0 && best_move_value(game_state) < diff {
+        return stand_pat;
+    }
+
     let mut capture_moves = Vec::with_capacity(20);
     for mv in legal_moves {
         if match mv.move_type {
@@ -42,7 +48,15 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         if let GameMoveType::EnPassant = mv.move_type {
             capture_moves.push(GradedMove::new(mv, 100.0));
         } else {
+            if !passes_delta_pruning(&mv, evaluation.phase, stand_pat, alpha) {
+                stats.add_q_delta_cutoff();
+                continue;
+            }
             let score = see(&game_state, &mv, false);
+            if score < 0.0 {
+                stats.add_q_see_cutoff();
+                continue;
+            }
             capture_moves.push(GradedMove::new(mv, score));
         }
     }
@@ -90,16 +104,6 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     let mut bestmovescore = stand_pat;
     for capture_move in capture_moves {
         let mv = capture_move.mv;
-        if !passes_delta_pruning(&mv, evaluation.phase, stand_pat, alpha) {
-            stats.add_q_delta_cutoff();
-            index += 1;
-            continue;
-        }
-        if capture_move.score < 0.0 {
-            stats.add_q_see_cutoff();
-            index += 1;
-            continue;
-        }
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
         let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search);
@@ -119,6 +123,23 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     bestmovescore
 }
 
+pub fn best_move_value(state: &GameState) -> f64 {
+    let mut res = 1.0;
+    let mut i = 4;
+    while i > 0 {
+        if state.pieces[i][1 - state.color_to_move] != 0u64 {
+            res = PIECE_VALUES[i] / 100.0;
+            break;
+        }
+        i -= 1;
+    }
+
+    if (state.pieces[0][state.color_to_move] & bitboards::RANKS[if state.color_to_move == 0 { 6 } else { 1 }]) != 0u64 {
+        res += (PIECE_VALUES[4] - PIECE_VALUES[0]) / 100.0;
+    }
+    res
+}
+
 pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alpha: f64) -> bool {
     if phase == 0.0 {
         return true;
@@ -131,7 +152,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
         GameMoveType::EnPassant => &PieceType::Pawn,
         _ => panic!("No capture!")
     };
-    eval + evaluation::piece_value(&captured_piece, phase) + 200.0 >= alpha
+    eval + (evaluation::piece_value(&captured_piece, phase)) / 100.0 + DELTA_PRUNING >= alpha
 }
 
 pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
