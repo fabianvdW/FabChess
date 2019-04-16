@@ -60,14 +60,14 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
                             if ce.score > alpha {
                                 alpha = ce.score;
                             }
-                        } else {
+                        } else if ce.alpha {
                             if ce.score < beta {
                                 beta = ce.score;
                             }
                         }
                         if alpha >= beta {
                             stats.add_cache_hit_aj_replace_ns();
-                            pv.score = alpha;
+                            pv.score = ce.score;
                             pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
                             return pv;
                         }
@@ -94,6 +94,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
             }
         }
         let rating = -following_pv.score;
+
         if rating > pv.score {
             pv.pv.clear();
             pv.pv.push(mv);
@@ -135,6 +136,7 @@ pub fn find_move(mv: &GameMove, mv_list: &Vec<GameMove>) -> usize {
 pub fn make_cache(search: &mut Search, pv: &PrincipalVariation, game_state: &GameState, original_alpha: f64, beta: f64, depth_left: isize) {
     let beta_node: bool = pv.score >= beta;
     let alpha_node: bool = pv.score < original_alpha;
+
     let index = game_state.hash as usize & super::cache::CACHE_MASK;
 
     let ce = &search.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];

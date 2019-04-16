@@ -15,17 +15,19 @@ pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.9
 
 pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search) -> f64 {
     stats.add_q_node(current_depth);
-    let evaluation = eval_game_state(&game_state);
-    let stand_pat = evaluation.final_eval * color as f64;
-    if stand_pat >= beta {
-        return beta;
-    }
-    if stand_pat > alpha {
-        alpha = stand_pat;
-    }
+
     let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check);
     if game_status != GameResult::Ingame {
         return leaf_score(game_status, color, depth_left);
+    }
+
+    let evaluation = eval_game_state(&game_state);
+    let stand_pat = evaluation.final_eval * color as f64;
+    if stand_pat >= beta {
+        return stand_pat;
+    }
+    if stand_pat > alpha {
+        alpha = stand_pat;
     }
 
     //Missing: Sort moves. Could sort by SEE since we need it anyway
@@ -46,7 +48,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     }
 
     //Probe TT
-    if false{
+    {
         let ce = &search.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
@@ -85,6 +87,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
 
     capture_moves.sort();
     let mut index = 0;
+    let mut bestmovescore = stand_pat;
     for capture_move in capture_moves {
         let mv = capture_move.mv;
         if !passes_delta_pruning(&mv, evaluation.phase, stand_pat, alpha) {
@@ -100,9 +103,12 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
         let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search);
+        if score > bestmovescore {
+            bestmovescore = score;
+        }
         if score >= beta {
             stats.add_q_beta_cutoff(index);
-            return beta;
+            return score;
         }
         if score > alpha {
             alpha = score;
@@ -110,7 +116,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         index += 1;
     }
     stats.add_q_beta_noncutoff();
-    alpha
+    bestmovescore
 }
 
 pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alpha: f64) -> bool {
