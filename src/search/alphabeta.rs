@@ -81,6 +81,17 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         }
     }
 
+    if beta - alpha <= 0.002 && depth_left >= 4 && !in_check &&
+        (game_state.pieces[1][game_state.color_to_move] | game_state.pieces[2][game_state.color_to_move] |
+            game_state.pieces[3][game_state.color_to_move] | game_state.pieces[4][game_state.color_to_move]) != 0u64 {
+        let rat = -principal_variation_search(-beta, -beta + 0.001, depth_left - 4, &movegen::make_nullmove(&game_state), -color, stats, current_depth + 1, search).score;
+        if rat >= beta {
+            stats.add_nm_pruning();
+            pv.score = rat;
+            return pv;
+        }
+    }
+
     let mut index = 0;
     for mv in legal_moves {
         let next_state = movegen::make_move(&game_state, &mv);

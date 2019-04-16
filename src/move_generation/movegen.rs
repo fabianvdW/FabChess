@@ -273,6 +273,28 @@ pub fn check_castle_flags(ck: bool, cq: bool, mv: &game_state::GameMove, color_t
     }
 }
 
+pub fn make_nullmove(g: &game_state::GameState) -> game_state::GameState {
+    let color_to_move = 1 - g.color_to_move;
+    let pieces = g.pieces.clone();
+    let en_passant = 0u64;
+    let half_moves = g.half_moves + 1;
+    let full_moves = g.full_moves + g.color_to_move;
+    let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
+    hash = enpassant_hash(g.en_passant, en_passant, hash);
+    game_state::GameState {
+        color_to_move,
+        pieces,
+        castle_white_kingside: g.castle_white_kingside,
+        castle_white_queenside: g.castle_white_queenside,
+        castle_black_kingside: g.castle_black_kingside,
+        castle_black_queenside: g.castle_black_queenside,
+        en_passant,
+        half_moves,
+        full_moves,
+        hash,
+    }
+}
+
 pub fn make_quiet_move(g: &game_state::GameState, mv: &game_state::GameMove) -> game_state::GameState {
     let color_to_move = 1 - g.color_to_move;
     let mut pieces = g.pieces.clone();

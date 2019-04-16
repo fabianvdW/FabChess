@@ -23,6 +23,7 @@ pub struct SearchStatistics {
     pub cache_hit_qs: u64,
     pub cache_hit_replaces_qs: u64,
     pub cache_hit_aj_replaces_qs: u64,
+    pub nm_pruned: u64,
 }
 
 impl SearchStatistics {
@@ -49,6 +50,7 @@ impl SearchStatistics {
             cache_hit_qs: 0,
             cache_hit_replaces_qs: 0,
             cache_hit_aj_replaces_qs: 0,
+            nm_pruned: 0,
         }
     }
     pub fn refresh_time_elapsed(&mut self) {
@@ -116,6 +118,9 @@ impl SearchStatistics {
     pub fn add_cache_hit_aj_replace_qs(&mut self) {
         self.cache_hit_aj_replaces_qs += 1;
     }
+    pub fn add_nm_pruning(&mut self) {
+        self.nm_pruned += 1;
+    }
 }
 
 impl Display for SearchStatistics {
@@ -134,6 +139,7 @@ impl Display for SearchStatistics {
         res_str.push_str(&format!("Normal-Search Cache-Hits:    {} ({}%)\n", self.cache_hit_ns, (self.cache_hit_ns as f64 / self.normal_nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Normal-Search Cache-Hit-Replace: {} ({}%)\n", self.cache_hit_replaces_ns, (self.cache_hit_replaces_ns as f64 / self.cache_hit_ns as f64 * 100.0)));
         res_str.push_str(&format!("Normal-Search Cache-Hit-Adj-Replace: {} ({}%)\n", self.cache_hit_aj_replaces_ns, (self.cache_hit_aj_replaces_ns as f64 / self.cache_hit_ns as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search NullMove-Pruned : {} ({}%)\n", self.nm_pruned, (self.nm_pruned as f64 / self.normal_nodes_searched as f64 * 100.0)));
 
         res_str.push_str("\n");
         res_str.push_str(&format!("Quiesence nodes: {} ({}%)\n", self.q_nodes_searched, (self.q_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)));
