@@ -1,8 +1,8 @@
 use crate::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
 
 //2^20 Entrys
-pub const CACHE_MASK: usize = 0xFFFFF;
-pub const CACHE_ENTRYS: usize = 1048576;
+pub const CACHE_MASK: usize = 0x3FFFFF;
+pub const CACHE_ENTRYS: usize = 4*1048576;
 
 pub struct Cache {
     pub cache: Vec<Option<CacheEntry>>
@@ -20,7 +20,7 @@ impl Cache {
 pub struct CacheEntry {
     pub hash: u64,
     //64-Bit
-    pub depth: u8,
+    pub depth: i8,
     //8-Bit
     pub occurences: u8,
     //8-Bit
@@ -37,10 +37,10 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
-    pub fn new(game_state: &GameState, depth_left: usize, score: f64, alpha: bool, beta: bool, mv: &GameMove) -> CacheEntry {
+    pub fn new(game_state: &GameState, depth_left: isize, score: f64, alpha: bool, beta: bool, mv: &GameMove) -> CacheEntry {
         CacheEntry {
             hash: game_state.hash,
-            depth: depth_left as u8,
+            depth: depth_left as i8,
             occurences: 0,
             plies_played: ((game_state.full_moves - 1) * 2 + game_state.color_to_move) as u16,
             score,

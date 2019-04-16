@@ -25,9 +25,10 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     }
     if depth_left <= 0 {
         stats.add_q_root();
-        pv.score = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth, search);
-        //pv.score = crate::evaluation::eval_game_state(&game_state).final_eval * color as f64;
+        pv = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth, search);
         return pv;
+        //pv.score = crate::evaluation::eval_game_state(&game_state).final_eval * color as f64;
+        //return pv;
         //return eval_game_state(&game_state).final_eval * color as f64;
     }
 
@@ -49,7 +50,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
                 stats.add_cache_hit_ns();
-                if ce.occurences == 0 && ce.depth >= depth_left as u8 {
+                if ce.occurences == 0 && ce.depth >= depth_left as i8 {
                     if !ce.alpha && !ce.beta {
                         stats.add_cache_hit_replace_ns();
                         pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
@@ -140,7 +141,7 @@ pub fn make_cache(search: &mut Search, pv: &PrincipalVariation, game_state: &Gam
     let index = game_state.hash as usize & super::cache::CACHE_MASK;
 
     let ce = &search.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
-    let new_entry = CacheEntry::new(&game_state, depth_left as usize, pv.score, alpha_node, beta_node, match pv.pv.get(0) {
+    let new_entry = CacheEntry::new(&game_state, depth_left as isize, pv.score, alpha_node, beta_node, match pv.pv.get(0) {
         Some(mv) => &mv,
         _ => panic!("Invalid pv!")
     });
@@ -152,7 +153,7 @@ pub fn make_cache(search: &mut Search, pv: &PrincipalVariation, game_state: &Gam
             _ => panic!("Invalid if let!")
         };
         //Make replacement scheme better
-        if old_entry.occurences == 0 && old_entry.depth <= depth_left as u8 {
+        if old_entry.occurences == 0 && old_entry.depth <= depth_left as i8 {
             search.cache.cache[index] = Some(new_entry);
         }
     }

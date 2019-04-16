@@ -42,7 +42,7 @@ impl<'a> Search<'a> {
             }
             for (i, pair) in pv.pv.iter().enumerate() {
                 let state= if i==0{self.game_state}else{&pv_stack[i-1]};
-                self.principal_variation[i] = Some(CacheEntry::new(state, d as usize - i, pv.score, false, false, &pair));
+                self.principal_variation[i] = Some(CacheEntry::new(state, d  - i as isize , pv.score, false, false, &pair));
             }
             best_pv = pv;
         }

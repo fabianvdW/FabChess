@@ -14,18 +14,21 @@ lazy_static! {
 pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
 }
 
-pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search) -> f64 {
+pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search) -> PrincipalVariation {
     stats.add_q_node(current_depth);
 
+    let mut pv: PrincipalVariation = PrincipalVariation::new(1);
     let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check);
     if game_status != GameResult::Ingame {
-        return leaf_score(game_status, color, depth_left);
+        pv.score = leaf_score(game_status, color, depth_left);
+        return pv;
     }
 
     let evaluation = eval_game_state(&game_state);
     let stand_pat = evaluation.final_eval * color as f64;
     if stand_pat >= beta {
-        return stand_pat;
+        pv.score = stand_pat;
+        return pv;
     }
     if stand_pat > alpha {
         alpha = stand_pat;
@@ -34,7 +37,8 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     //Apply Big Delta Pruning
     let diff = alpha - stand_pat - DELTA_PRUNING;
     if diff > 0.0 && best_move_value(game_state) < diff {
-        return stand_pat;
+        pv.score = stand_pat;
+        return pv;
     }
 
     let mut capture_moves = Vec::with_capacity(20);
@@ -68,10 +72,12 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
                 stats.add_cache_hit_qs();
-                if ce.occurences == 0 && ce.depth >= depth_left as u8 {
+                if ce.occurences == 0 && ce.depth >= depth_left as i8 {
                     if !ce.alpha && !ce.beta {
                         stats.add_cache_hit_replace_qs();
-                        return ce.score;
+                        pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                        pv.score = ce.score;
+                        return pv;
                     } else {
                         if ce.beta {
                             if ce.score > alpha {
@@ -84,7 +90,9 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
                         }
                         if alpha >= beta {
                             stats.add_cache_hit_aj_replace_qs();
-                            return beta;
+                            pv.score = ce.score;
+                            pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                            return pv;
                         }
                     }
                 }
@@ -101,26 +109,36 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
 
     capture_moves.sort();
     let mut index = 0;
-    let mut bestmovescore = stand_pat;
+    pv.score = stand_pat;
     for capture_move in capture_moves {
         let mv = capture_move.mv;
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
-        let score = -q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search);
-        if score > bestmovescore {
-            bestmovescore = score;
+        let mut following_pv = q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search);
+        let score = -following_pv.score;
+        if score > pv.score {
+            pv.score = score;
+            pv.pv.clear();
+            pv.pv.push(mv);
         }
         if score >= beta {
             stats.add_q_beta_cutoff(index);
-            return score;
+            break;
         }
         if score > alpha {
             alpha = score;
         }
         index += 1;
     }
-    stats.add_q_beta_noncutoff();
-    bestmovescore
+    if pv.score < beta {
+        if index > 0 {
+            stats.add_q_beta_noncutoff();
+        }
+    }
+    if pv.pv.len() > 0 {
+        super::alphabeta::make_cache(search, &pv, &game_state, alpha, beta, depth_left);
+    }
+    pv
 }
 
 pub fn best_move_value(state: &GameState) -> f64 {
