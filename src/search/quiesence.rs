@@ -46,20 +46,15 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     }
 
     //Probe TT
-    {
-        let ce = search.cache.cache.get(game_state.hash as usize & super::cache::CACHE_MASK);
-        let ce = match ce {
-            Some(s) => s,
-            _ => panic!("Invalid cache "),
-        };
+    if false{
+        let ce = &search.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
-            let ce: &CacheEntry = match ce {
-                Some(s) => s,
-                _ => panic!("Invalid "),
-            };
+            let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
+                stats.add_cache_hit_qs();
                 if ce.occurences == 0 && ce.depth >= depth_left as u8 {
                     if !ce.alpha && !ce.beta {
+                        stats.add_cache_hit_replace_qs();
                         return ce.score;
                     } else {
                         if ce.beta {
@@ -70,6 +65,10 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
                             if ce.score < beta {
                                 beta = ce.score;
                             }
+                        }
+                        if alpha >= beta {
+                            stats.add_cache_hit_aj_replace_qs();
+                            return beta;
                         }
                     }
                 }

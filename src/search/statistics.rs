@@ -17,6 +17,12 @@ pub struct SearchStatistics {
     pub normal_nodes_non_beta_cutoffs: u64,
     pub time_elapsed: u64,
     pub start_time: Instant,
+    pub cache_hit_ns: u64,
+    pub cache_hit_replaces_ns: u64,
+    pub cache_hit_aj_replaces_ns: u64,
+    pub cache_hit_qs: u64,
+    pub cache_hit_replaces_qs: u64,
+    pub cache_hit_aj_replaces_qs: u64,
 }
 
 impl SearchStatistics {
@@ -37,6 +43,12 @@ impl SearchStatistics {
             normal_nodes_beta_cutoffs_index: [0; 32],
             time_elapsed: 0,
             start_time: Instant::now(),
+            cache_hit_ns: 0,
+            cache_hit_replaces_ns: 0,
+            cache_hit_aj_replaces_ns: 0,
+            cache_hit_qs: 0,
+            cache_hit_replaces_qs: 0,
+            cache_hit_aj_replaces_qs: 0,
         }
     }
     pub fn refresh_time_elapsed(&mut self) {
@@ -75,7 +87,6 @@ impl SearchStatistics {
     pub fn add_q_beta_noncutoff(&mut self) {
         self.q_non_beta_cutoffs += 1;
     }
-
     pub fn add_normal_node_beta_cutoff(&mut self, index: usize) {
         self.normal_nodes_beta_cutoffs += 1;
         if index > 31 {
@@ -84,9 +95,26 @@ impl SearchStatistics {
             self.normal_nodes_beta_cutoffs_index[index] += 1;
         }
     }
-
     pub fn add_normal_node_non_beta_cutoff(&mut self) {
         self.normal_nodes_non_beta_cutoffs += 1;
+    }
+    pub fn add_cache_hit_ns(&mut self) {
+        self.cache_hit_ns += 1;
+    }
+    pub fn add_cache_hit_replace_ns(&mut self) {
+        self.cache_hit_replaces_ns += 1;
+    }
+    pub fn add_cache_hit_aj_replace_ns(&mut self) {
+        self.cache_hit_aj_replaces_ns += 1;
+    }
+    pub fn add_cache_hit_qs(&mut self) {
+        self.cache_hit_qs += 1;
+    }
+    pub fn add_cache_hit_replace_qs(&mut self) {
+        self.cache_hit_replaces_qs += 1;
+    }
+    pub fn add_cache_hit_aj_replace_qs(&mut self) {
+        self.cache_hit_aj_replaces_qs += 1;
     }
 }
 
@@ -97,16 +125,26 @@ impl Display for SearchStatistics {
         res_str.push_str(&format!("Nodes searched: {}\n", self.nodes_searched));
         res_str.push_str(&format!("Depth reached: {}/{}\n", self.depth, self.seldepth));
         res_str.push_str(&format!("NPS: {}\n", self.nodes_searched as f64 / (self.time_elapsed as f64 / 1000.0)));
+
+        res_str.push_str("\n");
+        res_str.push_str(&format!("Normal nodes: {} ({}%)\n", self.normal_nodes_searched, (self.normal_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {} ({}%)\n", self.normal_nodes_beta_cutoffs, (self.normal_nodes_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {:?}\n", self.normal_nodes_beta_cutoffs_index));
+        res_str.push_str(&format!("Normal-Search No    cutoffs: {} ({}%)\n", self.normal_nodes_non_beta_cutoffs, (self.normal_nodes_non_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Cache-Hits:    {} ({}%)\n", self.cache_hit_ns, (self.cache_hit_ns as f64 / self.normal_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Cache-Hit-Replace: {} ({}%)\n", self.cache_hit_replaces_ns, (self.cache_hit_replaces_ns as f64 / self.cache_hit_ns as f64 * 100.0)));
+        res_str.push_str(&format!("Normal-Search Cache-Hit-Adj-Replace: {} ({}%)\n", self.cache_hit_aj_replaces_ns, (self.cache_hit_aj_replaces_ns as f64 / self.cache_hit_ns as f64 * 100.0)));
+
+        res_str.push_str("\n");
         res_str.push_str(&format!("Quiesence nodes: {} ({}%)\n", self.q_nodes_searched, (self.q_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Q-Search Delta cutoffs: {} ({}%)\n", self.q_delta_cutoffs, (self.q_delta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Q-Search SEE   cutoffs: {} ({}%)\n", self.q_see_cutoffs, (self.q_see_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Q-Search Beta  cutoffs: {} ({}%)\n", self.q_beta_cutoffs, (self.q_beta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
         res_str.push_str(&format!("Q-Search Beta  cutoffs: {:?}\n", self.q_beta_cutoffs_index));
         res_str.push_str(&format!("Q-Search No    cutoffs: {} ({}%)\n", self.q_non_beta_cutoffs, (self.q_non_beta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)));
-        res_str.push_str(&format!("Normal nodes: {} ({}%)\n", self.normal_nodes_searched, (self.normal_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)));
-        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {} ({}%)\n", self.normal_nodes_beta_cutoffs, (self.normal_nodes_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)));
-        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {:?}\n", self.normal_nodes_beta_cutoffs_index));
-        res_str.push_str(&format!("Normal-Search No    cutoffs: {} ({}%)\n", self.normal_nodes_non_beta_cutoffs, (self.normal_nodes_non_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Q-Search Cache-Hits:    {} ({}%)\n", self.cache_hit_qs, (self.cache_hit_qs as f64 / self.normal_nodes_searched as f64 * 100.0)));
+        res_str.push_str(&format!("Q-Search Cache-Hit-Replace: {} ({}%)\n", self.cache_hit_replaces_qs, (self.cache_hit_replaces_qs as f64 / self.cache_hit_qs as f64 * 100.0)));
+        res_str.push_str(&format!("Q-Search Cache-Hit-Adj-Replace: {} ({}%)\n", self.cache_hit_aj_replaces_qs, (self.cache_hit_aj_replaces_qs as f64 / self.cache_hit_qs as f64 * 100.0)));
         write!(formatter, "{}", res_str)
     }
 }
