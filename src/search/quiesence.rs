@@ -43,10 +43,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
 
     let mut capture_moves = Vec::with_capacity(20);
     for mv in legal_moves {
-        if match mv.move_type {
-            GameMoveType::Quiet | GameMoveType::Castle | GameMoveType::Promotion(_, None) => true,
-            _ => false
-        } {
+        if !is_capture(&mv){
             continue;
         }
         if let GameMoveType::EnPassant = mv.move_type {
@@ -139,6 +136,18 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         super::alphabeta::make_cache(search, &pv, &game_state, alpha, beta, depth_left);
     }
     pv
+}
+
+pub fn is_capture(mv:&GameMove)->bool{
+    match &mv.move_type {
+        GameMoveType::Capture(_) => true,
+        GameMoveType::Promotion(_, s) => match s {
+            Some(s) => true,
+            _ => false
+        },
+        GameMoveType::EnPassant => true,
+        _ => false,
+    }
 }
 
 pub fn best_move_value(state: &GameState) -> f64 {

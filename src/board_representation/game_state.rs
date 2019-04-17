@@ -1,7 +1,7 @@
 use std::fmt::{Formatter, Display, Result, Debug};
 use super::zobrist_hashing::ZOBRIST_KEYS;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug,Copy)]
 pub enum GameMoveType {
     Quiet,
     Capture(PieceType),
@@ -10,7 +10,7 @@ pub enum GameMoveType {
     Promotion(PieceType, Option<PieceType>),
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug,Copy)]
 pub enum PieceType {
     King,
     Pawn,
@@ -19,7 +19,7 @@ pub enum PieceType {
     Rook,
     Queen,
 }
-
+#[derive(Clone,Copy)]
 pub struct GameMove {
     pub from: usize,
     pub to: usize,

@@ -1,12 +1,14 @@
 use super::cache::{Cache, CacheEntry};
 use super::statistics::SearchStatistics;
 use super::super::GameState;
+use super::GameMove;
 use super::alphabeta::PrincipalVariation;
 use super::alphabeta::principal_variation_search;
 
 pub struct Search<'a> {
     pub cache: &'a mut Cache,
     pub principal_variation: [Option<CacheEntry>; 100],
+    pub killer_moves: [[Option<GameMove>;2];100],
     pub search_statistics: SearchStatistics,
     pub game_state: &'a GameState,
 }
@@ -17,6 +19,7 @@ impl<'a> Search<'a> {
             cache,
             principal_variation: [None; 100],
             search_statistics: SearchStatistics::new(),
+            killer_moves:[[None;2];100],
             game_state: state,
         }
     }
@@ -30,7 +33,7 @@ impl<'a> Search<'a> {
             } else {
                 -1
             }, &mut stats, 0, self);
-            println!("{}",format!("Depth {} pv: {}",d,pv));
+            println!("{}",format!("Depth {} with nodes {} and pv: {}",d,stats.nodes_searched,pv));
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {

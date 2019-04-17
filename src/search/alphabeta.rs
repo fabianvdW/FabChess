@@ -4,14 +4,18 @@ use super::super::GameState;
 use super::super::board_representation::game_state::{GameMove, GameMoveType, PieceType};
 use super::super::movegen;
 use super::cache::CacheEntry;
-use super::quiesence::q_search;
+use super::quiesence::{q_search,see,is_capture};
+use super::GradedMove;
 use super::statistics::SearchStatistics;
 use crate::evaluation::eval_game_state;
 
 pub const MATE_SCORE: f64 = 3000.0;
 
 //Roadmap
-//Finish principal variation search
+//Sort moves in pvs
+//Improve nmp
+//Late Move Reduction
+//Aspiration Windows
 
 pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
@@ -27,19 +31,59 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         stats.add_q_root();
         pv = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth, search);
         return pv;
-        //pv.score = crate::evaluation::eval_game_state(&game_state).final_eval * color as f64;
-        //return pv;
-        //return eval_game_state(&game_state).final_eval * color as f64;
     }
 
+    //Move Ordering
+    //1. PV-Move +30000.0
+    //2. Hash move + 29999.0
+    //if see>0
+    //3. Winning captures Sort by SEE + 25000
+    //4. Equal captures Sort by SEE+ 25000
+    //5. Killer moves + 20000
+    //6. Non captures (history heuristic) history heuristic score
+    //7. Losing captures (see<0) see score
+    let mut graded_moves = Vec::with_capacity(legal_moves.len());
+    for mv in legal_moves {
+        if is_capture(&mv) {
+            if  GameMoveType::EnPassant == mv.move_type {
+                graded_moves.push(GradedMove::new(mv, 24999.0));
+            } else {
+                let mut sval=see(&game_state, &mv, beta - alpha >= 0.002);
+                if sval>=0.0{
+                    sval+=25000.0;
+                }
+                graded_moves.push(GradedMove::new(mv, sval));
+            }
+        } else {
+            //Killer Moves + History Heuristic here
+            graded_moves.push(GradedMove::new(mv, 0.0));
+        }
+    }
+
+    {
+        //Killer moves
+        if let Some(s)=search.killer_moves[current_depth][0]{
+            let mv_index= find_move(&s,&graded_moves,false);
+            if mv_index<graded_moves.len(){
+                graded_moves[mv_index].score+=20000.0;
+            }
+        }
+        if let Some(s)=search.killer_moves[current_depth][1]{
+            let mv_index= find_move(&s,&graded_moves,false);
+            if mv_index<graded_moves.len(){
+                graded_moves[mv_index].score=20000.0;
+            }
+        }
+    }
+    
     let mut in_pv = false;
     {
         if let Some(ce) = search.principal_variation[current_depth] {
             if ce.hash == game_state.hash {
                 in_pv = true;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &legal_moves);
-                legal_moves.swap(0, mv_index);
+                let mv_index = find_move(&mv, &graded_moves,true);
+                graded_moves[mv_index].score = 30000.0;
             }
         }
     }
@@ -75,8 +119,8 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
                     }
                 }
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &legal_moves);
-                legal_moves.swap(0, mv_index);
+                let mv_index = find_move(&mv, &graded_moves,true);
+                graded_moves[mv_index].score = 29900.0;
             }
         }
     }
@@ -93,7 +137,9 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     }
 
     let mut index = 0;
-    for mv in legal_moves {
+    graded_moves.sort();
+    for gmv in graded_moves {
+        let mv = gmv.mv;
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
         if depth_left <= 2 || !in_pv || index == 0 {
@@ -118,6 +164,24 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         }
         if alpha >= beta {
             stats.add_normal_node_beta_cutoff(index);
+            if !is_capture(&mv){
+                //Replace killers
+                //Dont replace if already in table
+                if let Some(s)=search.killer_moves[current_depth][0]{
+                    if s.from==mv.from&&s.to==mv.to&&s.move_type==mv.move_type{
+                        break;
+                    }
+                }
+                if let Some(s)=search.killer_moves[current_depth][1]{
+                    if s.from==mv.from&&s.to==mv.to&&s.move_type==mv.move_type{
+                        break;
+                    }
+                }
+                if let Some(s)= search.killer_moves[current_depth][0]{
+                    search.killer_moves[current_depth][1]=Some(s);
+                }
+                search.killer_moves[current_depth][0]=Some(mv);
+            }
             break;
         }
         index += 1;
@@ -130,9 +194,10 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     return pv;
 }
 
-pub fn find_move(mv: &GameMove, mv_list: &Vec<GameMove>) -> usize {
+pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>,contains:bool) -> usize {
     let mut mv_index = 0;
-    for mvs in mv_list {
+    for gmvs in mv_list {
+        let mvs = &gmvs.mv;
         if mvs.from == mv.from && mvs.to == mv.to && mvs.move_type == mv.move_type {
             break;
         }
@@ -140,8 +205,10 @@ pub fn find_move(mv: &GameMove, mv_list: &Vec<GameMove>) -> usize {
     }
     if mv_index < mv_list.len() {
         return mv_index;
-    } else {
+    } else if contains{
         panic!("Type 2 error");
+    }else{
+        return mv_index;
     }
 }
 
