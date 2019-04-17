@@ -49,6 +49,18 @@ impl CacheEntry {
             mv: CacheEntry::mv_to_u16(&mv),
         }
     }
+    pub fn occ_entry(game_state:&GameState) -> CacheEntry{
+        CacheEntry{
+            hash:game_state.hash,
+            depth:0,
+            occurences:1,
+            plies_played:0,
+            score:0.0,
+            alpha:false,
+            beta:false,
+            mv:0,
+        }
+    }
 
     pub fn mv_to_u16(mv: &GameMove) -> u16 {
         let mut res = 0usize;

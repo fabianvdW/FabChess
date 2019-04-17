@@ -18,7 +18,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     stats.add_q_node(current_depth);
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(1);
-    let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check);
+    let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check,&search);
     if game_status != GameResult::Ingame {
         pv.score = leaf_score(game_status, color, depth_left);
         return pv;
@@ -104,10 +104,11 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         }
     }
 
-    capture_moves.sort();
     let mut index = 0;
     pv.score = stand_pat;
-    for capture_move in capture_moves {
+    while capture_moves.len()>0 {
+        let gmvindex= super::alphabeta::get_next_gm(&capture_moves);
+        let capture_move= capture_moves.remove(gmvindex);
         let mv = capture_move.mv;
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);

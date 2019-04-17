@@ -43,7 +43,7 @@ impl<'a> Search<'a> {
                 let mut delta= 0.2;
                 let mut alpha:f64= best_pv.score-delta;
                 let mut beta:f64=best_pv.score+delta;
-                while true{
+                loop{
                     pv= principal_variation_search(alpha,beta,d,&self.game_state,if self.game_state.color_to_move == 0 {
                         1
                     } else {
