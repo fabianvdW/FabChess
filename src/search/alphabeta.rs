@@ -18,8 +18,15 @@ pub const BF_INCREMENT: usize = 1;
 
 pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
+    if stats.nodes_searched % 4096 == 0 {
+        checkup(stats);
+    }
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(depth_left as usize);
+
+    if stats.stop {
+        return pv;
+    }
     let (mut legal_moves, in_check) = movegen::generate_moves(&game_state);
     let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, &search);
     if game_status != GameResult::Ingame {
@@ -208,6 +215,13 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     //Make cache
     make_cache(search, &pv, &game_state, alpha, beta, depth_left);
     return pv;
+}
+
+pub fn checkup(stats: &mut SearchStatistics) {
+    stats.refresh_time_elapsed();
+    if stats.time_elapsed > 3000 {
+        stats.stop = true;
+    }
 }
 
 pub fn get_next_gm(mv_list: &Vec<GradedMove>) -> usize {

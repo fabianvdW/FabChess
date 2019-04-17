@@ -37,29 +37,35 @@ impl<'a> Search<'a> {
                 } else {
                     -1
                 }, &mut stats, 0, self);
-            }else{
+            } else {
                 //Aspiration Window
                 //Start with half window of last time
-                let mut delta= 0.2;
-                let mut alpha:f64= best_pv.score-delta;
-                let mut beta:f64=best_pv.score+delta;
-                loop{
-                    pv= principal_variation_search(alpha,beta,d,&self.game_state,if self.game_state.color_to_move == 0 {
+                let mut delta = 0.2;
+                let mut alpha: f64 = best_pv.score - delta;
+                let mut beta: f64 = best_pv.score + delta;
+                loop {
+                    pv = principal_variation_search(alpha, beta, d, &self.game_state, if self.game_state.color_to_move == 0 {
                         1
                     } else {
                         -1
-                    },&mut stats, 0 ,self);
-                    if pv.score>alpha&&pv.score<beta{
+                    }, &mut stats, 0, self);
+                    if stats.stop {
                         break;
                     }
-                    if pv.score<=alpha{
-                        alpha-= delta;
+                    if pv.score > alpha && pv.score < beta {
+                        break;
                     }
-                    if pv.score>=beta{
-                        beta+=delta;
+                    if pv.score <= alpha {
+                        alpha -= delta;
                     }
-                    delta*=1.5;
+                    if pv.score >= beta {
+                        beta += delta;
+                    }
+                    delta *= 1.5;
                 }
+            }
+            if stats.stop {
+                break;
             }
             println!("{}", format!("Depth {} with nodes {} and pv: {}", d, stats.nodes_searched, pv));
             //Set PV in table
