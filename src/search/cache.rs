@@ -1,8 +1,8 @@
 use crate::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
 
 //2^20 Entrys
-pub const CACHE_MASK: usize = 0x3FFFFF;
-pub const CACHE_ENTRYS: usize = 4*1048576;
+pub const CACHE_MASK: usize = 0x7FFFFF;
+pub const CACHE_ENTRYS: usize = 8*1048576;
 
 pub struct Cache {
     pub cache: Vec<Option<CacheEntry>>
