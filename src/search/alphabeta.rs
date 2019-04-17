@@ -4,16 +4,15 @@ use super::super::GameState;
 use super::super::board_representation::game_state::{GameMove, GameMoveType, PieceType};
 use super::super::movegen;
 use super::cache::CacheEntry;
-use super::quiesence::{q_search,see,is_capture};
+use super::quiesence::{q_search, see, is_capture};
 use super::GradedMove;
 use super::statistics::SearchStatistics;
 use crate::evaluation::eval_game_state;
 
 pub const MATE_SCORE: f64 = 3000.0;
-
+pub const HH_INCREMENT: usize = 1;
+pub const BF_INCREMENT: usize = 1;
 //Roadmap
-//Sort moves in pvs
-//Improve nmp
 //Late Move Reduction
 //Aspiration Windows
 
@@ -45,44 +44,44 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     let mut graded_moves = Vec::with_capacity(legal_moves.len());
     for mv in legal_moves {
         if is_capture(&mv) {
-            if  GameMoveType::EnPassant == mv.move_type {
+            if GameMoveType::EnPassant == mv.move_type {
                 graded_moves.push(GradedMove::new(mv, 24999.0));
             } else {
-                let mut sval=see(&game_state, &mv, beta - alpha >= 0.002);
-                if sval>=0.0{
-                    sval+=25000.0;
+                let mut sval = see(&game_state, &mv, beta - alpha >= 0.002);
+                if sval >= 0.0 {
+                    sval += 25000.0;
                 }
                 graded_moves.push(GradedMove::new(mv, sval));
             }
         } else {
-            //Killer Moves + History Heuristic here
-            graded_moves.push(GradedMove::new(mv, 0.0));
+            //History Heuristic
+            graded_moves.push(GradedMove::new(mv, search.hh_score[mv.from][mv.to] as f64 / 10000000.0));
         }
     }
 
     {
         //Killer moves
-        if let Some(s)=search.killer_moves[current_depth][0]{
-            let mv_index= find_move(&s,&graded_moves,false);
-            if mv_index<graded_moves.len(){
-                graded_moves[mv_index].score+=20000.0;
+        if let Some(s) = search.killer_moves[current_depth][0] {
+            let mv_index = find_move(&s, &graded_moves, false);
+            if mv_index < graded_moves.len() {
+                graded_moves[mv_index].score += 20000.0;
             }
         }
-        if let Some(s)=search.killer_moves[current_depth][1]{
-            let mv_index= find_move(&s,&graded_moves,false);
-            if mv_index<graded_moves.len(){
-                graded_moves[mv_index].score=20000.0;
+        if let Some(s) = search.killer_moves[current_depth][1] {
+            let mv_index = find_move(&s, &graded_moves, false);
+            if mv_index < graded_moves.len() {
+                graded_moves[mv_index].score += 20000.0;
             }
         }
     }
-    
+
     let mut in_pv = false;
     {
         if let Some(ce) = search.principal_variation[current_depth] {
             if ce.hash == game_state.hash {
                 in_pv = true;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &graded_moves,true);
+                let mv_index = find_move(&mv, &graded_moves, true);
                 graded_moves[mv_index].score = 30000.0;
             }
         }
@@ -119,7 +118,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
                     }
                 }
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &graded_moves,true);
+                let mv_index = find_move(&mv, &graded_moves, true);
                 graded_moves[mv_index].score = 29900.0;
             }
         }
@@ -136,13 +135,25 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         }
     }
 
-    let mut index = 0;
+    let mut index:usize = 0;
     graded_moves.sort();
     for gmv in graded_moves {
         let mv = gmv.mv;
+        let isc = is_capture(&mv);
+        let isp = if let GameMoveType::Promotion(_, _) = mv.move_type { true } else { false };
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
-        if depth_left <= 2 || !in_pv || index == 0 {
+        if depth_left > 2 && alpha - beta <= 0.002 && !in_check && !isc && index >= 5 && !isp && gmv.score < 18000.0 {
+            //let reduction = if index >= 10 { depth_left / 3 } else { 1 };
+            let mut reduction = (((depth_left-1isize) as f64).sqrt()+((index-1) as f64).sqrt()) as isize;
+            if reduction>depth_left-2{
+                reduction=depth_left-2
+            }
+            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1-reduction, &next_state, -color, stats, current_depth + 1, search);
+            if -following_pv.score > alpha {
+                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search);
+            }
+        } else if depth_left <= 2 || !in_pv || index == 0 {
             following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search);
         } else {
             following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search);
@@ -164,23 +175,24 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         }
         if alpha >= beta {
             stats.add_normal_node_beta_cutoff(index);
-            if !is_capture(&mv){
+            if !isc {
+                search.hh_score[mv.from][mv.to] += HH_INCREMENT;
                 //Replace killers
                 //Dont replace if already in table
-                if let Some(s)=search.killer_moves[current_depth][0]{
-                    if s.from==mv.from&&s.to==mv.to&&s.move_type==mv.move_type{
+                if let Some(s) = search.killer_moves[current_depth][0] {
+                    if s.from == mv.from && s.to == mv.to && s.move_type == mv.move_type {
                         break;
                     }
                 }
-                if let Some(s)=search.killer_moves[current_depth][1]{
-                    if s.from==mv.from&&s.to==mv.to&&s.move_type==mv.move_type{
+                if let Some(s) = search.killer_moves[current_depth][1] {
+                    if s.from == mv.from && s.to == mv.to && s.move_type == mv.move_type {
                         break;
                     }
                 }
-                if let Some(s)= search.killer_moves[current_depth][0]{
-                    search.killer_moves[current_depth][1]=Some(s);
+                if let Some(s) = search.killer_moves[current_depth][0] {
+                    search.killer_moves[current_depth][1] = Some(s);
                 }
-                search.killer_moves[current_depth][0]=Some(mv);
+                search.killer_moves[current_depth][0] = Some(mv);
             }
             break;
         }
@@ -194,7 +206,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     return pv;
 }
 
-pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>,contains:bool) -> usize {
+pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>, contains: bool) -> usize {
     let mut mv_index = 0;
     for gmvs in mv_list {
         let mvs = &gmvs.mv;
@@ -205,9 +217,9 @@ pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>,contains:bool) -> usiz
     }
     if mv_index < mv_list.len() {
         return mv_index;
-    } else if contains{
+    } else if contains {
         panic!("Type 2 error");
-    }else{
+    } else {
         return mv_index;
     }
 }

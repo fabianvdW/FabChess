@@ -9,6 +9,7 @@ pub struct Search<'a> {
     pub cache: &'a mut Cache,
     pub principal_variation: [Option<CacheEntry>; 100],
     pub killer_moves: [[Option<GameMove>;2];100],
+    pub hh_score: [[usize;64];64],
     pub search_statistics: SearchStatistics,
     pub game_state: &'a GameState,
 }
@@ -20,6 +21,7 @@ impl<'a> Search<'a> {
             principal_variation: [None; 100],
             search_statistics: SearchStatistics::new(),
             killer_moves:[[None;2];100],
+            hh_score:[[0;64];64],
             game_state: state,
         }
     }

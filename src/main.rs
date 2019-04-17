@@ -37,10 +37,11 @@ fn main() {
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed * 1000.0);
     println!("NPS: {}", nodes as f64 / time_passed);*/
-    let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
+    //let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
+    let state= GameState::from_fen("r4rk1/pbpnqpb1/1p1pp2p/6p1/2NPP3/2PB2P1/PP1NQPP1/R3K2R w KQ - 1 3");
     let mut ca = search::cache::Cache::new();
     let mut search = search::search::Search::new(&mut ca, &state);
-    let pv = search.search(10);
+    let pv = search.search(18);
     let score = pv.score;
     println!("{}", score);
     println!("{}", search.search_statistics);
