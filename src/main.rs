@@ -9,6 +9,7 @@ mod move_generation;
 mod evaluation;
 mod logging;
 mod search;
+mod uci;
 
 use self::board_representation::game_state::GameState;
 use self::move_generation::movegen;
@@ -16,6 +17,7 @@ use std::time::Instant;
 use logging::log;
 use search::alphabeta::principal_variation_search;
 use search::statistics;
+use search::search::TimeControl;
 
 fn main() {
     let now = Instant::now();
@@ -39,13 +41,17 @@ fn main() {
     println!("NPS: {}", nodes as f64 / time_passed);*/
     let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
     //let state = GameState::from_fen("r6r/2k4p/1pq3p1/8/1P1Q1R2/5P2/P5PP/R4NK1 w - - 2 29");
-    let mut ca = search::cache::Cache::new();
-    let mut search = search::search::Search::new(&mut ca, &state);
-    let pv = search.search(16);
+    let tc = TimeControl {
+        mytime: 1000,
+        myinc: 1000,
+    };
+    let mut search = search::search::Search::new(tc);
+    let pv = search.search(16, state, Vec::with_capacity(0));
     let score = pv.score;
     println!("{}", score);
     println!("{}", search.search_statistics);
     println!("{}", pv);
+    uci::uci_parser::parse_loop();
 }
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {

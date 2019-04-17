@@ -18,7 +18,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     stats.add_q_node(current_depth);
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(1);
-    if stats.stop {
+    if search.stop {
         return pv;
     }
     let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, &search);

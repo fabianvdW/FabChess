@@ -1,7 +1,7 @@
 use std::fmt::{Formatter, Display, Result, Debug};
 use super::zobrist_hashing::ZOBRIST_KEYS;
 
-#[derive(PartialEq, Clone, Debug,Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,
     Capture(PieceType),
@@ -10,7 +10,7 @@ pub enum GameMoveType {
     Promotion(PieceType, Option<PieceType>),
 }
 
-#[derive(PartialEq, Clone, Debug,Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub enum PieceType {
     King,
     Pawn,
@@ -19,7 +19,8 @@ pub enum PieceType {
     Rook,
     Queen,
 }
-#[derive(Clone,Copy)]
+
+#[derive(Clone, Copy)]
 pub struct GameMove {
     pub from: usize,
     pub to: usize,
@@ -36,6 +37,49 @@ impl GameMove {
             piece_type: self.piece_type.clone(),
         }
     }
+
+    pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
+        let mut chars = desc.chars();
+        let from_file = match chars.nth(0) {
+            Some(s) => {
+                char_to_file(s)
+            }
+            _ => {
+                panic!("Invalid move desc!");
+            }
+        };
+        let from_rank = match chars.nth(0) {
+            Some(s) => {
+                char_to_rank(s)
+            }
+            _ => {
+                panic!("Invalid move desc!");
+            }
+        };
+        let to_file = match chars.nth(0) {
+            Some(s) => {
+                char_to_file(s)
+            }
+            _ => {
+                panic!("Invalid move desc!");
+            }
+        };
+        let to_rank = match chars.nth(0) {
+            Some(s) => {
+                char_to_rank(s)
+            }
+            _ => {
+                panic!("Invalid move desc!");
+            }
+        };
+        if desc.len() == 5 {
+            return (from_file + 8 * from_rank, to_file + 8 * to_rank, Some(char_to_promotion_piecetype(match chars.nth(0) {
+                Some(s) => s,
+                _ => panic!("Invalid move desc!")
+            })));
+        }
+        (from_file + 8 * from_rank, to_file + 8 * to_rank, None)
+    }
 }
 
 impl Debug for GameMove {
@@ -43,10 +87,62 @@ impl Debug for GameMove {
         let mut res_str: String = String::new();
         res_str.push_str(&format!("{}{}{}{}", file_to_string(self.from % 8), self.from / 8 + 1, file_to_string(self.to % 8), self.to / 8 + 1));
         match &self.move_type {
-            GameMoveType::Quiet => { res_str.push_str("") }
+            GameMoveType::Promotion(s, _) => {
+                match s {
+                    PieceType::Queen => { res_str.push_str("q") }
+                    PieceType::Rook => { res_str.push_str("r") }
+                    PieceType::Bishop => { res_str.push_str("b") }
+                    PieceType::Knight => { res_str.push_str("k") }
+                    _ => panic!("Invalid promotion piece type!"),
+                }
+            }
             _ => {}
         };
         write!(formatter, "{}", res_str)
+    }
+}
+
+fn char_to_promotion_piecetype(c: char) -> PieceType {
+    match c {
+        'q' => PieceType::Queen,
+        'r' => PieceType::Rook,
+        'b' => PieceType::Bishop,
+        'n' => PieceType::Knight,
+        _ => {
+            panic!("Invalid promotion piece")
+        }
+    }
+}
+
+fn char_to_rank(c: char) -> usize {
+    match c {
+        '1' => 0,
+        '2' => 1,
+        '3' => 2,
+        '4' => 3,
+        '5' => 4,
+        '6' => 5,
+        '7' => 6,
+        '8' => 7,
+        _ => {
+            panic!("Invalid rank");
+        }
+    }
+}
+
+fn char_to_file(c: char) -> usize {
+    match c {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => {
+            panic!("Invalid char");
+        }
     }
 }
 
@@ -554,6 +650,21 @@ impl GameState {
             b_king ^= 1u64 << idx;
         }
         hash
+    }
+
+    pub fn clone(&self) -> GameState {
+        GameState {
+            color_to_move: self.color_to_move,
+            pieces: self.pieces.clone(),
+            castle_white_kingside: self.castle_white_kingside,
+            castle_white_queenside: self.castle_white_queenside,
+            castle_black_kingside: self.castle_black_kingside,
+            castle_black_queenside: self.castle_black_queenside,
+            en_passant: self.en_passant,
+            half_moves: self.half_moves,
+            full_moves: self.full_moves,
+            hash: self.hash,
+        }
     }
 }
 

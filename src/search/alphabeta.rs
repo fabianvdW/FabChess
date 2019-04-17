@@ -19,12 +19,12 @@ pub const BF_INCREMENT: usize = 1;
 pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
     if stats.nodes_searched % 4096 == 0 {
-        checkup(stats);
+        checkup(stats, search);
     }
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(depth_left as usize);
 
-    if stats.stop {
+    if search.stop {
         return pv;
     }
     let (mut legal_moves, in_check) = movegen::generate_moves(&game_state);
@@ -217,10 +217,10 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     return pv;
 }
 
-pub fn checkup(stats: &mut SearchStatistics) {
+pub fn checkup(stats: &mut SearchStatistics, search: &mut Search) {
     stats.refresh_time_elapsed();
-    if stats.time_elapsed > 3000 {
-        stats.stop = true;
+    if search.tc.time_over(stats.time_elapsed) {
+        search.stop = true;
     }
 }
 
