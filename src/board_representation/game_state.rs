@@ -651,8 +651,9 @@ impl GameState {
         }
         hash
     }
-
-    pub fn clone(&self) -> GameState {
+}
+impl Clone for GameState{
+    fn clone(&self) -> Self {
         GameState {
             color_to_move: self.color_to_move,
             pieces: self.pieces.clone(),

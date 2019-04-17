@@ -121,6 +121,11 @@ impl SearchStatistics {
     pub fn add_nm_pruning(&mut self) {
         self.nm_pruned += 1;
     }
+
+    pub fn getnps(&mut self) -> u64 {
+        self.refresh_time_elapsed();
+        (self.nodes_searched as f64 / (self.time_elapsed as f64 / 1000.0)) as u64
+    }
 }
 
 impl Display for SearchStatistics {

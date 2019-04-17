@@ -81,7 +81,14 @@ impl Search {
             if self.stop {
                 break;
             }
-            println!("{}", format!("Depth {} with nodes {} and pv: {}", d, stats.nodes_searched, pv));
+            //println!("{}", format!("Depth {} with nodes {} and pv: {}", d, stats.nodes_searched, pv));
+            let mut pv_str = String::new();
+            for mv in &pv.pv {
+                pv_str.push_str(&format!("{:?} ", mv));
+            }
+            let nps = stats.getnps();
+            let sc= (pv.score*100.0) as usize;
+            println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", stats.depth, stats.seldepth, stats.nodes_searched, nps, stats.time_elapsed, sc, pv_str));
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {
@@ -117,11 +124,11 @@ impl Search {
                 }
                 let occ_index = occ_entry.hash as usize & super::cache::CACHE_MASK;
                 if occ_entry.hash == gs.hash {
-                    match &mut self.cache.cache[occ_index]{
-                        Some(s)=>{
-                            s.occurences+=1;
+                    match &mut self.cache.cache[occ_index] {
+                        Some(s) => {
+                            s.occurences += 1;
                         }
-                        _=>panic!("Can't be"),
+                        _ => panic!("Can't be"),
                     };
                 } else if occ_entry.occurences == 0 {
                     self.cache.cache[occ_index] = Some(super::cache::CacheEntry::occ_entry(&gs));

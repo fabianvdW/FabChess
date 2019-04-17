@@ -39,7 +39,7 @@ fn main() {
     let time_passed = new_now.duration_since(now).as_secs() as f64 + new_now.duration_since(now).subsec_millis() as f64 / 1000.0;
     println!("Time: {}ms", time_passed * 1000.0);
     println!("NPS: {}", nodes as f64 / time_passed);*/
-    let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
+    /*let state = GameState::from_fen("r3k2r/pbpnqpb1/1p1pp2p/6pn/2NPP3/2PB2B1/PP1NQPPP/R3K2R b KQkq - 5 12");
     //let state = GameState::from_fen("r6r/2k4p/1pq3p1/8/1P1Q1R2/5P2/P5PP/R4NK1 w - - 2 29");
     let tc = TimeControl {
         mytime: 1000,
@@ -50,7 +50,7 @@ fn main() {
     let score = pv.score;
     println!("{}", score);
     println!("{}", search.search_statistics);
-    println!("{}", pv);
+    println!("{}", pv);*/
     uci::uci_parser::parse_loop();
 }
 

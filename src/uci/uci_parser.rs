@@ -10,7 +10,6 @@ use crate::search::search::Search;
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
-    let mut search: Option<Search> = None;
     let stdin = io::stdin();
     let mut line = String::new();
     loop {
@@ -30,21 +29,15 @@ pub fn parse_loop() {
             }
             "go" => {
                 let tc = go(&us, &arg[1..]);
-                match &search {
-                    None => {}
-                    Some(s) => {
-                        if !s.stop {
-                            panic!("Can't start search while another is still going on!");
-                        }
-                    }
-                };
                 //search = Some(Search::new(&mut us.cache, &us.internal_state, tc));
-                /*thread::spawn(move || {
-                    start_search(match &mut search {
-                        Some(s) => s,
-                        _ => panic!("Nope"),
-                    })
-                });*/
+                let mut new_history = vec![];
+                for gs in &history {
+                    new_history.push(gs.clone());
+                }
+                let new_state = us.internal_state.clone();
+                thread::spawn(move || {
+                    start_search(new_state, new_history, tc)
+                });
             }
             "stop" => stop(),
             "quit" => {
@@ -61,7 +54,11 @@ pub fn parse_loop() {
     }
 }
 
-pub fn start_search(search: &mut Search) {}
+pub fn start_search(game_state: GameState, history: Vec<GameState>, tc: TimeControl) {
+    let mut s = Search::new(tc);
+    let res = s.search(100, game_state, history);
+    println!("bestmove {:?}", res.pv[0]);
+}
 
 pub fn print_internal_state(engine: &UCIEngine) {
     println!("{}", engine.internal_state);
