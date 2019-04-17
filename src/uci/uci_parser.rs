@@ -153,7 +153,9 @@ pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
                 let mv = cmd[move_index];
                 let (from, to, promo) = GameMove::string_to_move(mv);
                 engine.internal_state = scout_and_make_draftmove(from, to, promo, &engine.internal_state);
-                history.push(engine.internal_state.clone());
+                if move_index != cmd.len() - 1 {
+                    history.push(engine.internal_state.clone());
+                }
                 move_index += 1;
             }
         }
@@ -189,6 +191,7 @@ pub fn isready() {
 
 pub fn uci(engine: &UCIEngine) {
     engine.id_command();
+    println!("uciok");
 }
 
 pub fn setoption() {}

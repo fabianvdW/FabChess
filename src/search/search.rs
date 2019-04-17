@@ -87,7 +87,7 @@ impl Search {
                 pv_str.push_str(&format!("{:?} ", mv));
             }
             let nps = stats.getnps();
-            let sc= (pv.score*100.0) as usize;
+            let sc = (pv.score * 100.0) as isize;
             println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", stats.depth, stats.seldepth, stats.nodes_searched, nps, stats.time_elapsed, sc, pv_str));
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());

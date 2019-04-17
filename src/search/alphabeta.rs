@@ -125,9 +125,11 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
                         }
                     }
                 }
-                let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &graded_moves, true);
-                graded_moves[mv_index].score = 29900.0;
+                if ce.occurences == 0 {
+                    let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                    let mv_index = find_move(&mv, &graded_moves, true);
+                    graded_moves[mv_index].score = 29900.0;
+                }
             }
         }
     }
@@ -155,8 +157,8 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
         if depth_left > 2 && alpha - beta <= 0.002 && !in_check && !isc && index >= 5 && !isp && gmv.score < 18000.0 {
-            //let reduction = if index >= 10 { depth_left / 3 } else { 1 };
-            let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
+            let mut reduction = 1;
+            //let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
@@ -213,7 +215,9 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
         stats.add_normal_node_non_beta_cutoff();
     }
     //Make cache
-    make_cache(search, &pv, &game_state, alpha, beta, depth_left);
+    if !search.stop {
+        make_cache(search, &pv, &game_state, alpha, beta, depth_left);
+    }
     return pv;
 }
 
@@ -296,14 +300,14 @@ pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f
 
 
 pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_check: bool, search: &Search) -> GameResult {
-    if in_check & !has_legal_moves {
+    if in_check && !has_legal_moves {
         if game_state.color_to_move == 0 {
             return GameResult::BlackWin;
         } else {
             return GameResult::WhiteWin;
         }
     }
-    if !in_check & !has_legal_moves {
+    if !in_check && !has_legal_moves {
         return GameResult::Draw;
     }
     if game_state.pieces[0][0] | game_state.pieces[1][0] | game_state.pieces[2][0] | game_state.pieces[3][0] | game_state.pieces[4][0]
@@ -326,9 +330,12 @@ pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_che
             if occ_entry.occurences > 0 {
                 while occ_entry.hash != game_state.hash {
                     let next_entry = &search.cache.cache[(occ_entry.hash + 1) as usize & super::cache::CACHE_MASK];
+                    if let None = next_entry {
+                        break;
+                    }
                     occ_entry = match next_entry {
                         Some(s) => s,
-                        _ => panic!("Can't be!")
+                        _ => panic!("Can't be")
                     };
                 }
                 if occ_entry.occurences == 2 {

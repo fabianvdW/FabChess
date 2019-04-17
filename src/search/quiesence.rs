@@ -96,11 +96,13 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
                         }
                     }
                 }
-                let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                for cmv in capture_moves.iter_mut() {
-                    if cmv.mv.from == mv.from && cmv.mv.to == mv.to && cmv.mv.move_type == mv.move_type {
-                        cmv.score += 10000.0;
-                        break;
+                if ce.occurences == 0 {
+                    let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                    for cmv in capture_moves.iter_mut() {
+                        if cmv.mv.from == mv.from && cmv.mv.to == mv.to && cmv.mv.move_type == mv.move_type {
+                            cmv.score += 10000.0;
+                            break;
+                        }
                     }
                 }
             }
