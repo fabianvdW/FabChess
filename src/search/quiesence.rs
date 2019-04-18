@@ -139,7 +139,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         }
     }
     if pv.pv.len() > 0 {
-        super::alphabeta::make_cache(search, &pv, &game_state, alpha, beta, depth_left);
+        super::alphabeta::make_cache(search, &pv, &game_state, alpha, beta, 0);
     }
     pv
 }

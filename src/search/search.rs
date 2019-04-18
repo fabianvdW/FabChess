@@ -52,7 +52,7 @@ impl Search {
                     1
                 } else {
                     -1
-                }, &mut stats, 0, self);
+                }, &mut stats, 0, self, true);
             } else {
                 //Aspiration Window
                 //Start with half window of last time
@@ -64,7 +64,7 @@ impl Search {
                         1
                     } else {
                         -1
-                    }, &mut stats, 0, self);
+                    }, &mut stats, 0, self, true);
                     if self.stop {
                         break;
                     }
@@ -105,6 +105,9 @@ impl Search {
                 self.principal_variation[i] = Some(CacheEntry::new(state, d - i as isize, pv.score, false, false, &pair));
             }
             best_pv = pv;
+            if best_pv.score > 2000.0 {
+                break;
+            }
         }
         self.search_statistics = stats;
         self.search_statistics.refresh_time_elapsed();
