@@ -14,14 +14,14 @@ lazy_static! {
 pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
 }
 
-pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search) -> PrincipalVariation {
+pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, stats: &mut SearchStatistics, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search, history: &mut Vec<u64>) -> PrincipalVariation {
     stats.add_q_node(current_depth);
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(1);
     if search.stop {
         return pv;
     }
-    let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, &search);
+    let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, &search, history);
     if game_status != GameResult::Ingame {
         pv.score = leaf_score(game_status, color, depth_left);
         return pv;
@@ -72,7 +72,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
                 stats.add_cache_hit_qs();
-                if ce.occurences == 0 && ce.depth >= depth_left as i8 {
+                if ce.depth >= depth_left as i8 {
                     if !ce.alpha && !ce.beta {
                         stats.add_cache_hit_replace_qs();
                         pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
@@ -96,19 +96,24 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
                         }
                     }
                 }
-                if ce.occurences == 0 {
-                    let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                    for cmv in capture_moves.iter_mut() {
-                        if cmv.mv.from == mv.from && cmv.mv.to == mv.to && cmv.mv.move_type == mv.move_type {
-                            cmv.score += 10000.0;
-                            break;
-                        }
+                let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                for cmv in capture_moves.iter_mut() {
+                    if cmv.mv.from == mv.from && cmv.mv.to == mv.to && cmv.mv.move_type == mv.move_type {
+                        cmv.score += 10000.0;
+                        break;
                     }
                 }
             }
         }
     }
 
+    let mut my_history: Vec<u64> = Vec::with_capacity(10);
+    let next_history: &mut Vec<u64> = if game_state.half_moves == 0 {
+        &mut my_history
+    } else {
+        history
+    };
+    next_history.push(game_state.hash);
     let mut index = 0;
     pv.score = stand_pat;
     while capture_moves.len() > 0 {
@@ -117,7 +122,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         let mv = capture_move.mv;
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
-        let mut following_pv = q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search);
+        let mut following_pv = q_search(-beta, -alpha, &next_g, -color, depth_left - 1, stats, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search, next_history);
         let score = -following_pv.score;
         if score > pv.score {
             pv.score = score;
@@ -133,6 +138,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         }
         index += 1;
     }
+    next_history.pop();
     if pv.score < beta {
         if index > 0 {
             stats.add_q_beta_noncutoff();

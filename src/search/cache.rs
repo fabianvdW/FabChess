@@ -22,8 +22,6 @@ pub struct CacheEntry {
     //64-Bit
     pub depth: i8,
     //8-Bit
-    pub occurences: u8,
-    //8-Bit
     pub plies_played: u16,
     //16-Bit
     pub score: f64,
@@ -41,24 +39,11 @@ impl CacheEntry {
         CacheEntry {
             hash: game_state.hash,
             depth: depth_left as i8,
-            occurences: 0,
             plies_played: ((game_state.full_moves - 1) * 2 + game_state.color_to_move) as u16,
             score,
             alpha,
             beta,
             mv: CacheEntry::mv_to_u16(&mv),
-        }
-    }
-    pub fn occ_entry(game_state:&GameState) -> CacheEntry{
-        CacheEntry{
-            hash:game_state.hash,
-            depth:0,
-            occurences:1,
-            plies_played:0,
-            score:0.0,
-            alpha:false,
-            beta:false,
-            mv:0,
         }
     }
 

@@ -16,7 +16,7 @@ pub const BF_INCREMENT: usize = 1;
 //Late Move Reduction
 //Aspiration Windows
 
-pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search, root: bool) -> PrincipalVariation {
+pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search, root: bool, history: &mut Vec<u64>) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
     if stats.nodes_searched % 4096 == 0 {
         checkup(stats, search);
@@ -28,10 +28,12 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         return pv;
     }
     let (mut legal_moves, in_check) = movegen::generate_moves(&game_state);
-    let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, &search);
-    if game_status != GameResult::Ingame {
-        pv.score = leaf_score(game_status, color, depth_left);
-        return pv;
+    if !root {
+        let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, &search, history);
+        if game_status != GameResult::Ingame {
+            pv.score = leaf_score(game_status, color, depth_left);
+            return pv;
+        }
     }
 
     if in_check && !root {
@@ -40,7 +42,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
 
     if depth_left <= 0 {
         stats.add_q_root();
-        pv = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth, search);
+        pv = q_search(alpha, beta, &game_state, color, 0, stats, legal_moves, in_check, current_depth, search, history);
         return pv;
     }
 
@@ -108,7 +110,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
                 stats.add_cache_hit_ns();
-                if ce.occurences == 0 && ce.depth >= depth_left as i8 {
+                if ce.depth >= depth_left as i8 {
                     if !ce.alpha && !ce.beta {
                         stats.add_cache_hit_replace_ns();
                         pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
@@ -132,29 +134,40 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
                         }
                     }
                 }
-                if ce.occurences == 0 {
-                    let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                    let mv_index = find_move(&mv, &graded_moves, true);
-                    graded_moves[mv_index].score = 29900.0;
-                }
+                let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                let mv_index = find_move(&mv, &graded_moves, true);
+                graded_moves[mv_index].score = 29900.0;
                 cache_hit = true;
             }
         }
     }
 
-    if beta - alpha <= 0.002 && depth_left >= 5 && !in_check &&
+    let mut my_history: Vec<u64> = Vec::with_capacity(10);
+    let next_history: &mut Vec<u64> = if game_state.half_moves == 0 {
+        &mut my_history
+    } else {
+        history
+    };
+    next_history.push(game_state.hash);
+    if beta - alpha <= 0.002 && depth_left >= 4 && !in_check &&
         (game_state.pieces[1][game_state.color_to_move] | game_state.pieces[2][game_state.color_to_move] |
             game_state.pieces[3][game_state.color_to_move] | game_state.pieces[4][game_state.color_to_move]) != 0u64 {
-        let rat = -principal_variation_search(-beta, -beta + 0.001, depth_left - 4, &movegen::make_nullmove(&game_state), -color, stats, current_depth + 1, search, false).score;
-        if rat >= beta {
-            stats.add_nm_pruning();
-            pv.score = rat;
-            return pv;
+        if eval_game_state(&game_state).final_eval * color as f64 >= beta {
+            let nextgs = movegen::make_nullmove(&game_state);
+            let rat = -principal_variation_search(-beta, -beta + 0.001, depth_left - 4, &nextgs, -color, stats, current_depth + 1, search, false, next_history).score;
+            if rat >= beta {
+                stats.add_nm_pruning();
+                pv.score = rat;
+                next_history.pop();
+                return pv;
+            }
         }
     }
 
     if beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left >= 5 {
-        let iid = principal_variation_search(alpha, beta, depth_left / 2, &game_state, color, stats, current_depth, search, false);
+        next_history.pop();
+        let iid = principal_variation_search(alpha, beta, depth_left / 2, &game_state, color, stats, current_depth, search, false, next_history);
+        next_history.push(game_state.hash);
         let mv_index = find_move(&iid.pv[0], &graded_moves, true);
         graded_moves[mv_index].score = 29900.0;
     }
@@ -171,23 +184,26 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type { true } else { false };
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
-        if depth_left > 2 && beta - alpha <= 0.002 && !in_check && !isc && index >= 2 && !isp {
+        if depth_left > 2 && !in_pv && !in_check && !isc && index >= 2 && !isp {
             //let mut reduction = 1;
             let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
+            if beta - alpha > 0.002 {
+                reduction = (reduction as f64 * 0.33) as isize;
+            }
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
-            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1 - reduction, &next_state, -color, stats, current_depth + 1, search, false);
+            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1 - reduction, &next_state, -color, stats, current_depth + 1, search, false, next_history);
             if -following_pv.score > alpha {
-                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false);
+                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
             }
         } else if depth_left <= 2 || !in_pv || index == 0 {
-            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false);
+            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
         } else {
-            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false);
+            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
             let rating = -following_pv.score;
             if rating > alpha {
-                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false);
+                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
             }
         }
         let rating = -following_pv.score;
@@ -230,6 +246,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         }
         index += 1;
     }
+    next_history.pop();
     if alpha < beta {
         stats.add_normal_node_non_beta_cutoff();
     }
@@ -238,6 +255,16 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         make_cache(search, &pv, &game_state, alpha, beta, depth_left);
     }
     return pv;
+}
+
+pub fn get_occurences(history: &Vec<u64>, game_state: &GameState) -> usize {
+    let mut occurences = 0;
+    for gs in history.iter().rev() {
+        if *gs == game_state.hash {
+            occurences += 1;
+        }
+    }
+    occurences
 }
 
 pub fn checkup(stats: &mut SearchStatistics, search: &mut Search) {
@@ -302,7 +329,7 @@ pub fn make_cache(search: &mut Search, pv: &PrincipalVariation, game_state: &Gam
         };
         //Make replacement scheme better
         let old_entry_val = old_entry.depth as f64 * if old_entry.beta || old_entry.alpha { 0.7 } else { 1.0 };
-        if old_entry.occurences == 0 && old_entry_val <= new_entry_val {
+        if old_entry_val <= new_entry_val {
             let new_entry = CacheEntry::new(&game_state, depth_left as isize, pv.score, alpha_node, beta_node, match pv.pv.get(0) {
                 Some(mv) => &mv,
                 _ => panic!("Invalid pv!")
@@ -324,7 +351,7 @@ pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f
 }
 
 
-pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_check: bool, search: &Search) -> GameResult {
+pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_check: bool, search: &Search, history: &Vec<u64>) -> GameResult {
     if in_check && !has_legal_moves {
         if game_state.color_to_move == 0 {
             return GameResult::BlackWin;
@@ -342,32 +369,9 @@ pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_che
     if game_state.half_moves >= 100 {
         return GameResult::Draw;
     }
-    //Missing 3-fold repetition
-    //This is checked by looking up in cache
-    //Cache entry has field occurences which is set when cached entry happened in game
-    //Entry with occurences>0 can't be overwritten
-    //In the rare case of two played positions mapping to same cache entry, check hash and if not equal go to next(wrapping)
-    //If occurences ==2 return DRAW
-    if game_state.half_moves > 0 {
-        let ce = &search.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
-        if let Some(entry) = ce {
-            let mut occ_entry = entry;
-            if occ_entry.occurences > 0 {
-                while occ_entry.hash != game_state.hash {
-                    let next_entry = &search.cache.cache[(occ_entry.hash + 1) as usize & super::cache::CACHE_MASK];
-                    if let None = next_entry {
-                        break;
-                    }
-                    occ_entry = match next_entry {
-                        Some(s) => s,
-                        _ => panic!("Can't be")
-                    };
-                }
-                if occ_entry.occurences == 2 {
-                    return GameResult::Draw;
-                }
-            }
-        }
+
+    if get_occurences(history, game_state) >= 1 {
+        return GameResult::Draw;
     }
     GameResult::Ingame
 }

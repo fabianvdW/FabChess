@@ -42,17 +42,23 @@ impl Search {
     }
 
     pub fn search(&mut self, depth: isize, game_state: GameState, history: Vec<GameState>) -> PrincipalVariation {
-        self.make_cache_from_history(history);
+        let mut hist: Vec<u64> = Vec::with_capacity(history.len());
+        for gs in history.iter().rev() {
+            hist.push(gs.hash);
+            if gs.half_moves == 0 {
+                break;
+            }
+        }
         let mut stats = SearchStatistics::new();
         let mut best_pv = PrincipalVariation::new(0);
-        for d in 1..depth + 1 {
+        for d in 1..(depth + 1) {
             let mut pv = PrincipalVariation::new(1);
             if d == 1 {
                 pv = principal_variation_search(-100000.0, 100000.0, d, &game_state, if game_state.color_to_move == 0 {
                     1
                 } else {
                     -1
-                }, &mut stats, 0, self, true);
+                }, &mut stats, 0, self, true, &mut hist);
             } else {
                 //Aspiration Window
                 //Start with half window of last time
@@ -64,7 +70,7 @@ impl Search {
                         1
                     } else {
                         -1
-                    }, &mut stats, 0, self, true);
+                    }, &mut stats, 0, self, true, &mut hist);
                     if self.stop {
                         break;
                     }
@@ -112,35 +118,5 @@ impl Search {
         self.search_statistics = stats;
         self.search_statistics.refresh_time_elapsed();
         return best_pv;
-    }
-
-    pub fn make_cache_from_history(&mut self, history: Vec<GameState>) {
-        for gs in history {
-            let index = gs.hash as usize & super::cache::CACHE_MASK;
-            let ce = self.cache.cache[index];
-            if let Some(entry) = ce {
-                let mut occ_entry = entry;
-                while occ_entry.occurences > 0 && occ_entry.hash != gs.hash {
-                    let next_entry = self.cache.cache[(occ_entry.hash + 1) as usize & super::cache::CACHE_MASK];
-                    occ_entry = match next_entry {
-                        Some(s) => s,
-                        _ => panic!("Can't be!")
-                    };
-                }
-                let occ_index = occ_entry.hash as usize & super::cache::CACHE_MASK;
-                if occ_entry.hash == gs.hash {
-                    match &mut self.cache.cache[occ_index] {
-                        Some(s) => {
-                            s.occurences += 1;
-                        }
-                        _ => panic!("Can't be"),
-                    };
-                } else if occ_entry.occurences == 0 {
-                    self.cache.cache[occ_index] = Some(super::cache::CacheEntry::occ_entry(&gs));
-                }
-            } else {
-                self.cache.cache[index] = Some(super::cache::CacheEntry::occ_entry(&gs));
-            }
-        }
     }
 }

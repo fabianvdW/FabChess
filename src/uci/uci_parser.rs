@@ -73,8 +73,8 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
     let mut winc: u64 = 0;
     let mut binc: u64 = 0;
     if cmd[0].to_lowercase() == "infinite" {
-        wtime = u64::MAX;
-        btime = u64::MAX;
+        wtime = 0u64;
+        btime = 0u64;
         winc = u64::MAX;
         binc = u64::MAX;
         if engine.internal_state.color_to_move == 0 {
@@ -153,13 +153,12 @@ pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
                 let mv = cmd[move_index];
                 let (from, to, promo) = GameMove::string_to_move(mv);
                 engine.internal_state = scout_and_make_draftmove(from, to, promo, &engine.internal_state);
-                if move_index != cmd.len() - 1 {
-                    history.push(engine.internal_state.clone());
-                }
+                history.push(engine.internal_state.clone());
                 move_index += 1;
             }
         }
     }
+    history.pop();
     return history;
 }
 
