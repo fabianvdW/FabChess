@@ -16,7 +16,7 @@ pub const BF_INCREMENT: usize = 1;
 //Late Move Reduction
 //Aspiration Windows
 
-pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search) -> PrincipalVariation {
+pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
     if stats.nodes_searched % 4096 == 0 {
         checkup(stats, search);
@@ -32,6 +32,9 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     if game_status != GameResult::Ingame {
         pv.score = leaf_score(game_status, color, depth_left);
         return pv;
+    }
+    if in_check {
+        depth_left += 1;
     }
     if depth_left <= 0 {
         stats.add_q_root();
@@ -62,7 +65,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
             }
         } else {
             //History Heuristic
-            graded_moves.push(GradedMove::new(mv, search.hh_score[mv.from][mv.to] as f64 / 10000000.0));
+            graded_moves.push(GradedMove::new(mv, search.hh_score[mv.from][mv.to] as f64 / search.bf_score[mv.from][mv.to] as f64 / 10000000.0));
         }
     }
 
@@ -148,23 +151,27 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
     }
 
     let mut index: usize = 0;
+    let mut quiet_count = 0;
     while graded_moves.len() > 0 {
         let gmvindex = get_next_gm(&graded_moves);
         let gmv = graded_moves.remove(gmvindex);
         let mv = gmv.mv;
         let isc = is_capture(&mv);
+        if !isc {
+            quiet_count += 1;
+        }
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type { true } else { false };
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
-        if depth_left > 2 && alpha - beta <= 0.002 && !in_check && !isc && index >= 5 && !isp && gmv.score < 18000.0 {
-            let mut reduction = 1;
-            //let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
+        if depth_left > 2 && alpha - beta <= 0.002 && !in_check && !isc && quiet_count >= 2 && !isp && gmv.score < 18000.0 {
+            //let mut reduction = 1;
+            let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((quiet_count - 1) as f64).sqrt()) as isize;
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
-            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1 - reduction, &next_state, -color, stats, current_depth + 1, search);
+            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1 - reduction, &next_state, -color, stats, current_depth + 1, search);
             if -following_pv.score > alpha {
-                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search);
+                following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search);
             }
         } else if depth_left <= 2 || !in_pv || index == 0 {
             following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search);
@@ -208,6 +215,10 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, depth_left: isi
                 search.killer_moves[current_depth][0] = Some(mv);
             }
             break;
+        } else {
+            if !isc {
+                search.bf_score[mv.from][mv.to] += BF_INCREMENT;
+            }
         }
         index += 1;
     }

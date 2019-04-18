@@ -10,6 +10,7 @@ pub struct Search {
     pub principal_variation: [Option<CacheEntry>; 100],
     pub killer_moves: [[Option<GameMove>; 2]; 100],
     pub hh_score: [[usize; 64]; 64],
+    pub bf_score: [[usize; 64]; 64],
     pub search_statistics: SearchStatistics,
     pub tc: TimeControl,
     pub stop: bool,
@@ -22,7 +23,7 @@ pub struct TimeControl {
 
 impl TimeControl {
     pub fn time_over(&self, time_spent: u64) -> bool {
-        return time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc;
+        return time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc - 40;
     }
 }
 
@@ -33,7 +34,8 @@ impl Search {
             principal_variation: [None; 100],
             search_statistics: SearchStatistics::new(),
             killer_moves: [[None; 2]; 100],
-            hh_score: [[0; 64]; 64],
+            hh_score: [[1; 64]; 64],
+            bf_score: [[1; 64]; 64],
             tc,
             stop: false,
         }
@@ -88,7 +90,7 @@ impl Search {
             }
             let nps = stats.getnps();
             let sc = (pv.score * 100.0) as isize;
-            println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", stats.depth, stats.seldepth, stats.nodes_searched, nps, stats.time_elapsed, sc, pv_str));
+            println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", d, stats.seldepth, stats.nodes_searched, nps, stats.time_elapsed, sc, pv_str));
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {
