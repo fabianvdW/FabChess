@@ -18,7 +18,7 @@ impl<'a> UCIEngine<'a> {
     }
 
     pub fn id_command(&self) {
-        println!("id {}", self.name);
-        println!("id {}", self.author);
+        println!("id name {}", self.name);
+        println!("id author {}", self.author);
     }
 }

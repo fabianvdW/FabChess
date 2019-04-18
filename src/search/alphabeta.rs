@@ -188,7 +188,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
             //let mut reduction = 1;
             let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
             if beta - alpha > 0.002 {
-                reduction = (reduction as f64 * 0.33) as isize;
+                reduction = (reduction as f64 * 0.66) as isize;
             }
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
