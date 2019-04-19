@@ -4,7 +4,7 @@ use super::super::move_generation::movegen;
 use super::alphabeta::{GameResult, check_end_condition, leaf_score};
 use super::search::Search;
 use super::alphabeta::PrincipalVariation;
-use super::cache::CacheEntry;
+use super::cache::{CacheEntry, Cache};
 use crate::bitboards;
 use super::GradedMove;
 
@@ -13,7 +13,7 @@ lazy_static! {
 pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
 }
 
-pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search, history: &mut Vec<u64>) -> PrincipalVariation {
+pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search, history: &mut Vec<u64>, cache: &mut Cache, root_plies_played: usize) -> PrincipalVariation {
     search.search_statistics.add_q_node(current_depth);
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(1);
@@ -66,7 +66,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
 
     //Probe TT
     {
-        let ce = &search.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
+        let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
@@ -121,7 +121,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         let mv = capture_move.mv;
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
-        let following_pv = q_search(-beta, -alpha, &next_g, -color, depth_left - 1, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search, next_history);
+        let following_pv = q_search(-beta, -alpha, &next_g, -color, depth_left - 1, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search, next_history, cache, root_plies_played);
         let score = -following_pv.score;
         if score > pv.score {
             pv.score = score;
@@ -144,7 +144,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         }
     }
     if pv.pv.len() > 0 {
-        super::alphabeta::make_cache(search, &pv, &game_state, alpha, beta, 0);
+        super::alphabeta::make_cache(cache, &pv, &game_state, alpha, beta, 0, root_plies_played);
     }
     pv
 }

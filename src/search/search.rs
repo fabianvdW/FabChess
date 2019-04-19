@@ -6,9 +6,9 @@ use super::alphabeta::PrincipalVariation;
 use super::alphabeta::principal_variation_search;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::RwLock;
 
 pub struct Search {
-    pub cache: Cache,
     pub principal_variation: [Option<CacheEntry>; 100],
     pub killer_moves: [[Option<GameMove>; 2]; 100],
     pub hh_score: [[usize; 64]; 64],
@@ -32,7 +32,6 @@ impl TimeControl {
 impl Search {
     pub fn new(tc: TimeControl) -> Search {
         Search {
-            cache: super::cache::Cache::new(),
             principal_variation: [None; 100],
             search_statistics: SearchStatistics::new(),
             killer_moves: [[None; 2]; 100],
@@ -43,7 +42,9 @@ impl Search {
         }
     }
 
-    pub fn search(&mut self, depth: isize, game_state: GameState, history: Vec<GameState>, stop_ref: Arc<AtomicBool>) -> PrincipalVariation {
+    pub fn search(&mut self, depth: isize, game_state: GameState, history: Vec<GameState>, stop_ref: Arc<AtomicBool>, cache_uc: Arc<RwLock<Cache>>) -> PrincipalVariation {
+        let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
+        let cache = &mut (*cache_uc).write().unwrap();
         let mut hist: Vec<u64> = Vec::with_capacity(history.len());
         for gs in history.iter().rev() {
             hist.push(gs.hash);
@@ -61,7 +62,7 @@ impl Search {
                     1
                 } else {
                     -1
-                }, 0, self, true, &mut hist, &stop_ref);
+                }, 0, self, root_plies_played, &mut hist, &stop_ref, cache);
             } else {
                 //Aspiration Window
                 //Start with half window of last time
@@ -73,11 +74,11 @@ impl Search {
                         1
                     } else {
                         -1
-                    }, 0, self, true, &mut hist, &stop_ref);
+                    }, 0, self, root_plies_played, &mut hist, &stop_ref, cache);
                     if self.stop {
                         break;
                     }
-                    if pv.score > alpha && pv.score < beta {
+                    if pv.score > alpha && pv.score < beta && pv.pv.len() > 0 {
                         break;
                     }
                     if pv.score <= alpha {

@@ -2,7 +2,8 @@ use std::io::{self};
 use std::u64;
 use std::thread;
 use std::time::Duration;
-use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering};
+use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering, RwLock};
+use crate::search::cache::Cache;
 use super::uci_engine::UCIEngine;
 use crate::board_representation::game_state::{GameState, PieceType, GameMoveType, GameMove};
 use crate::search::search::TimeControl;
@@ -12,7 +13,10 @@ use crate::search::search::Search;
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
+
     let stop = Arc::new(AtomicBool::new(false));
+    let mut cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
+
     let stdin = io::stdin();
     let mut line = String::new();
     loop {
@@ -24,8 +28,10 @@ pub fn parse_loop() {
             "" => continue,
             "uci" => uci(&us),
             "setoption" => setoption(),
-            "newgame" => newgame(&mut us),
-            "ucinewgame" => newgame(&mut us),
+            "ucinewgame" | "newgame" => {
+                newgame(&mut us);
+                cache = Arc::new(RwLock::new(Cache::new()));
+            }
             "isready" => isready(),
             "position" => {
                 history = position(&mut us, &arg[1..]);
@@ -39,8 +45,9 @@ pub fn parse_loop() {
                 }
                 let new_state = us.internal_state.clone();
                 let cl = Arc::clone(&stop);
+                let cc = Arc::clone(&cache);
                 thread::spawn(move || {
-                    start_search(cl, new_state, new_history, tc);
+                    start_search(cl, new_state, new_history, tc, cc);
                 });
             }
             "stop" => {
@@ -60,9 +67,9 @@ pub fn parse_loop() {
     }
 }
 
-pub fn start_search(stop: Arc<AtomicBool>, game_state: GameState, history: Vec<GameState>, tc: TimeControl) {
+pub fn start_search(stop: Arc<AtomicBool>, game_state: GameState, history: Vec<GameState>, tc: TimeControl, cache: Arc<RwLock<Cache>>) {
     let mut s = Search::new(tc);
-    let res = s.search(100, game_state, history, stop);
+    let res = s.search(100, game_state, history, stop, cache);
     println!("bestmove {:?}", res.pv[0]);
 }
 
