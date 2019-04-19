@@ -1,7 +1,7 @@
 use super::{bitboards, Evaluation, MidGameDisplay, EndGameDisplay};
 
-pub const PAWN_PIECE_VALUE_MG: f64 = 100.0;
-pub const PAWN_PIECE_VALUE_EG: f64 = 120.0;
+pub const PAWN_PIECE_VALUE_MG: f64 = 120.0;
+pub const PAWN_PIECE_VALUE_EG: f64 = 150.0;
 const PAWN_DOUBLED_VALUE_MG: f64 = -8.0;
 const PAWN_DOUBLED_VALUE_EG: f64 = -37.5;
 const PAWN_ISOLATED_VALUE_MG: f64 = -5.0;

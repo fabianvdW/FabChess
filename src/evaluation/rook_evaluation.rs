@@ -1,7 +1,7 @@
 use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
-pub const ROOK_PIECE_VALUE_MG: f64 = 600.0;
-pub const ROOK_PIECE_VALUE_EG: f64 = 650.0;
+pub const ROOK_PIECE_VALUE_MG: f64 = 710.0;
+pub const ROOK_PIECE_VALUE_EG: f64 = 920.0;
 
 pub struct RookEvaluation {
     amount_of_rooks: u32

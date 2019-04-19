@@ -1,7 +1,7 @@
 use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
-pub const BISHOP_PIECE_VALUE_EG: f64 = 405.0;
-pub const BISHOP_PIECE_VALUE_MG: f64 = 405.0;
+pub const BISHOP_PIECE_VALUE_EG: f64 = 510.0;
+pub const BISHOP_PIECE_VALUE_MG: f64 = 510.0;
 pub const BISHOP_PAIR_BONUS: f64 = 50.0;
 
 pub struct BishopEvaluation {

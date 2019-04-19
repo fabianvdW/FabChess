@@ -1,7 +1,7 @@
 use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
-pub const QUEEN_PIECE_VALUE_MG: f64 = 1200.0;
-pub const QUEEN_PIECE_VALUE_EG: f64 = 1250.0;
+pub const QUEEN_PIECE_VALUE_MG: f64 = 1500.0;
+pub const QUEEN_PIECE_VALUE_EG: f64 = 1600.0;
 
 pub struct QueenEvaluation {
     amount_of_queens: u32

@@ -1,7 +1,7 @@
 use super::{bitboards, Evaluation, MidGameDisplay, EndGameDisplay};
 
-const SHIELDING_PAWN_MISSING_MG: f64 = -20.0;
-const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: f64 = -60.0;
+const SHIELDING_PAWN_MISSING_MG: f64 = -40.0;
+const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: f64 = -80.0;
 
 pub struct KingEvaluation {
     shielding_pawns_missing: u32,

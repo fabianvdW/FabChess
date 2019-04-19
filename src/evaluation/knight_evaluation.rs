@@ -1,7 +1,7 @@
 use super::{Evaluation, MidGameDisplay, EndGameDisplay};
 
-pub const KNIGHT_PIECE_VALUE_MG: f64 = 400.0;
-pub const KNIGHT_PIECE_VALUE_EG: f64 = 400.0;
+pub const KNIGHT_PIECE_VALUE_MG: f64 = 500.0;
+pub const KNIGHT_PIECE_VALUE_EG: f64 = 500.0;
 pub const KNIGHT_VALUE_WITH_PAWNS: [f64; 17] = [-30.0, -27.5, -25.0, -22.5, -20.0, -17.5, -15.0, -12.5, -10.0, -7.5, -5.0, -2.5, 0.0, 2.5, 5.0, 7.5, 10.0];
 pub const KNIGHT_SUPPORTED_BY_PAWN: f64 = 30.0;
 
