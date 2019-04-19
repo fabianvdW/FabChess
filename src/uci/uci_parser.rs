@@ -1,4 +1,4 @@
-use std::io::{self, BufRead};
+use std::io::{self};
 use std::u64;
 use std::thread;
 use std::time::Duration;
@@ -48,8 +48,6 @@ pub fn parse_loop() {
                 thread::sleep(Duration::from_millis(50));
             }
             "quit" => {
-                stop.store(true, Ordering::Relaxed);
-                thread::sleep(Duration::from_millis(50));
                 break;
             }
             "d" => {

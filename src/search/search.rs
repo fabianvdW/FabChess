@@ -4,8 +4,8 @@ use super::super::GameState;
 use super::GameMove;
 use super::alphabeta::PrincipalVariation;
 use super::alphabeta::principal_variation_search;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 pub struct Search {
     pub cache: Cache,
@@ -51,16 +51,17 @@ impl Search {
                 break;
             }
         }
-        let mut stats = SearchStatistics::new();
+        self.search_statistics = SearchStatistics::new();
+
         let mut best_pv = PrincipalVariation::new(0);
         for d in 1..(depth + 1) {
-            let mut pv = PrincipalVariation::new(1);
+            let mut pv;
             if d == 1 {
                 pv = principal_variation_search(-100000.0, 100000.0, d, &game_state, if game_state.color_to_move == 0 {
                     1
                 } else {
                     -1
-                }, &mut stats, 0, self, true, &mut hist,&stop_ref);
+                }, 0, self, true, &mut hist, &stop_ref);
             } else {
                 //Aspiration Window
                 //Start with half window of last time
@@ -72,7 +73,7 @@ impl Search {
                         1
                     } else {
                         -1
-                    }, &mut stats, 0, self, true, &mut hist,&stop_ref);
+                    }, 0, self, true, &mut hist, &stop_ref);
                     if self.stop {
                         break;
                     }
@@ -96,9 +97,9 @@ impl Search {
             for mv in &pv.pv {
                 pv_str.push_str(&format!("{:?} ", mv));
             }
-            let nps = stats.getnps();
+            let nps = self.search_statistics.getnps();
             let sc = (pv.score * 100.0) as isize;
-            println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", d, stats.seldepth, stats.nodes_searched, nps, stats.time_elapsed, sc, pv_str));
+            println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", d, self.search_statistics.seldepth, self.search_statistics.nodes_searched, nps, self.search_statistics.time_elapsed, sc, pv_str));
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {
@@ -117,7 +118,6 @@ impl Search {
                 break;
             }
         }
-        self.search_statistics = stats;
         self.search_statistics.refresh_time_elapsed();
         return best_pv;
     }

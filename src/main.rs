@@ -15,9 +15,6 @@ use self::board_representation::game_state::GameState;
 use self::move_generation::movegen;
 use std::time::Instant;
 use logging::log;
-use search::alphabeta::principal_variation_search;
-use search::statistics;
-use search::search::TimeControl;
 
 fn main() {
     let now = Instant::now();

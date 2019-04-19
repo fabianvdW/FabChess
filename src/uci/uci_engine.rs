@@ -1,4 +1,3 @@
-use crate::search::cache;
 use crate::board_representation::game_state::GameState;
 
 pub struct UCIEngine<'a> {
