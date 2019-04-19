@@ -8,6 +8,8 @@ use super::quiesence::{q_search, see, is_capture};
 use super::GradedMove;
 use super::statistics::SearchStatistics;
 use crate::evaluation::eval_game_state;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 pub const MATE_SCORE: f64 = 3000.0;
 pub const HH_INCREMENT: usize = 1;
@@ -16,10 +18,10 @@ pub const BF_INCREMENT: usize = 1;
 //Late Move Reduction
 //Aspiration Windows
 
-pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search, root: bool, history: &mut Vec<u64>) -> PrincipalVariation {
+pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left: isize, game_state: &GameState, color: isize, stats: &mut SearchStatistics, current_depth: usize, search: &mut Search, root: bool, history: &mut Vec<u64>, stop: &Arc<AtomicBool>) -> PrincipalVariation {
     stats.add_normal_node(current_depth);
-    if stats.nodes_searched % 4096 == 0 {
-        checkup(stats, search);
+    if stats.nodes_searched % 4095 == 0 {
+        checkup(stats, search, stop);
     }
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(depth_left as usize);
@@ -154,7 +156,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
             game_state.pieces[3][game_state.color_to_move] | game_state.pieces[4][game_state.color_to_move]) != 0u64 {
         if eval_game_state(&game_state).final_eval * color as f64 >= beta {
             let nextgs = movegen::make_nullmove(&game_state);
-            let rat = -principal_variation_search(-beta, -beta + 0.001, depth_left - 4, &nextgs, -color, stats, current_depth + 1, search, false, next_history).score;
+            let rat = -principal_variation_search(-beta, -beta + 0.001, depth_left - 4, &nextgs, -color, stats, current_depth + 1, search, false, next_history, stop).score;
             if rat >= beta {
                 stats.add_nm_pruning();
                 pv.score = rat;
@@ -166,7 +168,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
 
     if beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left >= 5 {
         next_history.pop();
-        let iid = principal_variation_search(alpha, beta, depth_left / 2, &game_state, color, stats, current_depth, search, false, next_history);
+        let iid = principal_variation_search(alpha, beta, depth_left / 2, &game_state, color, stats, current_depth, search, false, next_history, stop);
         next_history.push(game_state.hash);
         let mv_index = find_move(&iid.pv[0], &graded_moves, true);
         graded_moves[mv_index].score = 29900.0;
@@ -193,17 +195,17 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
-            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1 - reduction, &next_state, -color, stats, current_depth + 1, search, false, next_history);
+            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1 - reduction, &next_state, -color, stats, current_depth + 1, search, false, next_history, stop);
             if -following_pv.score > alpha {
-                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
+                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history, stop);
             }
         } else if depth_left <= 2 || !in_pv || index == 0 {
-            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
+            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history, stop);
         } else {
-            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
+            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history, stop);
             let rating = -following_pv.score;
             if rating > alpha {
-                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history);
+                following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, stats, current_depth + 1, search, false, next_history, stop);
             }
         }
         let rating = -following_pv.score;
@@ -267,9 +269,9 @@ pub fn get_occurences(history: &Vec<u64>, game_state: &GameState) -> usize {
     occurences
 }
 
-pub fn checkup(stats: &mut SearchStatistics, search: &mut Search) {
+pub fn checkup(stats: &mut SearchStatistics, search: &mut Search, stop: &Arc<AtomicBool>) {
     stats.refresh_time_elapsed();
-    if search.tc.time_over(stats.time_elapsed) {
+    if search.tc.time_over(stats.time_elapsed) || stop.load(Ordering::Relaxed) {
         search.stop = true;
     }
 }

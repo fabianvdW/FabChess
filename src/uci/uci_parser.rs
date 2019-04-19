@@ -1,6 +1,8 @@
 use std::io::{self, BufRead};
 use std::u64;
 use std::thread;
+use std::time::Duration;
+use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering};
 use super::uci_engine::UCIEngine;
 use crate::board_representation::game_state::{GameState, PieceType, GameMoveType, GameMove};
 use crate::search::search::TimeControl;
@@ -10,6 +12,7 @@ use crate::search::search::Search;
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
+    let stop = Arc::new(AtomicBool::new(false));
     let stdin = io::stdin();
     let mut line = String::new();
     loop {
@@ -28,20 +31,25 @@ pub fn parse_loop() {
                 history = position(&mut us, &arg[1..]);
             }
             "go" => {
+                stop.store(false, Ordering::Relaxed);
                 let tc = go(&us, &arg[1..]);
-                //search = Some(Search::new(&mut us.cache, &us.internal_state, tc));
                 let mut new_history = vec![];
                 for gs in &history {
                     new_history.push(gs.clone());
                 }
                 let new_state = us.internal_state.clone();
+                let cl = Arc::clone(&stop);
                 thread::spawn(move || {
-                    start_search(new_state, new_history, tc)
+                    start_search(cl, new_state, new_history, tc);
                 });
             }
-            "stop" => stop(),
+            "stop" => {
+                stop.store(true, Ordering::Relaxed);
+                thread::sleep(Duration::from_millis(50));
+            }
             "quit" => {
-                stop();
+                stop.store(true, Ordering::Relaxed);
+                thread::sleep(Duration::from_millis(50));
                 break;
             }
             "d" => {
@@ -54,9 +62,9 @@ pub fn parse_loop() {
     }
 }
 
-pub fn start_search(game_state: GameState, history: Vec<GameState>, tc: TimeControl) {
+pub fn start_search(stop: Arc<AtomicBool>, game_state: GameState, history: Vec<GameState>, tc: TimeControl) {
     let mut s = Search::new(tc);
-    let res = s.search(100, game_state, history);
+    let res = s.search(100, game_state, history, stop);
     println!("bestmove {:?}", res.pv[0]);
 }
 
@@ -64,8 +72,6 @@ pub fn print_internal_state(engine: &UCIEngine) {
     println!("{}", engine.internal_state);
     println!("FEN: {}", engine.internal_state.to_fen());
 }
-
-pub fn stop() {}
 
 pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
     let mut wtime: u64 = 0;
@@ -124,7 +130,6 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
 }
 
 pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
-    stop();
     let mut move_index = 1;
     match cmd[0] {
         "fen" => {
@@ -196,6 +201,5 @@ pub fn uci(engine: &UCIEngine) {
 pub fn setoption() {}
 
 pub fn newgame(engine: &mut UCIEngine) {
-    stop();
     engine.internal_state = GameState::standard();
 }

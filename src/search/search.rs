@@ -4,6 +4,8 @@ use super::super::GameState;
 use super::GameMove;
 use super::alphabeta::PrincipalVariation;
 use super::alphabeta::principal_variation_search;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 pub struct Search {
     pub cache: Cache,
@@ -41,7 +43,7 @@ impl Search {
         }
     }
 
-    pub fn search(&mut self, depth: isize, game_state: GameState, history: Vec<GameState>) -> PrincipalVariation {
+    pub fn search(&mut self, depth: isize, game_state: GameState, history: Vec<GameState>, stop_ref: Arc<AtomicBool>) -> PrincipalVariation {
         let mut hist: Vec<u64> = Vec::with_capacity(history.len());
         for gs in history.iter().rev() {
             hist.push(gs.hash);
@@ -58,7 +60,7 @@ impl Search {
                     1
                 } else {
                     -1
-                }, &mut stats, 0, self, true, &mut hist);
+                }, &mut stats, 0, self, true, &mut hist,&stop_ref);
             } else {
                 //Aspiration Window
                 //Start with half window of last time
@@ -70,7 +72,7 @@ impl Search {
                         1
                     } else {
                         -1
-                    }, &mut stats, 0, self, true, &mut hist);
+                    }, &mut stats, 0, self, true, &mut hist,&stop_ref);
                     if self.stop {
                         break;
                     }
