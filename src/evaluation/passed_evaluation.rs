@@ -1,7 +1,7 @@
 use super::{Evaluation, ParallelEvaluation, MidGameDisplay, EndGameDisplay, bitboards};
 
-const PAWN_PASSED_VALUES_MG: [f64; 7] = [0.0, -20.0, -10.0, 10.0, 70.0, 120.0, 200.0];
-const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [f64; 7] = [0.0, 0.0, 0.0, 25.0, 40.0, 130.0, 210.0];
+const PAWN_PASSED_VALUES_MG: [f64; 7] = [0.0, -20.0, -10.0, 10.0, 35.0, 60.0, 100.0];
+const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [f64; 7] = [0.0, 0.0, 0.0, 25.0, 40.0, 100.0, 140.0];
 const PAWN_PASSED_VALUES_EG: [f64; 7] = [0.0, -40.0, -20.0, 20.0, 70.0, 160.0, 250.0];
 const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [f64; 7] = [0.0, 0.0, 0.0, 25.0, 80.0, 170.0, 270.0];
 

@@ -179,7 +179,7 @@ pub fn best_move_value(state: &GameState) -> f64 {
 }
 
 pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alpha: f64) -> bool {
-    if phase == 0.0 {
+    if phase == 0.0 || eval >= alpha {
         return true;
     }
     if let GameMoveType::Promotion(_, _) = capture_move.move_type {

@@ -149,6 +149,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         history
     };
     next_history.push(game_state.hash);
+
     if beta - alpha <= 0.002 && depth_left >= 4 && !in_check &&
         (game_state.pieces[1][game_state.color_to_move] | game_state.pieces[2][game_state.color_to_move] |
             game_state.pieces[3][game_state.color_to_move] | game_state.pieces[4][game_state.color_to_move]) != 0u64 {
@@ -180,7 +181,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type { true } else { false };
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
-        if depth_left > 2 && !in_pv && !in_check && !isc && index >= 2 && !isp {
+        if depth_left > 2 && !in_pv && !in_check && (!isc || gmv.score < 0.0) && index >= 2 && !isp {
             //let mut reduction = 1;
             let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
             if beta - alpha > 0.002 {
