@@ -47,6 +47,7 @@ impl CacheEntry {
         }
     }
 
+    #[inline(always)]
     pub fn mv_to_u16(mv: &GameMove) -> u16 {
         let mut res = 0usize;
         res |= mv.from << 10;
@@ -69,6 +70,7 @@ impl CacheEntry {
         res as u16
     }
 
+    #[inline(always)]
     pub fn u16_to_mv(mv: u16, game_state: &GameState) -> GameMove {
         let typ = mv & 15;
         let from = ((mv & 0xFC00) >> 10) as usize;

@@ -149,6 +149,7 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
     pv
 }
 
+#[inline(always)]
 pub fn is_capture(mv: &GameMove) -> bool {
     match &mv.move_type {
         GameMoveType::Capture(_) => true,
@@ -161,6 +162,7 @@ pub fn is_capture(mv: &GameMove) -> bool {
     }
 }
 
+#[inline(always)]
 pub fn best_move_value(state: &GameState) -> f64 {
     let mut res = 1.0;
     let mut i = 4;
@@ -178,6 +180,7 @@ pub fn best_move_value(state: &GameState) -> f64 {
     res
 }
 
+#[inline(always)]
 pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alpha: f64) -> bool {
     if phase == 0.0 || eval >= alpha {
         return true;
@@ -193,6 +196,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
     eval + (evaluation::piece_value(&captured_piece, phase)) / 100.0 + DELTA_PRUNING >= alpha
 }
 
+#[inline(always)]
 pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
     let mut gain = Vec::with_capacity(32);
     let may_xray = game_state.pieces[0][0] | game_state.pieces[0][1] | game_state.pieces[2][0] | game_state.pieces[2][1] | game_state.pieces[3][0] | game_state.pieces[3][1] |
@@ -240,12 +244,14 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
     gain[0]
 }
 
+#[inline(always)]
 pub fn recalculate_sliders(game_state: &GameState, color_to_move: usize, square: usize, occ: u64) -> u64 {
     //Bishops
     movegen::bishop_attack(square, occ) & (game_state.pieces[2][color_to_move] | game_state.pieces[4][color_to_move])
         | movegen::rook_attack(square, occ) & (game_state.pieces[3][color_to_move] | game_state.pieces[4][color_to_move])
 }
 
+#[inline(always)]
 pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     let square_board = 1u64 << square;
     movegen::attackers_from_white(square_board, square, game_state.pieces[0][0], game_state.pieces[1][0], game_state.pieces[2][0] | game_state.pieces[4][0], game_state.pieces[3][0] | game_state.pieces[4][0], occ).0
@@ -253,6 +259,7 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
         | bitboards::KING_ATTACKS[square] & (game_state.pieces[5][0] | game_state.pieces[5][1])
 }
 
+#[inline(always)]
 pub fn capture_value(mv: &GameMove) -> f64 {
     match &mv.move_type {
         GameMoveType::Capture(c) => {
@@ -270,6 +277,7 @@ pub fn capture_value(mv: &GameMove) -> f64 {
     }
 }
 
+#[inline(always)]
 pub fn piece_value(piece_type: &PieceType) -> f64 {
     match piece_type {
         PieceType::Pawn => 100.0,
@@ -281,11 +289,13 @@ pub fn piece_value(piece_type: &PieceType) -> f64 {
     }
 }
 
+#[inline(always)]
 pub fn get_occupied_board(game_state: &GameState) -> u64 {
     game_state.pieces[0][0] | game_state.pieces[1][0] | game_state.pieces[2][0] | game_state.pieces[3][0] | game_state.pieces[4][0] | game_state.pieces[5][0]
         | game_state.pieces[0][1] | game_state.pieces[1][1] | game_state.pieces[2][1] | game_state.pieces[3][1] | game_state.pieces[4][1] | game_state.pieces[5][1]
 }
 
+#[inline(always)]
 pub fn least_valuable_piece(from_board: u64, color_to_move: usize, game_state: &GameState) -> (u64, usize) {
     for i in 0..6 {
         let subset = game_state.pieces[i][color_to_move] & from_board;

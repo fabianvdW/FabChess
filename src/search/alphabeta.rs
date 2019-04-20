@@ -254,6 +254,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
     return pv;
 }
 
+#[inline(always)]
 pub fn get_occurences(history: &Vec<u64>, game_state: &GameState) -> usize {
     let mut occurences = 0;
     for gs in history.iter().rev() {
@@ -264,6 +265,7 @@ pub fn get_occurences(history: &Vec<u64>, game_state: &GameState) -> usize {
     occurences
 }
 
+#[inline(always)]
 pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
     search.search_statistics.refresh_time_elapsed();
     if search.tc.time_over(search.search_statistics.time_elapsed) || stop.load(Ordering::Relaxed) {
@@ -271,6 +273,7 @@ pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
     }
 }
 
+#[inline(always)]
 pub fn get_next_gm(mv_list: &Vec<GradedMove>) -> usize {
     if mv_list.len() == 0 {
         panic!("List has to be longer than 1")
@@ -287,6 +290,7 @@ pub fn get_next_gm(mv_list: &Vec<GradedMove>) -> usize {
     }
 }
 
+#[inline(always)]
 pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>, contains: bool) -> usize {
     let mut mv_index = 0;
     for gmvs in mv_list {
@@ -305,6 +309,7 @@ pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>, contains: bool) -> us
     }
 }
 
+#[inline(always)]
 pub fn make_cache(cache: &mut Cache, pv: &PrincipalVariation, game_state: &GameState, original_alpha: f64, beta: f64, depth_left: isize, root_plies_played: usize) {
     let beta_node: bool = pv.score >= beta;
     let alpha_node: bool = pv.score < original_alpha;
@@ -339,6 +344,7 @@ pub fn make_cache(cache: &mut Cache, pv: &PrincipalVariation, game_state: &GameS
     }
 }
 
+#[inline(always)]
 pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f64 {
     if game_status == GameResult::Draw {
         return 0.0;
@@ -351,6 +357,7 @@ pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f
 }
 
 
+#[inline(always)]
 pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_check: bool, history: &Vec<u64>) -> GameResult {
     if in_check && !has_legal_moves {
         if game_state.color_to_move == 0 {

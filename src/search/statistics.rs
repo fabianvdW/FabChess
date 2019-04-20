@@ -53,11 +53,13 @@ impl SearchStatistics {
             nm_pruned: 0,
         }
     }
+    #[inline(always)]
     pub fn refresh_time_elapsed(&mut self) {
         let now = Instant::now();
         let dur = now.duration_since(self.start_time);
         self.time_elapsed = dur.as_millis() as u64;
     }
+    #[inline(always)]
     pub fn add_normal_node(&mut self, depth: usize) {
         self.nodes_searched += 1;
         self.normal_nodes_searched += 1;
@@ -65,6 +67,7 @@ impl SearchStatistics {
             self.depth = depth;
         }
     }
+    #[inline(always)]
     pub fn add_q_node(&mut self, seldepth: usize) {
         self.nodes_searched += 1;
         self.q_nodes_searched += 1;
@@ -72,23 +75,29 @@ impl SearchStatistics {
             self.seldepth = seldepth;
         }
     }
+    #[inline(always)]
     pub fn add_q_root(&mut self) {
         self.nodes_searched -= 1;
         self.normal_nodes_searched -= 1;
     }
+    #[inline(always)]
     pub fn add_q_delta_cutoff(&mut self) {
         self.q_delta_cutoffs += 1;
     }
+    #[inline(always)]
     pub fn add_q_see_cutoff(&mut self) {
         self.q_see_cutoffs += 1;
     }
+    #[inline(always)]
     pub fn add_q_beta_cutoff(&mut self, index: usize) {
         self.q_beta_cutoffs += 1;
         self.q_beta_cutoffs_index[index] += 1;
     }
+    #[inline(always)]
     pub fn add_q_beta_noncutoff(&mut self) {
         self.q_non_beta_cutoffs += 1;
     }
+    #[inline(always)]
     pub fn add_normal_node_beta_cutoff(&mut self, index: usize) {
         self.normal_nodes_beta_cutoffs += 1;
         if index > 31 {
@@ -97,31 +106,39 @@ impl SearchStatistics {
             self.normal_nodes_beta_cutoffs_index[index] += 1;
         }
     }
+    #[inline(always)]
     pub fn add_normal_node_non_beta_cutoff(&mut self) {
         self.normal_nodes_non_beta_cutoffs += 1;
     }
+    #[inline(always)]
     pub fn add_cache_hit_ns(&mut self) {
         self.cache_hit_ns += 1;
     }
+    #[inline(always)]
     pub fn add_cache_hit_replace_ns(&mut self) {
         self.cache_hit_replaces_ns += 1;
     }
+    #[inline(always)]
     pub fn add_cache_hit_aj_replace_ns(&mut self) {
         self.cache_hit_aj_replaces_ns += 1;
     }
     pub fn add_cache_hit_qs(&mut self) {
         self.cache_hit_qs += 1;
     }
+    #[inline(always)]
     pub fn add_cache_hit_replace_qs(&mut self) {
         self.cache_hit_replaces_qs += 1;
     }
+    #[inline(always)]
     pub fn add_cache_hit_aj_replace_qs(&mut self) {
         self.cache_hit_aj_replaces_qs += 1;
     }
+    #[inline(always)]
     pub fn add_nm_pruning(&mut self) {
         self.nm_pruned += 1;
     }
 
+    #[inline(always)]
     pub fn getnps(&mut self) -> u64 {
         self.refresh_time_elapsed();
         (self.nodes_searched as f64 / (self.time_elapsed as f64 / 1000.0)) as u64
