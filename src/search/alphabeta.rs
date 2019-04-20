@@ -111,26 +111,28 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
             if ce.hash == game_state.hash {
                 search.search_statistics.add_cache_hit_ns();
                 if ce.depth >= depth_left as i8 {
-                    if !ce.alpha && !ce.beta {
-                        search.search_statistics.add_cache_hit_replace_ns();
-                        pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                        pv.score = ce.score;
-                        return pv;
-                    } else {
-                        if ce.beta {
-                            if ce.score > alpha {
-                                alpha = ce.score;
-                            }
-                        } else if ce.alpha {
-                            if ce.score < beta {
-                                beta = ce.score;
-                            }
-                        }
-                        if alpha >= beta {
-                            search.search_statistics.add_cache_hit_aj_replace_ns();
-                            pv.score = ce.score;
+                    if beta - alpha <= 0.002 {
+                        if !ce.alpha && !ce.beta {
+                            search.search_statistics.add_cache_hit_replace_ns();
                             pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                            pv.score = ce.score;
                             return pv;
+                        } else {
+                            if ce.beta {
+                                if ce.score > alpha {
+                                    alpha = ce.score;
+                                }
+                            } else if ce.alpha {
+                                if ce.score < beta {
+                                    beta = ce.score;
+                                }
+                            }
+                            if alpha >= beta {
+                                search.search_statistics.add_cache_hit_aj_replace_ns();
+                                pv.score = ce.score;
+                                pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                                return pv;
+                            }
                         }
                     }
                 }
@@ -181,7 +183,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type { true } else { false };
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
-        if depth_left > 2 && !in_pv && !in_check && (!isc || gmv.score < 0.0) && index >= 2 && !isp {
+        if depth_left > 2 && !in_pv && !in_check && !isc && index >= 2 && !isp&&!gives_check(&mv,&game_state,&next_state) {
             //let mut reduction = 1;
             let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
             if beta - alpha > 0.002 {
@@ -252,6 +254,26 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         make_cache(cache, &pv, &game_state, alpha, beta, depth_left, root_pliesplayed);
     }
     return pv;
+}
+
+#[inline(always)]
+pub fn gives_check(mv: &GameMove, game_state: &GameState, next_state: &GameState) -> bool {
+    //Check if move gives check
+    let ctm = 1 - game_state.color_to_move;
+    let blockers = game_state.pieces[0][ctm] | game_state.pieces[1][ctm] | game_state.pieces[2][ctm] | game_state.pieces[3][ctm] | game_state.pieces[4][ctm];
+    let enemy_king_idx = next_state.pieces[5][1 - ctm].trailing_zeros() as usize;
+    let enemy_pawns = next_state.pieces[0][1 - ctm];
+    let enemy_knights = next_state.pieces[1][1 - ctm];
+    let enemy_bishops = next_state.pieces[2][1 - ctm] | next_state.pieces[4][1 - ctm];
+    let enemy_rooks = next_state.pieces[3][1 - ctm] | next_state.pieces[4][1 - ctm];
+    let unsafe_white_squares = if ctm == 0 {
+        movegen::get_b_attacked_squares(enemy_king_idx, enemy_pawns, enemy_knights, enemy_bishops, enemy_rooks
+                                        , blockers)
+    } else {
+        movegen::get_w_attacked_squares(enemy_king_idx, enemy_pawns, enemy_knights, enemy_bishops, enemy_rooks
+                                        , blockers)
+    };
+    (unsafe_white_squares & next_state.pieces[5][ctm]) != 0u64
 }
 
 #[inline(always)]

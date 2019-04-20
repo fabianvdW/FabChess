@@ -25,7 +25,7 @@ pub struct TimeControl {
 
 impl TimeControl {
     pub fn time_over(&self, time_spent: u64) -> bool {
-        return time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc - 40;
+        return time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc - 50;
     }
 }
 
@@ -115,9 +115,6 @@ impl Search {
                 self.principal_variation[i] = Some(CacheEntry::new(state, d - i as isize, pv.score, false, false, &pair));
             }
             best_pv = pv;
-            if best_pv.score > 2000.0 {
-                break;
-            }
         }
         self.search_statistics.refresh_time_elapsed();
         return best_pv;
