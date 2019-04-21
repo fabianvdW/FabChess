@@ -313,8 +313,6 @@ mod tests {
     use super::GameMoveType;
     use super::PieceType;
     use super::see;
-    use super::q_search;
-    use super::movegen;
 
     #[test]
     fn see_test() {

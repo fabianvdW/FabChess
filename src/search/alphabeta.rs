@@ -261,7 +261,7 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
 }
 
 #[inline(always)]
-pub fn gives_check(mv: &GameMove, game_state: &GameState, next_state: &GameState) -> bool {
+pub fn gives_check(_mv: &GameMove, game_state: &GameState, next_state: &GameState) -> bool {
     //Check if move gives check
     let ctm = 1 - game_state.color_to_move;
     let blockers = game_state.pieces[0][ctm] | game_state.pieces[1][ctm] | game_state.pieces[2][ctm] | game_state.pieces[3][ctm] | game_state.pieces[4][ctm];

@@ -1,6 +1,6 @@
 use rand::Rng;
 use super::super::bitboards::{RANKS, FILES, NOT_SQUARES};
-use super::super::log;
+use crate::logging::log;
 
 static mut ROOK_BITS: [usize; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12,

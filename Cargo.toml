@@ -1,5 +1,5 @@
 [package]
-name = "schach_reworked"
+name = "FabChess"
 version = "0.1.0"
 authors = ["fabianvdW"]
 edition = "2018"
@@ -15,6 +15,9 @@ lto=true
 [profile.test]
 opt-level=3
 debug=true
+[lib]
+name="core"
+path= "src/lib.rs"
 [[bin]]
 name="schach_reworked"
 path="src/main.rs"

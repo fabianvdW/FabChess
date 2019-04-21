@@ -1,7 +1,8 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::error::Error;
-use super::{log, movegen};
+use crate::logging::log;
+use crate::move_generation::movegen;
 use std::io::BufReader;
 use std::prelude::v1::Vec;
 use super::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};

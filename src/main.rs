@@ -1,27 +1,15 @@
-#[macro_use]
-extern crate lazy_static;
-extern crate rand;
+extern crate core;
 
-pub mod board_representation;
-pub mod misc;
-pub mod bitboards;
-pub mod move_generation;
-pub mod evaluation;
-pub mod logging;
-pub mod search;
-pub mod uci;
 
-use self::board_representation::game_state::GameState;
-use self::move_generation::movegen;
+use core::logging::log;
 use std::time::Instant;
-use logging::log;
 
 fn main() {
     let now = Instant::now();
-    bitboards::init_bitboards();
-    move_generation::magic::init_magics();
-    board_representation::zobrist_hashing::init_at_program_start();
-    search::init_constants();
+    core::bitboards::init_bitboards();
+    core::move_generation::magic::init_magics();
+    core::board_representation::zobrist_hashing::init_at_program_start();
+    core::search::init_constants();
     log("Should have initialized everything!");
 
     let new_now = Instant::now();
@@ -48,48 +36,19 @@ fn main() {
     println!("{}", score);
     println!("{}", search.search_statistics);
     println!("{}", pv);*/
-    uci::uci_parser::parse_loop();
-}
-
-pub fn perft_div(g: &GameState, depth: usize) -> u64 {
-    let mut count = 0u64;
-    let (valid_moves, _in_check) = movegen::generate_moves(&g);
-    for mv in valid_moves {
-        let next_g = movegen::make_move(&g, &mv);
-        let res = perft(&next_g, depth - 1);
-        println!("{:?}: {}", mv, res);
-        count += res;
-    }
-    count
-}
-
-pub fn perft(g: &GameState, depth: usize) -> u64 {
-    if depth == 1 {
-        let (vm, _ic) = movegen::generate_moves(&g);
-        return vm.len() as u64;
-    } else {
-        if depth == 0 {
-            return 1;
-        }
-        let mut res = 0;
-        let (valid_moves, _incheck) = movegen::generate_moves(&g);
-        for mv in valid_moves {
-            res += perft(&movegen::make_move(&g, &mv), depth - 1);
-        }
-        res
-    }
+    core::uci::uci_parser::parse_loop();
 }
 
 #[cfg(test)]
 mod tests {
-    use super::perft;
-    use super::GameState;
-    use crate::misc::{KING_BASE_PATH, GameParser, PGNParser};
+    use core::perft;
+    use core::board_representation::game_state::GameState;
+    use core::misc::{KING_BASE_PATH, GameParser, PGNParser};
     use std::io::BufReader;
     use std::fs::File;
     use std::error::Error;
     use rand::Rng;
-    use super::movegen;
+    use core::move_generation::movegen;
 
     #[test]
     fn fen_test() {

@@ -1,4 +1,4 @@
-use super::log;
+use crate::logging::log;
 lazy_static! {
     pub static ref FILES: [u64;8] = initialize_files();
     pub static ref NOT_FILES: [u64;8] = initialize_not_files();
