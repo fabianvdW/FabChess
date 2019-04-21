@@ -314,7 +314,6 @@ mod tests {
     use super::PieceType;
     use super::see;
     use super::q_search;
-    use super::SearchStatistics;
     use super::movegen;
 
     #[test]

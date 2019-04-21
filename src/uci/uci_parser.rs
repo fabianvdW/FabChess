@@ -9,6 +9,7 @@ use crate::board_representation::game_state::{GameState, PieceType, GameMoveType
 use crate::search::search::TimeControl;
 use crate::move_generation::movegen;
 use crate::search::search::Search;
+use std::time::{Instant};
 
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
@@ -60,11 +61,25 @@ pub fn parse_loop() {
             "d" => {
                 print_internal_state(&us);
             }
+            "perft" => {
+                perft(&us.internal_state, &arg[1..])
+            }
             _ => {
                 println!("Unknown command {}", line);
             }
         }
     }
+}
+
+pub fn perft(game_state: &GameState, cmd: &[&str]) {
+    let depth = cmd[0].parse::<usize>().unwrap();
+    let now = Instant::now();
+    let nodes = crate::perft_div(&game_state, depth);
+    println!("{}", nodes);
+    let after = Instant::now();
+    let dur = after.duration_since(now);
+    let secs = dur.as_millis() as f64 / 1000.0;
+    println!("{}", &format!("Time {} ({} nps)", secs, nodes as f64 / secs));
 }
 
 pub fn start_search(stop: Arc<AtomicBool>, game_state: GameState, history: Vec<GameState>, tc: TimeControl, cache: Arc<RwLock<Cache>>) {

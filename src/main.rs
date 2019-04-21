@@ -2,14 +2,14 @@
 extern crate lazy_static;
 extern crate rand;
 
-mod board_representation;
-mod misc;
-mod bitboards;
-mod move_generation;
-mod evaluation;
-mod logging;
-mod search;
-mod uci;
+pub mod board_representation;
+pub mod misc;
+pub mod bitboards;
+pub mod move_generation;
+pub mod evaluation;
+pub mod logging;
+pub mod search;
+pub mod uci;
 
 use self::board_representation::game_state::GameState;
 use self::move_generation::movegen;
