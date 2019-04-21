@@ -167,10 +167,13 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         }
     }
 
-    if beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left >= 5 {
+    if false&&beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left >= 3 {
         next_history.pop();
-        let iid = principal_variation_search(alpha, beta, depth_left / 2, &game_state, color, current_depth, search, root_pliesplayed, next_history, stop, cache);
+        let iid = principal_variation_search(alpha, beta, depth_left - 2, &game_state, color, current_depth, search, root_pliesplayed, next_history, stop, cache);
         next_history.push(game_state.hash);
+        if iid.pv.len() == 0 {
+            panic!("IID PV is 0");
+        }
         let mv_index = find_move(&iid.pv[0], &graded_moves, true);
         graded_moves[mv_index].score = 29900.0;
     }
@@ -183,23 +186,24 @@ pub fn principal_variation_search(mut alpha: f64, mut beta: f64, mut depth_left:
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type { true } else { false };
         let next_state = movegen::make_move(&game_state, &mv);
         let mut following_pv: PrincipalVariation;
-        if depth_left > 2 && !in_pv && !in_check && !isc && index >= 2 && !isp&&!gives_check(&mv,&game_state,&next_state) {
+        let mut reduction = 0;
+        if depth_left > 2 && !in_pv && !in_check && !isc && index >= 2 && !isp && !gives_check(&mv, &game_state, &next_state) {
             //let mut reduction = 1;
-            let mut reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
+            reduction = (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
             if beta - alpha > 0.002 {
                 reduction = (reduction as f64 * 0.66) as isize;
             }
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
+        }
+        if depth_left <= 2 || !in_pv || index == 0 {
             following_pv = principal_variation_search(-beta, -alpha, depth_left - 1 - reduction, &next_state, -color, current_depth + 1, search, root_pliesplayed, next_history, stop, cache);
-            if -following_pv.score > alpha {
+            if reduction > 0 && -following_pv.score > alpha {
                 following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, current_depth + 1, search, root_pliesplayed, next_history, stop, cache);
             }
-        } else if depth_left <= 2 || !in_pv || index == 0 {
-            following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, current_depth + 1, search, root_pliesplayed, next_history, stop, cache);
         } else {
-            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1, &next_state, -color, current_depth + 1, search, root_pliesplayed, next_history, stop, cache);
+            following_pv = principal_variation_search(-alpha - 0.001, -alpha, depth_left - 1 - reduction, &next_state, -color, current_depth + 1, search, root_pliesplayed, next_history, stop, cache);
             let rating = -following_pv.score;
             if rating > alpha {
                 following_pv = principal_variation_search(-beta, -alpha, depth_left - 1, &next_state, -color, current_depth + 1, search, root_pliesplayed, next_history, stop, cache);
