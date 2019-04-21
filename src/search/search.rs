@@ -1,11 +1,11 @@
+use super::super::GameState;
+use super::alphabeta::principal_variation_search;
+use super::alphabeta::PrincipalVariation;
 use super::cache::{Cache, CacheEntry};
 use super::statistics::SearchStatistics;
-use super::super::GameState;
 use super::GameMove;
-use super::alphabeta::PrincipalVariation;
-use super::alphabeta::principal_variation_search;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::sync::RwLock;
 
 pub struct Search {
@@ -42,7 +42,14 @@ impl Search {
         }
     }
 
-    pub fn search(&mut self, depth: isize, game_state: GameState, history: Vec<GameState>, stop_ref: Arc<AtomicBool>, cache_uc: Arc<RwLock<Cache>>) -> PrincipalVariation {
+    pub fn search(
+        &mut self,
+        depth: isize,
+        game_state: GameState,
+        history: Vec<GameState>,
+        stop_ref: Arc<AtomicBool>,
+        cache_uc: Arc<RwLock<Cache>>,
+    ) -> PrincipalVariation {
         let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
         let cache = &mut (*cache_uc).write().unwrap();
         let mut hist: Vec<u64> = Vec::with_capacity(history.len());
@@ -58,11 +65,19 @@ impl Search {
         for d in 1..(depth + 1) {
             let mut pv;
             if d == 1 {
-                pv = principal_variation_search(-100000.0, 100000.0, d, &game_state, if game_state.color_to_move == 0 {
-                    1
-                } else {
-                    -1
-                }, 0, self, root_plies_played, &mut hist, &stop_ref, cache);
+                pv = principal_variation_search(
+                    -100000.0,
+                    100000.0,
+                    d,
+                    &game_state,
+                    if game_state.color_to_move == 0 { 1 } else { -1 },
+                    0,
+                    self,
+                    root_plies_played,
+                    &mut hist,
+                    &stop_ref,
+                    cache,
+                );
             } else {
                 //Aspiration Window
                 //Start with half window of last time
@@ -70,11 +85,19 @@ impl Search {
                 let mut alpha: f64 = best_pv.score - delta;
                 let mut beta: f64 = best_pv.score + delta;
                 loop {
-                    pv = principal_variation_search(alpha, beta, d, &game_state, if game_state.color_to_move == 0 {
-                        1
-                    } else {
-                        -1
-                    }, 0, self, root_plies_played, &mut hist, &stop_ref, cache);
+                    pv = principal_variation_search(
+                        alpha,
+                        beta,
+                        d,
+                        &game_state,
+                        if game_state.color_to_move == 0 { 1 } else { -1 },
+                        0,
+                        self,
+                        root_plies_played,
+                        &mut hist,
+                        &stop_ref,
+                        cache,
+                    );
                     if self.stop {
                         break;
                     }
@@ -100,19 +123,48 @@ impl Search {
             }
             let nps = self.search_statistics.getnps();
             let sc = (pv.score * 100.0) as isize;
-            println!("{}", format!("info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}", d, self.search_statistics.seldepth, self.search_statistics.nodes_searched, nps, self.search_statistics.time_elapsed, sc, pv_str));
+            println!(
+                "{}",
+                format!(
+                    "info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}",
+                    d,
+                    self.search_statistics.seldepth,
+                    self.search_statistics.nodes_searched,
+                    nps,
+                    self.search_statistics.time_elapsed,
+                    sc,
+                    pv_str
+                )
+            );
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {
                 if i == 0 {
-                    pv_stack.push(crate::move_generation::movegen::make_move(&game_state, &pair));
+                    pv_stack.push(crate::move_generation::movegen::make_move(
+                        &game_state,
+                        &pair,
+                    ));
                 } else {
-                    pv_stack.push(crate::move_generation::movegen::make_move(&pv_stack[i - 1], &pair))
+                    pv_stack.push(crate::move_generation::movegen::make_move(
+                        &pv_stack[i - 1],
+                        &pair,
+                    ))
                 }
             }
             for (i, pair) in pv.pv.iter().enumerate() {
-                let state = if i == 0 { &game_state } else { &pv_stack[i - 1] };
-                self.principal_variation[i] = Some(CacheEntry::new(state, d - i as isize, pv.score, false, false, &pair));
+                let state = if i == 0 {
+                    &game_state
+                } else {
+                    &pv_stack[i - 1]
+                };
+                self.principal_variation[i] = Some(CacheEntry::new(
+                    state,
+                    d - i as isize,
+                    pv.score,
+                    false,
+                    false,
+                    &pair,
+                ));
             }
             best_pv = pv;
         }

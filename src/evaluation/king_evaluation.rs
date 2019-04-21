@@ -1,4 +1,4 @@
-use super::{bitboards, Evaluation, MidGameDisplay, EndGameDisplay};
+use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay};
 
 const SHIELDING_PAWN_MISSING_MG: f64 = -30.0;
 const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: f64 = -60.0;
@@ -12,7 +12,8 @@ impl Evaluation for KingEvaluation {
     fn eval_mg(&self) -> f64 {
         let mut res = 0.0;
         res += self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG;
-        res += self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE;
+        res +=
+            self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE;
         res
     }
     fn eval_eg(&self) -> f64 {
@@ -24,8 +25,16 @@ impl MidGameDisplay for KingEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tKing-MidGame\n");
-        res_str.push_str(&format!("\t\tShielding Pawns missing:              {} -> {}\n", self.shielding_pawns_missing, self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG));
-        res_str.push_str(&format!("\t\tShielding Pawns on open file missing: {} -> {}\n", self.shielding_pawns_missing_on_open_file, self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE));
+        res_str.push_str(&format!(
+            "\t\tShielding Pawns missing:              {} -> {}\n",
+            self.shielding_pawns_missing,
+            self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG
+        ));
+        res_str.push_str(&format!(
+            "\t\tShielding Pawns on open file missing: {} -> {}\n",
+            self.shielding_pawns_missing_on_open_file,
+            self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE
+        ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
     }
@@ -42,7 +51,11 @@ impl EndGameDisplay for KingEvaluation {
 
 pub fn king_eval(king: u64, my_pawns: u64, enemy_pawns: u64, is_white: bool) -> KingEvaluation {
     let king_index = king.trailing_zeros() as usize;
-    let mut shield = if is_white { bitboards::SHIELDING_PAWNS_WHITE[king_index] } else { bitboards::SHIELDING_PAWNS_BLACK[king_index] };
+    let mut shield = if is_white {
+        bitboards::SHIELDING_PAWNS_WHITE[king_index]
+    } else {
+        bitboards::SHIELDING_PAWNS_BLACK[king_index]
+    };
     let mut shields_missing = 0;
     let mut shields_on_open_missing = 0;
     while shield != 0u64 {

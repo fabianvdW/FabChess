@@ -1,15 +1,15 @@
-use std::io::{self};
-use std::u64;
+use super::uci_engine::UCIEngine;
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use crate::move_generation::movegen;
+use crate::search::cache::Cache;
+use crate::search::search::Search;
+use crate::search::search::TimeControl;
+use std::io;
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock};
 use std::thread;
 use std::time::Duration;
-use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering, RwLock};
-use crate::search::cache::Cache;
-use super::uci_engine::UCIEngine;
-use crate::board_representation::game_state::{GameState, PieceType, GameMoveType, GameMove};
-use crate::search::search::TimeControl;
-use crate::move_generation::movegen;
-use crate::search::search::Search;
-use std::time::{Instant};
+use std::time::Instant;
+use std::u64;
 
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
@@ -61,9 +61,7 @@ pub fn parse_loop() {
             "d" => {
                 print_internal_state(&us);
             }
-            "perft" => {
-                perft(&us.internal_state, &arg[1..])
-            }
+            "perft" => perft(&us.internal_state, &arg[1..]),
             _ => {
                 println!("Unknown command {}", line);
             }
@@ -79,10 +77,19 @@ pub fn perft(game_state: &GameState, cmd: &[&str]) {
     let after = Instant::now();
     let dur = after.duration_since(now);
     let secs = dur.as_millis() as f64 / 1000.0;
-    println!("{}", &format!("Time {} ({} nps)", secs, nodes as f64 / secs));
+    println!(
+        "{}",
+        &format!("Time {} ({} nps)", secs, nodes as f64 / secs)
+    );
 }
 
-pub fn start_search(stop: Arc<AtomicBool>, game_state: GameState, history: Vec<GameState>, tc: TimeControl, cache: Arc<RwLock<Cache>>) {
+pub fn start_search(
+    stop: Arc<AtomicBool>,
+    game_state: GameState,
+    history: Vec<GameState>,
+    tc: TimeControl,
+    cache: Arc<RwLock<Cache>>,
+) {
     let mut s = Search::new(tc);
     let res = s.search(100, game_state, history, stop, cache);
     println!("bestmove {:?}", res.pv[0]);
@@ -130,9 +137,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
             "binc" => {
                 binc = cmd[index + 1].parse::<u64>().unwrap();
             }
-            _ => {
-                panic!("Invalid go command")
-            }
+            _ => panic!("Invalid go command"),
         };
         index += 2;
     }
@@ -177,7 +182,8 @@ pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
                 //Parse the move and make it
                 let mv = cmd[move_index];
                 let (from, to, promo) = GameMove::string_to_move(mv);
-                engine.internal_state = scout_and_make_draftmove(from, to, promo, &engine.internal_state);
+                engine.internal_state =
+                    scout_and_make_draftmove(from, to, promo, &engine.internal_state);
                 history.push(engine.internal_state.clone());
                 move_index += 1;
             }
@@ -187,7 +193,12 @@ pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
     return history;
 }
 
-pub fn scout_and_make_draftmove(from: usize, to: usize, promo_pieces: Option<PieceType>, game_state: &GameState) -> GameState {
+pub fn scout_and_make_draftmove(
+    from: usize,
+    to: usize,
+    promo_pieces: Option<PieceType>,
+    game_state: &GameState,
+) -> GameState {
     let (moves, _) = movegen::generate_moves(&game_state);
     for mv in moves {
         if mv.from == from && mv.to == to {

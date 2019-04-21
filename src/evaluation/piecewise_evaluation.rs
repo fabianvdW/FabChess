@@ -1,4 +1,4 @@
-use super::{Evaluation, ParallelEvaluation, MidGameDisplay, EndGameDisplay, bitboards};
+use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
 pub const ROOK_ON_OPEN_FILE_BONUS_MG: f64 = 20.0;
 pub const ROOK_ON_SEVENTH_MG: f64 = 10.0;
@@ -38,7 +38,8 @@ impl Evaluation for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
+            res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
+                [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
             bishops ^= 1u64 << idx;
         }
         res
@@ -65,7 +66,8 @@ impl Evaluation for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
+            res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
+                [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
             bishops ^= 1u64 << idx;
         }
         res
@@ -99,8 +101,10 @@ impl ParallelEvaluation for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            mg_res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            eg_res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
+            mg_res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
+                [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
+            eg_res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
+                [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
             bishops ^= 1u64 << idx;
         }
         (mg_res, eg_res)
@@ -132,16 +136,33 @@ impl MidGameDisplay for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            bishop_adjacent_score += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
+            bishop_adjacent_score += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
+                [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
             bishops ^= 1u64 << idx;
         }
 
         let mut res_str = String::new();
         res_str.push_str("\tPiecewiseEvaluation-MidGame\n");
-        res_str.push_str(&format!("\t\tRooks on open file:             {} -> {}\n", rooks_on_open, rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_MG));
-        res_str.push_str(&format!("\t\tRooks on seventh rank:          {} -> {}\n", rooks_on_seventh, rooks_on_seventh as f64 * ROOK_ON_SEVENTH_MG));
-        res_str.push_str(&format!("\t\tBishop diagonal adjacent pawns:      {}\n", bishop_adjacent_score));
-        res_str.push_str(&format!("\tSum: {}\n", bishop_adjacent_score + rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_MG + rooks_on_seventh as f64 * ROOK_ON_SEVENTH_MG));
+        res_str.push_str(&format!(
+            "\t\tRooks on open file:             {} -> {}\n",
+            rooks_on_open,
+            rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_MG
+        ));
+        res_str.push_str(&format!(
+            "\t\tRooks on seventh rank:          {} -> {}\n",
+            rooks_on_seventh,
+            rooks_on_seventh as f64 * ROOK_ON_SEVENTH_MG
+        ));
+        res_str.push_str(&format!(
+            "\t\tBishop diagonal adjacent pawns:      {}\n",
+            bishop_adjacent_score
+        ));
+        res_str.push_str(&format!(
+            "\tSum: {}\n",
+            bishop_adjacent_score
+                + rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_MG
+                + rooks_on_seventh as f64 * ROOK_ON_SEVENTH_MG
+        ));
         res_str
     }
 }
@@ -171,20 +192,49 @@ impl EndGameDisplay for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            bishop_adjacent_score += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
+            bishop_adjacent_score += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
+                [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
             bishops ^= 1u64 << idx;
         }
 
         let mut res_str = String::new();
         res_str.push_str("\tPiecewiseEvaluation-EndGame\n");
-        res_str.push_str(&format!("\t\tRooks on open file:             {} -> {}\n", rooks_on_open, rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_EG));
-        res_str.push_str(&format!("\t\tRooks on seventh rank:          {} -> {}\n", rooks_on_seventh, rooks_on_seventh as f64 * ROOK_ON_SEVENTH_EG));
-        res_str.push_str(&format!("\t\tBishop diagonal adjacent pawns:      {}\n", bishop_adjacent_score));
-        res_str.push_str(&format!("\tSum: {}\n", bishop_adjacent_score + rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_EG + rooks_on_seventh as f64 * ROOK_ON_SEVENTH_EG));
+        res_str.push_str(&format!(
+            "\t\tRooks on open file:             {} -> {}\n",
+            rooks_on_open,
+            rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_EG
+        ));
+        res_str.push_str(&format!(
+            "\t\tRooks on seventh rank:          {} -> {}\n",
+            rooks_on_seventh,
+            rooks_on_seventh as f64 * ROOK_ON_SEVENTH_EG
+        ));
+        res_str.push_str(&format!(
+            "\t\tBishop diagonal adjacent pawns:      {}\n",
+            bishop_adjacent_score
+        ));
+        res_str.push_str(&format!(
+            "\tSum: {}\n",
+            bishop_adjacent_score
+                + rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_EG
+                + rooks_on_seventh as f64 * ROOK_ON_SEVENTH_EG
+        ));
         res_str
     }
 }
 
-pub fn piecewise_eval(my_pawns: u64, my_rooks: u64, my_bishops: u64, is_white: bool, all_pawns: u64) -> PiecewiseEvaluation {
-    PiecewiseEvaluation { my_pawns, my_rooks, my_bishops, is_white, all_pawns }
+pub fn piecewise_eval(
+    my_pawns: u64,
+    my_rooks: u64,
+    my_bishops: u64,
+    is_white: bool,
+    all_pawns: u64,
+) -> PiecewiseEvaluation {
+    PiecewiseEvaluation {
+        my_pawns,
+        my_rooks,
+        my_bishops,
+        is_white,
+        all_pawns,
+    }
 }

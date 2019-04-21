@@ -1,21 +1,21 @@
 use crate::logging::log;
 lazy_static! {
-    pub static ref FILES: [u64;8] = initialize_files();
-    pub static ref NOT_FILES: [u64;8] = initialize_not_files();
-    pub static ref RANKS: [u64;8] = initialize_ranks();
-    pub static ref SQUARES: [u64;64]= initialize_squares();
-    pub static ref NOT_SQUARES: [u64;64]= initialize_not_squares();
-    pub static ref KING_ATTACKS:[u64;64] = init_king_attacks();
-    pub static ref KNIGHT_ATTACKS:[u64;64] = init_knight_attacks();
-    pub static ref FILES_LESS_THAN:[u64;8]= init_files_less_than();
-    pub static ref FILES_GREATER_THAN:[u64;8]= init_files_greater_than();
-    pub static ref RANKS_LESS_THAN:[u64;8]= init_ranks_less_than();
-    pub static ref RANKS_GREATER_THAN:[u64;8]= init_ranks_greater_than();
-    pub static ref UPPER_HALF:u64 = init_upper_half();
-    pub static ref LOWER_HALF:u64 = init_lower_half();
-    pub static ref DIAGONALLY_ADJACENT:[u64;64] = init_diagonally_adjacent();
-    pub static ref SHIELDING_PAWNS_WHITE:[u64;64]= init_shielding_pawns_white();
-    pub static ref SHIELDING_PAWNS_BLACK:[u64;64]= init_shielding_pawns_black();
+    pub static ref FILES: [u64; 8] = initialize_files();
+    pub static ref NOT_FILES: [u64; 8] = initialize_not_files();
+    pub static ref RANKS: [u64; 8] = initialize_ranks();
+    pub static ref SQUARES: [u64; 64] = initialize_squares();
+    pub static ref NOT_SQUARES: [u64; 64] = initialize_not_squares();
+    pub static ref KING_ATTACKS: [u64; 64] = init_king_attacks();
+    pub static ref KNIGHT_ATTACKS: [u64; 64] = init_knight_attacks();
+    pub static ref FILES_LESS_THAN: [u64; 8] = init_files_less_than();
+    pub static ref FILES_GREATER_THAN: [u64; 8] = init_files_greater_than();
+    pub static ref RANKS_LESS_THAN: [u64; 8] = init_ranks_less_than();
+    pub static ref RANKS_GREATER_THAN: [u64; 8] = init_ranks_greater_than();
+    pub static ref UPPER_HALF: u64 = init_upper_half();
+    pub static ref LOWER_HALF: u64 = init_lower_half();
+    pub static ref DIAGONALLY_ADJACENT: [u64; 64] = init_diagonally_adjacent();
+    pub static ref SHIELDING_PAWNS_WHITE: [u64; 64] = init_shielding_pawns_white();
+    pub static ref SHIELDING_PAWNS_BLACK: [u64; 64] = init_shielding_pawns_black();
 }
 
 pub fn init_bitboards() {
@@ -41,7 +41,14 @@ pub fn initialize_files() -> [u64; 8] {
     let mut res = [0u64; 8];
     for file in 0..8 {
         if file == 0 {
-            res[0] = 1u64 << 0 | 1u64 << 8 | 1u64 << 16 | 1u64 << 24 | 1u64 << 32 | 1u64 << 40 | 1u64 << 48 | 1u64 << 56;
+            res[0] = 1u64 << 0
+                | 1u64 << 8
+                | 1u64 << 16
+                | 1u64 << 24
+                | 1u64 << 32
+                | 1u64 << 40
+                | 1u64 << 48
+                | 1u64 << 56;
         } else {
             res[file] = res[file - 1] << 1;
         }
@@ -63,7 +70,14 @@ pub fn initialize_ranks() -> [u64; 8] {
     let mut res = [0u64; 8];
     for rank in 0..8 {
         if rank == 0 {
-            res[0] = 1u64 << 0 | 1u64 << 1 | 1u64 << 2 | 1u64 << 3 | 1u64 << 4 | 1u64 << 5 | 1u64 << 6 | 1u64 << 7;
+            res[0] = 1u64 << 0
+                | 1u64 << 1
+                | 1u64 << 2
+                | 1u64 << 3
+                | 1u64 << 4
+                | 1u64 << 5
+                | 1u64 << 6
+                | 1u64 << 7;
         } else {
             res[rank] = res[rank - 1] << 8;
         }
@@ -254,7 +268,10 @@ pub fn init_diagonally_adjacent() -> [u64; 64] {
     let mut res = [0u64; 64];
     for sq in 0..64 {
         let board = 1u64 << sq;
-        res[sq] = north_east_one(board) | north_west_one(board) | south_east_one(board) | south_west_one(board);
+        res[sq] = north_east_one(board)
+            | north_west_one(board)
+            | south_east_one(board)
+            | south_west_one(board);
     }
     log("Finished Initializing Diagonally Adjacent Board!");
     res

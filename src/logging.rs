@@ -2,12 +2,12 @@ pub const VERBOSE: bool = false;
 pub const LOG_FILE: &str = "log.txt";
 pub const LOG_TO_STDOUT: bool = false;
 
-use std::fs::File;
 use std::error::Error;
-use std::sync::Mutex;
+use std::fs::File;
 use std::io::Write;
+use std::sync::Mutex;
 lazy_static! {
-    static ref LOG:Mutex<File> = Mutex::new(init_log());
+    static ref LOG: Mutex<File> = Mutex::new(init_log());
 }
 pub fn init_log() -> File {
     match File::create(LOG_FILE) {

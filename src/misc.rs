@@ -1,12 +1,12 @@
-use std::fs::File;
-use std::io::prelude::*;
-use std::error::Error;
+use super::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use super::evaluation;
 use crate::logging::log;
 use crate::move_generation::movegen;
+use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
 use std::io::BufReader;
 use std::prelude::v1::Vec;
-use super::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
-use super::evaluation;
 
 pub const STD_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const KING_BASE_PATH: [&str; 15] = [
@@ -52,25 +52,27 @@ pub fn parse_pgn_find_static_eval_mistakes() {
         let res = File::open(path);
         let file = match res {
             Err(why) => panic!("{}", why.description()),
-            Ok(file) => file
+            Ok(file) => file,
         };
         let reader = BufReader::new(file);
-        let parser = GameParser { pgn_parser: PGNParser { reader } };
+        let parser = GameParser {
+            pgn_parser: PGNParser { reader },
+        };
         for _game in parser.into_iter() {
             let last_game_state = &_game.1[_game.1.len() - 1];
             let res = _game.2;
             let eval = evaluation::eval_game_state(&last_game_state).final_eval;
             if res == 1 {
                 if eval < 0.0 {
-                    log(&format!("{} (1-0)\n",&last_game_state.to_fen()));
+                    log(&format!("{} (1-0)\n", &last_game_state.to_fen()));
                 }
             } else if res == 0 {
                 if eval.abs() > 1.0 {
-                    log(&format!("{} (1/2-1/2)\n",&last_game_state.to_fen()));
+                    log(&format!("{} (1/2-1/2)\n", &last_game_state.to_fen()));
                 }
             } else if res == -1 {
                 if eval > 0.0 {
-                    log(&format!("{} (0-1)\n",&last_game_state.to_fen()));
+                    log(&format!("{} (0-1)\n", &last_game_state.to_fen()));
                 }
             }
         }
@@ -103,7 +105,8 @@ impl Iterator for GameParser {
                     if move_str.len() == 0 {
                         continue;
                     }
-                    let parsed_move = parse_move(&vec_gs[vec_gs.len() - 1], &mut String::from(move_str));
+                    let parsed_move =
+                        parse_move(&vec_gs[vec_gs.len() - 1], &mut String::from(move_str));
                     vec_gs.push(parsed_move.1);
                     vec_res.push(parsed_move.0)
                 }
@@ -122,7 +125,11 @@ impl Iterator for GameParser {
 
 pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
     let mut my_string = move_str.clone();
-    my_string = my_string.replace("#", "").replace("+", "").replace("=", "").replace("x", "");
+    my_string = my_string
+        .replace("#", "")
+        .replace("+", "")
+        .replace("=", "")
+        .replace("x", "");
     let available_moves = movegen::generate_moves(&g).0;
     if my_string.contains("-") {
         //Castle
@@ -134,7 +141,9 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 assert_eq!(true, g.castle_black_kingside);
             }
             for game_moves in &available_moves {
-                if game_moves.move_type == GameMoveType::Castle && game_moves.to as isize - game_moves.from as isize == 2 {
+                if game_moves.move_type == GameMoveType::Castle
+                    && game_moves.to as isize - game_moves.from as isize == 2
+                {
                     let res = game_moves.clone();
                     let state = movegen::make_move(&g, &res);
                     return (res, state);
@@ -147,7 +156,9 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 assert_eq!(true, g.castle_black_queenside);
             }
             for game_moves in &available_moves {
-                if game_moves.move_type == GameMoveType::Castle && game_moves.to as isize - game_moves.from as isize == -2 {
+                if game_moves.move_type == GameMoveType::Castle
+                    && game_moves.to as isize - game_moves.from as isize == -2
+                {
                     let res = game_moves.clone();
                     let state = movegen::make_move(&g, &res);
                     return (res, state);
@@ -191,10 +202,17 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
             promotion_piece = PieceType::Knight;
         }
         if my_string.len() == 2 {
-            let target_square = 8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
+            let target_square =
+                8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
             for game_move in &available_moves {
                 if game_move.to == target_square && game_move.piece_type == moving_piece_type {
-                    if !is_promotion_move || is_promotion_move && match &game_move.move_type{GameMoveType::Promotion(piece,_)=>Some(piece),_=>None} == Some(&promotion_piece) {
+                    if !is_promotion_move
+                        || is_promotion_move
+                            && match &game_move.move_type {
+                                GameMoveType::Promotion(piece, _) => Some(piece),
+                                _ => None,
+                            } == Some(&promotion_piece)
+                    {
                         let res = game_move.clone();
                         let state = movegen::make_move(&g, &res);
                         return (res, state);
@@ -202,13 +220,23 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 }
             }
         } else if my_string.len() == 3 {
-            let target_square = 8 * match_rank(my_string.chars().nth(2)) + match_file(my_string.chars().nth(1));
+            let target_square =
+                8 * match_rank(my_string.chars().nth(2)) + match_file(my_string.chars().nth(1));
             let first = my_string.chars().nth(0);
             if is_file(first) {
                 let file = match_file(first);
                 for game_move in &available_moves {
-                    if game_move.to == target_square && game_move.piece_type == moving_piece_type && game_move.from % 8 == file {
-                        if !is_promotion_move || is_promotion_move && match &game_move.move_type{GameMoveType::Promotion(piece,_)=>Some(piece),_=>None} == Some(&promotion_piece) {
+                    if game_move.to == target_square
+                        && game_move.piece_type == moving_piece_type
+                        && game_move.from % 8 == file
+                    {
+                        if !is_promotion_move
+                            || is_promotion_move
+                                && match &game_move.move_type {
+                                    GameMoveType::Promotion(piece, _) => Some(piece),
+                                    _ => None,
+                                } == Some(&promotion_piece)
+                        {
                             let res = game_move.clone();
                             let state = movegen::make_move(&g, &res);
                             return (res, state);
@@ -218,8 +246,17 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
             } else {
                 let rank = match_rank(first);
                 for game_move in &available_moves {
-                    if game_move.to == target_square && game_move.piece_type == moving_piece_type && game_move.from / 8 == rank {
-                        if !is_promotion_move || is_promotion_move && match &game_move.move_type{GameMoveType::Promotion(piece,_)=>Some(piece),_=>None} == Some(&promotion_piece) {
+                    if game_move.to == target_square
+                        && game_move.piece_type == moving_piece_type
+                        && game_move.from / 8 == rank
+                    {
+                        if !is_promotion_move
+                            || is_promotion_move
+                                && match &game_move.move_type {
+                                    GameMoveType::Promotion(piece, _) => Some(piece),
+                                    _ => None,
+                                } == Some(&promotion_piece)
+                        {
                             let res = game_move.clone();
                             let state = movegen::make_move(&g, &res);
                             return (res, state);
@@ -227,7 +264,9 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                     }
                 }
             }
-        } else if my_string.len() == 4 {} else if my_string.len() == 5 {}
+        } else if my_string.len() == 4 {
+        } else if my_string.len() == 5 {
+        }
     }
     println!("{}", move_str);
     println!("{}", my_string);
@@ -239,57 +278,51 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
 pub fn is_file(c: Option<char>) -> bool {
     match c {
         None => panic!("Invalid!"),
-        Some(character) => {
-            match character {
-                'a' => true,
-                'b' => true,
-                'c' => true,
-                'd' => true,
-                'e' => true,
-                'f' => true,
-                'g' => true,
-                'h' => true,
-                _ => false
-            }
-        }
+        Some(character) => match character {
+            'a' => true,
+            'b' => true,
+            'c' => true,
+            'd' => true,
+            'e' => true,
+            'f' => true,
+            'g' => true,
+            'h' => true,
+            _ => false,
+        },
     }
 }
 
 pub fn match_file(c: Option<char>) -> usize {
     match c {
         None => panic!("Invalid!"),
-        Some(character) => {
-            match character {
-                'a' => 0,
-                'b' => 1,
-                'c' => 2,
-                'd' => 3,
-                'e' => 4,
-                'f' => 5,
-                'g' => 6,
-                'h' => 7,
-                _ => panic!("Invalid rank!")
-            }
-        }
+        Some(character) => match character {
+            'a' => 0,
+            'b' => 1,
+            'c' => 2,
+            'd' => 3,
+            'e' => 4,
+            'f' => 5,
+            'g' => 6,
+            'h' => 7,
+            _ => panic!("Invalid rank!"),
+        },
     }
 }
 
 pub fn match_rank(c: Option<char>) -> usize {
     match c {
         None => panic!("Invalid!"),
-        Some(character) => {
-            match character {
-                '1' => 0,
-                '2' => 1,
-                '3' => 2,
-                '4' => 3,
-                '5' => 4,
-                '6' => 5,
-                '7' => 6,
-                '8' => 7,
-                _ => panic!("Invalid rank!")
-            }
-        }
+        Some(character) => match character {
+            '1' => 0,
+            '2' => 1,
+            '3' => 2,
+            '4' => 3,
+            '5' => 4,
+            '6' => 5,
+            '7' => 6,
+            '8' => 7,
+            _ => panic!("Invalid rank!"),
+        },
     }
 }
 
@@ -307,7 +340,7 @@ impl Iterator for PGNParser {
         let mut state = 0;
         while match res {
             Err(_e) => false,
-            Ok(_e) => true
+            Ok(_e) => true,
         } {
             line = String::new();
             res = self.reader.read_line(&mut line);

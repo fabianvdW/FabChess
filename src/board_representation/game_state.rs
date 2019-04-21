@@ -1,5 +1,5 @@
-use std::fmt::{Formatter, Display, Result, Debug};
 use super::zobrist_hashing::ZOBRIST_KEYS;
+use std::fmt::{Debug, Display, Formatter, Result};
 
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
@@ -41,42 +41,38 @@ impl GameMove {
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
         let from_file = match chars.nth(0) {
-            Some(s) => {
-                char_to_file(s)
-            }
+            Some(s) => char_to_file(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
         let from_rank = match chars.nth(0) {
-            Some(s) => {
-                char_to_rank(s)
-            }
+            Some(s) => char_to_rank(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
         let to_file = match chars.nth(0) {
-            Some(s) => {
-                char_to_file(s)
-            }
+            Some(s) => char_to_file(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
         let to_rank = match chars.nth(0) {
-            Some(s) => {
-                char_to_rank(s)
-            }
+            Some(s) => char_to_rank(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
         if desc.len() == 5 {
-            return (from_file + 8 * from_rank, to_file + 8 * to_rank, Some(char_to_promotion_piecetype(match chars.nth(0) {
-                Some(s) => s,
-                _ => panic!("Invalid move desc!")
-            })));
+            return (
+                from_file + 8 * from_rank,
+                to_file + 8 * to_rank,
+                Some(char_to_promotion_piecetype(match chars.nth(0) {
+                    Some(s) => s,
+                    _ => panic!("Invalid move desc!"),
+                })),
+            );
         }
         (from_file + 8 * from_rank, to_file + 8 * to_rank, None)
     }
@@ -85,17 +81,21 @@ impl GameMove {
 impl Debug for GameMove {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
-        res_str.push_str(&format!("{}{}{}{}", file_to_string(self.from % 8), self.from / 8 + 1, file_to_string(self.to % 8), self.to / 8 + 1));
+        res_str.push_str(&format!(
+            "{}{}{}{}",
+            file_to_string(self.from % 8),
+            self.from / 8 + 1,
+            file_to_string(self.to % 8),
+            self.to / 8 + 1
+        ));
         match &self.move_type {
-            GameMoveType::Promotion(s, _) => {
-                match s {
-                    PieceType::Queen => { res_str.push_str("q") }
-                    PieceType::Rook => { res_str.push_str("r") }
-                    PieceType::Bishop => { res_str.push_str("b") }
-                    PieceType::Knight => { res_str.push_str("k") }
-                    _ => panic!("Invalid promotion piece type!"),
-                }
-            }
+            GameMoveType::Promotion(s, _) => match s {
+                PieceType::Queen => res_str.push_str("q"),
+                PieceType::Rook => res_str.push_str("r"),
+                PieceType::Bishop => res_str.push_str("b"),
+                PieceType::Knight => res_str.push_str("k"),
+                _ => panic!("Invalid promotion piece type!"),
+            },
             _ => {}
         };
         write!(formatter, "{}", res_str)
@@ -108,9 +108,7 @@ fn char_to_promotion_piecetype(c: char) -> PieceType {
         'r' => PieceType::Rook,
         'b' => PieceType::Bishop,
         'n' => PieceType::Knight,
-        _ => {
-            panic!("Invalid promotion piece")
-        }
+        _ => panic!("Invalid promotion piece"),
     }
 }
 
@@ -156,7 +154,7 @@ fn file_to_string(file: usize) -> &'static str {
         5 => "f",
         6 => "g",
         7 => "h",
-        _ => panic!("invalid file")
+        _ => panic!("invalid file"),
     }
 }
 
@@ -214,85 +212,83 @@ impl GameState {
                 let next_char = rank_str.chars().nth(rank_str_idx);
                 rank_str_idx += 1;
                 match next_char {
-                    Some(x) => {
-                        match x {
-                            'P' => {
-                                pieces_arr[0][0] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'p' => {
-                                pieces_arr[0][1] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'N' => {
-                                pieces_arr[1][0] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'n' => {
-                                pieces_arr[1][1] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'B' => {
-                                pieces_arr[2][0] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'b' => {
-                                pieces_arr[2][1] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'R' => {
-                                pieces_arr[3][0] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'r' => {
-                                pieces_arr[3][1] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'Q' => {
-                                pieces_arr[4][0] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'q' => {
-                                pieces_arr[4][1] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'K' => {
-                                pieces_arr[5][0] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            'k' => {
-                                pieces_arr[5][1] |= 1u64 << idx;
-                                file += 1;
-                            }
-                            '1' => {
-                                file += 1;
-                            }
-                            '2' => {
-                                file += 2;
-                            }
-                            '3' => {
-                                file += 3;
-                            }
-                            '4' => {
-                                file += 4;
-                            }
-                            '5' => {
-                                file += 5;
-                            }
-                            '6' => {
-                                file += 6;
-                            }
-                            '7' => {
-                                file += 7;
-                            }
-                            '8' => {
-                                file += 8;
-                            }
-                            _ => {
-                                panic!("Invalid FEN");
-                            }
+                    Some(x) => match x {
+                        'P' => {
+                            pieces_arr[0][0] |= 1u64 << idx;
+                            file += 1;
                         }
-                    }
+                        'p' => {
+                            pieces_arr[0][1] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'N' => {
+                            pieces_arr[1][0] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'n' => {
+                            pieces_arr[1][1] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'B' => {
+                            pieces_arr[2][0] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'b' => {
+                            pieces_arr[2][1] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'R' => {
+                            pieces_arr[3][0] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'r' => {
+                            pieces_arr[3][1] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'Q' => {
+                            pieces_arr[4][0] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'q' => {
+                            pieces_arr[4][1] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'K' => {
+                            pieces_arr[5][0] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        'k' => {
+                            pieces_arr[5][1] |= 1u64 << idx;
+                            file += 1;
+                        }
+                        '1' => {
+                            file += 1;
+                        }
+                        '2' => {
+                            file += 2;
+                        }
+                        '3' => {
+                            file += 3;
+                        }
+                        '4' => {
+                            file += 4;
+                        }
+                        '5' => {
+                            file += 5;
+                        }
+                        '6' => {
+                            file += 6;
+                        }
+                        '7' => {
+                            file += 7;
+                        }
+                        '8' => {
+                            file += 8;
+                        }
+                        _ => {
+                            panic!("Invalid FEN");
+                        }
+                    },
                     None => panic!("Invalid FEN"),
                 }
             }
@@ -302,7 +298,7 @@ impl GameState {
         let color_to_move = match vec[1] {
             "w" => 0,
             "b" => 1,
-            _ => panic!("Invalid FEN!")
+            _ => panic!("Invalid FEN!"),
         };
 
         //CastlingAbilities
@@ -318,67 +314,65 @@ impl GameState {
             let file = vec[3].chars().nth(0);
             let rank = vec[3].chars().nth(1);
             match file {
-                Some(x) => {
-                    match x {
-                        'a' | 'A' => {}
-                        'b' | 'B' => {
-                            idx += 1;
-                        }
-                        'c' | 'C' => {
-                            idx += 2;
-                        }
-                        'd' | 'D' => {
-                            idx += 3;
-                        }
-                        'e' | 'E' => {
-                            idx += 4;
-                        }
-                        'f' | 'F' => {
-                            idx += 5;
-                        }
-                        'g' | 'G' => {
-                            idx += 6;
-                        }
-                        'h' | 'H' => {
-                            idx += 7;
-                        }
-                        _ => {
-                            panic!("Invalid FEN!");
-                        }
+                Some(x) => match x {
+                    'a' | 'A' => {}
+                    'b' | 'B' => {
+                        idx += 1;
                     }
+                    'c' | 'C' => {
+                        idx += 2;
+                    }
+                    'd' | 'D' => {
+                        idx += 3;
+                    }
+                    'e' | 'E' => {
+                        idx += 4;
+                    }
+                    'f' | 'F' => {
+                        idx += 5;
+                    }
+                    'g' | 'G' => {
+                        idx += 6;
+                    }
+                    'h' | 'H' => {
+                        idx += 7;
+                    }
+                    _ => {
+                        panic!("Invalid FEN!");
+                    }
+                },
+                None => {
+                    panic!("Invalid FEN!");
                 }
-                None => { panic!("Invalid FEN!"); }
             }
             match rank {
-                Some(x) => {
-                    match x {
-                        '1' => {}
-                        '2' => {
-                            idx += 8;
-                        }
-                        '3' => {
-                            idx += 16;
-                        }
-                        '4' => {
-                            idx += 24;
-                        }
-                        '5' => {
-                            idx += 32;
-                        }
-                        '6' => {
-                            idx += 40;
-                        }
-                        '7' => {
-                            idx += 48;
-                        }
-                        '8' => {
-                            idx += 56;
-                        }
-                        _ => {
-                            panic!("Invalid FEN!");
-                        }
+                Some(x) => match x {
+                    '1' => {}
+                    '2' => {
+                        idx += 8;
                     }
-                }
+                    '3' => {
+                        idx += 16;
+                    }
+                    '4' => {
+                        idx += 24;
+                    }
+                    '5' => {
+                        idx += 32;
+                    }
+                    '6' => {
+                        idx += 40;
+                    }
+                    '7' => {
+                        idx += 48;
+                    }
+                    '8' => {
+                        idx += 56;
+                    }
+                    _ => {
+                        panic!("Invalid FEN!");
+                    }
+                },
                 None => {
                     panic!("Invalid FEN!");
                 }
@@ -393,7 +387,15 @@ impl GameState {
 
             full_moves = vec[5].parse().unwrap();
         }
-        let hash = GameState::calculate_zobrist_hash(color_to_move, pieces_arr, castle_white_kingside, castle_white_queenside, castle_black_kingside, castle_black_queenside, en_passant);
+        let hash = GameState::calculate_zobrist_hash(
+            color_to_move,
+            pieces_arr,
+            castle_white_kingside,
+            castle_white_queenside,
+            castle_black_kingside,
+            castle_black_queenside,
+            en_passant,
+        );
         GameState {
             color_to_move,
             pieces: pieces_arr,
@@ -506,7 +508,11 @@ impl GameState {
             res_str.push_str("b");
         }
         res_str.push_str(" ");
-        if !(self.castle_white_kingside | self.castle_white_queenside | self.castle_black_kingside | self.castle_black_queenside) {
+        if !(self.castle_white_kingside
+            | self.castle_white_queenside
+            | self.castle_black_kingside
+            | self.castle_black_queenside)
+        {
             res_str.push_str("-");
         } else {
             if self.castle_white_kingside {
@@ -539,8 +545,14 @@ impl GameState {
     }
     pub fn standard() -> GameState {
         let color_to_move = 0usize;
-        let pieces = [[0xff00u64, 0xff000000000000u64], [0x42u64, 0x4200000000000000u64], [0x24u64, 0x2400000000000000u64], [0x81u64, 0x8100000000000000u64],
-            [0x8u64, 0x800000000000000u64], [0x10u64, 0x1000000000000000u64]];
+        let pieces = [
+            [0xff00u64, 0xff000000000000u64],
+            [0x42u64, 0x4200000000000000u64],
+            [0x24u64, 0x2400000000000000u64],
+            [0x81u64, 0x8100000000000000u64],
+            [0x8u64, 0x800000000000000u64],
+            [0x10u64, 0x1000000000000000u64],
+        ];
 
         GameState {
             color_to_move,
@@ -552,10 +564,26 @@ impl GameState {
             en_passant: 0u64,
             half_moves: 0usize,
             full_moves: 1usize,
-            hash: GameState::calculate_zobrist_hash(color_to_move, pieces, true, true, true, true, 0u64),
+            hash: GameState::calculate_zobrist_hash(
+                color_to_move,
+                pieces,
+                true,
+                true,
+                true,
+                true,
+                0u64,
+            ),
         }
     }
-    pub fn calculate_zobrist_hash(color_to_move: usize, pieces: [[u64; 2]; 6], cwk: bool, cwq: bool, cbk: bool, cbq: bool, ep: u64) -> u64 {
+    pub fn calculate_zobrist_hash(
+        color_to_move: usize,
+        pieces: [[u64; 2]; 6],
+        cwk: bool,
+        cwq: bool,
+        cbk: bool,
+        cbq: bool,
+        ep: u64,
+    ) -> u64 {
         let mut hash = 0u64;
         if color_to_move == 1 {
             hash ^= ZOBRIST_KEYS.side_to_move;
@@ -652,7 +680,7 @@ impl GameState {
         hash
     }
 }
-impl Clone for GameState{
+impl Clone for GameState {
     fn clone(&self) -> Self {
         GameState {
             color_to_move: self.color_to_move,
@@ -710,9 +738,15 @@ impl Display for GameState {
         }
         res_str.push_str("Castle Rights: \n");
         res_str.push_str(&format!("White Kingside: {}\n", self.castle_white_kingside));
-        res_str.push_str(&format!("White Queenside: {}\n", self.castle_white_queenside));
+        res_str.push_str(&format!(
+            "White Queenside: {}\n",
+            self.castle_white_queenside
+        ));
         res_str.push_str(&format!("Black Kingside: {}\n", self.castle_black_kingside));
-        res_str.push_str(&format!("Black Queenside: {}\n", self.castle_black_queenside));
+        res_str.push_str(&format!(
+            "Black Queenside: {}\n",
+            self.castle_black_queenside
+        ));
         res_str.push_str(&format!("En Passant Possible: {:x}\n", self.en_passant));
         res_str.push_str(&format!("Half-Counter: {}\n", self.half_moves));
         res_str.push_str(&format!("Full-Counter: {}\n", self.full_moves));

@@ -1,6 +1,6 @@
+use crate::logging::log;
 use rand::prelude::*;
 use std::u64;
-use crate::logging::log;
 
 pub fn rand_u64() -> u64 {
     let mut rng = rand::thread_rng();

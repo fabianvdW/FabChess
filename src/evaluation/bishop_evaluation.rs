@@ -1,4 +1,4 @@
-use super::{Evaluation, MidGameDisplay, EndGameDisplay};
+use super::{EndGameDisplay, Evaluation, MidGameDisplay};
 
 pub const BISHOP_PIECE_VALUE_EG: f64 = 510.0;
 pub const BISHOP_PIECE_VALUE_MG: f64 = 510.0;
@@ -32,7 +32,11 @@ impl MidGameDisplay for BishopEvaluation {
     fn display_mg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tBishops-MidGame\n");
-        res_str.push_str(&format!("\t\tAmount of Bishops: {} -> {}\n", self.amount_of_bishops, self.amount_of_bishops as f64 * BISHOP_PIECE_VALUE_MG));
+        res_str.push_str(&format!(
+            "\t\tAmount of Bishops: {} -> {}\n",
+            self.amount_of_bishops,
+            self.amount_of_bishops as f64 * BISHOP_PIECE_VALUE_MG
+        ));
         if self.bishop_pair {
             res_str.push_str(&format!("\t\tBishop Pair:       {}\n", BISHOP_PAIR_BONUS));
         }
@@ -45,7 +49,11 @@ impl EndGameDisplay for BishopEvaluation {
     fn display_eg(&self) -> String {
         let mut res_str = String::new();
         res_str.push_str("\tBishops-EndGame\n");
-        res_str.push_str(&format!("\t\tAmount of Bishops: {} -> {}\n", self.amount_of_bishops, self.amount_of_bishops as f64 * BISHOP_PIECE_VALUE_EG));
+        res_str.push_str(&format!(
+            "\t\tAmount of Bishops: {} -> {}\n",
+            self.amount_of_bishops,
+            self.amount_of_bishops as f64 * BISHOP_PIECE_VALUE_EG
+        ));
         if self.bishop_pair {
             res_str.push_str(&format!("\t\tBishop Pair:       {}\n", BISHOP_PAIR_BONUS));
         }
@@ -56,5 +64,8 @@ impl EndGameDisplay for BishopEvaluation {
 
 pub fn bishop_eval(bishop: u64) -> BishopEvaluation {
     let bishops = bishop.count_ones();
-    BishopEvaluation { amount_of_bishops: bishops, bishop_pair: bishops > 1u32 }
+    BishopEvaluation {
+        amount_of_bishops: bishops,
+        bishop_pair: bishops > 1u32,
+    }
 }

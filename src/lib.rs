@@ -2,12 +2,12 @@
 extern crate lazy_static;
 extern crate rand;
 
-pub mod board_representation;
-pub mod misc;
 pub mod bitboards;
-pub mod move_generation;
+pub mod board_representation;
 pub mod evaluation;
 pub mod logging;
+pub mod misc;
+pub mod move_generation;
 pub mod search;
 pub mod uci;
 

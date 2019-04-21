@@ -1,4 +1,4 @@
-use super::{Evaluation, ParallelEvaluation, MidGameDisplay, EndGameDisplay};
+use super::{EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
 const PSQT_PAWN_MG: [[f64; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -25,7 +25,7 @@ pub const PSQT_KNIGHT_MG: [[f64; 8]; 8] = [
     [-40.0, -20.0, -30.0, -30.0, -30.0, -30.0, -20.0, -40.0],
     [-40.0, -20.0, 0.0, 5.0, 5.0, 0.0, -20.0, -40.0],
     [-30.0, 0.0, 10.0, 10.0, 10.0, 10.0, 0.0, -30.0],
-    [-30.0, 5.0, 20.0, 15.0,15.0, 20.0, 5.0, -30.0],
+    [-30.0, 5.0, 20.0, 15.0, 15.0, 20.0, 5.0, -30.0],
     [-30.0, 30.0, 40.0, 40.0, 40.0, 20.0, 30.0, -30.0],
     [-30.0, 15.0, 25.0, 35.0, 35.0, 25.0, 15.0, -30.0],
     [-40.0, -20.0, 0.0, 5.0, 5.0, 0.0, -20.0, -40.0],
@@ -81,7 +81,7 @@ const PSQT_KING_EG: [[f64; 8]; 8] = [
     [-30.0, -10.0, 30.0, 40.0, 40.0, 30.0, -10.0, -30.0],
     [-30.0, -10.0, 20.0, 30.0, 30.0, 20.0, -10.0, -30.0],
     [-30.0, -20.0, -10.0, 0.0, 0.0, -10.0, -20.0, -30.0],
-    [-50.0, -40.0, -30.0, -20.0, -20.0, -30.0, -40.0, -50.0]
+    [-50.0, -40.0, -30.0, -20.0, -20.0, -30.0, -40.0, -50.0],
 ];
 
 pub struct PSQT {
@@ -95,7 +95,15 @@ pub struct PSQT {
 }
 
 impl PSQT {
-    pub fn new(pawns: u64, knights: u64, bishops: u64, rooks: u64, queens: u64, king: u64, is_white: bool) -> PSQT {
+    pub fn new(
+        pawns: u64,
+        knights: u64,
+        bishops: u64,
+        rooks: u64,
+        queens: u64,
+        king: u64,
+        is_white: bool,
+    ) -> PSQT {
         PSQT {
             pawns,
             knights,
@@ -107,7 +115,15 @@ impl PSQT {
         }
     }
     pub fn copy(&self) -> PSQT {
-        PSQT::new(self.pawns, self.knights, self.bishops, self.rooks, self.queens, self.king, self.is_white)
+        PSQT::new(
+            self.pawns,
+            self.knights,
+            self.bishops,
+            self.rooks,
+            self.queens,
+            self.king,
+            self.is_white,
+        )
     }
 }
 
@@ -261,11 +277,26 @@ impl MidGameDisplay for PSQT {
 
         let mut res_str = String::new();
         res_str.push_str("\tPSQT-MidGame\n");
-        res_str.push_str(&format!("\t\tPawns:    {} -> {}\n", self.pawns.count_ones(), pawn_score));
-        res_str.push_str(&format!("\t\tKnights:  {} -> {}\n", self.knights.count_ones(), knight_score));
-        res_str.push_str(&format!("\t\tBishops:  {} -> {}\n", self.bishops.count_ones(), bishop_score));
+        res_str.push_str(&format!(
+            "\t\tPawns:    {} -> {}\n",
+            self.pawns.count_ones(),
+            pawn_score
+        ));
+        res_str.push_str(&format!(
+            "\t\tKnights:  {} -> {}\n",
+            self.knights.count_ones(),
+            knight_score
+        ));
+        res_str.push_str(&format!(
+            "\t\tBishops:  {} -> {}\n",
+            self.bishops.count_ones(),
+            bishop_score
+        ));
         res_str.push_str(&format!("\t\tKing:          {}\n", king_score));
-        res_str.push_str(&format!("\tSum: {}\n", pawn_score + knight_score + bishop_score + king_score));
+        res_str.push_str(&format!(
+            "\tSum: {}\n",
+            pawn_score + knight_score + bishop_score + king_score
+        ));
         res_str
     }
 }
@@ -308,15 +339,38 @@ impl EndGameDisplay for PSQT {
 
         let mut res_str = String::new();
         res_str.push_str("\tPSQT-EndGame\n");
-        res_str.push_str(&format!("\t\tPawns:    {} -> {}\n", self.pawns.count_ones(), pawn_score));
-        res_str.push_str(&format!("\t\tKnights:  {} -> {}\n", self.knights.count_ones(), knight_score));
-        res_str.push_str(&format!("\t\tBishops:  {} -> {}\n", self.bishops.count_ones(), bishop_score));
+        res_str.push_str(&format!(
+            "\t\tPawns:    {} -> {}\n",
+            self.pawns.count_ones(),
+            pawn_score
+        ));
+        res_str.push_str(&format!(
+            "\t\tKnights:  {} -> {}\n",
+            self.knights.count_ones(),
+            knight_score
+        ));
+        res_str.push_str(&format!(
+            "\t\tBishops:  {} -> {}\n",
+            self.bishops.count_ones(),
+            bishop_score
+        ));
         res_str.push_str(&format!("\t\tKing:          {}\n", king_score));
-        res_str.push_str(&format!("\tSum: {}\n", pawn_score + knight_score + bishop_score + king_score));
+        res_str.push_str(&format!(
+            "\tSum: {}\n",
+            pawn_score + knight_score + bishop_score + king_score
+        ));
         res_str
     }
 }
 
-pub fn psqt_eval(pawns: u64, knights: u64, bishops: u64, rooks: u64, queens: u64, king: u64, is_white: bool) -> PSQT {
+pub fn psqt_eval(
+    pawns: u64,
+    knights: u64,
+    bishops: u64,
+    rooks: u64,
+    queens: u64,
+    king: u64,
+    is_white: bool,
+) -> PSQT {
     PSQT::new(pawns, knights, bishops, rooks, queens, king, is_white)
 }

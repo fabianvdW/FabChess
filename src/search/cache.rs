@@ -1,11 +1,11 @@
-use crate::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 
 //2^20 Entrys
 pub const CACHE_MASK: usize = 0x7FFFFF;
-pub const CACHE_ENTRYS: usize = 8*1048576;
+pub const CACHE_ENTRYS: usize = 8 * 1048576;
 
 pub struct Cache {
-    pub cache: Vec<Option<CacheEntry>>
+    pub cache: Vec<Option<CacheEntry>>,
 }
 
 impl Cache {
@@ -30,12 +30,19 @@ pub struct CacheEntry {
     //1-Bit
     pub beta: bool,
     //1-Bit
-    pub mv: u16,//16-Bit
-    //Insg 178-Bit 23-Bytes
+    pub mv: u16, //16-Bit
+                 //Insg 178-Bit 23-Bytes
 }
 
 impl CacheEntry {
-    pub fn new(game_state: &GameState, depth_left: isize, score: f64, alpha: bool, beta: bool, mv: &GameMove) -> CacheEntry {
+    pub fn new(
+        game_state: &GameState,
+        depth_left: isize,
+        score: f64,
+        alpha: bool,
+        beta: bool,
+        mv: &GameMove,
+    ) -> CacheEntry {
         CacheEntry {
             hash: game_state.hash,
             depth: depth_left as i8,
@@ -55,15 +62,13 @@ impl CacheEntry {
         res |= match &mv.move_type {
             GameMoveType::Quiet => 1,
             GameMoveType::Castle => 2,
-            GameMoveType::Promotion(a, _) => {
-                match a {
-                    PieceType::Queen => 3,
-                    PieceType::Rook => 4,
-                    PieceType::Bishop => 5,
-                    PieceType::Knight => 6,
-                    _ => panic!("Invalid promotion!")
-                }
-            }
+            GameMoveType::Promotion(a, _) => match a {
+                PieceType::Queen => 3,
+                PieceType::Rook => 4,
+                PieceType::Bishop => 5,
+                PieceType::Knight => 6,
+                _ => panic!("Invalid promotion!"),
+            },
             GameMoveType::Capture(_) => 7,
             GameMoveType::EnPassant => 8,
         };
@@ -134,28 +139,56 @@ impl CacheEntry {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(PieceType::Queen, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
+                    move_type: GameMoveType::Promotion(
+                        PieceType::Queen,
+                        if captured_piece_type != PieceType::King {
+                            Some(captured_piece_type)
+                        } else {
+                            None
+                        },
+                    ),
                 };
             } else if typ == 4 {
                 return GameMove {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(PieceType::Rook, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
+                    move_type: GameMoveType::Promotion(
+                        PieceType::Rook,
+                        if captured_piece_type != PieceType::King {
+                            Some(captured_piece_type)
+                        } else {
+                            None
+                        },
+                    ),
                 };
             } else if typ == 5 {
                 return GameMove {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(PieceType::Bishop, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
+                    move_type: GameMoveType::Promotion(
+                        PieceType::Bishop,
+                        if captured_piece_type != PieceType::King {
+                            Some(captured_piece_type)
+                        } else {
+                            None
+                        },
+                    ),
                 };
             } else if typ == 6 {
                 return GameMove {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(PieceType::Knight, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
+                    move_type: GameMoveType::Promotion(
+                        PieceType::Knight,
+                        if captured_piece_type != PieceType::King {
+                            Some(captured_piece_type)
+                        } else {
+                            None
+                        },
+                    ),
                 };
             } else {
                 return GameMove {
@@ -172,7 +205,7 @@ impl CacheEntry {
 #[cfg(test)]
 mod tests {
     use super::CacheEntry;
-    use crate::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
+    use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
     use crate::move_generation::movegen;
 
     #[test]
@@ -347,18 +380,24 @@ mod tests {
             assert_eq!(e7e8nres.move_type, e7e8n.move_type);
             assert_eq!(e7e8nres.piece_type, e7e8n.piece_type);
         }
-        game_state = movegen::make_move(&game_state, &GameMove {
-            from: 23,
-            to: 31,
-            piece_type: PieceType::Pawn,
-            move_type: GameMoveType::Quiet,
-        });
-        game_state = movegen::make_move(&game_state, &GameMove {
-            from: 50,
-            to: 34,
-            piece_type: PieceType::Pawn,
-            move_type: GameMoveType::Quiet,
-        });
+        game_state = movegen::make_move(
+            &game_state,
+            &GameMove {
+                from: 23,
+                to: 31,
+                piece_type: PieceType::Pawn,
+                move_type: GameMoveType::Quiet,
+            },
+        );
+        game_state = movegen::make_move(
+            &game_state,
+            &GameMove {
+                from: 50,
+                to: 34,
+                piece_type: PieceType::Pawn,
+                move_type: GameMoveType::Quiet,
+            },
+        );
         {
             let d5d6 = GameMove {
                 from: 35,

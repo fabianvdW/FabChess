@@ -1,4 +1,4 @@
-use super::{Evaluation, ParallelEvaluation, MidGameDisplay, EndGameDisplay, bitboards};
+use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
 const PAWN_PASSED_VALUES_MG: [f64; 7] = [0.0, -20.0, -10.0, 30.0, 55.0, 75.0, 125.0];
 const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [f64; 7] = [0.0, 0.0, 30.0, 55.0, 70.0, 110.0, 160.0];
@@ -12,11 +12,23 @@ pub struct PassedEvaluation {
 }
 
 impl PassedEvaluation {
-    pub fn new(passed_pawns: u64, passed_not_blocked_pawns: u64, is_white: bool) -> PassedEvaluation {
-        PassedEvaluation { passed_pawns, passed_not_blocked_pawns, is_white }
+    pub fn new(
+        passed_pawns: u64,
+        passed_not_blocked_pawns: u64,
+        is_white: bool,
+    ) -> PassedEvaluation {
+        PassedEvaluation {
+            passed_pawns,
+            passed_not_blocked_pawns,
+            is_white,
+        }
     }
     pub fn copy(&self) -> PassedEvaluation {
-        PassedEvaluation::new(self.passed_pawns, self.passed_not_blocked_pawns, self.is_white)
+        PassedEvaluation::new(
+            self.passed_pawns,
+            self.passed_not_blocked_pawns,
+            self.is_white,
+        )
     }
 }
 
@@ -31,7 +43,8 @@ impl Evaluation for PassedEvaluation {
         }
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
-            res += PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
+            res +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_not_blocked_pawns ^= 1u64 << idx;
         }
         res
@@ -46,7 +59,8 @@ impl Evaluation for PassedEvaluation {
         }
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
-            res += PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
+            res +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_not_blocked_pawns ^= 1u64 << idx;
         }
         res
@@ -66,8 +80,10 @@ impl ParallelEvaluation for PassedEvaluation {
         }
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
-            mg += PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
-            eg += PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
+            mg +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
+            eg +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_not_blocked_pawns ^= 1u64 << idx;
         }
         (mg, eg)
@@ -86,15 +102,27 @@ impl MidGameDisplay for PassedEvaluation {
         let mut passed_not_blocked_score = 0.0;
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
-            passed_not_blocked_score += PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
+            passed_not_blocked_score +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_not_blocked_pawns ^= 1u64 << idx;
         }
 
         let mut res_str = String::new();
         res_str.push_str("\tPassed-MidGame\n");
-        res_str.push_str(&format!("\t\tPassed Pawns:                  {} -> {}\n", self.passed_pawns.count_ones(), passer_score));
-        res_str.push_str(&format!("\t\tPassed and not blocked Pawns:  {} -> {}\n", self.passed_not_blocked_pawns.count_ones(), passed_not_blocked_score));
-        res_str.push_str(&format!("\tSum: {}\n", passer_score + passed_not_blocked_score));
+        res_str.push_str(&format!(
+            "\t\tPassed Pawns:                  {} -> {}\n",
+            self.passed_pawns.count_ones(),
+            passer_score
+        ));
+        res_str.push_str(&format!(
+            "\t\tPassed and not blocked Pawns:  {} -> {}\n",
+            self.passed_not_blocked_pawns.count_ones(),
+            passed_not_blocked_score
+        ));
+        res_str.push_str(&format!(
+            "\tSum: {}\n",
+            passer_score + passed_not_blocked_score
+        ));
         res_str
     }
 }
@@ -111,27 +139,63 @@ impl EndGameDisplay for PassedEvaluation {
         let mut passed_not_blocked_score = 0.0;
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
-            passed_not_blocked_score += PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
+            passed_not_blocked_score +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_not_blocked_pawns ^= 1u64 << idx;
         }
 
         let mut res_str = String::new();
         res_str.push_str("\tPassed-EndGame\n");
-        res_str.push_str(&format!("\t\tPassed Pawns:                  {} -> {}\n", self.passed_pawns.count_ones(), passer_score));
-        res_str.push_str(&format!("\t\tPassed and not blocked Pawns:  {} -> {}\n", self.passed_not_blocked_pawns.count_ones(), passed_not_blocked_score));
-        res_str.push_str(&format!("\tSum: {}\n", passer_score + passed_not_blocked_score));
+        res_str.push_str(&format!(
+            "\t\tPassed Pawns:                  {} -> {}\n",
+            self.passed_pawns.count_ones(),
+            passer_score
+        ));
+        res_str.push_str(&format!(
+            "\t\tPassed and not blocked Pawns:  {} -> {}\n",
+            self.passed_not_blocked_pawns.count_ones(),
+            passed_not_blocked_score
+        ));
+        res_str.push_str(&format!(
+            "\tSum: {}\n",
+            passer_score + passed_not_blocked_score
+        ));
         res_str
     }
 }
 
-pub fn passed_eval_white(w_pawns: u64, b_pawns_all_front_spans: u64, enemy_pieces: u64) -> PassedEvaluation {
-    let (passed_pawns, passed_not_blocked) = w_passed_pawns(w_pawns & !bitboards::w_rear_span(w_pawns), b_pawns_all_front_spans, enemy_pieces);
-    PassedEvaluation { passed_pawns, passed_not_blocked_pawns: passed_not_blocked, is_white: true }
+pub fn passed_eval_white(
+    w_pawns: u64,
+    b_pawns_all_front_spans: u64,
+    enemy_pieces: u64,
+) -> PassedEvaluation {
+    let (passed_pawns, passed_not_blocked) = w_passed_pawns(
+        w_pawns & !bitboards::w_rear_span(w_pawns),
+        b_pawns_all_front_spans,
+        enemy_pieces,
+    );
+    PassedEvaluation {
+        passed_pawns,
+        passed_not_blocked_pawns: passed_not_blocked,
+        is_white: true,
+    }
 }
 
-pub fn passed_eval_black(b_pawns: u64, w_pawns_all_front_spans: u64, enemy_pieces: u64) -> PassedEvaluation {
-    let (passed_pawns, passed_not_blocked) = b_passed_pawns(b_pawns & !bitboards::b_rear_span(b_pawns), w_pawns_all_front_spans, enemy_pieces);
-    PassedEvaluation { passed_pawns, passed_not_blocked_pawns: passed_not_blocked, is_white: false }
+pub fn passed_eval_black(
+    b_pawns: u64,
+    w_pawns_all_front_spans: u64,
+    enemy_pieces: u64,
+) -> PassedEvaluation {
+    let (passed_pawns, passed_not_blocked) = b_passed_pawns(
+        b_pawns & !bitboards::b_rear_span(b_pawns),
+        w_pawns_all_front_spans,
+        enemy_pieces,
+    );
+    PassedEvaluation {
+        passed_pawns,
+        passed_not_blocked_pawns: passed_not_blocked,
+        is_white: false,
+    }
 }
 
 pub fn w_passed_pawns(w_pawns: u64, b_pawns_all_front_spans: u64, enemy_pieces: u64) -> (u64, u64) {

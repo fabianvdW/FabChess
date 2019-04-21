@@ -4,7 +4,6 @@ pub struct UCIEngine<'a> {
     pub name: &'a str,
     pub author: &'a str,
     pub internal_state: GameState,
-
 }
 
 impl<'a> UCIEngine<'a> {

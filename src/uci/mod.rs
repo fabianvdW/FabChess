@@ -1,2 +1,2 @@
-pub mod uci_parser;
 pub mod uci_engine;
+pub mod uci_parser;

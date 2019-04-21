@@ -2,10 +2,10 @@ use crate::board_representation::game_state::GameMove;
 use std::cmp::Ordering;
 
 pub mod alphabeta;
-pub mod quiesence;
-pub mod statistics;
 pub mod cache;
+pub mod quiesence;
 pub mod search;
+pub mod statistics;
 
 pub fn init_constants() {
     quiesence::PIECE_VALUES.len();
@@ -18,10 +18,7 @@ pub struct GradedMove {
 
 impl GradedMove {
     pub fn new(mv: GameMove, score: f64) -> GradedMove {
-        GradedMove {
-            mv,
-            score,
-        }
+        GradedMove { mv, score }
     }
 }
 

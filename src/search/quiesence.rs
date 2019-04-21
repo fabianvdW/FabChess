@@ -1,19 +1,34 @@
-use super::super::board_representation::game_state::{GameState, GameMove, GameMoveType, PieceType};
-use super::super::evaluation::{eval_game_state, self};
+use super::super::board_representation::game_state::{
+    GameMove, GameMoveType, GameState, PieceType,
+};
+use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
-use super::alphabeta::{GameResult, check_end_condition, leaf_score};
-use super::search::Search;
 use super::alphabeta::PrincipalVariation;
-use super::cache::{CacheEntry, Cache};
-use crate::bitboards;
+use super::alphabeta::{check_end_condition, leaf_score, GameResult};
+use super::cache::{Cache, CacheEntry};
+use super::search::Search;
 use super::GradedMove;
+use crate::bitboards;
 
 pub const DELTA_PRUNING: f64 = 2.0;
 lazy_static! {
-pub static ref PIECE_VALUES:[f64;6] = [100.0,300.0,310.0,500.0,900.0,999999999.99];
+    pub static ref PIECE_VALUES: [f64; 6] = [100.0, 300.0, 310.0, 500.0, 900.0, 999999999.99];
 }
 
-pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: isize, depth_left: isize, legal_moves: Vec<GameMove>, in_check: bool, current_depth: usize, search: &mut Search, history: &mut Vec<u64>, cache: &mut Cache, root_plies_played: usize) -> PrincipalVariation {
+pub fn q_search(
+    mut alpha: f64,
+    mut beta: f64,
+    game_state: &GameState,
+    color: isize,
+    depth_left: isize,
+    legal_moves: Vec<GameMove>,
+    in_check: bool,
+    current_depth: usize,
+    search: &mut Search,
+    history: &mut Vec<u64>,
+    cache: &mut Cache,
+    root_plies_played: usize,
+) -> PrincipalVariation {
     search.search_statistics.add_q_node(current_depth);
 
     let mut pv: PrincipalVariation = PrincipalVariation::new(1);
@@ -97,7 +112,10 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
                 }
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 for cmv in capture_moves.iter_mut() {
-                    if cmv.mv.from == mv.from && cmv.mv.to == mv.to && cmv.mv.move_type == mv.move_type {
+                    if cmv.mv.from == mv.from
+                        && cmv.mv.to == mv.to
+                        && cmv.mv.move_type == mv.move_type
+                    {
                         cmv.score += 10000.0;
                         break;
                     }
@@ -121,7 +139,20 @@ pub fn q_search(mut alpha: f64, mut beta: f64, game_state: &GameState, color: is
         let mv = capture_move.mv;
         let next_g = movegen::make_move(&game_state, &mv);
         let next_g_movegen = movegen::generate_moves(&next_g);
-        let following_pv = q_search(-beta, -alpha, &next_g, -color, depth_left - 1, next_g_movegen.0, next_g_movegen.1, current_depth + 1, search, next_history, cache, root_plies_played);
+        let following_pv = q_search(
+            -beta,
+            -alpha,
+            &next_g,
+            -color,
+            depth_left - 1,
+            next_g_movegen.0,
+            next_g_movegen.1,
+            current_depth + 1,
+            search,
+            next_history,
+            cache,
+            root_plies_played,
+        );
         let score = -following_pv.score;
         if score > pv.score {
             pv.score = score;
@@ -155,7 +186,7 @@ pub fn is_capture(mv: &GameMove) -> bool {
         GameMoveType::Capture(_) => true,
         GameMoveType::Promotion(_, s) => match s {
             Some(_) => true,
-            _ => false
+            _ => false,
         },
         GameMoveType::EnPassant => true,
         _ => false,
@@ -174,7 +205,10 @@ pub fn best_move_value(state: &GameState) -> f64 {
         i -= 1;
     }
 
-    if (state.pieces[0][state.color_to_move] & bitboards::RANKS[if state.color_to_move == 0 { 6 } else { 1 }]) != 0u64 {
+    if (state.pieces[0][state.color_to_move]
+        & bitboards::RANKS[if state.color_to_move == 0 { 6 } else { 1 }])
+        != 0u64
+    {
         res += (PIECE_VALUES[4] - PIECE_VALUES[0]) / 100.0;
     }
     res
@@ -191,7 +225,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
     let captured_piece = match &capture_move.move_type {
         GameMoveType::Capture(c) => c,
         GameMoveType::EnPassant => &PieceType::Pawn,
-        _ => panic!("No capture!")
+        _ => panic!("No capture!"),
     };
     eval + (evaluation::piece_value(&captured_piece, phase)) / 100.0 + DELTA_PRUNING >= alpha
 }
@@ -199,8 +233,14 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
 #[inline(always)]
 pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
     let mut gain = Vec::with_capacity(32);
-    let may_xray = game_state.pieces[0][0] | game_state.pieces[0][1] | game_state.pieces[2][0] | game_state.pieces[2][1] | game_state.pieces[3][0] | game_state.pieces[3][1] |
-        game_state.pieces[4][0] | game_state.pieces[4][1];
+    let may_xray = game_state.pieces[0][0]
+        | game_state.pieces[0][1]
+        | game_state.pieces[2][0]
+        | game_state.pieces[2][1]
+        | game_state.pieces[3][0]
+        | game_state.pieces[3][1]
+        | game_state.pieces[4][0]
+        | game_state.pieces[4][1];
     let mut from_set = 1u64 << mv.from;
     let mut occ = get_occupied_board(&game_state);
     let mut attadef = attacks_to(&game_state, mv.to, occ);
@@ -212,7 +252,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
         PieceType::Bishop => 2,
         PieceType::Rook => 3,
         PieceType::Queen => 4,
-        PieceType::King => 5
+        PieceType::King => 5,
     };
     let mut index = 0;
     let mut deleted_pieces = 0u64;
@@ -227,13 +267,16 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
         occ ^= from_set;
         if from_set & may_xray != 0u64 {
             //Recalculate rays
-            attadef |= recalculate_sliders(&game_state, color_to_move, mv.to, occ) & (!deleted_pieces);
+            attadef |=
+                recalculate_sliders(&game_state, color_to_move, mv.to, occ) & (!deleted_pieces);
         }
         color_to_move = 1 - color_to_move;
         let res = least_valuable_piece(attadef, color_to_move, &game_state);
         from_set = res.0;
         attacked_piece = res.1;
-        if attacked_piece == 5 && least_valuable_piece(attadef, 1 - color_to_move, &game_state).1 != 1000 {
+        if attacked_piece == 5
+            && least_valuable_piece(attadef, 1 - color_to_move, &game_state).1 != 1000
+        {
             break;
         }
     }
@@ -245,35 +288,52 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
 }
 
 #[inline(always)]
-pub fn recalculate_sliders(game_state: &GameState, color_to_move: usize, square: usize, occ: u64) -> u64 {
+pub fn recalculate_sliders(
+    game_state: &GameState,
+    color_to_move: usize,
+    square: usize,
+    occ: u64,
+) -> u64 {
     //Bishops
-    movegen::bishop_attack(square, occ) & (game_state.pieces[2][color_to_move] | game_state.pieces[4][color_to_move])
-        | movegen::rook_attack(square, occ) & (game_state.pieces[3][color_to_move] | game_state.pieces[4][color_to_move])
+    movegen::bishop_attack(square, occ)
+        & (game_state.pieces[2][color_to_move] | game_state.pieces[4][color_to_move])
+        | movegen::rook_attack(square, occ)
+            & (game_state.pieces[3][color_to_move] | game_state.pieces[4][color_to_move])
 }
 
 #[inline(always)]
 pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     let square_board = 1u64 << square;
-    movegen::attackers_from_white(square_board, square, game_state.pieces[0][0], game_state.pieces[1][0], game_state.pieces[2][0] | game_state.pieces[4][0], game_state.pieces[3][0] | game_state.pieces[4][0], occ).0
-        | movegen::attackers_from_black(square_board, square, game_state.pieces[0][1], game_state.pieces[1][1], game_state.pieces[2][1] | game_state.pieces[4][1], game_state.pieces[3][1] | game_state.pieces[4][1], occ).0
-        | bitboards::KING_ATTACKS[square] & (game_state.pieces[5][0] | game_state.pieces[5][1])
+    movegen::attackers_from_white(
+        square_board,
+        square,
+        game_state.pieces[0][0],
+        game_state.pieces[1][0],
+        game_state.pieces[2][0] | game_state.pieces[4][0],
+        game_state.pieces[3][0] | game_state.pieces[4][0],
+        occ,
+    )
+    .0 | movegen::attackers_from_black(
+        square_board,
+        square,
+        game_state.pieces[0][1],
+        game_state.pieces[1][1],
+        game_state.pieces[2][1] | game_state.pieces[4][1],
+        game_state.pieces[3][1] | game_state.pieces[4][1],
+        occ,
+    )
+    .0 | bitboards::KING_ATTACKS[square] & (game_state.pieces[5][0] | game_state.pieces[5][1])
 }
 
 #[inline(always)]
 pub fn capture_value(mv: &GameMove) -> f64 {
     match &mv.move_type {
-        GameMoveType::Capture(c) => {
-            piece_value(&c)
-        }
-        GameMoveType::Promotion(_, b) => {
-            match b {
-                Some(c) => {
-                    piece_value(&c)
-                }
-                _ => panic!("Promotion but no capture")
-            }
-        }
-        _ => panic!("No capture")
+        GameMoveType::Capture(c) => piece_value(&c),
+        GameMoveType::Promotion(_, b) => match b {
+            Some(c) => piece_value(&c),
+            _ => panic!("Promotion but no capture"),
+        },
+        _ => panic!("No capture"),
     }
 }
 
@@ -291,12 +351,26 @@ pub fn piece_value(piece_type: &PieceType) -> f64 {
 
 #[inline(always)]
 pub fn get_occupied_board(game_state: &GameState) -> u64 {
-    game_state.pieces[0][0] | game_state.pieces[1][0] | game_state.pieces[2][0] | game_state.pieces[3][0] | game_state.pieces[4][0] | game_state.pieces[5][0]
-        | game_state.pieces[0][1] | game_state.pieces[1][1] | game_state.pieces[2][1] | game_state.pieces[3][1] | game_state.pieces[4][1] | game_state.pieces[5][1]
+    game_state.pieces[0][0]
+        | game_state.pieces[1][0]
+        | game_state.pieces[2][0]
+        | game_state.pieces[3][0]
+        | game_state.pieces[4][0]
+        | game_state.pieces[5][0]
+        | game_state.pieces[0][1]
+        | game_state.pieces[1][1]
+        | game_state.pieces[2][1]
+        | game_state.pieces[3][1]
+        | game_state.pieces[4][1]
+        | game_state.pieces[5][1]
 }
 
 #[inline(always)]
-pub fn least_valuable_piece(from_board: u64, color_to_move: usize, game_state: &GameState) -> (u64, usize) {
+pub fn least_valuable_piece(
+    from_board: u64,
+    color_to_move: usize,
+    game_state: &GameState,
+) -> (u64, usize) {
     for i in 0..6 {
         let subset = game_state.pieces[i][color_to_move] & from_board;
         if subset != 0u64 {
@@ -308,73 +382,143 @@ pub fn least_valuable_piece(from_board: u64, color_to_move: usize, game_state: &
 
 #[cfg(test)]
 mod tests {
-    use super::GameState;
+    use super::see;
     use super::GameMove;
     use super::GameMoveType;
+    use super::GameState;
     use super::PieceType;
-    use super::see;
 
     #[test]
     fn see_test() {
-        assert_eq!(see(&GameState::from_fen("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"), &GameMove {
-            from: 4usize,
-            to: 36usize,
-            move_type: GameMoveType::Capture(PieceType::Pawn),
-            piece_type: PieceType::Rook,
-        }, true), 100.0);
-        assert_eq!(see(&GameState::from_fen("1k2r3/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"), &GameMove {
-            from: 4usize,
-            to: 36usize,
-            move_type: GameMoveType::Capture(PieceType::Pawn),
-            piece_type: PieceType::Rook,
-        }, true), -400.0);
-        assert_eq!(see(&GameState::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"), &GameMove {
-            from: 19,
-            to: 36,
-            move_type: GameMoveType::Capture(PieceType::Pawn),
-            piece_type: PieceType::Knight,
-        }, true), -200.0);
-        assert_eq!(see(&GameState::from_fen("1k1r3q/1ppn3p/p4b2/4n3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"), &GameMove {
-            from: 19,
-            to: 36,
-            move_type: GameMoveType::Capture(PieceType::Knight),
-            piece_type: PieceType::Knight,
-        }, true), 0.0);
-        assert_eq!(see(&GameState::from_fen("1k1r2q1/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"), &GameMove {
-            from: 19,
-            to: 36,
-            move_type: GameMoveType::Capture(PieceType::Pawn),
-            piece_type: PieceType::Knight,
-        }, true), -90.0);
-        assert_eq!(see(&GameState::from_fen("8/8/3p4/4r3/2RKP3/5k2/8/8 b - -"), &GameMove {
-            from: 36,
-            to: 28,
-            move_type: GameMoveType::Capture(PieceType::Pawn),
-            piece_type: PieceType::Rook,
-        }, true), 100.0);
-        assert_eq!(see(&GameState::from_fen("k7/8/5q2/8/3r4/2KQ4/8/8 w - -"), &GameMove {
-            from: 19,
-            to: 27,
-            move_type: GameMoveType::Capture(PieceType::Rook),
-            piece_type: PieceType::Queen,
-        }, true), 500.0);
-        assert_eq!(see(&GameState::from_fen("8/8/5q2/2k5/3r4/2KQ4/8/8 w - -"), &GameMove {
-            from: 19,
-            to: 27,
-            move_type: GameMoveType::Capture(PieceType::Rook),
-            piece_type: PieceType::Queen,
-        }, true), -400.0);
-        assert_eq!(see(&GameState::from_fen("4pq2/3P4/8/8/8/8/8/k1K5 w - -"), &GameMove {
-            from: 51,
-            to: 60,
-            move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
-            piece_type: PieceType::Pawn,
-        }, true), 0.0);
-        assert_eq!(see(&GameState::from_fen("4pq2/3P4/2B5/8/8/8/8/k1K5 w - -"), &GameMove {
-            from: 51,
-            to: 60,
-            move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
-            piece_type: PieceType::Pawn,
-        }, true), 100.0);
+        assert_eq!(
+            see(
+                &GameState::from_fen("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
+                &GameMove {
+                    from: 4usize,
+                    to: 36usize,
+                    move_type: GameMoveType::Capture(PieceType::Pawn),
+                    piece_type: PieceType::Rook,
+                },
+                true
+            ),
+            100.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("1k2r3/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
+                &GameMove {
+                    from: 4usize,
+                    to: 36usize,
+                    move_type: GameMoveType::Capture(PieceType::Pawn),
+                    piece_type: PieceType::Rook,
+                },
+                true
+            ),
+            -400.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"),
+                &GameMove {
+                    from: 19,
+                    to: 36,
+                    move_type: GameMoveType::Capture(PieceType::Pawn),
+                    piece_type: PieceType::Knight,
+                },
+                true
+            ),
+            -200.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("1k1r3q/1ppn3p/p4b2/4n3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"),
+                &GameMove {
+                    from: 19,
+                    to: 36,
+                    move_type: GameMoveType::Capture(PieceType::Knight),
+                    piece_type: PieceType::Knight,
+                },
+                true
+            ),
+            0.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("1k1r2q1/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"),
+                &GameMove {
+                    from: 19,
+                    to: 36,
+                    move_type: GameMoveType::Capture(PieceType::Pawn),
+                    piece_type: PieceType::Knight,
+                },
+                true
+            ),
+            -90.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("8/8/3p4/4r3/2RKP3/5k2/8/8 b - -"),
+                &GameMove {
+                    from: 36,
+                    to: 28,
+                    move_type: GameMoveType::Capture(PieceType::Pawn),
+                    piece_type: PieceType::Rook,
+                },
+                true
+            ),
+            100.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("k7/8/5q2/8/3r4/2KQ4/8/8 w - -"),
+                &GameMove {
+                    from: 19,
+                    to: 27,
+                    move_type: GameMoveType::Capture(PieceType::Rook),
+                    piece_type: PieceType::Queen,
+                },
+                true
+            ),
+            500.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("8/8/5q2/2k5/3r4/2KQ4/8/8 w - -"),
+                &GameMove {
+                    from: 19,
+                    to: 27,
+                    move_type: GameMoveType::Capture(PieceType::Rook),
+                    piece_type: PieceType::Queen,
+                },
+                true
+            ),
+            -400.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("4pq2/3P4/8/8/8/8/8/k1K5 w - -"),
+                &GameMove {
+                    from: 51,
+                    to: 60,
+                    move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
+                    piece_type: PieceType::Pawn,
+                },
+                true
+            ),
+            0.0
+        );
+        assert_eq!(
+            see(
+                &GameState::from_fen("4pq2/3P4/2B5/8/8/8/8/k1K5 w - -"),
+                &GameMove {
+                    from: 51,
+                    to: 60,
+                    move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
+                    piece_type: PieceType::Pawn,
+                },
+                true
+            ),
+            100.0
+        );
     }
 }
