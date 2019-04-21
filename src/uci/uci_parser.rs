@@ -24,6 +24,9 @@ pub fn parse_loop() {
         line.clear();
         stdin.read_line(&mut line).ok().unwrap();
         let arg: Vec<&str> = line.split_whitespace().collect();
+        if arg.len() == 0 {
+            continue;
+        }
         let cmd = arg[0];
         match cmd.trim() {
             "" => continue,
