@@ -10,15 +10,18 @@ use std::io::Write;
 use std::io::{BufReader, BufWriter};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+
 pub mod lct2;
 pub mod queue;
-
+pub mod selfplay;
 const STD_PROCESSORS: usize = 4;
 const STD_GAMES: usize = 1000;
 const MODE: usize = 0;
 const PLAYER1_STD_PATH: &str = "./target/release/schach_reworked.exe";
 const PLAYER2_STD_PATH: &str = "./schach_reworkedalt.exe";
 const LCT2_PATH: &str = "./lct2.epd";
+const OPENING_DB: &str = "./O-Deville/o-deville.pgn";
+const LOAD_UNTIL_PLY: usize = 6;
 fn main() {
     let mut games = STD_GAMES;
     let mut processors = STD_PROCESSORS;
@@ -26,6 +29,8 @@ fn main() {
     let mut player1path = PLAYER1_STD_PATH;
     let mut player2path = PLAYER2_STD_PATH;
     let mut path_to_lct2 = LCT2_PATH;
+    let mut path_to_opening_db = OPENING_DB;
+    let mut opening_load_until = LOAD_UNTIL_PLY;
     let args: Vec<String> = env::args().collect();
     let mut index: usize = 0;
     while index < args.len() {
@@ -33,7 +38,7 @@ fn main() {
             "lct2" => {
                 mode = 1;
             }
-            "processors" => {
+            "processors" | "p" => {
                 processors = args[index + 1].parse::<usize>().unwrap();
             }
             "games" => {
@@ -48,7 +53,12 @@ fn main() {
             "lct2path" => {
                 path_to_lct2 = &args[index + 1];
             }
-
+            "opening" | "openingdb" | "o" => {
+                path_to_opening_db = &args[index + 1];
+            }
+            "oload" | "openingload" | "loaduntil" => {
+                opening_load_until = args[index + 1].parse::<usize>().unwrap();
+            }
             _ => {
                 index += 1;
                 continue;
@@ -59,14 +69,22 @@ fn main() {
     if mode == 1 {
         lct2::lct2(player1path, processors, path_to_lct2);
     } else {
-        let mut myvec: Vec<GameState> = Vec::with_capacity(30);
+        /*let mut myvec: Vec<GameState> = Vec::with_capacity(30);
         myvec.push(GameState::standard());
         let d: ThreadSafeQueue<GameState> = ThreadSafeQueue::new(myvec);
         d.push(GameState::from_fen(
             "8/1p3pp1/7p/5P1P/2k3P1/8/2K2P2/8 w - -",
         ));
         let res = d.pop().unwrap();
-        println!("{}", res);
+        println!("{}", res);*/
+        selfplay::start_self_play(
+            player1path,
+            player2path,
+            processors,
+            games,
+            path_to_opening_db,
+            opening_load_until,
+        );
     }
 }
 pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {

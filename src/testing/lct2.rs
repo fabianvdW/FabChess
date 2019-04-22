@@ -11,7 +11,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 pub fn start_lct2_thread(
     queue: Arc<ThreadSafeQueue<Lct2Test>>,
     p1: String,
@@ -26,88 +26,86 @@ pub fn start_lct2_thread(
     let mut child_in = BufWriter::new(child.stdin.as_mut().unwrap());
     let mut child_out = BufReader::new(child.stdout.as_mut().unwrap());
     let mut line = String::new();
-    loop {
-        if let Some(test) = queue.pop() {
-            println!(
-                "{}",
-                &format!(
-                    "\n\n-----------------------------\nThread {} is looking at FEN: {}",
-                    thread_name,
-                    test.game_state.to_fen()
-                )
-            );
-            println!("Bestmove is actually: {:?}", test.optimal_move);
-            let str = format!(
-                "position fen {}\n go wtime 0 winc 600000 btime 0 binc 600000\n",
+    while let Some(test) = queue.pop() {
+        println!(
+            "{}",
+            &format!(
+                "\n\n-----------------------------\nThread {} is looking at FEN: {}",
+                thread_name,
                 test.game_state.to_fen()
-            );
-            write_to_buf(&mut child_in, &str);
-            let before = Instant::now();
-            let bm;
-            loop {
-                line.clear();
-                child_out.read_line(&mut line).unwrap();
-                let cmd: Vec<&str> = line.split(" ").collect();
-                if cmd[0] == "bestmove" {
-                    bm = cmd[1].trim();
-                    break;
-                } else {
-                    //Find mv
-                    let mut index = 0;
-                    while index < cmd.len() {
-                        if cmd[index] == "depth" {
-                            break;
-                        }
-                        index += 1;
+            )
+        );
+        println!("Bestmove is actually: {:?}", test.optimal_move);
+        let str = format!(
+            "position fen {}\n go wtime 0 winc 600000 btime 0 binc 600000\n",
+            test.game_state.to_fen()
+        );
+        write_to_buf(&mut child_in, &str);
+        let before = Instant::now();
+        let bm;
+        loop {
+            line.clear();
+            child_out.read_line(&mut line).unwrap();
+            let cmd: Vec<&str> = line.split(" ").collect();
+            if cmd[0] == "bestmove" {
+                bm = cmd[1].trim();
+                break;
+            } else {
+                //Find mv
+                let mut index = 0;
+                while index < cmd.len() {
+                    if cmd[index] == "depth" {
+                        break;
                     }
-                    if index >= cmd.len() {
-                        continue;
+                    index += 1;
+                }
+                if index >= cmd.len() {
+                    continue;
+                }
+                let depth = cmd[index + 1].parse::<usize>().unwrap();
+                if depth <= 7 {
+                    continue;
+                }
+                index = 0;
+                while index < cmd.len() {
+                    if cmd[index] == "pv" {
+                        break;
                     }
-                    let depth = cmd[index + 1].parse::<usize>().unwrap();
-                    if depth <= 7 {
-                        continue;
-                    }
-                    index = 0;
-                    while index < cmd.len() {
-                        if cmd[index] == "pv" {
-                            break;
-                        }
-                        index += 1;
-                    }
-                    if index < cmd.len() {
-                        if cmd[index + 1].trim() == &format!("{:?}", test.optimal_move) {
-                            write_to_buf(&mut child_in, "stop\n");
-                        }
+                    index += 1;
+                }
+                if index < cmd.len() {
+                    if cmd[index + 1].trim() == &format!("{:?}", test.optimal_move) {
+                        write_to_buf(&mut child_in, "stop\n");
                     }
                 }
             }
-            let now = Instant::now();
-            let dur = now.duration_since(before).as_millis();
-            println!(
-                "{}",
-                &format!(
-                    "\n\n-----------------------------\nThread {} has looked at FEN: {}",
-                    thread_name,
-                    test.game_state.to_fen()
-                )
-            );
-            println!("Bestmove is actually: {:?}", test.optimal_move);
-            println!("Best move found after {} seconds", dur as f64 / 1000.0);
-            println!("Best move found was {}", bm);
-            if bm == &format!("{:?}", test.optimal_move) {
-                let award = award_points(dur);
-                let newpoints = points.load(Ordering::SeqCst) + award;
-                (*points).store(newpoints, Ordering::SeqCst);
-                println!("Best move is equal! Awarded Points: {}", award);
-                println!("New Points: {}", newpoints);
-            } else {
-                println!("Best move is wrong!")
-            }
-            write_to_buf(&mut child_in, "stop\nnewgame\n");
-        } else {
-            break;
         }
+        let now = Instant::now();
+        let dur = now.duration_since(before).as_millis();
+        println!(
+            "{}",
+            &format!(
+                "\n\n-----------------------------\nThread {} has looked at FEN: {}",
+                thread_name,
+                test.game_state.to_fen()
+            )
+        );
+        println!("Bestmove is actually: {:?}", test.optimal_move);
+        println!("Best move found after {} seconds", dur as f64 / 1000.0);
+        println!("Best move found was {}", bm);
+        if bm == &format!("{:?}", test.optimal_move) {
+            let award = award_points(dur);
+            let newpoints = points.load(Ordering::SeqCst) + award;
+            (*points).store(newpoints, Ordering::SeqCst);
+            println!("Best move is equal! Awarded Points: {}", award);
+            println!("New Points: {}", newpoints);
+        } else {
+            println!("Best move is wrong!")
+        }
+        write_to_buf(&mut child_in, "stop\nnewgame\n");
+        thread::sleep(Duration::from_millis(50));
     }
+
     write_to_buf(&mut child_in, "quit\n");
 }
 pub fn lct2(p1: &str, processors: usize, path_to_lct2: &str) {
