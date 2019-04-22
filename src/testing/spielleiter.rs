@@ -2,6 +2,7 @@ extern crate core;
 
 use core::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use core::misc::parse_move;
+use queue::ThreadSafeQueue;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -9,8 +10,9 @@ use std::io::Write;
 use std::io::{BufReader, BufWriter};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
-
 pub mod lct2;
+pub mod queue;
+
 const STD_PROCESSORS: usize = 4;
 const STD_GAMES: usize = 1000;
 const MODE: usize = 0;
@@ -56,6 +58,15 @@ fn main() {
     }
     if mode == 1 {
         lct2::lct2(player1path, processors, path_to_lct2);
+    } else {
+        let mut myvec: Vec<GameState> = Vec::with_capacity(30);
+        myvec.push(GameState::standard());
+        let d: ThreadSafeQueue<GameState> = ThreadSafeQueue::new(myvec);
+        d.push(GameState::from_fen(
+            "8/1p3pp1/7p/5P1P/2k3P1/8/2K2P2/8 w - -",
+        ));
+        let res = d.pop().unwrap();
+        println!("{}", res);
     }
 }
 pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {

@@ -56,7 +56,7 @@ pub fn parse_loop() {
             }
             "stop" => {
                 stop.store(true, Ordering::Relaxed);
-                thread::sleep(Duration::from_millis(50));
+                thread::sleep(Duration::from_millis(5));
             }
             "quit" => {
                 break;
