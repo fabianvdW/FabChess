@@ -23,4 +23,4 @@ name="schach_reworked"
 path="src/main.rs"
 [[bin]]
 name="spielleiter"
-path="src/spielleiter.rs"
+path="src/testing/spielleiter.rs"
