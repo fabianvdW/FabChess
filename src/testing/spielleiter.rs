@@ -1,15 +1,8 @@
 extern crate core;
 
-use core::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
-use core::misc::parse_move;
-use queue::ThreadSafeQueue;
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
+use std::io::BufWriter;
 use std::io::Write;
-use std::io::{BufReader, BufWriter};
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
 
 pub mod lct2;
 pub mod queue;

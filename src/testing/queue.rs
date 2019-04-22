@@ -11,7 +11,11 @@ impl<T> ThreadSafeQueue<T> {
     }
     pub fn pop(&self) -> Option<T> {
         let mut data = self.queue.lock().unwrap();
-        (*data).pop()
+        //(*data).pop()
+        if (*data).len() == 0 {
+            return None;
+        }
+        Some((*data).remove(0))
     }
     pub fn push(&self, item: T) {
         let mut data = self.queue.lock().unwrap();
