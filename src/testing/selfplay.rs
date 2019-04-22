@@ -6,9 +6,10 @@ use core::move_generation::movegen;
 use core::search::alphabeta::GameResult;
 use rand::Rng;
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufRead, BufReader, BufWriter};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -49,6 +50,33 @@ pub fn start_self_play(
     }
     println!("Testing finished!");
 }
+pub fn wait_for_or_exit(
+    reader: &BufReader<&mut std::process::ChildStdout>,
+    wait_time: u64,
+    cmd: &str,
+) -> Option<String> {
+    let signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    let signal_clone = signal.clone();
+    let child = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(wait_time));
+        signal_clone.store(true, Ordering::Relaxed);
+    });
+
+    while !signal.load(Ordering::Relaxed) {
+        //Sleep a really small amount of time not to block cpu
+        thread::sleep(Duration::from_millis(10));
+        let mut line = String::new();
+        //This line is obviously invalid!
+        if reader.has_input() {
+            line.clear();
+            reader.read_line(&mut line).unwrap();
+            if line.starts_with(cmd) {
+                return Some(line);
+            }
+        }
+    }
+    None
+}
 pub fn play_game(task: PlayTask, p1: String, p2: String) -> TaskResult {
     //-------------------------------------------------------------
     //Setup Players
@@ -59,6 +87,7 @@ pub fn play_game(task: PlayTask, p1: String, p2: String) -> TaskResult {
         .spawn()
         .expect("Failed to start player 1!");
     let mut player1_in = BufWriter::new(player1_process.stdin.as_mut().unwrap());
+    write_to_buf(&mut player1_in, "uci\n");
     let mut player1_out = BufReader::new(player1_process.stdout.as_mut().unwrap());
     let mut player1_err = BufReader::new(player1_process.stderr.as_mut().unwrap());
     //-------------------------------------------------------------
