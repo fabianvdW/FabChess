@@ -5,8 +5,8 @@ use core::misc::parse_move;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
 use std::io::Write;
+use std::io::{BufReader, BufWriter};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -67,28 +67,29 @@ fn lct2(p1: &str, processors: usize, path_to_lct2: &str) {
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to execute command!");
+    let mut child_in = BufWriter::new(child.stdin.as_mut().unwrap());
+    let mut child_out = BufReader::new(child.stdout.as_mut().unwrap());
+    let mut line = String::new();
     for game in suit {
-        let child_in = child.stdin.as_mut().unwrap();
-        let mut child_out = BufReader::new(child.stdout.as_mut().unwrap());
-        let mut line = String::new();
-        println!("Looking at FEN: {}", game.game_state.to_fen());
+        println!(
+            "\n\n-----------------------------\nLooking at FEN: {}",
+            game.game_state.to_fen()
+        );
         println!("Bestmove is actually: {:?}", game.optimal_move);
         let str = format!(
             "position fen {}\n go wtime 0 winc 600000 btime 0 binc 600000\n",
             game.game_state.to_fen()
         );
         child_in.write(&str.as_bytes()).unwrap();
+        child_in.flush().expect("Couldn't flush buffer");
         let before = Instant::now();
-        let (mut from, mut to, mut promotion_piece) = (0usize, 0usize, None);
+        let (mut from, mut to, mut promotion_piece);
         loop {
+            line.clear();
             child_out.read_line(&mut line).unwrap();
-            let lines: Vec<&str> = line.split("\n").collect();
-            let cmd: Vec<&str> = lines[lines.len() - 2].split_whitespace().collect();
-            if cmd.len() == 0 {
-                continue;
-            }
+            let cmd: Vec<&str> = line.split(" ").collect();
             if cmd[0] == "bestmove" {
-                let res = GameMove::string_to_move(cmd[1]);
+                let res = GameMove::string_to_move(cmd[1].trim());
                 from = res.0;
                 to = res.1;
                 promotion_piece = res.2;
@@ -107,7 +108,7 @@ fn lct2(p1: &str, processors: usize, path_to_lct2: &str) {
                     continue;
                 }
                 let depth = cmd[index + 1].parse::<usize>().unwrap();
-                if depth <= 5 {
+                if depth <= 7 {
                     continue;
                 }
                 index = 0;
@@ -118,17 +119,13 @@ fn lct2(p1: &str, processors: usize, path_to_lct2: &str) {
                     index += 1;
                 }
                 if index < cmd.len() {
-                    let res = GameMove::string_to_move(cmd[index + 1]);
-                    from = res.0;
-                    to = res.1;
-                    promotion_piece = res.2;
                     if cmd[index + 1] == &format!("{:?}", game.optimal_move) {
-                        break;
+                        child_in.write(b"stop\n").expect("Couldn't write to stdin");
+                        child_in.flush().expect("Couldn't flush");
                     }
                 }
             }
         }
-        child_in.write(b"stop\nnewgame\nuci\n").unwrap();
         let now = Instant::now();
         let dur = now.duration_since(before).as_millis();
         println!("Best move found after {} seconds", dur as f64 / 1000.0);
@@ -143,7 +140,11 @@ fn lct2(p1: &str, processors: usize, path_to_lct2: &str) {
         } else {
             println!("Best move is wrong!")
         }
+        child_in.write(b"stop\nnewgame\n").unwrap();
+        child_in.flush().expect("Couldn't flush");
     }
+    child_in.write(b"quit\n").expect("Couldn't write");
+    child_in.flush().expect("Couldn't flush");
     println!("LCT2 Finished! Points: {}", mypoints);
 }
 
