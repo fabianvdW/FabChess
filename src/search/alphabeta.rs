@@ -28,7 +28,7 @@ pub fn principal_variation_search(
     cache: &mut Cache,
 ) -> PrincipalVariation {
     search.search_statistics.add_normal_node(current_depth);
-    if search.search_statistics.nodes_searched % 4095 == 0 {
+    if search.search_statistics.nodes_searched % 1024 == 0 {
         checkup(search, stop);
     }
 

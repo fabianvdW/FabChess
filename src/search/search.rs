@@ -25,7 +25,8 @@ pub struct TimeControl {
 
 impl TimeControl {
     pub fn time_over(&self, time_spent: u64) -> bool {
-        return time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc - 50;
+        return time_spent > self.mytime - 40
+            || time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc - 20;
     }
 }
 

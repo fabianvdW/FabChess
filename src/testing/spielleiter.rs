@@ -3,6 +3,7 @@ extern crate tokio;
 extern crate tokio_io;
 extern crate tokio_process;
 
+use core::search::search::TimeControl;
 use std::env;
 use std::io::BufWriter;
 use std::io::Write;
@@ -17,6 +18,9 @@ const PLAYER2_STD_PATH: &str = "./schach_reworkedalt.exe";
 const LCT2_PATH: &str = "./lct2.epd";
 const OPENING_DB: &str = "./O-Deville/o-deville.pgn";
 const LOAD_UNTIL_PLY: usize = 6;
+
+const TIMECONTROL_TIME: u64 = 10000;
+const TIMECONTROL_INC: u64 = 100;
 fn main() {
     let mut games = STD_GAMES;
     let mut processors = STD_PROCESSORS;
@@ -26,6 +30,11 @@ fn main() {
     let mut path_to_lct2 = LCT2_PATH;
     let mut path_to_opening_db = OPENING_DB;
     let mut opening_load_until = LOAD_UNTIL_PLY;
+    let mut timecontrol_p1_time = TIMECONTROL_TIME;
+    let mut timecontrol_p2_time = TIMECONTROL_TIME;
+    let mut timecontrol_p1_inc = TIMECONTROL_INC;
+    let mut timecontrol_p2_inc = TIMECONTROL_INC;
+
     let args: Vec<String> = env::args().collect();
     let mut index: usize = 0;
     while index < args.len() {
@@ -54,6 +63,18 @@ fn main() {
             "oload" | "openingload" | "loaduntil" => {
                 opening_load_until = args[index + 1].parse::<usize>().unwrap();
             }
+            "p1inc" | "tcp1inc" | "incp1" | "ip1" => {
+                timecontrol_p1_inc = args[index + 1].parse::<u64>().unwrap();
+            }
+            "p2inc" | "tcp2inc" | "incp2" | "ip2" => {
+                timecontrol_p2_inc = args[index + 1].parse::<u64>().unwrap();
+            }
+            "p1time" | "tcp1time" | "timep1" | "tp1" => {
+                timecontrol_p1_time = args[index + 1].parse::<u64>().unwrap();
+            }
+            "p2time" | "tcp2time" | "timep2" | "tp2" => {
+                timecontrol_p2_time = args[index + 1].parse::<u64>().unwrap();
+            }
             _ => {
                 index += 1;
                 continue;
@@ -71,6 +92,14 @@ fn main() {
             games,
             path_to_opening_db,
             opening_load_until,
+            TimeControl {
+                mytime: timecontrol_p1_time,
+                myinc: timecontrol_p1_inc,
+            },
+            TimeControl {
+                mytime: timecontrol_p2_time,
+                myinc: timecontrol_p2_inc,
+            },
         );
     }
 }
