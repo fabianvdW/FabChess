@@ -1,9 +1,11 @@
 extern crate core;
+extern crate tokio;
+extern crate tokio_io;
+extern crate tokio_process;
 
 use std::env;
 use std::io::BufWriter;
 use std::io::Write;
-
 pub mod lct2;
 pub mod queue;
 pub mod selfplay;
@@ -62,14 +64,6 @@ fn main() {
     if mode == 1 {
         lct2::lct2(player1path, processors, path_to_lct2);
     } else {
-        /*let mut myvec: Vec<GameState> = Vec::with_capacity(30);
-        myvec.push(GameState::standard());
-        let d: ThreadSafeQueue<GameState> = ThreadSafeQueue::new(myvec);
-        d.push(GameState::from_fen(
-            "8/1p3pp1/7p/5P1P/2k3P1/8/2K2P2/8 w - -",
-        ));
-        let res = d.pop().unwrap();
-        println!("{}", res);*/
         selfplay::start_self_play(
             player1path,
             player2path,

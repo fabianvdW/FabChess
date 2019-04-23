@@ -12,6 +12,9 @@ use std::time::Instant;
 use std::u64;
 
 pub fn parse_loop() {
+    //println!("hello");
+    //thread::sleep(Duration::from_secs(4));
+    //println!("world 123");
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
 
@@ -30,7 +33,9 @@ pub fn parse_loop() {
         let cmd = arg[0];
         match cmd.trim() {
             "" => continue,
-            "uci" => uci(&us),
+            "uci" => {
+                uci(&us);
+            }
             "setoption" => setoption(),
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);

@@ -1,18 +1,19 @@
 use crate::queue::ThreadSafeQueue;
-use crate::write_to_buf;
 use core::board_representation::game_state::GameState;
 use core::misc::{GameParser, PGNParser};
 use core::move_generation::movegen;
 use core::search::alphabeta::GameResult;
 use rand::Rng;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter};
+use std::io::BufReader;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tokio::prelude::*;
+use tokio_process::CommandExt;
+
 pub fn start_self_play(
     p1: &str,
     p2: &str,
@@ -50,46 +51,75 @@ pub fn start_self_play(
     }
     println!("Testing finished!");
 }
-pub fn wait_for_or_exit(
-    reader: &BufReader<&mut std::process::ChildStdout>,
-    wait_time: u64,
-    cmd: &str,
-) -> Option<String> {
-    let signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-    let signal_clone = signal.clone();
-    let child = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(wait_time));
-        signal_clone.store(true, Ordering::Relaxed);
-    });
 
-    while !signal.load(Ordering::Relaxed) {
-        //Sleep a really small amount of time not to block cpu
-        thread::sleep(Duration::from_millis(10));
-        let mut line = String::new();
-        //This line is obviously invalid!
-        if reader.has_input() {
-            line.clear();
-            reader.read_line(&mut line).unwrap();
-            if line.starts_with(cmd) {
-                return Some(line);
-            }
-        }
-    }
-    None
+pub fn print_command(
+    runtime: &mut tokio::runtime::Runtime,
+    input: tokio_process::ChildStdin,
+    command: String,
+) -> tokio_process::ChildStdin {
+    let buf = command.as_bytes().to_owned();
+    let fut = tokio_io::io::write_all(input, buf);
+    runtime.block_on(fut).expect("Could not write!").0
 }
+
+pub fn expect_output(
+    starts_with: String,
+    time_frame: u64,
+    output: tokio_process::ChildStdout,
+    runtime: &mut tokio::runtime::Runtime,
+) -> (Option<String>, Option<tokio_process::ChildStdout>) {
+    let lines_codec = tokio::codec::LinesCodec::new();
+    let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
+        .filter(move |lines| lines.starts_with(&starts_with[..]))
+        .into_future()
+        .timeout(Duration::from_millis(time_frame));
+    let result = runtime.block_on(line_fut);
+    match result {
+        Ok(s) => match s.0 {
+            Some(str) => (Some(str), Some(s.1.into_inner().into_inner())),
+            _ => (None, None),
+        },
+        Err(_) => (None, None),
+    }
+}
+
 pub fn play_game(task: PlayTask, p1: String, p2: String) -> TaskResult {
+    let player1_disq = TaskResult {
+        p1_won: false,
+        draw: false,
+        p1_disq: true,
+        p2_disq: false,
+    };
+    //-------------------------------------------------------------
+    //Setup Tokio runtime
+    let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
     //-------------------------------------------------------------
     //Setup Players
     let mut player1_process = Command::new(p1)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
+        .spawn_async()
         .expect("Failed to start player 1!");
-    let mut player1_in = BufWriter::new(player1_process.stdin.as_mut().unwrap());
-    write_to_buf(&mut player1_in, "uci\n");
-    let mut player1_out = BufReader::new(player1_process.stdout.as_mut().unwrap());
-    let mut player1_err = BufReader::new(player1_process.stderr.as_mut().unwrap());
+    let player1_input = player1_process.stdin().take().unwrap();
+    let player1_output = player1_process.stdout().take().unwrap();
+
+    let mut player1_stderr = player1_process.stderr().take().unwrap();
+    let player1_input = print_command(&mut runtime, player1_input, "uci\n".to_owned());
+    let output = expect_output("uciok".to_owned(), 10000, player1_output, &mut runtime);
+    if let None = output.0 {
+        println!("Player 1 didn't uciok in game {}!", task.id);
+        return player1_disq;
+    }
+    let player1_output = output.1.unwrap();
+    let player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
+    let output = expect_output("readyok".to_owned(), 10000, player1_output, &mut runtime);
+    if let None = output.0 {
+        println!("Player 1 didn't readok in game {}!", task.id);
+        return player1_disq;
+    }
+    let player1_output = output.1.unwrap();
+
     //-------------------------------------------------------------
     //Setup Game
     let mut state = task.opening;
@@ -108,7 +138,7 @@ pub fn play_game(task: PlayTask, p1: String, p2: String) -> TaskResult {
         status = check_end_condition(&state, legal_moves.len() > 0, in_check, &history);
         status = GameResult::Draw;
     }
-    write_to_buf(&mut player1_in, "quit\n");
+    //write_to_buf(&mut player1_in, "quit\n");
     TaskResult {
         p1_won: false,
         draw: false,
