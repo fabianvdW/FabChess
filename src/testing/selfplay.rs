@@ -1,5 +1,6 @@
 use crate::queue::ThreadSafeQueue;
 use core::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use core::logging::Logger;
 use core::misc::{GameParser, PGNParser};
 use core::move_generation::movegen;
 use core::search::alphabeta::GameResult;
@@ -32,6 +33,8 @@ pub fn start_self_play(
     println!("Games prepared! Starting...");
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
+    let error_log = Arc::new(Logger::new("referee_error_log.txt", false));
+    //let fen_log = Logger::new("fens.txt", true);
     let mut childs = Vec::with_capacity(processors);
     for _ in 0..processors {
         let queue_clone = queue.clone();
@@ -46,6 +49,7 @@ pub fn start_self_play(
             mytime: tcp2.mytime,
             myinc: tcp2.myinc,
         };
+        let log_clone = error_log.clone();
         childs.push(thread::spawn(move || {
             start_self_play_thread(
                 queue_clone,
@@ -54,6 +58,7 @@ pub fn start_self_play(
                 p2_clone,
                 &tcp1_clone,
                 &tcp2_clone,
+                log_clone,
             );
         }));
     }
@@ -162,6 +167,38 @@ pub fn expect_output(
         Err(_) => (None, None, dur),
     }
 }
+pub fn write_stderr_to_log(
+    error_log: Arc<Logger>,
+    stderr: tokio_process::ChildStderr,
+    runtime: &mut tokio::runtime::Runtime,
+) {
+    let line_fut = tokio::io::lines(BufReader::new(stderr))
+        .inspect(move |s| error_log.log(&format!("StdERR of child: \n{}\n", s), true))
+        .collect()
+        .timeout(Duration::from_millis(100));
+    let result = runtime.block_on(line_fut);
+    match result {
+        _ => {}
+    };
+}
+pub fn start_self_play_thread(
+    queue: Arc<ThreadSafeQueue<PlayTask>>,
+    result_queue: Arc<ThreadSafeQueue<TaskResult>>,
+    p1: String,
+    p2: String,
+    tcp1: &TimeControl,
+    tcp2: &TimeControl,
+    error_log: Arc<Logger>,
+) {
+    while let Some(task) = queue.pop() {
+        println!("Starting game {}", task.id);
+        let res = play_game(task, p1.clone(), p2.clone(), tcp1, tcp2, error_log.clone());
+        if res.p1_disq || res.p2_disq {
+            thread::sleep(Duration::from_millis(150));
+        }
+        result_queue.push(res);
+    }
+}
 
 pub fn play_game(
     task: PlayTask,
@@ -169,6 +206,7 @@ pub fn play_game(
     p2: String,
     tcp1: &TimeControl,
     tcp2: &TimeControl,
+    error_log: Arc<Logger>,
 ) -> TaskResult {
     let player1_disq = TaskResult {
         p1_won: false,
@@ -203,18 +241,26 @@ pub fn play_game(
         .expect("Failed to start player 1!");
     let player1_input = player1_process.stdin().take().unwrap();
     let player1_output = player1_process.stdout().take().unwrap();
-    //let player1_stderr = player1_process.stderr().take().unwrap();
+    let player1_stderr = player1_process.stderr().take().unwrap();
     let player1_input = print_command(&mut runtime, player1_input, "uci\n".to_owned());
     let output = expect_output("uciok".to_owned(), 10000, player1_output, &mut runtime);
     if let None = output.0 {
-        println!("Player 1 didn't uciok in game {}!", task.id);
+        error_log.log(
+            &format!("Player 1 didn't uciok in game {}!\n", task.id),
+            true,
+        );
+        write_stderr_to_log(error_log, player1_stderr, &mut runtime);
         return player1_disq;
     }
     let player1_output = output.1.unwrap();
     let mut player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
     let output = expect_output("readyok".to_owned(), 10000, player1_output, &mut runtime);
     if let None = output.0 {
-        println!("Player 1 didn't readyok in game {}!", task.id);
+        error_log.log(
+            &format!("Player 1 didn't readyok in game {}!\n", task.id),
+            true,
+        );
+        write_stderr_to_log(error_log, player1_stderr, &mut runtime);
         return player1_disq;
     }
     let mut player1_output = output.1.unwrap();
@@ -230,18 +276,26 @@ pub fn play_game(
         .expect("Failed to start player 2!");
     let player2_input = player2_process.stdin().take().unwrap();
     let player2_output = player2_process.stdout().take().unwrap();
-    //let player2_stderr= player2_process.stderr().take().unwrap();
+    let player2_stderr = player2_process.stderr().take().unwrap();
     let player2_input = print_command(&mut runtime, player2_input, "uci\n".to_owned());
     let output = expect_output("uciok".to_owned(), 10000, player2_output, &mut runtime);
     if let None = output.0 {
-        println!("Player 2 didn't uciok in game {}!", task.id);
+        error_log.log(
+            &format!("Player 2 didn't uciok in game {}!\n", task.id),
+            true,
+        );
+        write_stderr_to_log(error_log, player2_stderr, &mut runtime);
         return player2_disq;
     }
     let player2_output = output.1.unwrap();
     let mut player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
     let output = expect_output("readyok".to_owned(), 10000, player2_output, &mut runtime);
     if let None = output.0 {
-        println!("Player 2 didn't readyok in game {}!", task.id);
+        error_log.log(
+            &format!("Player 2 didn't readyok in game {}!\n", task.id),
+            true,
+        );
+        write_stderr_to_log(error_log, player2_stderr, &mut runtime);
         return player2_disq;
     }
     let mut player2_output = output.1.unwrap();
@@ -302,11 +356,18 @@ pub fn play_game(
             player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 150, player1_output, &mut runtime);
             if let None = output.0 {
-                println!(
-                    "Player 1 didn't readyok after position description in game {}!",
-                    task.id
+                error_log.log(
+                    &format!(
+                        "Player 1 didn't readyok after position description in game {}!\n",
+                        task.id
+                    ),
+                    true,
                 );
-                println!("Position description is:\n {}", position_string);
+                error_log.log(
+                    &format!("Position description is:\n{}\n", position_string),
+                    true,
+                );
+                write_stderr_to_log(error_log, player1_stderr, &mut runtime);
                 return player1_disq;
             }
             player1_output = output.1.unwrap();
@@ -318,15 +379,19 @@ pub fn play_game(
                 &mut runtime,
             );
             if let None = output.0 {
-                println!(
-                    "Player 1 didn't send bestmove in time in game {}! He had {}ms left!",
-                    task.id, player1_time
+                error_log.log(
+                    &format!(
+                        "Player 1 didn't send bestmove in time in game {}! He had {}ms left!\n",
+                        task.id, player1_time
+                    ),
+                    true,
                 );
+                write_stderr_to_log(error_log, player1_stderr, &mut runtime);
                 return player1_disq;
             }
             player1_output = output.1.unwrap();
             if output.2 as u64 > player1_time {
-                println!("Mistake in Referee! Bestmove found but it took longer than time still left for player 1! Disqualifying player1 illegitimately in game {}",task.id);
+                error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 1! Disqualifying player1 illegitimately in game {}\n",task.id),true);
                 return player1_disq;
             }
             player1_time -= output.2 as u64;
@@ -339,15 +404,20 @@ pub fn play_game(
                 let mv = GameMove::string_to_move(split_line[1]);
                 let found_move = find_move(mv.0, mv.1, mv.2, &legal_moves);
                 if let None = found_move {
-                    println!("Player 1 sent illegal {} in game {}", line, task.id);
+                    error_log.log(
+                        &format!("Player 1 sent illegal {} in game {}\n", line, task.id),
+                        true,
+                    );
+                    write_stderr_to_log(error_log, player1_stderr, &mut runtime);
                     return player1_disq;
                 }
                 game_move = found_move.unwrap();
             } else {
-                println!(
-                    "Bestmove wasn't first argument after bestmove keyword! Disqualifiying player 1 in game {}",
+                error_log.log(&format!(
+                    "Bestmove wasn't first argument after bestmove keyword! Disqualifiying player 1 in game {}\n",
                     task.id
-                );
+                ),true);
+                write_stderr_to_log(error_log, player1_stderr, &mut runtime);
                 return player1_disq;
             }
         } else {
@@ -355,11 +425,18 @@ pub fn play_game(
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 150, player2_output, &mut runtime);
             if let None = output.0 {
-                println!(
-                    "Player 2 didn't readyok after position description in game {}!",
-                    task.id
+                error_log.log(
+                    &format!(
+                        "Player 2 didn't readyok after position description in game {}!\n",
+                        task.id
+                    ),
+                    true,
                 );
-                println!("Position description is:\n {}", position_string);
+                error_log.log(
+                    &format!("Position description is:\n{}\n", position_string),
+                    true,
+                );
+                write_stderr_to_log(error_log, player2_stderr, &mut runtime);
                 return player2_disq;
             }
             player2_output = output.1.unwrap();
@@ -371,15 +448,19 @@ pub fn play_game(
                 &mut runtime,
             );
             if let None = output.0 {
-                println!(
-                    "Player 2 didn't send bestmove in time in game {}! He had {}ms left!",
-                    task.id, player2_time
+                error_log.log(
+                    &format!(
+                        "Player 2 didn't send bestmove in time in game {}! He had {}ms left!\n",
+                        task.id, player2_time
+                    ),
+                    true,
                 );
+                write_stderr_to_log(error_log, player2_stderr, &mut runtime);
                 return player2_disq;
             }
             player2_output = output.1.unwrap();
             if output.2 as u64 > player2_time {
-                println!("Mistake in Referee! Bestmove found but it took longer than time still left for player 2! Disqualifying player1 illegitimately in game {}",task.id);
+                error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 2! Disqualifying player1 illegitimately in game {}\n",task.id),true);
                 return player2_disq;
             }
             player2_time -= output.2 as u64;
@@ -392,15 +473,20 @@ pub fn play_game(
                 let mv = GameMove::string_to_move(split_line[1]);
                 let found_move = find_move(mv.0, mv.1, mv.2, &legal_moves);
                 if let None = found_move {
-                    println!("Player 2 sent illegal {} in game {}", line, task.id);
+                    error_log.log(
+                        &format!("Player 2 sent illegal {} in game {}\n", line, task.id),
+                        true,
+                    );
+                    write_stderr_to_log(error_log, player2_stderr, &mut runtime);
                     return player2_disq;
                 }
                 game_move = found_move.unwrap();
             } else {
-                println!(
-                    "Bestmove wasn't first argument after bestmove keyword! Disqualifiying player 2 in game {}",
+                error_log.log(&format!(
+                    "Bestmove wasn't first argument after bestmove keyword! Disqualifiying player 2 in game {}\n",
                     task.id
-                );
+                ),true);
+                write_stderr_to_log(error_log, player2_stderr, &mut runtime);
                 return player2_disq;
             }
         }
@@ -527,24 +613,6 @@ pub fn get_occurences(history: &Vec<GameState>, state: &GameState) -> usize {
         }
     }
     occ
-}
-
-pub fn start_self_play_thread(
-    queue: Arc<ThreadSafeQueue<PlayTask>>,
-    result_queue: Arc<ThreadSafeQueue<TaskResult>>,
-    p1: String,
-    p2: String,
-    tcp1: &TimeControl,
-    tcp2: &TimeControl,
-) {
-    while let Some(task) = queue.pop() {
-        println!("Starting game {}", task.id);
-        let res = play_game(task, p1.clone(), p2.clone(), tcp1, tcp2);
-        if res.p1_disq || res.p2_disq {
-            thread::sleep(Duration::from_millis(150));
-        }
-        result_queue.push(res);
-    }
 }
 
 pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
