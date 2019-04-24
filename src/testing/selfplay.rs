@@ -61,6 +61,8 @@ pub fn start_self_play(
     let mut p1_wins = 0;
     let mut p2_wins = 0;
     let mut draws = 0;
+    let mut p1_disqs = 0;
+    let mut p2_disqs = 0;
     while results_collected < (games / 2) * 2 {
         thread::sleep(Duration::from_millis(50));
         if let Some(result) = result_queue.pop() {
@@ -79,9 +81,39 @@ pub fn start_self_play(
             } else if !result.p1_disq {
                 p2_wins += 1;
             }
-            println!("Player   Wins   Draws   Losses");
-            println!("P1       {}     {}      {}", p1_wins, draws, p2_wins);
-            println!("P2       {}     {}      {}", p2_wins, draws, p1_wins);
+            if result.p1_disq {}
+            //Make some statistics
+            let mut elo_gain_p1 = 0.0;
+            let mut elo_plus_p1 = 0.0;
+            //let mut elo_minus_p1 = 0.0;
+            if p1_wins != 0 && p2_wins != 0 || draws != 0 {
+                //Derived from 1. E_A= 1/(1+10^(-DeltaElo/400)) and 2. |X/N-p|<=1.96*sqrt(N*p*(1-p))/n
+                let n: f64 = (p1_wins + p2_wins + draws) as f64;
+                let x_a: f64 = p1_wins as f64 + draws as f64 / 2.0;
+                let p_a: f64 = x_a / n;
+                let k: f64 = (1.96 * 1.96 + 2.0 * x_a) / (-1.0 * 1.96 * 1.96 - n);
+                let q = -1.0 * x_a * x_a / (n * (-1.96 * 1.96 - n));
+                let root = ((k / 2.0) * (k / 2.0) - q).sqrt();
+                let p_a_upper: f64 = -k / 2.0 + root;
+                //let p_a_lower: f64 = -k / 2.0 - root;
+                /*println!("N: {}", n);
+                println!("X_A: {}", x_a);
+                println!("P_A: {}", p_a);
+                println!("P_A_Upper: {}", p_a_upper);
+                println!("P_A_Lower: {}", p_a_lower);*/
+                elo_gain_p1 = get_elo_gain(p_a);
+                elo_plus_p1 = get_elo_gain(p_a_upper) - elo_gain_p1;
+                //elo_minus_p1 = elo_gain_p1 - get_elo_gain(p_a_lower);
+            }
+            println!("Player   Wins   Draws   Losses   Elo   +/-");
+            println!(
+                "P1       {}      {}       {}      {:.2}   {:.2}",
+                p1_wins, draws, p2_wins, elo_gain_p1, elo_plus_p1
+            );
+            println!(
+                "P2       {}      {}       {}      {:.2}   {:.2}",
+                p2_wins, draws, p1_wins, -elo_gain_p1, elo_plus_p1
+            );
         }
     }
     for child in childs {
@@ -89,7 +121,9 @@ pub fn start_self_play(
     }
     println!("Testing finished!");
 }
-
+pub fn get_elo_gain(p_a: f64) -> f64 {
+    return -1.0 * (1.0 / p_a - 1.0).ln() * 400.0 / (10.0 as f64).ln();
+}
 pub fn print_command(
     runtime: &mut tokio::runtime::Runtime,
     input: tokio_process::ChildStdin,
@@ -259,7 +293,7 @@ pub fn play_game(
         ));
         let game_move: &GameMove;
         if player1_move {
-            player1_input = print_command(&mut runtime, player1_input, position_string);
+            player1_input = print_command(&mut runtime, player1_input, position_string.clone());
             player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 100, player1_output, &mut runtime);
             if let None = output.0 {
@@ -267,6 +301,7 @@ pub fn play_game(
                     "Player 1 didn't readyok after position description in game {}!",
                     task.id
                 );
+                println!("Position description is:\n {}", position_string);
                 return player1_disq;
             }
             player1_output = output.1.unwrap();
@@ -311,7 +346,7 @@ pub fn play_game(
                 return player1_disq;
             }
         } else {
-            player2_input = print_command(&mut runtime, player2_input, position_string);
+            player2_input = print_command(&mut runtime, player2_input, position_string.clone());
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 100, player2_output, &mut runtime);
             if let None = output.0 {
@@ -319,6 +354,7 @@ pub fn play_game(
                     "Player 2 didn't readyok after position description in game {}!",
                     task.id
                 );
+                println!("Position description is:\n {}", position_string);
                 return player2_disq;
             }
             player2_output = output.1.unwrap();
