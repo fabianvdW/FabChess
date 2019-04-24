@@ -1,4 +1,4 @@
-use crate::queue::ThreadSafeQueue;
+use crate::queue::{ThreadSafeQueue, ThreadSafeString};
 use core::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use core::logging::Logger;
 use core::misc::{GameParser, PGNParser};
@@ -167,6 +167,48 @@ pub fn expect_output(
         Err(_) => (None, None, dur),
     }
 }
+
+pub fn expect_output_and_listen_for_info(
+    starts_with: String,
+    time_frame: u64,
+    output: tokio_process::ChildStdout,
+    runtime: &mut tokio::runtime::Runtime,
+) -> (
+    Option<String>,
+    Option<tokio_process::ChildStdout>,
+    usize,
+    String,
+) {
+    let info_listener = Arc::new(ThreadSafeString::new());
+    let info_listener_moved = info_listener.clone();
+    let lines_codec = tokio::codec::LinesCodec::new();
+    let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
+        .inspect(move |line| {
+            if line.starts_with("info") {
+                //println!("{}", line);
+                info_listener_moved.push(line);
+            }
+        })
+        .filter(move |lines| lines.starts_with(&starts_with[..]))
+        .into_future()
+        .timeout(Duration::from_millis(time_frame));
+    let before = Instant::now();
+    let result = runtime.block_on(line_fut);
+    let after = Instant::now();
+    let dur = after.duration_since(before).as_millis() as usize;
+    match result {
+        Ok(s) => match s.0 {
+            Some(str) => (
+                Some(str),
+                Some(s.1.into_inner().into_inner().into_inner()),
+                dur,
+                info_listener.get_inner(),
+            ),
+            _ => (None, None, dur, info_listener.get_inner()),
+        },
+        Err(_) => (None, None, dur, info_listener.get_inner()),
+    }
+}
 pub fn write_stderr_to_log(
     error_log: Arc<Logger>,
     stderr: tokio_process::ChildStderr,
@@ -180,6 +222,55 @@ pub fn write_stderr_to_log(
     match result {
         _ => {}
     };
+}
+pub fn fetch_info(info: String) -> UCIInfo {
+    let split_line: Vec<&str> = info.split_whitespace().collect();
+    let mut depth = None;
+    let mut nps = None;
+    let mut cp_score = None;
+    let mut positive_mate_found = false;
+    let mut negative_mate_found = false;
+    let mut index = 0;
+    while index < split_line.len() {
+        match split_line[index] {
+            "depth" => {
+                depth = Some(split_line[index + 1].parse::<usize>().unwrap());
+                index += 1;
+            }
+            "cp" => {
+                cp_score = Some(split_line[index + 1].parse::<isize>().unwrap());
+                index += 1;
+            }
+            "nps" => {
+                nps = Some(split_line[index + 1].parse::<usize>().unwrap());
+                index += 1;
+            }
+            "mate" => {
+                let mate_score = split_line[index + 1].parse::<isize>().unwrap();
+                if mate_score < 0 {
+                    negative_mate_found = true;
+                } else if mate_score > 0 {
+                    positive_mate_found = true;
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    UCIInfo {
+        depth,
+        nps,
+        cp_score,
+        positive_mate_found,
+        negative_mate_found,
+    }
+}
+pub struct UCIInfo {
+    depth: Option<usize>,
+    nps: Option<usize>,
+    cp_score: Option<isize>,
+    positive_mate_found: bool,
+    negative_mate_found: bool,
 }
 pub fn start_self_play_thread(
     queue: Arc<ThreadSafeQueue<PlayTask>>,
@@ -308,9 +399,12 @@ pub fn play_game(
         check_end_condition(&task.opening, legal_moves.len() > 0, in_check, &history).0;
     history.push(task.opening.clone());
     let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
-
     let mut endcondition = None;
     //-------------------------------------------------------------
+    //Adjucations
+    let mut draw_adjucation = 0;
+    let mut win_adjucation = 0;
+    let mut win_adjucation_for_p1 = true;
     while let GameResult::Ingame = status {
         //Request move
         let latest_state = &history[history.len() - 1];
@@ -372,7 +466,7 @@ pub fn play_game(
             }
             player1_output = output.1.unwrap();
             player1_input = print_command(&mut runtime, player1_input, go_string);
-            let output = expect_output(
+            let output = expect_output_and_listen_for_info(
                 "bestmove".to_owned(),
                 player1_time,
                 player1_output,
@@ -420,6 +514,56 @@ pub fn play_game(
                 write_stderr_to_log(error_log, player1_stderr, &mut runtime);
                 return player1_disq;
             }
+
+            //Get additional info about player1 e.g. how deep he saw, nps, and his evaluation
+            {
+                let info = fetch_info(output.3);
+                let has_score = match info.cp_score {
+                    Some(_) => true,
+                    _ => false,
+                };
+                if info.negative_mate_found | info.positive_mate_found {
+                    draw_adjucation = 0;
+                    if info.negative_mate_found {
+                        if win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = false;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    } else {
+                        if !win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = true;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    }
+                } else if has_score {
+                    let score = info.cp_score.unwrap();
+                    if score.abs() <= 10 {
+                        draw_adjucation += 1;
+                    } else {
+                        draw_adjucation = 0;
+                    }
+                    if score < -1000 {
+                        if win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = false;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    } else if score > 1000 {
+                        if !win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = true;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    } else {
+                        win_adjucation = 0;
+                    }
+                } else {
+                    draw_adjucation = 0;
+                    win_adjucation = 0;
+                }
+            }
         } else {
             player2_input = print_command(&mut runtime, player2_input, position_string.clone());
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
@@ -441,7 +585,7 @@ pub fn play_game(
             }
             player2_output = output.1.unwrap();
             player2_input = print_command(&mut runtime, player2_input, go_string);
-            let output = expect_output(
+            let output = expect_output_and_listen_for_info(
                 "bestmove".to_owned(),
                 player2_time,
                 player2_output,
@@ -489,16 +633,92 @@ pub fn play_game(
                 write_stderr_to_log(error_log, player2_stderr, &mut runtime);
                 return player2_disq;
             }
+
+            //Get additional info about player2 e.g. how deep he saw, nps, and his evaluation
+            {
+                let info = fetch_info(output.3);
+                let has_score = match info.cp_score {
+                    Some(_) => true,
+                    _ => false,
+                };
+                if info.negative_mate_found | info.positive_mate_found {
+                    draw_adjucation = 0;
+                    if info.negative_mate_found {
+                        if !win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = true;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    } else {
+                        if win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = false;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    }
+                } else if has_score {
+                    let score = info.cp_score.unwrap();
+                    if score.abs() <= 10 {
+                        draw_adjucation += 1;
+                    } else {
+                        draw_adjucation = 0;
+                    }
+                    if score < -1000 {
+                        if !win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = true;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    } else if score > 1000 {
+                        if win_adjucation_for_p1 {
+                            win_adjucation_for_p1 = false;
+                            win_adjucation = 0;
+                        }
+                        win_adjucation += 1;
+                    } else {
+                        win_adjucation = 0;
+                    }
+                } else {
+                    draw_adjucation = 0;
+                    win_adjucation = 0;
+                }
+            }
         }
         //Make new state with move
         move_history.push(game_move.clone());
         let state = movegen::make_move(latest_state, game_move);
+        if state.half_moves == 0 || state.full_moves < 35 {
+            draw_adjucation = 0;
+        }
         let (lm, ic) = movegen::generate_moves(&state);
         legal_moves = lm;
         in_check = ic;
         let check = check_end_condition(&state, legal_moves.len() > 0, in_check, &history);
         status = check.0;
         endcondition = check.1;
+        //Check for adjucation
+        if let GameResult::Ingame = status {
+            //Check adjucation values
+            if draw_adjucation >= 10 {
+                status = GameResult::Draw;
+                endcondition = Some(EndConditionInformation::DrawByAdjucation);
+            } else if win_adjucation >= 10 {
+                endcondition = Some(EndConditionInformation::MateByAdjucation);
+                if win_adjucation_for_p1 {
+                    if task.p1_is_white {
+                        status = GameResult::WhiteWin;
+                    } else {
+                        status = GameResult::BlackWin;
+                    }
+                } else {
+                    if task.p1_is_white {
+                        status = GameResult::BlackWin;
+                    } else {
+                        status = GameResult::WhiteWin;
+                    }
+                }
+            }
+        }
         //Preparing next round
         history.push(state);
     }

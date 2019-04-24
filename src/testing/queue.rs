@@ -22,3 +22,21 @@ impl<T> ThreadSafeQueue<T> {
         (*data).push(item);
     }
 }
+pub struct ThreadSafeString {
+    string: Mutex<String>,
+}
+impl ThreadSafeString {
+    pub fn new() -> Self {
+        ThreadSafeString {
+            string: Mutex::new(String::new()),
+        }
+    }
+
+    pub fn push(&self, str: &String) {
+        *self.string.lock().unwrap() = str.clone();
+    }
+
+    pub fn get_inner(&self) -> String {
+        self.string.lock().unwrap().clone()
+    }
+}
