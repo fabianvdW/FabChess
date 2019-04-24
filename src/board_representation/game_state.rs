@@ -104,10 +104,10 @@ impl Debug for GameMove {
 
 fn char_to_promotion_piecetype(c: char) -> PieceType {
     match c {
-        'q' | 'Q' => PieceType::Queen,
-        'r' | 'R' => PieceType::Rook,
-        'b' | 'B' => PieceType::Bishop,
-        'n' | 'N' => PieceType::Knight,
+        'q' => PieceType::Queen,
+        'r' => PieceType::Rook,
+        'b' => PieceType::Bishop,
+        'n' => PieceType::Knight,
         _ => panic!("Invalid promotion piece {}", c),
     }
 }

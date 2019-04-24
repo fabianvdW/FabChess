@@ -25,5 +25,5 @@ path= "src/lib.rs"
 name="schach_reworked"
 path="src/main.rs"
 [[bin]]
-name="spielleiter"
-path="src/testing/spielleiter.rs"
+name="referee"
+path="src/testing/referee.rs"

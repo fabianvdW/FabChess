@@ -81,7 +81,12 @@ pub fn start_self_play(
             } else if !result.p1_disq {
                 p2_wins += 1;
             }
-            if result.p1_disq {}
+            if result.p1_disq {
+                p1_disqs += 1;
+            }
+            if result.p2_disq {
+                p2_disqs += 1;
+            }
             //Make some statistics
             let mut elo_gain_p1 = 0.0;
             let mut elo_plus_p1 = 0.0;
@@ -105,14 +110,14 @@ pub fn start_self_play(
                 elo_plus_p1 = get_elo_gain(p_a_upper) - elo_gain_p1;
                 //elo_minus_p1 = elo_gain_p1 - get_elo_gain(p_a_lower);
             }
-            println!("Player   Wins   Draws   Losses   Elo   +/-");
+            println!("Player   Wins   Draws   Losses   Elo   +/-   Disq.");
             println!(
-                "P1       {}      {}       {}      {:.2}   {:.2}",
-                p1_wins, draws, p2_wins, elo_gain_p1, elo_plus_p1
+                "P1       {}     {}      {}     {:.2}   {:.2}    {}",
+                p1_wins, draws, p2_wins, elo_gain_p1, elo_plus_p1, p1_disqs
             );
             println!(
-                "P2       {}      {}       {}      {:.2}   {:.2}",
-                p2_wins, draws, p1_wins, -elo_gain_p1, elo_plus_p1
+                "P2       {}     {}      {}     {:.2}   {:.2}    {}",
+                p2_wins, draws, p1_wins, -elo_gain_p1, elo_plus_p1, p2_disqs
             );
         }
     }
@@ -295,7 +300,7 @@ pub fn play_game(
         if player1_move {
             player1_input = print_command(&mut runtime, player1_input, position_string.clone());
             player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
-            let output = expect_output("readyok".to_owned(), 100, player1_output, &mut runtime);
+            let output = expect_output("readyok".to_owned(), 150, player1_output, &mut runtime);
             if let None = output.0 {
                 println!(
                     "Player 1 didn't readyok after position description in game {}!",
@@ -348,7 +353,7 @@ pub fn play_game(
         } else {
             player2_input = print_command(&mut runtime, player2_input, position_string.clone());
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
-            let output = expect_output("readyok".to_owned(), 100, player2_output, &mut runtime);
+            let output = expect_output("readyok".to_owned(), 150, player2_output, &mut runtime);
             if let None = output.0 {
                 println!(
                     "Player 2 didn't readyok after position description in game {}!",
@@ -534,7 +539,11 @@ pub fn start_self_play_thread(
 ) {
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
-        result_queue.push(play_game(task, p1.clone(), p2.clone(), tcp1, tcp2));
+        let res = play_game(task, p1.clone(), p2.clone(), tcp1, tcp2);
+        if res.p1_disq || res.p2_disq {
+            thread::sleep(Duration::from_millis(150));
+        }
+        result_queue.push(res);
     }
 }
 
