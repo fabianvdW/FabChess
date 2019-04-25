@@ -1,295 +1,18 @@
-use crate::queue::{ThreadSafeQueue, ThreadSafeString};
+use crate::async_communication::{
+    expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
+};
+use crate::selfplay_splitter::{PlayTask, TaskResult};
 use core::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use core::logging::Logger;
-use core::misc::{GameParser, PGNParser};
 use core::move_generation::movegen;
 use core::search::alphabeta::GameResult;
 use core::search::search::TimeControl;
-use rand::Rng;
 use std::fmt::{Display, Formatter, Result};
-use std::fs::File;
-use std::io::BufReader;
 use std::process::{Command, Stdio};
-use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
-use tokio::prelude::*;
+use std::time::Duration;
 use tokio_process::CommandExt;
-
-pub fn start_self_play(
-    p1: &str,
-    p2: &str,
-    processors: usize,
-    games: usize,
-    opening_db: &str,
-    opening_load_until: usize,
-    tcp1: TimeControl,
-    tcp2: TimeControl,
-) {
-    let db: Vec<GameState> = load_db_until(opening_db, opening_load_until);
-    println!("Loaded database! Preparing games...");
-    let queue: Arc<ThreadSafeQueue<PlayTask>> = Arc::new(load_openings_into_queue(games / 2, db));
-    println!("Games prepared! Starting...");
-    let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
-        Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
-    let error_log = Arc::new(Logger::new("referee_error_log.txt", false));
-    //let fen_log = Logger::new("fens.txt", true);
-    let mut childs = Vec::with_capacity(processors);
-    for _ in 0..processors {
-        let queue_clone = queue.clone();
-        let res_clone = result_queue.clone();
-        let p1_clone = String::from_str(p1).unwrap();
-        let p2_clone = String::from_str(p2).unwrap();
-        let tcp1_clone = TimeControl {
-            mytime: tcp1.mytime,
-            myinc: tcp1.myinc,
-        };
-        let tcp2_clone = TimeControl {
-            mytime: tcp2.mytime,
-            myinc: tcp2.myinc,
-        };
-        let log_clone = error_log.clone();
-        childs.push(thread::spawn(move || {
-            start_self_play_thread(
-                queue_clone,
-                res_clone,
-                p1_clone,
-                p2_clone,
-                &tcp1_clone,
-                &tcp2_clone,
-                log_clone,
-            );
-        }));
-    }
-    let mut results_collected = 0;
-    let mut p1_wins = 0;
-    let mut p2_wins = 0;
-    let mut draws = 0;
-    let mut p1_disqs = 0;
-    let mut p2_disqs = 0;
-    while results_collected < (games / 2) * 2 {
-        thread::sleep(Duration::from_millis(50));
-        if let Some(result) = result_queue.pop() {
-            results_collected += 1;
-            //Verarbeite Resultat
-            println!("Game {} finished!", result.task_id);
-            if let Some(reason) = result.endcondition {
-                println!("Reason: {}", reason);
-            } else {
-                println!("Reason: Disqualification");
-            }
-            if result.draw {
-                draws += 1;
-            } else if result.p1_won {
-                p1_wins += 1;
-            } else if !result.p1_disq {
-                p2_wins += 1;
-            }
-            if result.p1_disq {
-                p1_disqs += 1;
-            }
-            if result.p2_disq {
-                p2_disqs += 1;
-            }
-            //Make some statistics
-            let mut elo_gain_p1 = 0.0;
-            let mut elo_plus_p1 = 0.0;
-            //let mut elo_minus_p1 = 0.0;
-            if p1_wins != 0 && p2_wins != 0 || draws != 0 {
-                //Derived from 1. E_A= 1/(1+10^(-DeltaElo/400)) and 2. |X/N-p|<=1.96*sqrt(N*p*(1-p))/n
-                let n: f64 = (p1_wins + p2_wins + draws) as f64;
-                let x_a: f64 = p1_wins as f64 + draws as f64 / 2.0;
-                let p_a: f64 = x_a / n;
-                let k: f64 = (1.96 * 1.96 + 2.0 * x_a) / (-1.0 * 1.96 * 1.96 - n);
-                let q = -1.0 * x_a * x_a / (n * (-1.96 * 1.96 - n));
-                let root = ((k / 2.0) * (k / 2.0) - q).sqrt();
-                let p_a_upper: f64 = -k / 2.0 + root;
-                //let p_a_lower: f64 = -k / 2.0 - root;
-                /*println!("N: {}", n);
-                println!("X_A: {}", x_a);
-                println!("P_A: {}", p_a);
-                println!("P_A_Upper: {}", p_a_upper);
-                println!("P_A_Lower: {}", p_a_lower);*/
-                elo_gain_p1 = get_elo_gain(p_a);
-                elo_plus_p1 = get_elo_gain(p_a_upper) - elo_gain_p1;
-                //elo_minus_p1 = elo_gain_p1 - get_elo_gain(p_a_lower);
-            }
-            println!("Player   Wins   Draws   Losses   Elo   +/-   Disq.");
-            println!(
-                "P1       {}     {}      {}     {:.2}   {:.2}    {}",
-                p1_wins, draws, p2_wins, elo_gain_p1, elo_plus_p1, p1_disqs
-            );
-            println!(
-                "P2       {}     {}      {}     {:.2}   {:.2}    {}",
-                p2_wins, draws, p1_wins, -elo_gain_p1, elo_plus_p1, p2_disqs
-            );
-        }
-    }
-    for child in childs {
-        child.join().expect("Couldn't join thread");
-    }
-    println!("Testing finished!");
-}
-pub fn get_elo_gain(p_a: f64) -> f64 {
-    return -1.0 * (1.0 / p_a - 1.0).ln() * 400.0 / (10.0 as f64).ln();
-}
-pub fn print_command(
-    runtime: &mut tokio::runtime::Runtime,
-    input: tokio_process::ChildStdin,
-    command: String,
-) -> tokio_process::ChildStdin {
-    let buf = command.as_bytes().to_owned();
-    let fut = tokio_io::io::write_all(input, buf);
-    runtime.block_on(fut).expect("Could not write!").0
-}
-
-pub fn expect_output(
-    starts_with: String,
-    time_frame: u64,
-    output: tokio_process::ChildStdout,
-    runtime: &mut tokio::runtime::Runtime,
-) -> (Option<String>, Option<tokio_process::ChildStdout>, usize) {
-    let lines_codec = tokio::codec::LinesCodec::new();
-    let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
-        .filter(move |lines| lines.starts_with(&starts_with[..]))
-        .into_future()
-        .timeout(Duration::from_millis(time_frame));
-    let before = Instant::now();
-    let result = runtime.block_on(line_fut);
-    let after = Instant::now();
-    let dur = after.duration_since(before).as_millis() as usize;
-    match result {
-        Ok(s) => match s.0 {
-            Some(str) => (Some(str), Some(s.1.into_inner().into_inner()), dur),
-            _ => (None, None, dur),
-        },
-        Err(_) => (None, None, dur),
-    }
-}
-
-pub fn expect_output_and_listen_for_info(
-    starts_with: String,
-    time_frame: u64,
-    output: tokio_process::ChildStdout,
-    runtime: &mut tokio::runtime::Runtime,
-) -> (
-    Option<String>,
-    Option<tokio_process::ChildStdout>,
-    usize,
-    String,
-) {
-    let info_listener = Arc::new(ThreadSafeString::new());
-    let info_listener_moved = info_listener.clone();
-    let lines_codec = tokio::codec::LinesCodec::new();
-    let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
-        .inspect(move |line| {
-            if line.starts_with("info") {
-                //println!("{}", line);
-                info_listener_moved.push(line);
-            }
-        })
-        .filter(move |lines| lines.starts_with(&starts_with[..]))
-        .into_future()
-        .timeout(Duration::from_millis(time_frame));
-    let before = Instant::now();
-    let result = runtime.block_on(line_fut);
-    let after = Instant::now();
-    let dur = after.duration_since(before).as_millis() as usize;
-    match result {
-        Ok(s) => match s.0 {
-            Some(str) => (
-                Some(str),
-                Some(s.1.into_inner().into_inner().into_inner()),
-                dur,
-                info_listener.get_inner(),
-            ),
-            _ => (None, None, dur, info_listener.get_inner()),
-        },
-        Err(_) => (None, None, dur, info_listener.get_inner()),
-    }
-}
-pub fn write_stderr_to_log(
-    error_log: Arc<Logger>,
-    stderr: tokio_process::ChildStderr,
-    runtime: &mut tokio::runtime::Runtime,
-) {
-    let line_fut = tokio::io::lines(BufReader::new(stderr))
-        .inspect(move |s| error_log.log(&format!("StdERR of child: \n{}\n", s), true))
-        .collect()
-        .timeout(Duration::from_millis(100));
-    let result = runtime.block_on(line_fut);
-    match result {
-        _ => {}
-    };
-}
-pub fn fetch_info(info: String) -> UCIInfo {
-    let split_line: Vec<&str> = info.split_whitespace().collect();
-    let mut depth = None;
-    let mut nps = None;
-    let mut cp_score = None;
-    let mut positive_mate_found = false;
-    let mut negative_mate_found = false;
-    let mut index = 0;
-    while index < split_line.len() {
-        match split_line[index] {
-            "depth" => {
-                depth = Some(split_line[index + 1].parse::<usize>().unwrap());
-                index += 1;
-            }
-            "cp" => {
-                cp_score = Some(split_line[index + 1].parse::<isize>().unwrap());
-                index += 1;
-            }
-            "nps" => {
-                nps = Some(split_line[index + 1].parse::<usize>().unwrap());
-                index += 1;
-            }
-            "mate" => {
-                let mate_score = split_line[index + 1].parse::<isize>().unwrap();
-                if mate_score < 0 {
-                    negative_mate_found = true;
-                } else if mate_score > 0 {
-                    positive_mate_found = true;
-                }
-            }
-            _ => {}
-        }
-        index += 1;
-    }
-    UCIInfo {
-        depth,
-        nps,
-        cp_score,
-        positive_mate_found,
-        negative_mate_found,
-    }
-}
-pub struct UCIInfo {
-    depth: Option<usize>,
-    nps: Option<usize>,
-    cp_score: Option<isize>,
-    positive_mate_found: bool,
-    negative_mate_found: bool,
-}
-pub fn start_self_play_thread(
-    queue: Arc<ThreadSafeQueue<PlayTask>>,
-    result_queue: Arc<ThreadSafeQueue<TaskResult>>,
-    p1: String,
-    p2: String,
-    tcp1: &TimeControl,
-    tcp2: &TimeControl,
-    error_log: Arc<Logger>,
-) {
-    while let Some(task) = queue.pop() {
-        println!("Starting game {}", task.id);
-        let res = play_game(task, p1.clone(), p2.clone(), tcp1, tcp2, error_log.clone());
-        if res.p1_disq || res.p2_disq {
-            thread::sleep(Duration::from_millis(150));
-        }
-        result_queue.push(res);
-    }
-}
 
 pub fn play_game(
     task: PlayTask,
@@ -748,6 +471,57 @@ pub fn play_game(
     }
 }
 
+pub fn fetch_info(info: String) -> UCIInfo {
+    let split_line: Vec<&str> = info.split_whitespace().collect();
+    let mut depth = None;
+    let mut nps = None;
+    let mut cp_score = None;
+    let mut positive_mate_found = false;
+    let mut negative_mate_found = false;
+    let mut index = 0;
+    while index < split_line.len() {
+        match split_line[index] {
+            "depth" => {
+                depth = Some(split_line[index + 1].parse::<usize>().unwrap());
+                index += 1;
+            }
+            "cp" => {
+                cp_score = Some(split_line[index + 1].parse::<isize>().unwrap());
+                index += 1;
+            }
+            "nps" => {
+                nps = Some(split_line[index + 1].parse::<usize>().unwrap());
+                index += 1;
+            }
+            "mate" => {
+                let mate_score = split_line[index + 1].parse::<isize>().unwrap();
+                if mate_score < 0 {
+                    negative_mate_found = true;
+                } else if mate_score > 0 {
+                    positive_mate_found = true;
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    UCIInfo {
+        depth,
+        nps,
+        cp_score,
+        positive_mate_found,
+        negative_mate_found,
+    }
+}
+
+pub struct UCIInfo {
+    depth: Option<usize>,
+    nps: Option<usize>,
+    cp_score: Option<isize>,
+    positive_mate_found: bool,
+    negative_mate_found: bool,
+}
+
 pub fn find_move(
     from: usize,
     to: usize,
@@ -773,6 +547,7 @@ pub fn find_move(
     }
     None
 }
+
 pub fn check_end_condition(
     game_state: &GameState,
     has_legal_moves: bool,
@@ -835,71 +610,6 @@ pub fn get_occurences(history: &Vec<GameState>, state: &GameState) -> usize {
     occ
 }
 
-pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
-    let mut res: Vec<GameState> = Vec::with_capacity(100000);
-    let res_file = File::open(db).expect("Unable to open opening database");
-    let reader = BufReader::new(res_file);
-    let parser = GameParser {
-        pgn_parser: PGNParser { reader },
-    };
-    for game in parser {
-        let state: GameState = game.1[until].clone();
-        res.push(state);
-    }
-    res
-}
-
-pub fn load_openings_into_queue(n: usize, mut db: Vec<GameState>) -> ThreadSafeQueue<PlayTask> {
-    let mut rng = rand::thread_rng();
-    let mut res: Vec<PlayTask> = Vec::with_capacity(n);
-    for i in 0..n {
-        loop {
-            if db.len() == 0 {
-                panic!("There are not enough different openings in database! Use bigger database or load until higher ply!");
-            }
-            let index: usize = rng.gen_range(0, db.len());
-            let state = db.remove(index);
-            if !contains(&res, &state) {
-                res.push(PlayTask {
-                    opening: state.clone(),
-                    p1_is_white: true,
-                    id: 2 * i,
-                });
-                res.push(PlayTask {
-                    opening: state,
-                    p1_is_white: false,
-                    id: 2 * i + 1,
-                });
-                break;
-            }
-        }
-    }
-    ThreadSafeQueue::new(res)
-}
-
-pub fn contains(queue: &Vec<PlayTask>, state: &GameState) -> bool {
-    for other in queue {
-        if other.opening.hash == state.hash {
-            return true;
-        }
-    }
-    false
-}
-
-pub struct PlayTask {
-    pub opening: GameState,
-    pub p1_is_white: bool,
-    pub id: usize,
-}
-
-pub struct TaskResult {
-    pub p1_won: bool,
-    pub draw: bool,
-    pub p1_disq: bool,
-    pub p2_disq: bool,
-    pub endcondition: Option<EndConditionInformation>,
-    pub task_id: usize,
-}
 pub enum EndConditionInformation {
     HundredMoveDraw,
     ThreeFoldRepetition,

@@ -22,9 +22,11 @@ impl<T> ThreadSafeQueue<T> {
         (*data).push(item);
     }
 }
+
 pub struct ThreadSafeString {
     string: Mutex<String>,
 }
+
 impl ThreadSafeString {
     pub fn new() -> Self {
         ThreadSafeString {

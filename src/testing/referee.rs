@@ -6,9 +6,14 @@ use core::search::search::TimeControl;
 use std::env;
 use std::io::BufWriter;
 use std::io::Write;
+
+pub mod async_communication;
 pub mod lct2;
+pub mod openings;
 pub mod queue;
 pub mod selfplay;
+pub mod selfplay_splitter;
+
 const STD_PROCESSORS: usize = 4;
 const STD_GAMES: usize = 1000;
 const MODE: usize = 0;
@@ -118,7 +123,7 @@ fn main() {
     if mode == 1 {
         lct2::lct2(player1path, processors, path_to_lct2);
     } else {
-        selfplay::start_self_play(
+        selfplay_splitter::start_self_play(
             player1path,
             player2path,
             processors,
