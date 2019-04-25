@@ -9,10 +9,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-//TODO
-//1. Clean up in here
-//2. Save relevant fens for Texel Tuning
-//3. Report avg depth and nps
 pub fn start_self_play(
     p1: &str,
     p2: &str,
@@ -30,7 +26,7 @@ pub fn start_self_play(
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
     let error_log = Arc::new(Logger::new("referee_error_log.txt", false));
-    //let fen_log = Logger::new("fens.txt", true);
+    let fen_log = Logger::new("fens.txt", true);
     let mut childs = Vec::with_capacity(processors);
     for _ in 0..processors {
         let queue_clone = queue.clone();
@@ -69,12 +65,25 @@ pub fn start_self_play(
         if let Some(result) = result_queue.pop() {
             results_collected += 1;
             //Verarbeite Resultat
+            println!("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
             println!("Game {} finished!", result.task_id);
             if let Some(reason) = result.endcondition {
                 println!("Reason: {}", reason);
             } else {
                 println!("Reason: Disqualification");
             }
+            if !result.p1_disq && !result.p2_disq {
+                println!("Player    Depth    NPS               TimeLeft");
+                println!(
+                    "P1         {:.2}      {:.2}     {}",
+                    result.depth_p1, result.nps_p1, result.time_left_p1
+                );
+                println!(
+                    "P2         {:.2}      {:.2}     {}",
+                    result.depth_p2, result.nps_p2, result.time_left_p2
+                );
+            }
+            println!("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
             if result.draw {
                 draws += 1;
             } else if result.p1_won {
@@ -111,6 +120,7 @@ pub fn start_self_play(
                 elo_plus_p1 = get_elo_gain(p_a_upper) - elo_gain_p1;
                 //elo_minus_p1 = elo_gain_p1 - get_elo_gain(p_a_lower);
             }
+            println!("-------------------------------------------------");
             println!("Player   Wins   Draws   Losses   Elo   +/-   Disq.");
             println!(
                 "P1       {}     {}      {}     {:.2}   {:.2}    {}",
@@ -120,6 +130,27 @@ pub fn start_self_play(
                 "P2       {}     {}      {}     {:.2}   {:.2}    {}",
                 p2_wins, draws, p1_wins, -elo_gain_p1, elo_plus_p1, p2_disqs
             );
+            println!("-------------------------------------------------");
+
+            //Write all fens of game to String
+            if result.fen_history.len() > 0 {
+                let mut game_string = String::new();
+                game_string.push_str("New Game:\n");
+                for fen in result.fen_history {
+                    game_string.push_str(&format!(
+                        "{} |{}\n",
+                        fen,
+                        if result.draw {
+                            "Draw"
+                        } else if result.white_win {
+                            "White"
+                        } else {
+                            "Black"
+                        }
+                    ));
+                }
+                fen_log.log(&game_string, false);
+            }
         }
     }
     for child in childs {
@@ -164,4 +195,12 @@ pub struct TaskResult {
     pub p2_disq: bool,
     pub endcondition: Option<EndConditionInformation>,
     pub task_id: usize,
+    pub fen_history: Vec<String>,
+    pub white_win: bool,
+    pub nps_p1: f64,
+    pub depth_p1: f64,
+    pub time_left_p1: usize,
+    pub nps_p2: f64,
+    pub depth_p2: f64,
+    pub time_left_p2: usize,
 }

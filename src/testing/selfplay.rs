@@ -29,6 +29,14 @@ pub fn play_game(
         p2_disq: false,
         endcondition: None,
         task_id: task.id,
+        fen_history: vec![],
+        white_win: false,
+        nps_p1: 0.0,
+        nps_p2: 0.0,
+        depth_p1: 0.0,
+        depth_p2: 0.0,
+        time_left_p1: 0,
+        time_left_p2: 0,
     };
     let player2_disq = TaskResult {
         p1_won: false,
@@ -37,6 +45,14 @@ pub fn play_game(
         p2_disq: true,
         endcondition: None,
         task_id: task.id,
+        fen_history: vec![],
+        white_win: false,
+        nps_p1: 0.0,
+        nps_p2: 0.0,
+        depth_p1: 0.0,
+        depth_p2: 0.0,
+        time_left_p1: 0,
+        time_left_p2: 0,
     };
     //-------------------------------------------------------------
     //Setup Tokio runtime
@@ -122,12 +138,21 @@ pub fn play_game(
         check_end_condition(&task.opening, legal_moves.len() > 0, in_check, &history).0;
     history.push(task.opening.clone());
     let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
+    let mut fen_history: Vec<String> = Vec::with_capacity(100);
     let mut endcondition = None;
     //-------------------------------------------------------------
     //Adjucations
     let mut draw_adjucation = 0;
     let mut win_adjucation = 0;
     let mut win_adjucation_for_p1 = true;
+    //-------------------------------------------------------------
+    //Additional information about players
+    let mut average_depth_p1: f64 = 0.0;
+    let mut average_nps_p1: f64 = 0.0;
+    let mut moves_p1 = 0;
+    let mut average_depth_p2: f64 = 0.0;
+    let mut average_nps_p2: f64 = 0.0;
+    let mut moves_p2 = 0;
     while let GameResult::Ingame = status {
         //Request move
         let latest_state = &history[history.len() - 1];
@@ -169,6 +194,7 @@ pub fn play_game(
         ));
         let game_move: &GameMove;
         if player1_move {
+            moves_p1 += 1;
             player1_input = print_command(&mut runtime, player1_input, position_string.clone());
             player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 150, player1_output, &mut runtime);
@@ -260,34 +286,47 @@ pub fn play_game(
                         }
                         win_adjucation += 1;
                     }
-                } else if has_score {
-                    let score = info.cp_score.unwrap();
-                    if score.abs() <= 10 {
-                        draw_adjucation += 1;
+                } else {
+                    if !has_score || info.cp_score.unwrap().abs() < 10000 {
+                        fen_history.push(latest_state.to_fen());
+                    }
+                    if has_score {
+                        let score = info.cp_score.unwrap();
+                        if score.abs() <= 10 {
+                            draw_adjucation += 1;
+                        } else {
+                            draw_adjucation = 0;
+                        }
+                        if score < -1000 {
+                            if win_adjucation_for_p1 {
+                                win_adjucation_for_p1 = false;
+                                win_adjucation = 0;
+                            }
+                            win_adjucation += 1;
+                        } else if score > 1000 {
+                            if !win_adjucation_for_p1 {
+                                win_adjucation_for_p1 = true;
+                                win_adjucation = 0;
+                            }
+                            win_adjucation += 1;
+                        } else {
+                            win_adjucation = 0;
+                        }
                     } else {
                         draw_adjucation = 0;
-                    }
-                    if score < -1000 {
-                        if win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = false;
-                            win_adjucation = 0;
-                        }
-                        win_adjucation += 1;
-                    } else if score > 1000 {
-                        if !win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = true;
-                            win_adjucation = 0;
-                        }
-                        win_adjucation += 1;
-                    } else {
                         win_adjucation = 0;
                     }
-                } else {
-                    draw_adjucation = 0;
-                    win_adjucation = 0;
+                }
+
+                if let Some(s) = info.depth {
+                    average_depth_p1 += s as f64;
+                }
+                if let Some(nps) = info.nps {
+                    average_nps_p1 += nps as f64;
                 }
             }
         } else {
+            moves_p2 += 1;
             player2_input = print_command(&mut runtime, player2_input, position_string.clone());
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 150, player2_output, &mut runtime);
@@ -379,31 +418,42 @@ pub fn play_game(
                         }
                         win_adjucation += 1;
                     }
-                } else if has_score {
-                    let score = info.cp_score.unwrap();
-                    if score.abs() <= 10 {
-                        draw_adjucation += 1;
+                } else {
+                    if !has_score || info.cp_score.unwrap().abs() < 10000 {
+                        fen_history.push(latest_state.to_fen());
+                    }
+                    if has_score {
+                        let score = info.cp_score.unwrap();
+                        if score.abs() <= 10 {
+                            draw_adjucation += 1;
+                        } else {
+                            draw_adjucation = 0;
+                        }
+                        if score < -1000 {
+                            if !win_adjucation_for_p1 {
+                                win_adjucation_for_p1 = true;
+                                win_adjucation = 0;
+                            }
+                            win_adjucation += 1;
+                        } else if score > 1000 {
+                            if win_adjucation_for_p1 {
+                                win_adjucation_for_p1 = false;
+                                win_adjucation = 0;
+                            }
+                            win_adjucation += 1;
+                        } else {
+                            win_adjucation = 0;
+                        }
                     } else {
                         draw_adjucation = 0;
-                    }
-                    if score < -1000 {
-                        if !win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = true;
-                            win_adjucation = 0;
-                        }
-                        win_adjucation += 1;
-                    } else if score > 1000 {
-                        if win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = false;
-                            win_adjucation = 0;
-                        }
-                        win_adjucation += 1;
-                    } else {
                         win_adjucation = 0;
                     }
-                } else {
-                    draw_adjucation = 0;
-                    win_adjucation = 0;
+                }
+                if let Some(s) = info.depth {
+                    average_depth_p2 += s as f64;
+                }
+                if let Some(nps) = info.nps {
+                    average_nps_p2 += nps as f64;
                 }
             }
         }
@@ -468,6 +518,17 @@ pub fn play_game(
         p2_disq: false,
         endcondition,
         task_id: task.id,
+        fen_history,
+        white_win: match status {
+            GameResult::WhiteWin => true,
+            _ => false,
+        },
+        nps_p1: average_nps_p1 / moves_p1 as f64,
+        nps_p2: average_nps_p2 / moves_p2 as f64,
+        depth_p1: average_depth_p1 / moves_p1 as f64,
+        depth_p2: average_depth_p2 / moves_p2 as f64,
+        time_left_p1: player1_time as usize,
+        time_left_p2: player2_time as usize,
     }
 }
 
