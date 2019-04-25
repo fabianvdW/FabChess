@@ -213,12 +213,12 @@ pub fn principal_variation_search(
         }
     }
 
-    if false && beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left >= 3 {
+    if false && beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left > 4 {
         next_history.pop();
         let iid = principal_variation_search(
             alpha,
             beta,
-            depth_left - 2,
+            depth_left / 2,
             &game_state,
             color,
             current_depth,

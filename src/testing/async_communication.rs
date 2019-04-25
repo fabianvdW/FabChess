@@ -86,8 +86,9 @@ pub fn write_stderr_to_log(
     stderr: tokio_process::ChildStderr,
     runtime: &mut tokio::runtime::Runtime,
 ) {
+    error_log.log("StdERR of child: \n", true);
     let line_fut = tokio::io::lines(BufReader::new(stderr))
-        .inspect(move |s| error_log.log(&format!("StdERR of child: \n{}\n", s), true))
+        .inspect(move |s| error_log.log(&format!("{}\n", s), true))
         .collect()
         .timeout(Duration::from_millis(100));
     let result = runtime.block_on(line_fut);

@@ -162,9 +162,11 @@ pub fn play_game(
         let mut position_string = String::new();
         position_string.push_str("position fen ");
         position_string.push_str(&opening_fen);
-        position_string.push_str(" moves ");
-        for mv in &move_history {
-            position_string.push_str(&format!("{:?} ", mv));
+        if move_history.len() > 0 {
+            position_string.push_str(" moves ");
+            for mv in &move_history {
+                position_string.push_str(&format!("{:?} ", mv));
+            }
         }
         position_string.push_str("\n");
         //Prepare go command
@@ -197,7 +199,7 @@ pub fn play_game(
             moves_p1 += 1;
             player1_input = print_command(&mut runtime, player1_input, position_string.clone());
             player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
-            let output = expect_output("readyok".to_owned(), 150, player1_output, &mut runtime);
+            let output = expect_output("readyok".to_owned(), 200, player1_output, &mut runtime);
             if let None = output.0 {
                 error_log.log(
                     &format!(
@@ -329,7 +331,7 @@ pub fn play_game(
             moves_p2 += 1;
             player2_input = print_command(&mut runtime, player2_input, position_string.clone());
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
-            let output = expect_output("readyok".to_owned(), 150, player2_output, &mut runtime);
+            let output = expect_output("readyok".to_owned(), 200, player2_output, &mut runtime);
             if let None = output.0 {
                 error_log.log(
                     &format!(
@@ -543,19 +545,22 @@ pub fn fetch_info(info: String) -> UCIInfo {
     while index < split_line.len() {
         match split_line[index] {
             "depth" => {
-                depth = Some(split_line[index + 1].parse::<usize>().unwrap());
+                depth = split_line[index + 1].parse::<usize>().ok();
                 index += 1;
             }
             "cp" => {
-                cp_score = Some(split_line[index + 1].parse::<isize>().unwrap());
+                cp_score = split_line[index + 1].parse::<isize>().ok();
                 index += 1;
             }
             "nps" => {
-                nps = Some(split_line[index + 1].parse::<usize>().unwrap());
+                nps = split_line[index + 1].parse::<usize>().ok();
                 index += 1;
             }
             "mate" => {
-                let mate_score = split_line[index + 1].parse::<isize>().unwrap();
+                let mate_score = match split_line[index + 1].parse::<isize>() {
+                    Ok(s) => s,
+                    _ => 0,
+                };
                 if mate_score < 0 {
                     negative_mate_found = true;
                 } else if mate_score > 0 {
