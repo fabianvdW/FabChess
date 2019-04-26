@@ -1,23 +1,22 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay};
 
-const SHIELDING_PAWN_MISSING_MG: f64 = -30.0;
-const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: f64 = -60.0;
+const SHIELDING_PAWN_MISSING_MG: i16 = -30;
+const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: i16 = -60;
 
 pub struct KingEvaluation {
-    shielding_pawns_missing: u32,
-    shielding_pawns_missing_on_open_file: u32,
+    shielding_pawns_missing: i16,
+    shielding_pawns_missing_on_open_file: i16,
 }
 
 impl Evaluation for KingEvaluation {
-    fn eval_mg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG;
-        res +=
-            self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE;
+    fn eval_mg(&self) -> i16 {
+        let mut res = 0;
+        res += self.shielding_pawns_missing * SHIELDING_PAWN_MISSING_MG;
+        res += self.shielding_pawns_missing_on_open_file * SHIELDING_PAWN_MISSING_ON_OPEN_FILE;
         res
     }
-    fn eval_eg(&self) -> f64 {
-        0.0
+    fn eval_eg(&self) -> i16 {
+        0
     }
 }
 
@@ -28,12 +27,12 @@ impl MidGameDisplay for KingEvaluation {
         res_str.push_str(&format!(
             "\t\tShielding Pawns missing:              {} -> {}\n",
             self.shielding_pawns_missing,
-            self.shielding_pawns_missing as f64 * SHIELDING_PAWN_MISSING_MG
+            self.shielding_pawns_missing * SHIELDING_PAWN_MISSING_MG
         ));
         res_str.push_str(&format!(
             "\t\tShielding Pawns on open file missing: {} -> {}\n",
             self.shielding_pawns_missing_on_open_file,
-            self.shielding_pawns_missing_on_open_file as f64 * SHIELDING_PAWN_MISSING_ON_OPEN_FILE
+            self.shielding_pawns_missing_on_open_file * SHIELDING_PAWN_MISSING_ON_OPEN_FILE
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str

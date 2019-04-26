@@ -21,24 +21,24 @@ pub struct CacheEntry {
     pub hash: u64,
     //64-Bit
     pub depth: i8,
-    //8-Bit
+    //16-Bit
     pub plies_played: u16,
     //16-Bit
-    pub score: f64,
+    pub score: i16,
     //64-Bit
     pub alpha: bool,
     //1-Bit
     pub beta: bool,
     //1-Bit
     pub mv: u16, //16-Bit
-                 //Insg 178-Bit 23-Bytes
+                 //Insg 130-Bit 17-Bytes
 }
 
 impl CacheEntry {
     pub fn new(
         game_state: &GameState,
-        depth_left: isize,
-        score: f64,
+        depth_left: i16,
+        score: i16,
         alpha: bool,
         beta: bool,
         mv: &GameMove,

@@ -1,9 +1,9 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
-const PAWN_PASSED_VALUES_MG: [f64; 7] = [0.0, -20.0, -10.0, 30.0, 55.0, 75.0, 125.0];
-const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [f64; 7] = [0.0, 0.0, 30.0, 55.0, 70.0, 110.0, 160.0];
-const PAWN_PASSED_VALUES_EG: [f64; 7] = [0.0, -40.0, -20.0, 20.0, 100.0, 160.0, 250.0];
-const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [f64; 7] = [0.0, 0.0, 0.0, 50.0, 120.0, 180.0, 300.0];
+const PAWN_PASSED_VALUES_MG: [i16; 7] = [0, -20, -10, 30, 55, 75, 125];
+const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [i16; 7] = [0, 0, 30, 55, 70, 110, 160];
+const PAWN_PASSED_VALUES_EG: [i16; 7] = [0, -40, -20, 20, 100, 160, 250];
+const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16; 7] = [0, 0, 0, 50, 120, 180, 300];
 
 pub struct PassedEvaluation {
     passed_pawns: u64,
@@ -33,8 +33,8 @@ impl PassedEvaluation {
 }
 
 impl Evaluation for PassedEvaluation {
-    fn eval_mg(&self) -> f64 {
-        let mut res = 0.0;
+    fn eval_mg(&self) -> i16 {
+        let mut res = 0;
         let mut cp = self.copy();
         while cp.passed_pawns != 0u64 {
             let idx = cp.passed_pawns.trailing_zeros() as usize;
@@ -49,8 +49,8 @@ impl Evaluation for PassedEvaluation {
         }
         res
     }
-    fn eval_eg(&self) -> f64 {
-        let mut res = 0.0;
+    fn eval_eg(&self) -> i16 {
+        let mut res = 0;
         let mut cp = self.copy();
         while cp.passed_pawns != 0u64 {
             let idx = cp.passed_pawns.trailing_zeros() as usize;
@@ -68,9 +68,9 @@ impl Evaluation for PassedEvaluation {
 }
 
 impl ParallelEvaluation for PassedEvaluation {
-    fn eval_mg_eg(&self) -> (f64, f64) {
-        let mut mg = 0.0;
-        let mut eg = 0.0;
+    fn eval_mg_eg(&self) -> (i16, i16) {
+        let mut mg = 0;
+        let mut eg = 0;
         let mut cp = self.copy();
         while cp.passed_pawns != 0u64 {
             let idx = cp.passed_pawns.trailing_zeros() as usize;
@@ -93,13 +93,13 @@ impl ParallelEvaluation for PassedEvaluation {
 impl MidGameDisplay for PassedEvaluation {
     fn display_mg(&self) -> String {
         let mut cp = self.copy();
-        let mut passer_score = 0.0;
+        let mut passer_score = 0;
         while cp.passed_pawns != 0u64 {
             let idx = cp.passed_pawns.trailing_zeros() as usize;
             passer_score += PAWN_PASSED_VALUES_MG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_pawns ^= 1u64 << idx;
         }
-        let mut passed_not_blocked_score = 0.0;
+        let mut passed_not_blocked_score = 0;
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
             passed_not_blocked_score +=
@@ -130,13 +130,13 @@ impl MidGameDisplay for PassedEvaluation {
 impl EndGameDisplay for PassedEvaluation {
     fn display_eg(&self) -> String {
         let mut cp = self.copy();
-        let mut passer_score = 0.0;
+        let mut passer_score = 0;
         while cp.passed_pawns != 0u64 {
             let idx = cp.passed_pawns.trailing_zeros() as usize;
             passer_score += PAWN_PASSED_VALUES_EG[if cp.is_white { idx / 8 } else { 7 - idx / 8 }];
             cp.passed_pawns ^= 1u64 << idx;
         }
-        let mut passed_not_blocked_score = 0.0;
+        let mut passed_not_blocked_score = 0;
         while cp.passed_not_blocked_pawns != 0u64 {
             let idx = cp.passed_not_blocked_pawns.trailing_zeros() as usize;
             passed_not_blocked_score +=

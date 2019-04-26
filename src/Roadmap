@@ -1,3 +1,5 @@
--Eigenen Spielleiter schreiben(automated Tests)
 -Auf Talkchess posten mit Erkenntnissen (Prune Techniken usw.)
 -Games sammeln für Texel
+-Suche verschönern
+-Futility + Delta Pruning verbessern
+-Static Evaluation Cachen + auslesen

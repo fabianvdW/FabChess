@@ -1,11 +1,11 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
-pub const ROOK_ON_OPEN_FILE_BONUS_MG: f64 = 20.0;
-pub const ROOK_ON_SEVENTH_MG: f64 = 10.0;
-pub const ROOK_ON_OPEN_FILE_BONUS_EG: f64 = 20.0;
-pub const ROOK_ON_SEVENTH_EG: f64 = 10.0;
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [f64; 5] = [30.0, 15.0, 0.0, -15.0, -30.0];
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [f64; 5] = [30.0, 15.0, 0.0, -15.0, -30.0];
+pub const ROOK_ON_OPEN_FILE_BONUS_MG: i16 = 20;
+pub const ROOK_ON_SEVENTH_MG: i16 = 10;
+pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = 20;
+pub const ROOK_ON_SEVENTH_EG: i16 = 10;
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [30, 15, 0, -15, -30];
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [30, 15, 0, -15, -30];
 
 pub struct PiecewiseEvaluation {
     my_pawns: u64,
@@ -16,8 +16,8 @@ pub struct PiecewiseEvaluation {
 }
 
 impl Evaluation for PiecewiseEvaluation {
-    fn eval_mg(&self) -> f64 {
-        let mut res = 0.0;
+    fn eval_mg(&self) -> i16 {
+        let mut res = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -44,8 +44,8 @@ impl Evaluation for PiecewiseEvaluation {
         }
         res
     }
-    fn eval_eg(&self) -> f64 {
-        let mut res = 0.0;
+    fn eval_eg(&self) -> i16 {
+        let mut res = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -75,9 +75,9 @@ impl Evaluation for PiecewiseEvaluation {
 }
 
 impl ParallelEvaluation for PiecewiseEvaluation {
-    fn eval_mg_eg(&self) -> (f64, f64) {
-        let mut mg_res = 0.0;
-        let mut eg_res = 0.0;
+    fn eval_mg_eg(&self) -> (i16, i16) {
+        let mut mg_res = 0;
+        let mut eg_res = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -113,8 +113,8 @@ impl ParallelEvaluation for PiecewiseEvaluation {
 
 impl MidGameDisplay for PiecewiseEvaluation {
     fn display_mg(&self) -> String {
-        let mut rooks_on_open = 0usize;
-        let mut rooks_on_seventh = 0usize;
+        let mut rooks_on_open = 0;
+        let mut rooks_on_seventh = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -132,7 +132,7 @@ impl MidGameDisplay for PiecewiseEvaluation {
             }
             rooks ^= 1u64 << idx;
         }
-        let mut bishop_adjacent_score = 0.0;
+        let mut bishop_adjacent_score = 0;
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
@@ -146,12 +146,12 @@ impl MidGameDisplay for PiecewiseEvaluation {
         res_str.push_str(&format!(
             "\t\tRooks on open file:             {} -> {}\n",
             rooks_on_open,
-            rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_MG
+            rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_MG
         ));
         res_str.push_str(&format!(
             "\t\tRooks on seventh rank:          {} -> {}\n",
             rooks_on_seventh,
-            rooks_on_seventh as f64 * ROOK_ON_SEVENTH_MG
+            rooks_on_seventh * ROOK_ON_SEVENTH_MG
         ));
         res_str.push_str(&format!(
             "\t\tBishop diagonal adjacent pawns:      {}\n",
@@ -160,8 +160,8 @@ impl MidGameDisplay for PiecewiseEvaluation {
         res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
-                + rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_MG
-                + rooks_on_seventh as f64 * ROOK_ON_SEVENTH_MG
+                + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_MG
+                + rooks_on_seventh * ROOK_ON_SEVENTH_MG
         ));
         res_str
     }
@@ -169,8 +169,8 @@ impl MidGameDisplay for PiecewiseEvaluation {
 
 impl EndGameDisplay for PiecewiseEvaluation {
     fn display_eg(&self) -> String {
-        let mut rooks_on_open = 0usize;
-        let mut rooks_on_seventh = 0usize;
+        let mut rooks_on_open = 0;
+        let mut rooks_on_seventh = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -188,7 +188,7 @@ impl EndGameDisplay for PiecewiseEvaluation {
             }
             rooks ^= 1u64 << idx;
         }
-        let mut bishop_adjacent_score = 0.0;
+        let mut bishop_adjacent_score = 0;
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
@@ -202,12 +202,12 @@ impl EndGameDisplay for PiecewiseEvaluation {
         res_str.push_str(&format!(
             "\t\tRooks on open file:             {} -> {}\n",
             rooks_on_open,
-            rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_EG
+            rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_EG
         ));
         res_str.push_str(&format!(
             "\t\tRooks on seventh rank:          {} -> {}\n",
             rooks_on_seventh,
-            rooks_on_seventh as f64 * ROOK_ON_SEVENTH_EG
+            rooks_on_seventh * ROOK_ON_SEVENTH_EG
         ));
         res_str.push_str(&format!(
             "\t\tBishop diagonal adjacent pawns:      {}\n",
@@ -216,8 +216,8 @@ impl EndGameDisplay for PiecewiseEvaluation {
         res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
-                + rooks_on_open as f64 * ROOK_ON_OPEN_FILE_BONUS_EG
-                + rooks_on_seventh as f64 * ROOK_ON_SEVENTH_EG
+                + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_EG
+                + rooks_on_seventh * ROOK_ON_SEVENTH_EG
         ));
         res_str
     }

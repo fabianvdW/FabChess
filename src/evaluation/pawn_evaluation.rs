@@ -1,36 +1,36 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay};
 
-pub const PAWN_PIECE_VALUE_MG: f64 = 140.0;
-pub const PAWN_PIECE_VALUE_EG: f64 = 160.0;
-const PAWN_DOUBLED_VALUE_MG: f64 = -8.0;
-const PAWN_DOUBLED_VALUE_EG: f64 = -37.5;
-const PAWN_ISOLATED_VALUE_MG: f64 = -5.0;
-const PAWN_ISOLATED_VALUE_EG: f64 = -15.0;
-const PAWN_BACKWARD_VALUE_MG: f64 = -10.0;
-const PAWN_BACKWARD_VALUE_EG: f64 = -25.0;
+pub const PAWN_PIECE_VALUE_MG: i16 = 140;
+pub const PAWN_PIECE_VALUE_EG: i16 = 160;
+const PAWN_DOUBLED_VALUE_MG: i16 = -8;
+const PAWN_DOUBLED_VALUE_EG: i16 = -37;
+const PAWN_ISOLATED_VALUE_MG: i16 = -5;
+const PAWN_ISOLATED_VALUE_EG: i16 = -15;
+const PAWN_BACKWARD_VALUE_MG: i16 = -10;
+const PAWN_BACKWARD_VALUE_EG: i16 = -25;
 
 pub struct PawnEvaluation {
-    amount_of_pawns: u32,
-    doubled_pawns: u32,
-    isolated_pawns: u32,
-    backwards_pawns: u32,
+    amount_of_pawns: i16,
+    doubled_pawns: i16,
+    isolated_pawns: i16,
+    backwards_pawns: i16,
 }
 
 impl Evaluation for PawnEvaluation {
-    fn eval_mg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_MG;
-        res += self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_MG;
-        res += self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_MG;
-        res += self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_MG;
+    fn eval_mg(&self) -> i16 {
+        let mut res = 0;
+        res += self.amount_of_pawns * PAWN_PIECE_VALUE_MG;
+        res += self.doubled_pawns * PAWN_DOUBLED_VALUE_MG;
+        res += self.isolated_pawns * PAWN_ISOLATED_VALUE_MG;
+        res += self.backwards_pawns * PAWN_BACKWARD_VALUE_MG;
         res
     }
-    fn eval_eg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_EG;
-        res += self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_EG;
-        res += self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_EG;
-        res += self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_EG;
+    fn eval_eg(&self) -> i16 {
+        let mut res = 0;
+        res += self.amount_of_pawns * PAWN_PIECE_VALUE_EG;
+        res += self.doubled_pawns * PAWN_DOUBLED_VALUE_EG;
+        res += self.isolated_pawns * PAWN_ISOLATED_VALUE_EG;
+        res += self.backwards_pawns * PAWN_BACKWARD_VALUE_EG;
         res
     }
 }
@@ -42,22 +42,22 @@ impl MidGameDisplay for PawnEvaluation {
         res_str.push_str(&format!(
             "\t\tAmount of Pawns: {} -> {}\n",
             self.amount_of_pawns,
-            self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_MG
+            self.amount_of_pawns * PAWN_PIECE_VALUE_MG
         ));
         res_str.push_str(&format!(
             "\t\tDoubled Pawns:   {} -> {}\n",
             self.doubled_pawns,
-            self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_MG
+            self.doubled_pawns * PAWN_DOUBLED_VALUE_MG
         ));
         res_str.push_str(&format!(
             "\t\tIsolated Pawns:  {} -> {}\n",
             self.isolated_pawns,
-            self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_MG
+            self.isolated_pawns * PAWN_ISOLATED_VALUE_MG
         ));
         res_str.push_str(&format!(
             "\t\tBackwards Pawns: {} -> {}\n",
             self.backwards_pawns,
-            self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_MG
+            self.backwards_pawns * PAWN_BACKWARD_VALUE_MG
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
@@ -71,22 +71,22 @@ impl EndGameDisplay for PawnEvaluation {
         res_str.push_str(&format!(
             "\t\tAmount of Pawns: {} -> {}\n",
             self.amount_of_pawns,
-            self.amount_of_pawns as f64 * PAWN_PIECE_VALUE_EG
+            self.amount_of_pawns * PAWN_PIECE_VALUE_EG
         ));
         res_str.push_str(&format!(
             "\t\tDoubled Pawns:   {} -> {}\n",
             self.doubled_pawns,
-            self.doubled_pawns as f64 * PAWN_DOUBLED_VALUE_EG
+            self.doubled_pawns * PAWN_DOUBLED_VALUE_EG
         ));
         res_str.push_str(&format!(
             "\t\tIsolated Pawns:  {} -> {}\n",
             self.isolated_pawns,
-            self.isolated_pawns as f64 * PAWN_ISOLATED_VALUE_EG
+            self.isolated_pawns * PAWN_ISOLATED_VALUE_EG
         ));
         res_str.push_str(&format!(
             "\t\tBackwards Pawns: {} -> {}\n",
             self.backwards_pawns,
-            self.backwards_pawns as f64 * PAWN_BACKWARD_VALUE_EG
+            self.backwards_pawns * PAWN_BACKWARD_VALUE_EG
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
@@ -100,10 +100,10 @@ pub fn pawn_eval_white(
     black_pawn_attacks: u64,
 ) -> PawnEvaluation {
     let file_fill = bitboards::file_fill(w_pawns);
-    let amount_of_pawns = w_pawns.count_ones();
-    let doubled_pawns = pawns_behind_own(w_pawns, w_pawns_front_span);
-    let isolated_pawns = isolated_pawns(w_pawns, file_fill);
-    let backwards_pawns = w_backwards(w_pawns, w_pawn_attack_span, black_pawn_attacks);
+    let amount_of_pawns = w_pawns.count_ones() as i16;
+    let doubled_pawns = pawns_behind_own(w_pawns, w_pawns_front_span) as i16;
+    let isolated_pawns = isolated_pawns(w_pawns, file_fill) as i16;
+    let backwards_pawns = w_backwards(w_pawns, w_pawn_attack_span, black_pawn_attacks) as i16;
     PawnEvaluation {
         amount_of_pawns,
         doubled_pawns,
@@ -119,10 +119,10 @@ pub fn pawn_eval_black(
     white_pawn_attacks: u64,
 ) -> PawnEvaluation {
     let file_fill = bitboards::file_fill(b_pawns);
-    let amount_of_pawns = b_pawns.count_ones();
-    let doubled_pawns = pawns_behind_own(b_pawns, b_pawns_front_span);
-    let isolated_pawns = isolated_pawns(b_pawns, file_fill);
-    let backwards_pawns = b_backwards(b_pawns, b_pawn_attack_span, white_pawn_attacks);
+    let amount_of_pawns = b_pawns.count_ones() as i16;
+    let doubled_pawns = pawns_behind_own(b_pawns, b_pawns_front_span) as i16;
+    let isolated_pawns = isolated_pawns(b_pawns, file_fill) as i16;
+    let backwards_pawns = b_backwards(b_pawns, b_pawn_attack_span, white_pawn_attacks) as i16;
     PawnEvaluation {
         amount_of_pawns,
         doubled_pawns,

@@ -10,17 +10,17 @@ use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-pub const MATE_SCORE: f64 = 3000.0;
-pub const MATED_IN_MAX: f64 = -2900.0;
+pub const MATE_SCORE: i16 = 30000;
+pub const MATED_IN_MAX: i16 = -29000;
 pub const HH_INCREMENT: usize = 1;
 pub const BF_INCREMENT: usize = 1;
-
+pub const MAX_SEARCH_DEPTH: usize = 100;
 pub fn principal_variation_search(
-    mut alpha: f64,
-    mut beta: f64,
-    mut depth_left: isize,
+    mut alpha: i16,
+    mut beta: i16,
+    mut depth_left: i16,
     game_state: &GameState,
-    color: isize,
+    color: i16,
     current_depth: usize,
     search: &mut Search,
     root_pliesplayed: usize,
@@ -52,8 +52,9 @@ pub fn principal_variation_search(
     if in_check && !root {
         depth_left += 1;
     }
-    if current_depth >= 100 {
-        pv.score = eval_game_state(&game_state).final_eval * color as f64;
+    //Max Search depth reached
+    if current_depth >= MAX_SEARCH_DEPTH {
+        pv.score = eval_game_state(&game_state).final_eval * color;
         return pv;
     }
     if depth_left <= 0 {
@@ -76,23 +77,23 @@ pub fn principal_variation_search(
     }
 
     //Move Ordering
-    //1. PV-Move +30000.0
-    //2. Hash move + 29999.0
+    //1. PV-Move +30000
+    //2. Hash move + 29999
     //if see>0
-    //3. Winning captures Sort by SEE + 25000
-    //4. Equal captures Sort by SEE+ 25000
-    //5. Killer moves + 20000
+    //3. Winning captures Sort by SEE + 10000
+    //4. Equal captures Sort by SEE+ 10000
+    //5. Killer moves + 5000
     //6. Non captures (history heuristic) history heuristic score
     //7. Losing captures (see<0) see score
     let mut graded_moves = Vec::with_capacity(legal_moves.len());
     for mv in legal_moves {
         if is_capture(&mv) {
             if GameMoveType::EnPassant == mv.move_type {
-                graded_moves.push(GradedMove::new(mv, 24999.0));
+                graded_moves.push(GradedMove::new(mv, 9999.0));
             } else {
-                let mut sval = see(&game_state, &mv, true);
+                let mut sval = see(&game_state, &mv, true) as f64;
                 if sval >= 0.0 {
-                    sval += 25000.0;
+                    sval += 10000.0;
                 }
                 graded_moves.push(GradedMove::new(mv, sval));
             }
@@ -100,7 +101,7 @@ pub fn principal_variation_search(
             //History Heuristic
             let score = search.hh_score[mv.from][mv.to] as f64
                 / search.bf_score[mv.from][mv.to] as f64
-                / 10000000.0;
+                / 1000.0;
             graded_moves.push(GradedMove::new(mv, score));
         }
     }
@@ -110,13 +111,13 @@ pub fn principal_variation_search(
         if let Some(s) = search.killer_moves[current_depth][0] {
             let mv_index = find_move(&s, &graded_moves, false);
             if mv_index < graded_moves.len() {
-                graded_moves[mv_index].score += 2000.0;
+                graded_moves[mv_index].score += 5000.0;
             }
         }
         if let Some(s) = search.killer_moves[current_depth][1] {
             let mv_index = find_move(&s, &graded_moves, false);
             if mv_index < graded_moves.len() {
-                graded_moves[mv_index].score += 2000.0;
+                graded_moves[mv_index].score += 5000.0;
             }
         }
     }
@@ -142,7 +143,7 @@ pub fn principal_variation_search(
             if ce.hash == game_state.hash {
                 search.search_statistics.add_cache_hit_ns();
                 if ce.depth >= depth_left as i8 {
-                    if beta - alpha <= 0.002 {
+                    if beta - alpha == 1 {
                         if !ce.alpha && !ce.beta {
                             search.search_statistics.add_cache_hit_replace_ns();
                             pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
@@ -183,7 +184,7 @@ pub fn principal_variation_search(
     };
     next_history.push(game_state.hash);
 
-    if beta - alpha <= 0.002
+    if beta - alpha == 1
         && depth_left >= 4
         && !in_check
         && (game_state.pieces[1][game_state.color_to_move]
@@ -192,11 +193,11 @@ pub fn principal_variation_search(
             | game_state.pieces[4][game_state.color_to_move])
             != 0u64
     {
-        if eval_game_state(&game_state).final_eval * color as f64 >= beta {
+        if eval_game_state(&game_state).final_eval * color >= beta {
             let nextgs = movegen::make_nullmove(&game_state);
             let rat = -principal_variation_search(
                 -beta,
-                -beta + 0.001,
+                -beta + 1,
                 depth_left - 4 - depth_left / 6,
                 &nextgs,
                 -color,
@@ -217,7 +218,7 @@ pub fn principal_variation_search(
         }
     }
 
-    if false && beta - alpha > 0.002 && !in_pv && !cache_hit && depth_left > 4 {
+    if false && beta - alpha > 1 && !in_pv && !cache_hit && depth_left > 4 {
         next_history.pop();
         let iid = principal_variation_search(
             alpha,
@@ -241,9 +242,9 @@ pub fn principal_variation_search(
     }
     let futil_pruning = depth_left <= 2 && !in_check;
     let futil_margin = if futil_pruning {
-        eval_game_state(&game_state).final_eval * color as f64 + depth_left as f64 * 2.0
+        eval_game_state(&game_state).final_eval * color + depth_left * 200
     } else {
-        0.0
+        0
     };
     let mut index: usize = 0;
     while graded_moves.len() > 0 {
@@ -280,10 +281,9 @@ pub fn principal_variation_search(
             && !gives_check(&mv, &game_state, &next_state)
         {
             //let mut reduction = 1;
-            reduction =
-                (((depth_left - 1isize) as f64).sqrt() + ((index - 1) as f64).sqrt()) as isize;
-            if beta - alpha > 0.002 {
-                reduction = (reduction as f64 * 0.66) as isize;
+            reduction = (((depth_left - 1) as f64).sqrt() + ((index - 1) as f64).sqrt()) as i16;
+            if beta - alpha > 1 {
+                reduction = (reduction as f64 * 0.66) as i16;
             }
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
@@ -320,7 +320,7 @@ pub fn principal_variation_search(
             }
         } else {
             following_pv = principal_variation_search(
-                -alpha - 0.001,
+                -alpha - 1,
                 -alpha,
                 depth_left - 1,
                 &next_state,
@@ -460,6 +460,7 @@ pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
     search.search_statistics.refresh_time_elapsed();
     if search.tc.time_over(search.search_statistics.time_elapsed) || stop.load(Ordering::Relaxed) {
         search.stop = true;
+        println!("{}", search.search_statistics);
     }
 }
 
@@ -504,9 +505,9 @@ pub fn make_cache(
     cache: &mut Cache,
     pv: &PrincipalVariation,
     game_state: &GameState,
-    original_alpha: f64,
-    beta: f64,
-    depth_left: isize,
+    original_alpha: i16,
+    beta: i16,
+    depth_left: i16,
     root_plies_played: usize,
 ) {
     let beta_node: bool = pv.score >= beta;
@@ -519,7 +520,7 @@ pub fn make_cache(
     if let None = ce {
         let new_entry = CacheEntry::new(
             &game_state,
-            depth_left as isize,
+            depth_left,
             pv.score,
             alpha_node,
             beta_node,
@@ -547,7 +548,7 @@ pub fn make_cache(
         if old_entry_val <= new_entry_val {
             let new_entry = CacheEntry::new(
                 &game_state,
-                depth_left as isize,
+                depth_left,
                 pv.score,
                 alpha_node,
                 beta_node,
@@ -562,13 +563,13 @@ pub fn make_cache(
 }
 
 #[inline(always)]
-pub fn leaf_score(game_status: GameResult, color: isize, depth_left: isize) -> f64 {
+pub fn leaf_score(game_status: GameResult, color: i16, depth_left: i16) -> i16 {
     if game_status == GameResult::Draw {
-        return 0.0;
+        return 0;
     } else if game_status == GameResult::WhiteWin {
-        return (MATE_SCORE + depth_left as f64) * color as f64;
+        return (MATE_SCORE + depth_left) * color;
     } else if game_status == GameResult::BlackWin {
-        return (MATE_SCORE + depth_left as f64) * -color as f64;
+        return (MATE_SCORE + depth_left) * -color;
     }
     panic!("Invalid Leaf");
 }
@@ -624,14 +625,14 @@ pub enum GameResult {
 
 pub struct PrincipalVariation {
     pub pv: Vec<GameMove>,
-    pub score: f64,
+    pub score: i16,
 }
 
 impl PrincipalVariation {
     pub fn new(depth_left: usize) -> PrincipalVariation {
         PrincipalVariation {
             pv: Vec::with_capacity(depth_left),
-            score: -1000000.0,
+            score: -32768,
         }
     }
 }

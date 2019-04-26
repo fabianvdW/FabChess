@@ -63,15 +63,15 @@ pub fn parse_pgn_find_static_eval_mistakes() {
             let res = _game.2;
             let eval = evaluation::eval_game_state(&last_game_state).final_eval;
             if res == 1 {
-                if eval < 0.0 {
+                if eval < 0 {
                     log(&format!("{} (1-0)\n", &last_game_state.to_fen()));
                 }
             } else if res == 0 {
-                if eval.abs() > 1.0 {
+                if eval.abs() > 100 {
                     log(&format!("{} (1/2-1/2)\n", &last_game_state.to_fen()));
                 }
             } else if res == -1 {
-                if eval > 0.0 {
+                if eval > 0 {
                     log(&format!("{} (0-1)\n", &last_game_state.to_fen()));
                 }
             }

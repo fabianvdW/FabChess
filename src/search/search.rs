@@ -45,7 +45,7 @@ impl Search {
 
     pub fn search(
         &mut self,
-        depth: isize,
+        depth: i16,
         game_state: GameState,
         history: Vec<GameState>,
         stop_ref: Arc<AtomicBool>,
@@ -67,8 +67,8 @@ impl Search {
             let mut pv;
             if d == 1 {
                 pv = principal_variation_search(
-                    -100000.0,
-                    100000.0,
+                    -30000,
+                    30000,
                     d,
                     &game_state,
                     if game_state.color_to_move == 0 { 1 } else { -1 },
@@ -82,9 +82,9 @@ impl Search {
             } else {
                 //Aspiration Window
                 //Start with half window of last time
-                let mut delta = 0.2;
-                let mut alpha: f64 = best_pv.score - delta;
-                let mut beta: f64 = best_pv.score + delta;
+                let mut delta = 20;
+                let mut alpha = best_pv.score - delta;
+                let mut beta = best_pv.score + delta;
                 loop {
                     pv = principal_variation_search(
                         alpha,
@@ -106,12 +106,20 @@ impl Search {
                         break;
                     }
                     if pv.score <= alpha {
-                        alpha -= delta;
+                        if alpha < -10000 {
+                            alpha = -32000;
+                        } else {
+                            alpha -= delta;
+                        }
                     }
                     if pv.score >= beta {
-                        beta += delta;
+                        if beta > 10000 {
+                            beta = 32000;
+                        } else {
+                            beta += delta;
+                        }
                     }
-                    delta *= 1.5;
+                    delta = (delta as f64 * 1.5) as i16;
                 }
             }
             if self.stop {
@@ -123,7 +131,6 @@ impl Search {
                 pv_str.push_str(&format!("{:?} ", mv));
             }
             let nps = self.search_statistics.getnps();
-            let sc = (pv.score * 100.0) as isize;
             println!(
                 "{}",
                 format!(
@@ -133,7 +140,7 @@ impl Search {
                     self.search_statistics.nodes_searched,
                     nps,
                     self.search_statistics.time_elapsed,
-                    sc,
+                    pv.score,
                     pv_str
                 )
             );
@@ -160,7 +167,7 @@ impl Search {
                 };
                 self.principal_variation[i] = Some(CacheEntry::new(
                     state,
-                    d - i as isize,
+                    d - i as i16,
                     pv.score,
                     false,
                     false,

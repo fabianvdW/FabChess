@@ -10,17 +10,17 @@ use super::search::Search;
 use super::GradedMove;
 use crate::bitboards;
 
-pub const DELTA_PRUNING: f64 = 2.0;
+pub const DELTA_PRUNING: i16 = 200;
 lazy_static! {
-    pub static ref PIECE_VALUES: [f64; 6] = [100.0, 300.0, 310.0, 500.0, 900.0, 999999999.99];
+    pub static ref PIECE_VALUES: [i16; 6] = [100, 300, 310, 500, 900, 30000];
 }
 
 pub fn q_search(
-    mut alpha: f64,
-    mut beta: f64,
+    mut alpha: i16,
+    mut beta: i16,
     game_state: &GameState,
-    color: isize,
-    depth_left: isize,
+    color: i16,
+    depth_left: i16,
     legal_moves: Vec<GameMove>,
     in_check: bool,
     current_depth: usize,
@@ -42,7 +42,7 @@ pub fn q_search(
     }
 
     let evaluation = eval_game_state(&game_state);
-    let stand_pat = evaluation.final_eval * color as f64;
+    let stand_pat = evaluation.final_eval * color;
     if stand_pat >= beta {
         pv.score = stand_pat;
         return pv;
@@ -53,7 +53,7 @@ pub fn q_search(
 
     //Apply Big Delta Pruning
     let diff = alpha - stand_pat - DELTA_PRUNING;
-    if diff > 0.0 && best_move_value(game_state) < diff {
+    if diff > 0 && best_move_value(game_state) < diff {
         pv.score = stand_pat;
         return pv;
     }
@@ -71,11 +71,11 @@ pub fn q_search(
                 continue;
             }
             let score = see(&game_state, &mv, false);
-            if score < 0.0 {
+            if score < 0 {
                 search.search_statistics.add_q_see_cutoff();
                 continue;
             }
-            capture_moves.push(GradedMove::new(mv, score));
+            capture_moves.push(GradedMove::new(mv, score as f64));
         }
     }
 
@@ -194,12 +194,12 @@ pub fn is_capture(mv: &GameMove) -> bool {
 }
 
 #[inline(always)]
-pub fn best_move_value(state: &GameState) -> f64 {
-    let mut res = 1.0;
+pub fn best_move_value(state: &GameState) -> i16 {
+    let mut res = 0;
     let mut i = 4;
     while i > 0 {
         if state.pieces[i][1 - state.color_to_move] != 0u64 {
-            res = PIECE_VALUES[i] / 100.0;
+            res = PIECE_VALUES[i];
             break;
         }
         i -= 1;
@@ -209,13 +209,13 @@ pub fn best_move_value(state: &GameState) -> f64 {
         & bitboards::RANKS[if state.color_to_move == 0 { 6 } else { 1 }])
         != 0u64
     {
-        res += (PIECE_VALUES[4] - PIECE_VALUES[0]) / 100.0;
+        res += PIECE_VALUES[4] - PIECE_VALUES[0];
     }
     res
 }
 
 #[inline(always)]
-pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alpha: f64) -> bool {
+pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: i16, alpha: i16) -> bool {
     if phase == 0.0 || eval >= alpha {
         return true;
     }
@@ -227,11 +227,11 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: f64, alph
         GameMoveType::EnPassant => &PieceType::Pawn,
         _ => panic!("No capture!"),
     };
-    eval + (evaluation::piece_value(&captured_piece, phase)) / 100.0 + DELTA_PRUNING >= alpha
+    eval + evaluation::piece_value(&captured_piece, phase) + DELTA_PRUNING >= alpha
 }
 
 #[inline(always)]
-pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
+pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> i16 {
     let mut gain = Vec::with_capacity(32);
     let may_xray = game_state.pieces[0][0]
         | game_state.pieces[0][1]
@@ -260,7 +260,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> f64 {
         deleted_pieces |= from_set;
         index += 1;
         gain.push(PIECE_VALUES[attacked_piece] - gain[index - 1]);
-        if !exact && (-gain[index - 1]).max(gain[index]) < 0.0 {
+        if !exact && (-gain[index - 1]).max(gain[index]) < 0 {
             break;
         }
         attadef ^= from_set;
@@ -326,7 +326,7 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn capture_value(mv: &GameMove) -> f64 {
+pub fn capture_value(mv: &GameMove) -> i16 {
     match &mv.move_type {
         GameMoveType::Capture(c) => piece_value(&c),
         GameMoveType::Promotion(_, b) => match b {
@@ -338,14 +338,14 @@ pub fn capture_value(mv: &GameMove) -> f64 {
 }
 
 #[inline(always)]
-pub fn piece_value(piece_type: &PieceType) -> f64 {
+pub fn piece_value(piece_type: &PieceType) -> i16 {
     match piece_type {
-        PieceType::Pawn => 100.0,
-        PieceType::Knight => 300.0,
-        PieceType::Bishop => 310.0,
-        PieceType::Rook => 500.0,
-        PieceType::Queen => 900.0,
-        PieceType::King => 999999999999.99,
+        PieceType::Pawn => PIECE_VALUES[0],
+        PieceType::Knight => PIECE_VALUES[1],
+        PieceType::Bishop => PIECE_VALUES[2],
+        PieceType::Rook => PIECE_VALUES[3],
+        PieceType::Queen => PIECE_VALUES[4],
+        PieceType::King => PIECE_VALUES[5],
     }
 }
 
@@ -401,7 +401,7 @@ mod tests {
                 },
                 true
             ),
-            100.0
+            100
         );
         assert_eq!(
             see(
@@ -414,7 +414,7 @@ mod tests {
                 },
                 true
             ),
-            -400.0
+            -400
         );
         assert_eq!(
             see(
@@ -427,7 +427,7 @@ mod tests {
                 },
                 true
             ),
-            -200.0
+            -200
         );
         assert_eq!(
             see(
@@ -440,7 +440,7 @@ mod tests {
                 },
                 true
             ),
-            0.0
+            0
         );
         assert_eq!(
             see(
@@ -453,7 +453,7 @@ mod tests {
                 },
                 true
             ),
-            -90.0
+            -90
         );
         assert_eq!(
             see(
@@ -466,7 +466,7 @@ mod tests {
                 },
                 true
             ),
-            100.0
+            100
         );
         assert_eq!(
             see(
@@ -479,7 +479,7 @@ mod tests {
                 },
                 true
             ),
-            500.0
+            500
         );
         assert_eq!(
             see(
@@ -492,7 +492,7 @@ mod tests {
                 },
                 true
             ),
-            -400.0
+            -400
         );
         assert_eq!(
             see(
@@ -505,7 +505,7 @@ mod tests {
                 },
                 true
             ),
-            0.0
+            0
         );
         assert_eq!(
             see(
@@ -518,7 +518,7 @@ mod tests {
                 },
                 true
             ),
-            100.0
+            100
         );
     }
 }

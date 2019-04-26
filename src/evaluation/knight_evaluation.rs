@@ -1,32 +1,31 @@
 use super::{EndGameDisplay, Evaluation, MidGameDisplay};
 
-pub const KNIGHT_PIECE_VALUE_MG: f64 = 500.0;
-pub const KNIGHT_PIECE_VALUE_EG: f64 = 500.0;
-pub const KNIGHT_VALUE_WITH_PAWNS: [f64; 17] = [
-    -30.0, -27.5, -25.0, -22.5, -20.0, -17.5, -15.0, -12.5, -10.0, -7.5, -5.0, -2.5, 0.0, 2.5, 5.0,
-    7.5, 10.0,
+pub const KNIGHT_PIECE_VALUE_MG: i16 = 500;
+pub const KNIGHT_PIECE_VALUE_EG: i16 = 500;
+pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [
+    -30, -27, -25, -22, -20, -17, -15, -12, -10, -7, -5, -2, 0, 2, 5, 7, 10,
 ];
-pub const KNIGHT_SUPPORTED_BY_PAWN: f64 = 30.0;
+pub const KNIGHT_SUPPORTED_BY_PAWN: i16 = 30;
 
 pub struct KnightEvaluation {
-    amount_of_knights: u32,
+    amount_of_knights: i16,
     pawns_on_board: usize,
-    supported_knights: u32,
+    supported_knights: i16,
 }
 
 impl Evaluation for KnightEvaluation {
-    fn eval_mg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.amount_of_knights as f64
+    fn eval_mg(&self) -> i16 {
+        let mut res = 0;
+        res += self.amount_of_knights
             * (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]);
-        res += self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN;
+        res += self.supported_knights * KNIGHT_SUPPORTED_BY_PAWN;
         res
     }
-    fn eval_eg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.amount_of_knights as f64
+    fn eval_eg(&self) -> i16 {
+        let mut res = 0;
+        res += self.amount_of_knights
             * (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board]);
-        res += self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN;
+        res += self.supported_knights * KNIGHT_SUPPORTED_BY_PAWN;
         res
     }
 }
@@ -40,13 +39,13 @@ impl MidGameDisplay for KnightEvaluation {
             self.amount_of_knights,
             KNIGHT_PIECE_VALUE_MG,
             KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board],
-            self.amount_of_knights as f64
+            self.amount_of_knights
                 * (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])
         ));
         res_str.push_str(&format!(
             "\t\tSupported Knights: {} -> {}\n",
             self.supported_knights,
-            self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN
+            self.supported_knights * KNIGHT_SUPPORTED_BY_PAWN
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
@@ -62,13 +61,13 @@ impl EndGameDisplay for KnightEvaluation {
             self.amount_of_knights,
             KNIGHT_PIECE_VALUE_EG,
             KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board],
-            self.amount_of_knights as f64
+            self.amount_of_knights
                 * (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[self.pawns_on_board])
         ));
         res_str.push_str(&format!(
             "\t\tSupported Knights: {} -> {}\n",
             self.supported_knights,
-            self.supported_knights as f64 * KNIGHT_SUPPORTED_BY_PAWN
+            self.supported_knights * KNIGHT_SUPPORTED_BY_PAWN
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
@@ -76,9 +75,9 @@ impl EndGameDisplay for KnightEvaluation {
 }
 
 pub fn knight_eval(knight: u64, my_pawns_attacks: u64, pawns_on_board: usize) -> KnightEvaluation {
-    let supported_knights = (my_pawns_attacks & knight).count_ones();
+    let supported_knights = (my_pawns_attacks & knight).count_ones() as i16;
     KnightEvaluation {
-        amount_of_knights: knight.count_ones(),
+        amount_of_knights: knight.count_ones() as i16,
         pawns_on_board,
         supported_knights,
     }

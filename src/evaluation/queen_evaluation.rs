@@ -1,21 +1,21 @@
 use super::{EndGameDisplay, Evaluation, MidGameDisplay};
 
-pub const QUEEN_PIECE_VALUE_MG: f64 = 1500.0;
-pub const QUEEN_PIECE_VALUE_EG: f64 = 1600.0;
+pub const QUEEN_PIECE_VALUE_MG: i16 = 1500;
+pub const QUEEN_PIECE_VALUE_EG: i16 = 1600;
 
 pub struct QueenEvaluation {
-    amount_of_queens: u32,
+    amount_of_queens: i16,
 }
 
 impl Evaluation for QueenEvaluation {
-    fn eval_mg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_MG;
+    fn eval_mg(&self) -> i16 {
+        let mut res = 0;
+        res += self.amount_of_queens * QUEEN_PIECE_VALUE_MG;
         res
     }
-    fn eval_eg(&self) -> f64 {
-        let mut res = 0.0;
-        res += self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_EG;
+    fn eval_eg(&self) -> i16 {
+        let mut res = 0;
+        res += self.amount_of_queens * QUEEN_PIECE_VALUE_EG;
         res
     }
 }
@@ -27,7 +27,7 @@ impl MidGameDisplay for QueenEvaluation {
         res_str.push_str(&format!(
             "\t\tAmount of Queens: {} -> {}\n",
             self.amount_of_queens,
-            self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_MG
+            self.amount_of_queens * QUEEN_PIECE_VALUE_MG
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_mg()));
         res_str
@@ -41,7 +41,7 @@ impl EndGameDisplay for QueenEvaluation {
         res_str.push_str(&format!(
             "\t\tAmount of Queens: {} -> {}\n",
             self.amount_of_queens,
-            self.amount_of_queens as f64 * QUEEN_PIECE_VALUE_EG
+            self.amount_of_queens * QUEEN_PIECE_VALUE_EG
         ));
         res_str.push_str(&format!("\tSum: {}\n", self.eval_eg()));
         res_str
@@ -50,6 +50,6 @@ impl EndGameDisplay for QueenEvaluation {
 
 pub fn queen_eval(queen: u64) -> QueenEvaluation {
     QueenEvaluation {
-        amount_of_queens: queen.count_ones(),
+        amount_of_queens: queen.count_ones() as i16,
     }
 }
