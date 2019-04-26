@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub const MATE_SCORE: f64 = 3000.0;
+pub const MATED_IN_MAX: f64 = -2900.0;
 pub const HH_INCREMENT: usize = 1;
 pub const BF_INCREMENT: usize = 1;
 
@@ -51,7 +52,10 @@ pub fn principal_variation_search(
     if in_check && !root {
         depth_left += 1;
     }
-
+    if current_depth >= 100 {
+        pv.score = eval_game_state(&game_state).final_eval * color as f64;
+        return pv;
+    }
     if depth_left <= 0 {
         search.search_statistics.add_q_root();
         pv = q_search(
@@ -193,7 +197,7 @@ pub fn principal_variation_search(
             let rat = -principal_variation_search(
                 -beta,
                 -beta + 0.001,
-                depth_left - 4,
+                depth_left - 4 - depth_left / 6,
                 &nextgs,
                 -color,
                 current_depth + 1,
@@ -235,6 +239,12 @@ pub fn principal_variation_search(
         let mv_index = find_move(&iid.pv[0], &graded_moves, true);
         graded_moves[mv_index].score = 29900.0;
     }
+    let futil_pruning = depth_left <= 2 && !in_check;
+    let futil_margin = if futil_pruning {
+        eval_game_state(&game_state).final_eval * color as f64 + depth_left as f64 * 2.0
+    } else {
+        0.0
+    };
     let mut index: usize = 0;
     while graded_moves.len() > 0 {
         let gmvindex = get_next_gm(&graded_moves);
@@ -247,6 +257,18 @@ pub fn principal_variation_search(
             false
         };
         let next_state = movegen::make_move(&game_state, &mv);
+        //--------------------------------------------------------------
+        //Futility Pruning
+        if futil_pruning
+            && !isc
+            && !isp
+            && pv.score > MATED_IN_MAX
+            && !gives_check(&mv, &game_state, &next_state)
+        {
+            if futil_margin <= alpha {
+                continue;
+            }
+        }
         let mut following_pv: PrincipalVariation;
         let mut reduction = 0;
         if depth_left > 2
@@ -300,7 +322,7 @@ pub fn principal_variation_search(
             following_pv = principal_variation_search(
                 -alpha - 0.001,
                 -alpha,
-                depth_left - 1 - reduction,
+                depth_left - 1,
                 &next_state,
                 -color,
                 current_depth + 1,

@@ -84,12 +84,14 @@ pub fn start_self_play(
                 );
             }
             println!("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
-            if result.draw {
-                draws += 1;
-            } else if result.p1_won {
-                p1_wins += 1;
-            } else if !result.p1_disq {
-                p2_wins += 1;
+            if !result.p1_disq && !result.p2_disq {
+                if result.draw {
+                    draws += 1;
+                } else if result.p1_won {
+                    p1_wins += 1;
+                } else {
+                    p2_wins += 1;
+                }
             }
             if result.p1_disq {
                 p1_disqs += 1;
