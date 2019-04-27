@@ -49,6 +49,7 @@ pub fn principal_variation_search(
         }
     }
 
+    //Check extensions
     if in_check && !root {
         depth_left += 1;
     }
@@ -57,6 +58,8 @@ pub fn principal_variation_search(
         pv.score = eval_game_state(&game_state).final_eval * color;
         return pv;
     }
+
+    //Drop into quiesence search
     if depth_left <= 0 {
         search.search_statistics.add_q_root();
         pv = q_search(
@@ -135,8 +138,9 @@ pub fn principal_variation_search(
     }
 
     //Probe TT
+    let mut static_evaluation = None;
     let mut cache_hit = false;
-    if !in_pv {
+    {
         let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
@@ -168,6 +172,7 @@ pub fn principal_variation_search(
                         }
                     }
                 }
+                static_evaluation = ce.static_evaluation;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 let mv_index = find_move(&mv, &graded_moves, true);
                 graded_moves[mv_index].score = 29900.0;
@@ -185,7 +190,6 @@ pub fn principal_variation_search(
     next_history.push(game_state.hash);
 
     if beta - alpha == 1
-        && depth_left >= 4
         && !in_check
         && (game_state.pieces[1][game_state.color_to_move]
             | game_state.pieces[2][game_state.color_to_move]
@@ -193,12 +197,15 @@ pub fn principal_variation_search(
             | game_state.pieces[4][game_state.color_to_move])
             != 0u64
     {
-        if eval_game_state(&game_state).final_eval * color >= beta {
+        if let None = static_evaluation {
+            static_evaluation = Some(eval_game_state(&game_state).final_eval);
+        }
+        if static_evaluation.unwrap() * color >= beta {
             let nextgs = movegen::make_nullmove(&game_state);
             let rat = -principal_variation_search(
                 -beta,
                 -beta + 1,
-                depth_left - 4 - depth_left / 6,
+                (depth_left - 4 - depth_left / 6).max(0),
                 &nextgs,
                 -color,
                 current_depth + 1,
@@ -240,12 +247,14 @@ pub fn principal_variation_search(
         let mv_index = find_move(&iid.pv[0], &graded_moves, true);
         graded_moves[mv_index].score = 29900.0;
     }
-    let futil_pruning = depth_left <= 2 && !in_check;
-    let futil_margin = if futil_pruning {
-        eval_game_state(&game_state).final_eval * color + depth_left * 200
-    } else {
-        0
-    };
+    let mut futil_pruning = depth_left <= 8 && !in_check;
+    let mut futil_margin = 0;
+    if futil_pruning {
+        if let None = static_evaluation {
+            static_evaluation = Some(eval_game_state(&game_state).final_eval);
+        }
+        futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
+    }
     let mut index: usize = 0;
     while graded_moves.len() > 0 {
         let gmvindex = get_next_gm(&graded_moves);
@@ -268,6 +277,8 @@ pub fn principal_variation_search(
         {
             if futil_margin <= alpha {
                 continue;
+            } else {
+                futil_pruning = false;
             }
         }
         let mut following_pv: PrincipalVariation;
@@ -403,6 +414,7 @@ pub fn principal_variation_search(
             beta,
             depth_left,
             root_pliesplayed,
+            static_evaluation,
         );
     }
     return pv;
@@ -460,7 +472,7 @@ pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
     search.search_statistics.refresh_time_elapsed();
     if search.tc.time_over(search.search_statistics.time_elapsed) || stop.load(Ordering::Relaxed) {
         search.stop = true;
-        println!("{}", search.search_statistics);
+        //println!("{}", search.search_statistics);
     }
 }
 
@@ -509,6 +521,7 @@ pub fn make_cache(
     beta: i16,
     depth_left: i16,
     root_plies_played: usize,
+    static_evaluation: Option<i16>,
 ) {
     let beta_node: bool = pv.score >= beta;
     let alpha_node: bool = pv.score < original_alpha;
@@ -528,6 +541,7 @@ pub fn make_cache(
                 Some(mv) => &mv,
                 _ => panic!("Invalid pv!"),
             },
+            static_evaluation,
         );
         cache.cache[index] = Some(new_entry);
     } else {
@@ -556,6 +570,7 @@ pub fn make_cache(
                     Some(mv) => &mv,
                     _ => panic!("Invalid pv!"),
                 },
+                static_evaluation,
             );
             cache.cache[index] = Some(new_entry);
         }

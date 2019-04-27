@@ -10,7 +10,7 @@ use super::search::Search;
 use super::GradedMove;
 use crate::bitboards;
 
-pub const DELTA_PRUNING: i16 = 200;
+pub const DELTA_PRUNING: i16 = 100;
 lazy_static! {
     pub static ref PIECE_VALUES: [i16; 6] = [100, 300, 310, 500, 900, 30000];
 }
@@ -41,8 +41,8 @@ pub fn q_search(
         return pv;
     }
 
-    let evaluation = eval_game_state(&game_state);
-    let stand_pat = evaluation.final_eval * color;
+    let static_evaluation = eval_game_state(&game_state);
+    let stand_pat = static_evaluation.final_eval * color;
     if stand_pat >= beta {
         pv.score = stand_pat;
         return pv;
@@ -53,6 +53,7 @@ pub fn q_search(
 
     //Apply Big Delta Pruning
     let diff = alpha - stand_pat - DELTA_PRUNING;
+    //Missing stats
     if diff > 0 && best_move_value(game_state) < diff {
         pv.score = stand_pat;
         return pv;
@@ -66,7 +67,7 @@ pub fn q_search(
         if let GameMoveType::EnPassant = mv.move_type {
             capture_moves.push(GradedMove::new(mv, 100.0));
         } else {
-            if !passes_delta_pruning(&mv, evaluation.phase, stand_pat, alpha) {
+            if !passes_delta_pruning(&mv, static_evaluation.phase, stand_pat, alpha) {
                 search.search_statistics.add_q_delta_cutoff();
                 continue;
             }
@@ -175,7 +176,16 @@ pub fn q_search(
         }
     }
     if pv.pv.len() > 0 {
-        super::alphabeta::make_cache(cache, &pv, &game_state, alpha, beta, 0, root_plies_played);
+        super::alphabeta::make_cache(
+            cache,
+            &pv,
+            &game_state,
+            alpha,
+            beta,
+            0,
+            root_plies_played,
+            Some(static_evaluation.final_eval),
+        );
     }
     pv
 }

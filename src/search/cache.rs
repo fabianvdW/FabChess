@@ -31,7 +31,8 @@ pub struct CacheEntry {
     pub beta: bool,
     //1-Bit
     pub mv: u16, //16-Bit
-                 //Insg 130-Bit 17-Bytes
+    //16-Bit
+    pub static_evaluation: Option<i16>, //Insg 130-Bit 17-Bytes
 }
 
 impl CacheEntry {
@@ -42,6 +43,7 @@ impl CacheEntry {
         alpha: bool,
         beta: bool,
         mv: &GameMove,
+        static_evaluation: Option<i16>,
     ) -> CacheEntry {
         CacheEntry {
             hash: game_state.hash,
@@ -51,6 +53,7 @@ impl CacheEntry {
             alpha,
             beta,
             mv: CacheEntry::mv_to_u16(&mv),
+            static_evaluation,
         }
     }
 

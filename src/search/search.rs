@@ -172,6 +172,7 @@ impl Search {
                     false,
                     false,
                     &pair,
+                    None,
                 ));
             }
             best_pv = pv;
