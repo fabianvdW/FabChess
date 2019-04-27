@@ -55,7 +55,7 @@ pub fn principal_variation_search(
     }
     //Max Search depth reached
     if current_depth >= MAX_SEARCH_DEPTH {
-        pv.score = eval_game_state(&game_state).final_eval * color;
+        pv.score = eval_game_state(&game_state, false).final_eval * color;
         return pv;
     }
 
@@ -198,7 +198,7 @@ pub fn principal_variation_search(
             != 0u64
     {
         if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state).final_eval);
+            static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
         if static_evaluation.unwrap() * color >= beta {
             let nextgs = movegen::make_nullmove(&game_state);
@@ -251,7 +251,7 @@ pub fn principal_variation_search(
     let mut futil_margin = 0;
     if futil_pruning {
         if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state).final_eval);
+            static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
         futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
     }

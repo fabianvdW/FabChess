@@ -61,7 +61,7 @@ pub fn parse_pgn_find_static_eval_mistakes() {
         for _game in parser.into_iter() {
             let last_game_state = &_game.1[_game.1.len() - 1];
             let res = _game.2;
-            let eval = evaluation::eval_game_state(&last_game_state).final_eval;
+            let eval = evaluation::eval_game_state(&last_game_state, false).final_eval;
             if res == 1 {
                 if eval < 0 {
                     log(&format!("{} (1-0)\n", &last_game_state.to_fen()));

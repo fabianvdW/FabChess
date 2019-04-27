@@ -4,8 +4,8 @@ pub const ROOK_ON_OPEN_FILE_BONUS_MG: i16 = 20;
 pub const ROOK_ON_SEVENTH_MG: i16 = 10;
 pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = 20;
 pub const ROOK_ON_SEVENTH_EG: i16 = 10;
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [30, 15, 0, -15, -30];
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [30, 15, 0, -15, -30];
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [30, 15, 0, -40, -100];
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [30, 15, 0, -40, -100];
 
 pub struct PiecewiseEvaluation {
     my_pawns: u64,

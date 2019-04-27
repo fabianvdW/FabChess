@@ -41,7 +41,7 @@ pub fn q_search(
         return pv;
     }
 
-    let static_evaluation = eval_game_state(&game_state);
+    let static_evaluation = eval_game_state(&game_state, false);
     let stand_pat = static_evaluation.final_eval * color;
     if stand_pat >= beta {
         pv.score = stand_pat;

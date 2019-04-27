@@ -8,9 +8,6 @@ pub mod psqt_evaluation;
 pub mod queen_evaluation;
 pub mod rook_evaluation;
 
-const MG_LIMIT: i16 = 9100;
-const EG_LIMIT: i16 = 2350;
-
 use self::bishop_evaluation::{bishop_eval, BishopEvaluation, BISHOP_PIECE_VALUE_MG};
 use self::king_evaluation::{king_eval, KingEvaluation};
 use self::knight_evaluation::{knight_eval, KnightEvaluation, KNIGHT_PIECE_VALUE_MG};
@@ -22,9 +19,13 @@ use self::queen_evaluation::{queen_eval, QueenEvaluation, QUEEN_PIECE_VALUE_MG};
 use self::rook_evaluation::{rook_eval, RookEvaluation, ROOK_PIECE_VALUE_MG};
 use super::bitboards;
 use super::board_representation::game_state::{GameState, PieceType};
-use super::logging::{log, VERBOSE};
+use super::logging::log;
 use super::move_generation::movegen;
 
+const MG_LIMIT: i16 = 9100;
+const EG_LIMIT: i16 = 2350;
+const TEMPO_BONUS_MG: i16 = 20;
+const TEMPO_BONUS_EG: i16 = 0;
 pub trait Evaluation {
     fn eval_mg(&self) -> i16;
     fn eval_eg(&self) -> i16;
@@ -49,7 +50,7 @@ pub struct EvaluationResult {
     pub final_eval: i16,
 }
 
-pub fn eval_game_state(g: &GameState) -> EvaluationResult {
+pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     let w_pawns = g.pieces[0][0];
     let w_knights = g.pieces[1][0];
     let w_bishops = g.pieces[2][0];
@@ -90,17 +91,31 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         w_pawns_front_span,
         w_pawns_attack_span,
         black_pawn_attacks,
+        white_pawn_attacks,
     );
     let black_pawns_eval = pawn_eval_black(
         b_pawns,
         b_pawns_front_span,
         b_pawns_attack_span,
         white_pawn_attacks,
+        black_pawn_attacks,
     );
     let white_passed_eval = passed_eval_white(w_pawns, b_pawns_all_front_spans, black_pieces);
     let black_passed_eval = passed_eval_black(b_pawns, w_pawns_all_front_spans, white_pieces);
-    let white_knights_eval = knight_eval(w_knights, white_pawn_attacks, pawns_on_board);
-    let black_knights_eval = knight_eval(b_knights, black_pawn_attacks, pawns_on_board);
+    let white_knights_eval = knight_eval(
+        w_knights,
+        white_pawn_attacks,
+        pawns_on_board,
+        b_pawns,
+        w_pawns,
+    );
+    let black_knights_eval = knight_eval(
+        b_knights,
+        black_pawn_attacks,
+        pawns_on_board,
+        w_pawns,
+        b_pawns,
+    );
     let white_bishops_eval = bishop_eval(w_bishops);
     let black_bishops_eval = bishop_eval(b_bishops);
     let white_rooks_eval = rook_eval(w_rooks);
@@ -265,9 +280,16 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         eg_eval += white_psqt_eval_eg - black_psqt_eval_eg;
         eg_eval += white_piecewise_eval_eg - black_piecewise_eval_eg;
     }
+    if g.color_to_move == 0 {
+        mg_eval += TEMPO_BONUS_MG;
+        eg_eval += TEMPO_BONUS_EG;
+    } else {
+        mg_eval += -TEMPO_BONUS_MG;
+        eg_eval += -TEMPO_BONUS_EG;
+    }
     //Phasing is done the same way stockfish does it
     let res = ((mg_eval as f64 * phase + eg_eval as f64 * (128.0 - phase)) / 128.0) as i16;
-    if VERBOSE {
+    if verbose {
         make_log(
             &white_pawns_eval,
             white_pawns_eval_mg,
@@ -323,6 +345,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
             &black_piecewise_eval,
             black_piecewise_eval_mg,
             black_piecewise_eval_eg,
+            g.color_to_move,
             phase,
             mg_eval,
             eg_eval,
@@ -441,6 +464,7 @@ pub fn make_log(
     black_piecewise_eval: &PiecewiseEvaluation,
     black_piecewise_eval_mg: i16,
     black_piecewise_eval_eg: i16,
+    color_to_move: usize,
     phase: f64,
     mg_eval: i16,
     eg_eval: i16,
@@ -780,6 +804,27 @@ pub fn make_log(
             ));
             //verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
         }
+    }
+    if color_to_move == 0 {
+        log(&format!(
+            "Tempo White\nMGEval: {} + {} = {}\nEGEval: {} + {} = {}",
+            verbose_mg,
+            TEMPO_BONUS_MG,
+            verbose_mg + TEMPO_BONUS_MG,
+            verbose_eg,
+            TEMPO_BONUS_EG,
+            verbose_eg + TEMPO_BONUS_EG
+        ));
+    } else {
+        log(&format!(
+            "Tempo Black\nMGEval: {} - {} = {}\nEGEval: {} - {} = {}",
+            verbose_mg,
+            TEMPO_BONUS_MG,
+            verbose_mg - TEMPO_BONUS_MG,
+            verbose_eg,
+            TEMPO_BONUS_EG,
+            verbose_eg - TEMPO_BONUS_EG
+        ));
     }
     log(&format!("Phase: {}\n", phase));
     log(&format!(
