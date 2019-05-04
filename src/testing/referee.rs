@@ -21,7 +21,7 @@ const PLAYER1_STD_PATH: &str = "./target/release/schach_reworked.exe";
 const PLAYER2_STD_PATH: &str = "./versions/FabChessv1.2.exe";
 const LCT2_PATH: &str = "./lct2.epd";
 const OPENING_DB: &str = "./O-Deville/o-deville.pgn";
-const LOAD_UNTIL_PLY: usize = 6;
+const LOAD_UNTIL_PLY: usize = 8;
 
 const TIMECONTROL_TIME: u64 = 10000;
 const TIMECONTROL_INC: u64 = 100;

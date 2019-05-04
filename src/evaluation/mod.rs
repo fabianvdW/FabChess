@@ -122,8 +122,8 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     let black_rooks_eval = rook_eval(b_rooks);
     let white_queen_eval = queen_eval(w_queens);
     let black_queen_eval = queen_eval(b_queens);
-    let white_king_eval = king_eval(w_king, w_pawns, b_pawns, true);
-    let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false);
+    let white_king_eval = king_eval(w_king, w_pawns, b_pawns, true, g.full_moves);
+    let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false, g.full_moves);
     let white_psqt_eval = psqt_eval(
         w_pawns, w_knights, w_bishops, w_rooks, w_queens, w_king, true,
     );

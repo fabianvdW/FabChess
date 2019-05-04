@@ -96,13 +96,14 @@ pub fn knight_eval(
     enemy_pawns: u64,
     my_pawns: u64,
 ) -> KnightEvaluation {
-    let supported_knights = my_pawns_attacks & knight;
+    let supported_knights = my_pawns_attacks & knight & (*bitboards::CENTER);
     //Roughly determine outpost
     let mut outposts = 0;
     let mut supp = supported_knights;
     while supp != 0u64 {
         let supp_knight_index = supp.trailing_zeros() as usize;
-        let file = bitboards::FILES[supp_knight_index % 8];
+        let file_int = supp_knight_index % 8;
+        let file = bitboards::FILES[file_int];
         if my_pawns & file == 0u64 && enemy_pawns & file != 0u64 {
             outposts += 1;
         }

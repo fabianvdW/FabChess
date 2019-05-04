@@ -16,6 +16,7 @@ lazy_static! {
     pub static ref DIAGONALLY_ADJACENT: [u64; 64] = init_diagonally_adjacent();
     pub static ref SHIELDING_PAWNS_WHITE: [u64; 64] = init_shielding_pawns_white();
     pub static ref SHIELDING_PAWNS_BLACK: [u64; 64] = init_shielding_pawns_black();
+    pub static ref CENTER: u64 = initialize_center();
 }
 
 pub fn init_bitboards() {
@@ -37,6 +38,10 @@ pub fn init_bitboards() {
     SHIELDING_PAWNS_BLACK.len();
 }
 
+pub fn initialize_center() -> u64 {
+    (FILES[1] | FILES[2] | FILES[3] | FILES[4] | FILES[5] | FILES[6])
+        & (RANKS[1] | RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5] | RANKS[6])
+}
 pub fn initialize_files() -> [u64; 8] {
     let mut res = [0u64; 8];
     for file in 0..8 {
@@ -284,6 +289,10 @@ pub fn init_shielding_pawns_white() -> [u64; 64] {
         let shield = king << 8 | north_west_one(king) | north_east_one(king);
         res[sq] = shield | shield << 8;
     }
+    for rank in 0..8 {
+        res[8 * rank] = res[8 * rank + 1];
+        res[8 * rank + 7] = res[8 * rank + 6];
+    }
     log("Finished Initializing Shielding PawnsWhite Board!");
     res
 }
@@ -294,6 +303,10 @@ pub fn init_shielding_pawns_black() -> [u64; 64] {
         let king = 1u64 << sq;
         let shield = king >> 8 | south_west_one(king) | south_east_one(king);
         res[sq] = shield | shield >> 8;
+    }
+    for rank in 0..8 {
+        res[8 * rank] = res[8 * rank + 1];
+        res[8 * rank + 7] = res[8 * rank + 6];
     }
     log("Finished Initializing Shielding PawnsBlack Board!");
     res

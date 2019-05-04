@@ -38,9 +38,13 @@ impl Evaluation for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
+            let pos = 1u64 << idx;
+            let bonus = DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
                 [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            bishops ^= 1u64 << idx;
+            if bonus <= 0 || pos & (*bitboards::CENTER) != 0u64 {
+                res += bonus;
+            }
+            bishops ^= pos;
         }
         res
     }
@@ -66,9 +70,13 @@ impl Evaluation for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
+            let pos = 1u64 << idx;
+            let bonus = DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
                 [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            bishops ^= 1u64 << idx;
+            if bonus <= 0 || pos & (*bitboards::CENTER) != 0u64 {
+                res += bonus;
+            }
+            bishops ^= pos;
         }
         res
     }
@@ -101,11 +109,18 @@ impl ParallelEvaluation for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            mg_res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
+            let pos = 1u64 << idx;
+            let bonus_mg = DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
                 [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            eg_res += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
+            if bonus_mg < 0 || pos & (*bitboards::CENTER) != 0u64 {
+                mg_res += bonus_mg;
+            }
+            let bonus_eg = DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
                 [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            bishops ^= 1u64 << idx;
+            if bonus_eg < 0 || pos & (*bitboards::CENTER) != 0u64 {
+                eg_res += bonus_eg;
+            }
+            bishops ^= pos;
         }
         (mg_res, eg_res)
     }
@@ -136,9 +151,13 @@ impl MidGameDisplay for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            bishop_adjacent_score += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
+            let pos = 1u64 << idx;
+            let bonus = DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG
                 [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            bishops ^= 1u64 << idx;
+            if bonus < 0 || pos & (*bitboards::CENTER) != 0u64 {
+                bishop_adjacent_score += bonus
+            }
+            bishops ^= pos;
         }
 
         let mut res_str = String::new();
@@ -192,9 +211,13 @@ impl EndGameDisplay for PiecewiseEvaluation {
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
-            bishop_adjacent_score += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
+            let pos = 1u64 << idx;
+            let bonus = DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG
                 [(bitboards::DIAGONALLY_ADJACENT[idx] & self.my_pawns).count_ones() as usize];
-            bishops ^= 1u64 << idx;
+            if bonus < 0 || pos & (*bitboards::CENTER) != 0u64 {
+                bishop_adjacent_score += bonus
+            }
+            bishops ^= pos;
         }
 
         let mut res_str = String::new();

@@ -14,7 +14,6 @@ use std::u64;
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
-
     let stop = Arc::new(AtomicBool::new(false));
     let mut cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
 
