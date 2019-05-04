@@ -20,7 +20,7 @@ pub enum PieceType {
     Queen,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct GameMove {
     pub from: usize,
     pub to: usize,

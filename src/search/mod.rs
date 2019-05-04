@@ -12,8 +12,8 @@ pub fn init_constants() {
 }
 
 pub struct GradedMove {
-    mv: GameMove,
-    score: f64,
+    pub mv: GameMove,
+    pub score: f64,
 }
 
 impl GradedMove {

@@ -265,6 +265,24 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 }
             }
         } else if my_string.len() == 4 {
+            let target_square =
+                8 * match_rank(my_string.chars().nth(3)) + match_file(my_string.chars().nth(2));
+            let from_square =
+                8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
+            for game_move in &available_moves {
+                if game_move.to == target_square
+                    && game_move.from == from_square
+                    && (!is_promotion_move
+                        || match &game_move.move_type {
+                            GameMoveType::Promotion(piece, _) => *piece == promotion_piece,
+                            _ => false,
+                        })
+                {
+                    let res = game_move.clone();
+                    let state = movegen::make_move(&g, &res);
+                    return (res, state);
+                }
+            }
         } else if my_string.len() == 5 {
         }
     }

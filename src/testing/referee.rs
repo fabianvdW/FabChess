@@ -13,18 +13,40 @@ pub mod openings;
 pub mod queue;
 pub mod selfplay;
 pub mod selfplay_splitter;
+pub mod suit;
 
 const STD_PROCESSORS: usize = 4;
 const STD_GAMES: usize = 1000;
 const MODE: usize = 0;
 const PLAYER1_STD_PATH: &str = "./target/release/schach_reworked.exe";
 const PLAYER2_STD_PATH: &str = "./versions/FabChessv1.2.exe";
-const LCT2_PATH: &str = "./lct2.epd";
+const LCT2_PATH: &str = "./testsuites/lct2.epd";
+const SUIT_PATH: &str = "./testsuites/sts.epd";
 const OPENING_DB: &str = "./O-Deville/o-deville.pgn";
 const LOAD_UNTIL_PLY: usize = 8;
 
 const TIMECONTROL_TIME: u64 = 10000;
 const TIMECONTROL_INC: u64 = 100;
+const TIMECONTROL_MOVETIME_SUIT: u64 = 1000;
+
+//STS
+pub const STS_SUB_SUITS: [&str; 15] = [
+    "Undermine",
+    "Open Files and Diagonals",
+    "Knight Outposts",
+    "Square Vacancy",
+    "Bishop vs Knight",
+    "Recapturing",
+    "STS(v7.0) Simplification",
+    "AKPC",
+    "Advancement of a/b/c pawns",
+    "STS(v10.0) Simplification",
+    "King Activity",
+    "Center Control",
+    "Pawn Play in the Center",
+    "7th Rank",
+    "STS(v15.0) AT",
+];
 /*
 Error-Margin in +/- (95% Confidence)
 Games   :    100    200    400    600    1000    1500    2000    3000    4000     10000
@@ -47,20 +69,27 @@ fn main() {
     let mut mode = MODE;
     let mut player1path = PLAYER1_STD_PATH;
     let mut player2path = PLAYER2_STD_PATH;
-    let mut path_to_lct2 = LCT2_PATH;
+    let mut path_to_suit = SUIT_PATH;
     let mut path_to_opening_db = OPENING_DB;
     let mut opening_load_until = LOAD_UNTIL_PLY;
     let mut timecontrol_p1_time = TIMECONTROL_TIME;
     let mut timecontrol_p2_time = TIMECONTROL_TIME;
     let mut timecontrol_p1_inc = TIMECONTROL_INC;
     let mut timecontrol_p2_inc = TIMECONTROL_INC;
-
+    let mut movetime_suit = TIMECONTROL_MOVETIME_SUIT;
     let args: Vec<String> = env::args().collect();
     let mut index: usize = 0;
     while index < args.len() {
         match &args[index][..] {
             "lct2" => {
+                path_to_suit = LCT2_PATH;
                 mode = 1;
+                index += 1;
+                continue;
+            }
+            "suit" => {
+                path_to_suit = SUIT_PATH;
+                mode = 2;
                 index += 1;
                 continue;
             }
@@ -76,8 +105,11 @@ fn main() {
             "player2" | "p2" => {
                 player2path = &args[index + 1];
             }
-            "lct2path" => {
-                path_to_lct2 = &args[index + 1];
+            "suitpath" => {
+                path_to_suit = &args[index + 1];
+            }
+            "suittc" => {
+                movetime_suit = args[index + 1].parse::<u64>().unwrap();
             }
             "opening" | "openingdb" | "o" => {
                 path_to_opening_db = &args[index + 1];
@@ -120,9 +152,7 @@ fn main() {
         }
         index += 2;
     }
-    if mode == 1 {
-        lct2::lct2(player1path, processors, path_to_lct2);
-    } else {
+    if mode == 0 {
         selfplay_splitter::start_self_play(
             player1path,
             player2path,
@@ -133,6 +163,10 @@ fn main() {
             TimeControl::Incremental(timecontrol_p1_time, timecontrol_p1_inc),
             TimeControl::Incremental(timecontrol_p2_time, timecontrol_p2_inc),
         );
+    } else if mode == 1 {
+        lct2::lct2(player1path, processors, path_to_suit);
+    } else if mode == 2 {
+        suit::start_suit(player1path, processors, path_to_suit, movetime_suit);
     }
 }
 pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {

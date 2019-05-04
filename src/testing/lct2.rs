@@ -37,7 +37,7 @@ pub fn start_lct2_thread(
         );
         println!("Bestmove is actually: {:?}", test.optimal_move);
         let str = format!(
-            "position fen {}\n go wtime 0 winc 600000 btime 0 binc 600000\n",
+            "ucinewgame\nposition fen {}\n go wtime 0 winc 600000 btime 0 binc 600000\n",
             test.game_state.to_fen()
         );
         write_to_buf(&mut child_in, &str);
@@ -108,6 +108,7 @@ pub fn start_lct2_thread(
 
     write_to_buf(&mut child_in, "quit\n");
 }
+
 pub fn lct2(p1: &str, processors: usize, path_to_lct2: &str) {
     //Step 1: Parse suit
     let mypoints = Arc::new(AtomicUsize::new(1900));

@@ -31,7 +31,7 @@ impl TimeControl {
             return time_spent > mytime - 40
                 || time_spent > (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
         } else if let TimeControl::MoveTime(move_time) = self {
-            return time_spent > move_time - MOVE_OVERHEAD;
+            return time_spent > move_time - MOVE_OVERHEAD || *move_time < MOVE_OVERHEAD;
         }
         panic!("Invalid Timecontrol");
     }
