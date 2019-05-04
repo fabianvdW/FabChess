@@ -130,14 +130,8 @@ fn main() {
             games,
             path_to_opening_db,
             opening_load_until,
-            TimeControl {
-                mytime: timecontrol_p1_time,
-                myinc: timecontrol_p1_inc,
-            },
-            TimeControl {
-                mytime: timecontrol_p2_time,
-                myinc: timecontrol_p2_inc,
-            },
+            TimeControl::Incremental(timecontrol_p1_time, timecontrol_p1_inc),
+            TimeControl::Incremental(timecontrol_p2_time, timecontrol_p2_inc),
         );
     }
 }

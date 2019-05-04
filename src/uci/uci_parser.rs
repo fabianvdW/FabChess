@@ -121,15 +121,9 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
         winc = u64::MAX;
         binc = u64::MAX;
         if engine.internal_state.color_to_move == 0 {
-            return TimeControl {
-                mytime: wtime,
-                myinc: winc,
-            };
+            return TimeControl::Incremental(wtime, winc);
         } else {
-            return TimeControl {
-                mytime: btime,
-                myinc: binc,
-            };
+            return TimeControl::Incremental(btime, binc);
         }
     }
     let mut index = 0;
@@ -147,20 +141,18 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
             "binc" => {
                 binc = cmd[index + 1].parse::<u64>().unwrap();
             }
+            "movetime" => {
+                let mvtime = cmd[index + 1].parse::<u64>().unwrap();
+                return TimeControl::MoveTime(mvtime);
+            }
             _ => panic!("Invalid go command"),
         };
         index += 2;
     }
     if engine.internal_state.color_to_move == 0 {
-        return TimeControl {
-            mytime: wtime,
-            myinc: winc,
-        };
+        return TimeControl::Incremental(wtime, winc);
     } else {
-        return TimeControl {
-            mytime: btime,
-            myinc: binc,
-        };
+        return TimeControl::Incremental(btime, binc);
     }
 }
 

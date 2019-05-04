@@ -60,8 +60,10 @@ pub fn play_game(
     //-------------------------------------------------------------
     //Setup Players
     //Player 1
-    let mut player1_time = tcp1.mytime;
-    let player1_inc = tcp1.myinc;
+    let (mut player1_time, player1_inc) = match tcp1 {
+        TimeControl::Incremental(time, inc) => (*time, *inc),
+        _ => panic!("Invalid Timecontrol"),
+    };
 
     let mut player1_process = Command::new(p1)
         .stdin(Stdio::piped())
@@ -95,8 +97,10 @@ pub fn play_game(
     }
     let mut player1_output = output.1.unwrap();
     //Player 2
-    let mut player2_time = tcp2.mytime;
-    let player2_inc = tcp2.myinc;
+    let (mut player2_time, player2_inc) = match tcp2 {
+        TimeControl::Incremental(time, inc) => (*time, *inc),
+        _ => panic!("Invalid Timecontrol"),
+    };
 
     let mut player2_process = Command::new(p2)
         .stdin(Stdio::piped())

@@ -8,6 +8,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+const MOVE_OVERHEAD: u64 = 20;
 pub struct Search {
     pub principal_variation: [Option<CacheEntry>; 100],
     pub killer_moves: [[Option<GameMove>; 2]; 100],
@@ -18,15 +19,21 @@ pub struct Search {
     pub stop: bool,
 }
 
-pub struct TimeControl {
-    pub mytime: u64,
-    pub myinc: u64,
+#[derive(Clone)]
+pub enum TimeControl {
+    Incremental(u64, u64),
+    MoveTime(u64),
 }
 
 impl TimeControl {
     pub fn time_over(&self, time_spent: u64) -> bool {
-        return time_spent > self.mytime - 40
-            || time_spent > (self.mytime as f64 / 30.0) as u64 + self.myinc - 20;
+        if let TimeControl::Incremental(mytime, myinc) = self {
+            return time_spent > mytime - 40
+                || time_spent > (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
+        } else if let TimeControl::MoveTime(move_time) = self {
+            return time_spent > move_time - MOVE_OVERHEAD;
+        }
+        panic!("Invalid Timecontrol");
     }
 }
 

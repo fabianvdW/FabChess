@@ -33,14 +33,8 @@ pub fn start_self_play(
         let res_clone = result_queue.clone();
         let p1_clone = String::from_str(p1).unwrap();
         let p2_clone = String::from_str(p2).unwrap();
-        let tcp1_clone = TimeControl {
-            mytime: tcp1.mytime,
-            myinc: tcp1.myinc,
-        };
-        let tcp2_clone = TimeControl {
-            mytime: tcp2.mytime,
-            myinc: tcp2.myinc,
-        };
+        let tcp1_clone = tcp1.clone();
+        let tcp2_clone = tcp2.clone();
         let log_clone = error_log.clone();
         childs.push(thread::spawn(move || {
             start_self_play_thread(
