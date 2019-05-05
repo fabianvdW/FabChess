@@ -1,0 +1,19 @@
+movetime 1000
+Subsuit Undermine : 55/100   Points: 642/1000
+Subsuit Open Files and Diagonals : 47/100   Points: 565/1000
+Subsuit Knight Outposts : 49/100   Points: 646/1000
+Subsuit Square Vacancy : 43/100   Points: 571/1000
+Subsuit Bishop vs Knight : 54/100   Points: 656/1000
+Subsuit Recapturing : 52/100   Points: 751/1000
+Subsuit STS(v7.0) Simplification : 44/100   Points: 583/1000
+Subsuit AKPC : 32/100   Points: 470/1000
+Subsuit Advancement of a/b/c pawns : 39/100   Points: 515/1000
+Subsuit STS(v10.0) Simplification : 54/100   Points: 652/1000
+Subsuit King Activity : 34/100   Points: 501/1000
+Subsuit Center Control : 32/100   Points: 422/1000
+Subsuit Pawn Play in the Center : 58/100   Points: 684/1000
+Subsuit 7th Rank : 52/100   Points: 638/1000
+Subsuit STS(v15.0) AT : 28/100   Points: 489/1000
+Found: 673/1500    Points: 8785/15000
+
+Suit Testing finished!

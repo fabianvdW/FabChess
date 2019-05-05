@@ -6,7 +6,8 @@ pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = 20;
 pub const ROOK_ON_SEVENTH_EG: i16 = 10;
 pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [30, 15, 0, -40, -100];
 pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [30, 15, 0, -40, -100];
-
+//pub const BISHOP_SUPPORTED_BONUS_MG_BY_RANK: [i16; 8] = [0, 0, 3, 8, 13, 18, 25, 0];
+//pub const BISHOP_FULLY_BLOCKED: i16 = -150;
 pub struct PiecewiseEvaluation {
     my_pawns: u64,
     my_rooks: u64,

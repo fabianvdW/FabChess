@@ -17,6 +17,7 @@ lazy_static! {
     pub static ref SHIELDING_PAWNS_WHITE: [u64; 64] = init_shielding_pawns_white();
     pub static ref SHIELDING_PAWNS_BLACK: [u64; 64] = init_shielding_pawns_black();
     pub static ref CENTER: u64 = initialize_center();
+    pub static ref INNER_CENTER: u64 = initialize_inner_center();
 }
 
 pub fn init_bitboards() {
@@ -36,8 +37,12 @@ pub fn init_bitboards() {
     DIAGONALLY_ADJACENT.len();
     SHIELDING_PAWNS_WHITE.len();
     SHIELDING_PAWNS_BLACK.len();
+    (*CENTER).trailing_zeros();
+    (*INNER_CENTER).trailing_zeros();
 }
-
+pub fn initialize_inner_center() -> u64 {
+    (FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4])
+}
 pub fn initialize_center() -> u64 {
     (FILES[1] | FILES[2] | FILES[3] | FILES[4] | FILES[5] | FILES[6])
         & (RANKS[1] | RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5] | RANKS[6])

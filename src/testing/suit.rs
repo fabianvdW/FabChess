@@ -45,14 +45,16 @@ impl Display for SuitInfos {
         let mut res_str = String::new();
         res_str.push_str(&format!("movetime {}\n", self.move_time));
         for i in 0..15 {
-            res_str.push_str(&format!(
-                "Subsuit {} : {}/{}   Points: {}/{}\n",
-                STS_SUB_SUITS[i],
-                self.subsuit_optimal_moves_found[i],
-                self.subsuit_positions[i],
-                self.subsuit_points[i],
-                self.subsuit_positions[i] * 10
-            ));
+            if self.subsuit_positions[i] > 0 {
+                res_str.push_str(&format!(
+                    "Subsuit {} : {}/{}   Points: {}/{}\n",
+                    STS_SUB_SUITS[i],
+                    self.subsuit_optimal_moves_found[i],
+                    self.subsuit_positions[i],
+                    self.subsuit_points[i],
+                    self.subsuit_positions[i] * 10
+                ));
+            }
         }
         res_str.push_str(&format!(
             "Found: {}/{}    Points: {}/{}\n",
@@ -154,6 +156,7 @@ fn suit_thread(
             }
         }
     }
+    write_to_buf(&mut child_in, "quit\n");
 }
 fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
     let mut res = Vec::with_capacity(30);

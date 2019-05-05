@@ -102,19 +102,14 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     );
     let white_passed_eval = passed_eval_white(w_pawns, b_pawns_all_front_spans, black_pieces);
     let black_passed_eval = passed_eval_black(b_pawns, w_pawns_all_front_spans, white_pieces);
-    let white_knights_eval = knight_eval(
-        w_knights,
-        white_pawn_attacks,
-        pawns_on_board,
-        b_pawns,
-        w_pawns,
-    );
+    let white_knights_eval =
+        knight_eval(w_knights, white_pawn_attacks, pawns_on_board, b_pawns, true);
     let black_knights_eval = knight_eval(
         b_knights,
         black_pawn_attacks,
         pawns_on_board,
         w_pawns,
-        b_pawns,
+        false,
     );
     let white_bishops_eval = bishop_eval(w_bishops);
     let black_bishops_eval = bishop_eval(b_bishops);
