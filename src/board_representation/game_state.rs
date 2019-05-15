@@ -187,6 +187,8 @@ pub struct GameState {
     pub half_moves: usize,
     pub full_moves: usize,
     pub hash: u64,
+    pub psqt_mg: i16,
+    pub psqt_eg: i16,
 }
 
 impl GameState {
@@ -396,6 +398,7 @@ impl GameState {
             castle_black_queenside,
             en_passant,
         );
+        let psqt = crate::evaluation::psqt_evaluation::psqt_slow(&pieces_arr);
         GameState {
             color_to_move,
             pieces: pieces_arr,
@@ -407,6 +410,8 @@ impl GameState {
             full_moves,
             en_passant,
             hash,
+            psqt_mg: psqt.0,
+            psqt_eg: psqt.1,
         }
     }
     pub fn to_fen(&self) -> String {
@@ -553,7 +558,7 @@ impl GameState {
             [0x8u64, 0x800000000000000u64],
             [0x10u64, 0x1000000000000000u64],
         ];
-
+        let psqt = crate::evaluation::psqt_evaluation::psqt_slow(&pieces);
         GameState {
             color_to_move,
             pieces,
@@ -573,6 +578,8 @@ impl GameState {
                 true,
                 0u64,
             ),
+            psqt_mg: psqt.0,
+            psqt_eg: psqt.1,
         }
     }
     pub fn calculate_zobrist_hash(
@@ -693,6 +700,8 @@ impl Clone for GameState {
             half_moves: self.half_moves,
             full_moves: self.full_moves,
             hash: self.hash,
+            psqt_mg: self.psqt_mg,
+            psqt_eg: self.psqt_eg,
         }
     }
 }

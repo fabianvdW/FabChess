@@ -24,6 +24,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use core::board_representation::game_state::GameState;
+    use core::evaluation::psqt_evaluation::{psqt_eval, psqt_slow};
+    use core::evaluation::ParallelEvaluation;
     use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
     use core::move_generation::movegen;
     use core::perft;
@@ -598,6 +600,53 @@ mod tests {
                     break;
                 }
                 g = movegen::make_move(&g, &legal_moves[rng.gen_range(0, legal_moves.len())])
+            }
+        }
+    }
+
+    #[test]
+    fn psqt_incremental_test() {
+        let mut rng = rand::thread_rng();
+        for _i in 0..100000 {
+            let mut g = GameState::standard();
+            let psqt = psqt_slow(&g.pieces);
+            assert_eq!(g.psqt_mg, psqt.0);
+            assert_eq!(g.psqt_eg, psqt.1);
+            for _j in 0..200 {
+                let legal_moves = movegen::generate_moves(&g).0;
+                if legal_moves.len() == 0 {
+                    break;
+                }
+                g = movegen::make_move(&g, &legal_moves[rng.gen_range(0, legal_moves.len())]);
+                let psqt = psqt_slow(&g.pieces);
+                assert_eq!(g.psqt_mg, psqt.0);
+                assert_eq!(g.psqt_eg, psqt.1);
+                let white_psqt_eval = psqt_eval(
+                    g.pieces[0][0],
+                    g.pieces[1][0],
+                    g.pieces[2][0],
+                    g.pieces[3][0],
+                    g.pieces[4][0],
+                    g.pieces[5][0],
+                    true,
+                );
+                let black_psqt_eval = psqt_eval(
+                    g.pieces[0][1],
+                    g.pieces[1][1],
+                    g.pieces[2][1],
+                    g.pieces[3][1],
+                    g.pieces[4][1],
+                    g.pieces[5][1],
+                    false,
+                );
+                let _e = white_psqt_eval.eval_mg_eg();
+                let white_psqt_eval_mg = _e.0;
+                let white_psqt_eval_eg = _e.1;
+                let _e = black_psqt_eval.eval_mg_eg();
+                let black_psqt_eval_mg = _e.0;
+                let black_psqt_eval_eg = _e.1;
+                assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
+                assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             }
         }
     }

@@ -1,4 +1,4 @@
-use super::GameState;
+use super::PieceType;
 use super::{EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
 const PSQT_PAWN_MG: [[i16; 8]; 8] = [
@@ -376,18 +376,127 @@ pub fn psqt_eval(
     PSQT::new(pawns, knights, bishops, rooks, queens, king, is_white)
 }
 
-pub fn psqt_slow(game_state: &GameState) -> (i16, i16) {
-    let pieces = game_state.pieces.clone();
+#[inline(always)]
+pub fn psqt_incremental_move_piece(
+    piece: &PieceType,
+    mut from_square: usize,
+    mut to_square: usize,
+    is_black: bool,
+    psqt_mg: i16,
+    psqt_eg: i16,
+) -> (i16, i16) {
+    if is_black {
+        from_square = 63 - from_square;
+        to_square = 63 - to_square;
+    }
+    let mut psqt_mg_plus: i16 = 0;
+    let mut psqt_eg_plus: i16 = 0;
+    if let PieceType::Pawn = piece {
+        psqt_mg_plus += PSQT_PAWN_MG[to_square / 8][to_square % 8]
+            - PSQT_PAWN_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_PAWN_EG[to_square / 8][to_square % 8]
+            - PSQT_PAWN_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::Knight = piece {
+        psqt_mg_plus += PSQT_KNIGHT_MG[to_square / 8][to_square % 8]
+            - PSQT_KNIGHT_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_KNIGHT_EG[to_square / 8][to_square % 8]
+            - PSQT_KNIGHT_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::Bishop = piece {
+        psqt_mg_plus += PSQT_BISHOP_MG[to_square / 8][to_square % 8]
+            - PSQT_BISHOP_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_BISHOP_EG[to_square / 8][to_square % 8]
+            - PSQT_BISHOP_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::King = piece {
+        psqt_mg_plus += PSQT_KING_MG[to_square / 8][to_square % 8]
+            - PSQT_KING_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_KING_EG[to_square / 8][to_square % 8]
+            - PSQT_KING_EG[from_square / 8][from_square % 8];
+    }
+    if is_black {
+        psqt_mg_plus *= -1;
+        psqt_eg_plus *= -1;
+    }
+    (psqt_mg + psqt_mg_plus, psqt_eg + psqt_eg_plus)
+}
+
+#[inline(always)]
+pub fn psqt_incremental_delete_piece(
+    piece: &PieceType,
+    mut from_square: usize,
+    is_black: bool,
+    psqt_mg: i16,
+    psqt_eg: i16,
+) -> (i16, i16) {
+    if is_black {
+        from_square = 63 - from_square;
+    }
+    let mut psqt_mg_plus = 0;
+    let mut psqt_eg_plus = 0;
+    if let PieceType::Pawn = piece {
+        psqt_mg_plus += -PSQT_PAWN_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += -PSQT_PAWN_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::Knight = piece {
+        psqt_mg_plus += -PSQT_KNIGHT_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += -PSQT_KNIGHT_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::Bishop = piece {
+        psqt_mg_plus += -PSQT_BISHOP_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += -PSQT_BISHOP_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::King = piece {
+        psqt_mg_plus += -PSQT_KING_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += -PSQT_KING_EG[from_square / 8][from_square % 8];
+    }
+    if is_black {
+        psqt_mg_plus *= -1;
+        psqt_eg_plus *= -1;
+    }
+    (psqt_mg + psqt_mg_plus, psqt_eg + psqt_eg_plus)
+}
+
+#[inline(always)]
+pub fn psqt_incremental_add_piece(
+    piece: &PieceType,
+    mut from_square: usize,
+    is_black: bool,
+    psqt_mg: i16,
+    psqt_eg: i16,
+) -> (i16, i16) {
+    if is_black {
+        from_square = 63 - from_square;
+    }
+    let mut psqt_mg_plus = 0;
+    let mut psqt_eg_plus = 0;
+    if let PieceType::Pawn = piece {
+        psqt_mg_plus += PSQT_PAWN_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_PAWN_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::Knight = piece {
+        psqt_mg_plus += PSQT_KNIGHT_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_KNIGHT_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::Bishop = piece {
+        psqt_mg_plus += PSQT_BISHOP_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_BISHOP_EG[from_square / 8][from_square % 8];
+    } else if let PieceType::King = piece {
+        psqt_mg_plus += PSQT_KING_MG[from_square / 8][from_square % 8];
+        psqt_eg_plus += PSQT_KING_EG[from_square / 8][from_square % 8];
+    }
+    if is_black {
+        psqt_mg_plus *= -1;
+        psqt_eg_plus *= -1;
+    }
+    (psqt_mg + psqt_mg_plus, psqt_eg + psqt_eg_plus)
+}
+
+pub fn psqt_slow(pieces: &[[u64; 2]; 6]) -> (i16, i16) {
+    let pieces = pieces.clone();
     let mut mg_res = 0;
     let mut eg_res = 0;
     let pawns_white = eval_pawns(pieces[0][0], false);
     let pawns_black = eval_pawns(pieces[0][1], true);
-    let knights_white = eval_pawns(pieces[1][0], false);
-    let knights_black = eval_pawns(pieces[1][1], true);
-    let bishops_white = eval_pawns(pieces[2][0], false);
-    let bishops_black = eval_pawns(pieces[2][1], true);
-    let king_white = eval_pawns(pieces[5][0], false);
-    let king_black = eval_pawns(pieces[5][1], true);
+    let knights_white = eval_knights(pieces[1][0], false);
+    let knights_black = eval_knights(pieces[1][1], true);
+    let bishops_white = eval_bishops(pieces[2][0], false);
+    let bishops_black = eval_bishops(pieces[2][1], true);
+    let king_white = eval_king(pieces[5][0], false);
+    let king_black = eval_king(pieces[5][1], true);
     mg_res += pawns_white.0 - pawns_black.0 + knights_white.0 - knights_black.0 + bishops_white.0
         - bishops_black.0
         + king_white.0

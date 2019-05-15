@@ -119,12 +119,6 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     let black_queen_eval = queen_eval(b_queens);
     let white_king_eval = king_eval(w_king, w_pawns, b_pawns, true, g.full_moves);
     let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false, g.full_moves);
-    let white_psqt_eval = psqt_eval(
-        w_pawns, w_knights, w_bishops, w_rooks, w_queens, w_king, true,
-    );
-    let black_psqt_eval = psqt_eval(
-        b_pawns, b_knights, b_bishops, b_rooks, b_queens, b_king, false,
-    );
     let white_piecewise_eval = piecewise_eval(w_pawns, w_rooks, w_bishops, true, all_pawns);
     let black_piecewise_eval = piecewise_eval(b_pawns, b_rooks, b_bishops, false, all_pawns);
 
@@ -174,12 +168,6 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
         mut white_king_eval_eg,
         mut black_king_eval_mg,
         mut black_king_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_psqt_eval_mg,
-        mut white_psqt_eval_eg,
-        mut black_psqt_eval_mg,
-        mut black_psqt_eval_eg,
     ) = (0, 0, 0, 0);
     let (
         mut white_piecewise_eval_mg,
@@ -241,12 +229,6 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
             let _e = black_passed_eval.eval_mg_eg();
             black_passed_eval_mg = _e.0;
             black_passed_eval_eg = _e.1;
-            let _e = white_psqt_eval.eval_mg_eg();
-            white_psqt_eval_mg = _e.0;
-            white_psqt_eval_eg = _e.1;
-            let _e = black_psqt_eval.eval_mg_eg();
-            black_psqt_eval_mg = _e.0;
-            black_psqt_eval_eg = _e.1;
             let _e = white_piecewise_eval.eval_mg_eg();
             white_piecewise_eval_mg = _e.0;
             white_piecewise_eval_eg = _e.1;
@@ -256,23 +238,19 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
         } else if phase == 0.0 {
             white_passed_eval_eg = white_passed_eval.eval_eg();
             black_passed_eval_eg = black_passed_eval.eval_eg();
-            white_psqt_eval_eg = white_psqt_eval.eval_eg();
-            black_psqt_eval_eg = black_psqt_eval.eval_eg();
             white_piecewise_eval_eg = white_piecewise_eval.eval_eg();
             black_piecewise_eval_eg = black_piecewise_eval.eval_eg();
         } else if phase == 128.0 {
             white_passed_eval_mg = white_passed_eval.eval_mg();
             black_passed_eval_mg = black_passed_eval.eval_mg();
-            white_psqt_eval_mg = white_psqt_eval.eval_mg();
-            black_psqt_eval_mg = black_psqt_eval.eval_mg();
             white_piecewise_eval_mg = white_piecewise_eval.eval_mg();
             black_piecewise_eval_mg = black_piecewise_eval.eval_mg();
         }
         mg_eval += white_passed_eval_mg - black_passed_eval_mg;
-        mg_eval += white_psqt_eval_mg - black_psqt_eval_mg;
+        mg_eval += g.psqt_mg;
         mg_eval += white_piecewise_eval_mg - black_piecewise_eval_mg;
         eg_eval += white_passed_eval_eg - black_passed_eval_eg;
-        eg_eval += white_psqt_eval_eg - black_psqt_eval_eg;
+        eg_eval += g.psqt_eg;
         eg_eval += white_piecewise_eval_eg - black_piecewise_eval_eg;
     }
     if g.color_to_move == 0 {
@@ -285,6 +263,18 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     //Phasing is done the same way stockfish does it
     let res = ((mg_eval as f64 * phase + eg_eval as f64 * (128.0 - phase)) / 128.0) as i16;
     if verbose {
+        let white_psqt_eval = psqt_eval(
+            w_pawns, w_knights, w_bishops, w_rooks, w_queens, w_king, true,
+        );
+        let black_psqt_eval = psqt_eval(
+            b_pawns, b_knights, b_bishops, b_rooks, b_queens, b_king, false,
+        );
+        let _e = white_psqt_eval.eval_mg_eg();
+        let white_psqt_eval_mg = _e.0;
+        let white_psqt_eval_eg = _e.1;
+        let _e = black_psqt_eval.eval_mg_eg();
+        let black_psqt_eval_mg = _e.0;
+        let black_psqt_eval_eg = _e.1;
         make_log(
             &white_pawns_eval,
             white_pawns_eval_mg,

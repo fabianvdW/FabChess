@@ -2,6 +2,9 @@ use super::super::bitboards;
 use super::super::board_representation::game_state::{self, GameMove, GameMoveType, PieceType};
 use super::super::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use super::magic::{self, Magic};
+use crate::evaluation::psqt_evaluation::{
+    psqt_incremental_add_piece, psqt_incremental_delete_piece, psqt_incremental_move_piece,
+};
 
 //Move GEn
 //King- Piece-Wise by lookup
@@ -117,6 +120,8 @@ pub fn add_capture_moves(
 
 //Make moves
 pub fn make_move(g: &game_state::GameState, mv: &game_state::GameMove) -> game_state::GameState {
+    //println!("Making move: {:?}", mv);
+    //println!("Move is made on state:\n {}", g);
     match &mv.move_type {
         GameMoveType::Quiet => make_quiet_move(&g, &mv),
         GameMoveType::Capture(piece) => make_capture_move(&g, &mv, &piece),
@@ -343,6 +348,8 @@ pub fn make_nullmove(g: &game_state::GameState) -> game_state::GameState {
         half_moves,
         full_moves,
         hash,
+        psqt_mg: g.psqt_mg,
+        psqt_eg: g.psqt_eg,
     }
 }
 
@@ -411,6 +418,14 @@ pub fn make_quiet_move(
         castle_black_queenside,
         hash,
     );
+    let psqt = psqt_incremental_move_piece(
+        &mv.piece_type,
+        mv.from,
+        mv.to,
+        g.color_to_move == 1,
+        g.psqt_mg,
+        g.psqt_eg,
+    );
     game_state::GameState {
         color_to_move,
         pieces,
@@ -422,6 +437,8 @@ pub fn make_quiet_move(
         half_moves,
         full_moves,
         hash,
+        psqt_mg: psqt.0,
+        psqt_eg: psqt.1,
     }
 }
 
@@ -495,6 +512,16 @@ pub fn make_capture_move(
         hash,
     );
     hash = delete_piece_hash(mv.to, color_to_move, &captured_piece, hash);
+    let psqt = psqt_incremental_move_piece(
+        &mv.piece_type,
+        mv.from,
+        mv.to,
+        g.color_to_move == 1,
+        g.psqt_mg,
+        g.psqt_eg,
+    );
+    let psqt =
+        psqt_incremental_delete_piece(&captured_piece, mv.to, g.color_to_move != 1, psqt.0, psqt.1);
     game_state::GameState {
         color_to_move,
         pieces,
@@ -506,6 +533,8 @@ pub fn make_capture_move(
         half_moves,
         full_moves,
         hash,
+        psqt_mg: psqt.0,
+        psqt_eg: psqt.1,
     }
 }
 
@@ -549,6 +578,21 @@ pub fn make_enpassant_move(
         hash,
     );
     hash = delete_piece_hash(delete_square, color_to_move, &PieceType::Pawn, hash);
+    let psqt = psqt_incremental_move_piece(
+        &mv.piece_type,
+        mv.from,
+        mv.to,
+        g.color_to_move == 1,
+        g.psqt_mg,
+        g.psqt_eg,
+    );
+    let psqt = psqt_incremental_delete_piece(
+        &PieceType::Pawn,
+        delete_square,
+        g.color_to_move != 1,
+        psqt.0,
+        psqt.1,
+    );
     game_state::GameState {
         color_to_move,
         pieces,
@@ -560,6 +604,8 @@ pub fn make_enpassant_move(
         half_moves,
         full_moves,
         hash,
+        psqt_mg: psqt.0,
+        psqt_eg: psqt.1,
     }
 }
 
@@ -625,6 +671,38 @@ pub fn make_castle_move(
         castle_black_queenside,
         hash,
     );
+    let psqt = psqt_incremental_move_piece(
+        &mv.piece_type,
+        mv.from,
+        mv.to,
+        g.color_to_move == 1,
+        g.psqt_mg,
+        g.psqt_eg,
+    );
+    let psqt = psqt_incremental_move_piece(
+        &PieceType::Rook,
+        if mv.to == 58 {
+            56
+        } else if mv.to == 2 {
+            0
+        } else if mv.to == 62 {
+            63
+        } else {
+            7
+        },
+        if mv.to == 58 {
+            59
+        } else if mv.to == 2 {
+            3
+        } else if mv.to == 62 {
+            61
+        } else {
+            5
+        },
+        g.color_to_move == 1,
+        psqt.0,
+        psqt.1,
+    );
     game_state::GameState {
         color_to_move,
         pieces,
@@ -636,6 +714,8 @@ pub fn make_castle_move(
         half_moves,
         full_moves,
         hash,
+        psqt_mg: psqt.0,
+        psqt_eg: psqt.1,
     }
 }
 
@@ -741,6 +821,26 @@ pub fn make_promotion_move(
         castle_black_queenside,
         hash,
     );
+    let psqt = psqt_incremental_delete_piece(
+        &mv.piece_type,
+        mv.from,
+        g.color_to_move == 1,
+        g.psqt_mg,
+        g.psqt_eg,
+    );
+    let mut psqt = psqt_incremental_add_piece(
+        &(match mv.move_type {
+            GameMoveType::Promotion(typ, _) => typ,
+            _ => panic!("Invalid move type in make move promotion"),
+        }),
+        mv.to,
+        g.color_to_move == 1,
+        psqt.0,
+        psqt.1,
+    );
+    if let Some(piece) = captured_piece {
+        psqt = psqt_incremental_delete_piece(piece, mv.to, g.color_to_move != 1, psqt.0, psqt.1)
+    }
     game_state::GameState {
         color_to_move,
         pieces,
@@ -752,6 +852,8 @@ pub fn make_promotion_move(
         half_moves,
         full_moves,
         hash,
+        psqt_mg: psqt.0,
+        psqt_eg: psqt.1,
     }
 }
 
