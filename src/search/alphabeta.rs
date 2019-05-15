@@ -10,8 +10,8 @@ use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-pub const MATE_SCORE: i16 = 30000;
-pub const MATED_IN_MAX: i16 = -29000;
+pub const MATE_SCORE: i16 = 15000;
+pub const MATED_IN_MAX: i16 = -14000;
 pub const HH_INCREMENT: usize = 1;
 pub const BF_INCREMENT: usize = 1;
 pub const MAX_SEARCH_DEPTH: usize = 100;

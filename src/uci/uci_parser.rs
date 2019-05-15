@@ -116,14 +116,10 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
     let mut winc: u64 = 0;
     let mut binc: u64 = 0;
     if cmd[0].to_lowercase() == "infinite" {
-        wtime = 0u64;
-        btime = 0u64;
-        winc = u64::MAX;
-        binc = u64::MAX;
         if engine.internal_state.color_to_move == 0 {
-            return TimeControl::Incremental(wtime, winc);
+            return TimeControl::Infinite;
         } else {
-            return TimeControl::Incremental(btime, binc);
+            return TimeControl::Infinite;
         }
     }
     let mut index = 0;

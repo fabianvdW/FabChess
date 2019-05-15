@@ -23,6 +23,7 @@ pub struct Search {
 pub enum TimeControl {
     Incremental(u64, u64),
     MoveTime(u64),
+    Infinite,
 }
 
 impl TimeControl {
@@ -32,6 +33,8 @@ impl TimeControl {
                 || time_spent > (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
         } else if let TimeControl::MoveTime(move_time) = self {
             return time_spent > move_time - MOVE_OVERHEAD || *move_time < MOVE_OVERHEAD;
+        } else if let TimeControl::Infinite = self {
+            return false;
         }
         panic!("Invalid Timecontrol");
     }
@@ -74,8 +77,8 @@ impl Search {
             let mut pv;
             if d == 1 {
                 pv = principal_variation_search(
-                    -30000,
-                    30000,
+                    -16000,
+                    16000,
                     d,
                     &game_state,
                     if game_state.color_to_move == 0 { 1 } else { -1 },
@@ -114,14 +117,14 @@ impl Search {
                     }
                     if pv.score <= alpha {
                         if alpha < -10000 {
-                            alpha = -32000;
+                            alpha = -16000;
                         } else {
                             alpha -= delta;
                         }
                     }
                     if pv.score >= beta {
                         if beta > 10000 {
-                            beta = 32000;
+                            beta = 16000;
                         } else {
                             beta += delta;
                         }

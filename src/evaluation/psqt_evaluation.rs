@@ -1,3 +1,4 @@
+use super::GameState;
 use super::{EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
 const PSQT_PAWN_MG: [[i16; 8]; 8] = [
@@ -373,4 +374,88 @@ pub fn psqt_eval(
     is_white: bool,
 ) -> PSQT {
     PSQT::new(pawns, knights, bishops, rooks, queens, king, is_white)
+}
+
+pub fn psqt_slow(game_state: &GameState) -> (i16, i16) {
+    let pieces = game_state.pieces.clone();
+    let mut mg_res = 0;
+    let mut eg_res = 0;
+    let pawns_white = eval_pawns(pieces[0][0], false);
+    let pawns_black = eval_pawns(pieces[0][1], true);
+    let knights_white = eval_pawns(pieces[1][0], false);
+    let knights_black = eval_pawns(pieces[1][1], true);
+    let bishops_white = eval_pawns(pieces[2][0], false);
+    let bishops_black = eval_pawns(pieces[2][1], true);
+    let king_white = eval_pawns(pieces[5][0], false);
+    let king_black = eval_pawns(pieces[5][1], true);
+    mg_res += pawns_white.0 - pawns_black.0 + knights_white.0 - knights_black.0 + bishops_white.0
+        - bishops_black.0
+        + king_white.0
+        - king_black.0;
+    eg_res += pawns_white.1 - pawns_black.1 + knights_white.1 - knights_black.1 + bishops_white.1
+        - bishops_black.1
+        + king_white.1
+        - king_black.1;
+    (mg_res, eg_res)
+}
+
+#[inline(always)]
+pub fn eval_pawns(mut pawns: u64, is_black: bool) -> (i16, i16) {
+    let mut mg_res = 0;
+    let mut eg_res = 0;
+    while pawns != 0u64 {
+        let mut idx = pawns.trailing_zeros() as usize;
+        pawns ^= 1 << idx;
+        if is_black {
+            idx = 63 - idx;
+        }
+        mg_res += PSQT_PAWN_MG[idx / 8][idx % 8];
+        eg_res += PSQT_PAWN_EG[idx / 8][idx % 8];
+    }
+    (mg_res, eg_res)
+}
+
+#[inline(always)]
+pub fn eval_knights(mut knights: u64, is_black: bool) -> (i16, i16) {
+    let mut mg_res = 0;
+    let mut eg_res = 0;
+    while knights != 0u64 {
+        let mut idx = knights.trailing_zeros() as usize;
+        knights ^= 1 << idx;
+        if is_black {
+            idx = 63 - idx;
+        }
+        mg_res += PSQT_KNIGHT_MG[idx / 8][idx % 8];
+        eg_res += PSQT_KNIGHT_EG[idx / 8][idx % 8];
+    }
+    (mg_res, eg_res)
+}
+
+#[inline(always)]
+pub fn eval_bishops(mut bishops: u64, is_black: bool) -> (i16, i16) {
+    let mut mg_res = 0;
+    let mut eg_res = 0;
+    while bishops != 0u64 {
+        let mut idx = bishops.trailing_zeros() as usize;
+        bishops ^= 1 << idx;
+        if is_black {
+            idx = 63 - idx;
+        }
+        mg_res += PSQT_BISHOP_MG[idx / 8][idx % 8];
+        eg_res += PSQT_BISHOP_EG[idx / 8][idx % 8];
+    }
+    (mg_res, eg_res)
+}
+
+#[inline(always)]
+pub fn eval_king(king: u64, is_black: bool) -> (i16, i16) {
+    let mut mg_res = 0;
+    let mut eg_res = 0;
+    let mut idx = king.trailing_zeros() as usize;
+    if is_black {
+        idx = 63 - idx;
+    }
+    mg_res += PSQT_KING_MG[idx / 8][idx % 8];
+    eg_res += PSQT_KING_EG[idx / 8][idx % 8];
+    (mg_res, eg_res)
 }
