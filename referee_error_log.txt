@@ -1,2 +1,0 @@
-Player 2 didn't send bestmove in time in game 1160! He had 148ms left!
-StdERR of child: 

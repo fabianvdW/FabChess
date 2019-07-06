@@ -370,6 +370,13 @@ impl Iterator for PGNParser {
                     break;
                 }
             }
+            if let Err(e) = &res {
+                if e.description()
+                    .contains("stream did not contain valid UTF-8")
+                {
+                    res = Ok(0);
+                }
+            }
         }
         if res_str.len() != 0 {
             Some(res_str.replace("\r\n\r\n", "*_*").replace("\r\n", " "))

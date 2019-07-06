@@ -1,9 +1,14 @@
 extern crate core;
+extern crate serde;
+extern crate serde_json;
 extern crate tokio;
 extern crate tokio_io;
 extern crate tokio_process;
+
 use core::search::search::TimeControl;
+use serde::{Deserialize, Serialize};
 use std::env;
+use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
 
@@ -14,20 +19,6 @@ pub mod queue;
 pub mod selfplay;
 pub mod selfplay_splitter;
 pub mod suit;
-
-const STD_PROCESSORS: usize = 4;
-const STD_GAMES: usize = 1000;
-const MODE: usize = 0;
-const PLAYER1_STD_PATH: &str = "./target/release/schach_reworked.exe";
-const PLAYER2_STD_PATH: &str = "./versions/FabChessv1.2.exe";
-const LCT2_PATH: &str = "./testsuites/lct2.epd";
-const SUIT_PATH: &str = "./testsuites/sts.epd";
-const OPENING_DB: &str = "./O-Deville/o-deville.pgn";
-const LOAD_UNTIL_PLY: usize = 8;
-
-const TIMECONTROL_TIME: u64 = 10000;
-const TIMECONTROL_INC: u64 = 100;
-const TIMECONTROL_MOVETIME_SUIT: u64 = 1000;
 
 //STS
 pub const STS_SUB_SUITS: [&str; 15] = [
@@ -47,6 +38,26 @@ pub const STS_SUB_SUITS: [&str; 15] = [
     "7th Rank",
     "STS(v15.0) AT",
 ];
+
+#[derive(Serialize, Deserialize)]
+struct Config {
+    processors: usize,
+    selfplaytests: bool,
+    games: usize,
+    engine1_path: String,
+    engine2_path: String,
+    opening_databases: Vec<String>,
+    opening_load_untilply: usize,
+    timecontrol_engine1_time: u64,
+    timecontrol_engine1_inc: u64,
+    timecontrol_engine2_time: u64,
+    timecontrol_engine2_inc: u64,
+    testsuitetests: bool,
+    suite_path: String,
+    suite_movetime: u64,
+    lct2tests: bool,
+    lct2_path: String,
+}
 /*
 Error-Margin in +/- (95% Confidence)
 Games   :    100    200    400    600    1000    1500    2000    3000    4000     10000
@@ -64,109 +75,53 @@ Win/Elo Gain:-------------------------------------------------------------------
 0.7 /147.19  82.78  56.41  38.97  31.52  24.19   19.64   16.96   13.79   11.91    7.50
 */
 fn main() {
-    let mut games = STD_GAMES;
-    let mut processors = STD_PROCESSORS;
-    let mut mode = MODE;
-    let mut player1path = PLAYER1_STD_PATH;
-    let mut player2path = PLAYER2_STD_PATH;
-    let mut path_to_suit = SUIT_PATH;
-    let mut path_to_opening_db = OPENING_DB;
-    let mut opening_load_until = LOAD_UNTIL_PLY;
-    let mut timecontrol_p1_time = TIMECONTROL_TIME;
-    let mut timecontrol_p2_time = TIMECONTROL_TIME;
-    let mut timecontrol_p1_inc = TIMECONTROL_INC;
-    let mut timecontrol_p2_inc = TIMECONTROL_INC;
-    let mut movetime_suit = TIMECONTROL_MOVETIME_SUIT;
+    let mut config_path = "REFEREE_CONFIG.json";
     let args: Vec<String> = env::args().collect();
-    let mut index: usize = 0;
+    let mut index: usize = 1;
     while index < args.len() {
         match &args[index][..] {
-            "lct2" => {
-                path_to_suit = LCT2_PATH;
-                mode = 1;
-                index += 1;
-                continue;
-            }
-            "suit" => {
-                path_to_suit = SUIT_PATH;
-                mode = 2;
-                index += 1;
-                continue;
-            }
-            "processors" | "p" => {
-                processors = args[index + 1].parse::<usize>().unwrap();
-            }
-            "games" => {
-                games = args[index + 1].parse::<usize>().unwrap();
-            }
-            "player1" | "p1" => {
-                player1path = &args[index + 1];
-            }
-            "player2" | "p2" => {
-                player2path = &args[index + 1];
-            }
-            "suitpath" => {
-                path_to_suit = &args[index + 1];
-            }
-            "suittc" => {
-                movetime_suit = args[index + 1].parse::<u64>().unwrap();
-            }
-            "opening" | "openingdb" | "o" => {
-                path_to_opening_db = &args[index + 1];
-            }
-            "oload" | "openingload" | "loaduntil" => {
-                opening_load_until = args[index + 1].parse::<usize>().unwrap();
-            }
-            "p1inc" | "tcp1inc" | "incp1" | "ip1" => {
-                timecontrol_p1_inc = args[index + 1].parse::<u64>().unwrap();
-            }
-            "p2inc" | "tcp2inc" | "incp2" | "ip2" => {
-                timecontrol_p2_inc = args[index + 1].parse::<u64>().unwrap();
-            }
-            "p1time" | "tcp1time" | "timep1" | "tp1" => {
-                timecontrol_p1_time = args[index + 1].parse::<u64>().unwrap();
-            }
-            "p2time" | "tcp2time" | "timep2" | "tp2" => {
-                timecontrol_p2_time = args[index + 1].parse::<u64>().unwrap();
-            }
-            "timecontroldouble" | "tcd" => {
-                timecontrol_p1_inc *= 2;
-                timecontrol_p2_inc *= 2;
-                timecontrol_p1_time *= 2;
-                timecontrol_p2_time *= 2;
-                index += 1;
-                continue;
-            }
-            "timecontrolincrease" | "tci" => {
-                timecontrol_p1_inc += TIMECONTROL_INC;
-                timecontrol_p2_inc += TIMECONTROL_INC;
-                timecontrol_p1_time += TIMECONTROL_TIME;
-                timecontrol_p2_time += TIMECONTROL_TIME;
-                index += 1;
+            "config" => {
+                config_path = &args[index + 1];
+                index += 2;
                 continue;
             }
             _ => {
+                println!(
+                    "Invalid argument {}, use config CONFIG_FILE to specify",
+                    &args[index]
+                );
                 index += 1;
-                continue;
             }
         }
-        index += 2;
     }
-    if mode == 0 {
+    let config_content = fs::read_to_string(config_path).expect("Unable to read config file!");
+    let config: Config = serde_json::from_str(&config_content).unwrap();
+    if config.selfplaytests {
         selfplay_splitter::start_self_play(
-            player1path,
-            player2path,
-            processors,
-            games,
-            path_to_opening_db,
-            opening_load_until,
-            TimeControl::Incremental(timecontrol_p1_time, timecontrol_p1_inc),
-            TimeControl::Incremental(timecontrol_p2_time, timecontrol_p2_inc),
+            &config.engine1_path,
+            &config.engine2_path,
+            config.processors,
+            config.games,
+            config.opening_databases,
+            config.opening_load_untilply,
+            TimeControl::Incremental(
+                config.timecontrol_engine1_time,
+                config.timecontrol_engine1_inc,
+            ),
+            TimeControl::Incremental(
+                config.timecontrol_engine2_time,
+                config.timecontrol_engine2_inc,
+            ),
         );
-    } else if mode == 1 {
-        lct2::lct2(player1path, processors, path_to_suit);
-    } else if mode == 2 {
-        suit::start_suit(player1path, processors, path_to_suit, movetime_suit);
+    } else if config.lct2tests {
+        lct2::lct2(&config.engine1_path, config.processors, &config.lct2_path);
+    } else if config.testsuitetests {
+        suit::start_suit(
+            &config.engine1_path,
+            config.processors,
+            &config.suite_path,
+            config.suite_movetime,
+        );
     }
 }
 pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {

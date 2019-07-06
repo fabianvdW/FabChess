@@ -1,5 +1,3 @@
 cargo rustc --release --bin referee -- -C target-cpu=skylake
-cd target
-cd release
-referee.exe
+"./target/release/referee.exe" config REFEREE_CONFIG.json
 pause

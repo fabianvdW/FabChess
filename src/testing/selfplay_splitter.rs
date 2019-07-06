@@ -14,13 +14,22 @@ pub fn start_self_play(
     p2: &str,
     processors: usize,
     games: usize,
-    opening_db: &str,
+    opening_db: Vec<String>,
     opening_load_until: usize,
     tcp1: TimeControl,
     tcp2: TimeControl,
 ) {
-    let db: Vec<GameState> = load_db_until(opening_db, opening_load_until);
-    println!("Loaded database! Preparing games...");
+    let mut db: Vec<GameState> = vec![];
+    for database in opening_db {
+        db.append(&mut load_db_until(&database, opening_load_until));
+    }
+    println!(
+        "{}",
+        &format!(
+            "Loaded database with {} games found! Preparing games...",
+            db.len()
+        )
+    );
     let queue: Arc<ThreadSafeQueue<PlayTask>> = Arc::new(load_openings_into_queue(games / 2, db));
     println!("Games prepared! Starting...");
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
