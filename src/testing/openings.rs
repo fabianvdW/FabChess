@@ -14,8 +14,10 @@ pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
         pgn_parser: PGNParser { reader },
     };
     for game in parser {
-        let state: GameState = game.1[until].clone();
-        res.push(state);
+        if game.1.len() > until {
+            let state: GameState = game.1[until].clone();
+            res.push(state);
+        }
     }
     res
 }

@@ -1,0 +1,9 @@
+Referee:
+Remove constants from referee.rs -> Replace with config file
+Allow for several opening files to be loaded
+
+FabChess:
+Clean up movegen code
+Reuse bitboards generated in movegen for evaluation
+Try: Make/Unmake
+In Search: Don't move movelist into GradedMove. GradedMove now has attribute mv: usize which represents index in movelist. Movelist now is never mutable and can thus be referenced and doesn't need to be moved.
