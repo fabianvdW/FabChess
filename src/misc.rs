@@ -57,6 +57,8 @@ pub fn parse_pgn_find_static_eval_mistakes() {
         let reader = BufReader::new(file);
         let parser = GameParser {
             pgn_parser: PGNParser { reader },
+            is_opening: false,
+            opening_load_untilply: 0usize,
         };
         for _game in parser.into_iter() {
             let last_game_state = &_game.1[_game.1.len() - 1];
@@ -81,6 +83,8 @@ pub fn parse_pgn_find_static_eval_mistakes() {
 
 pub struct GameParser {
     pub pgn_parser: PGNParser,
+    pub is_opening: bool,
+    pub opening_load_untilply: usize,
 }
 
 impl Iterator for GameParser {
@@ -93,29 +97,38 @@ impl Iterator for GameParser {
         match next {
             None => None,
             Some(res) => {
-                let game = res.split("*_*").collect::<Vec<&str>>()[1];
-                if game.contains("--") {
+                let game = res.replace("\r", "").replace("\n", " ");
+                if game.contains("--") || game.contains("*") || game.contains("..") {
                     //Invalid state
                     return Some((vec_res, vec_gs, -2));
                 }
                 //log(&format!("{}\n", game));
                 let moves = game.split(" ").collect::<Vec<&str>>();
-                for idx in 0..moves.len() - 1 {
-                    let move_str = moves[idx].rsplit(".").collect::<Vec<&str>>()[0];
+                for idx in 0..moves.len() - 2 {
+                    let mut move_str = moves[idx];
+                    if move_str.contains(".") {
+                        move_str = move_str.rsplit(".").collect::<Vec<&str>>()[0];
+                    }
                     if move_str.len() == 0 {
                         continue;
                     }
+                    //println!("{} || len: {}", move_str, move_str.len());
                     let parsed_move =
                         parse_move(&vec_gs[vec_gs.len() - 1], &mut String::from(move_str));
                     vec_gs.push(parsed_move.1);
-                    vec_res.push(parsed_move.0)
+                    vec_res.push(parsed_move.0);
+                    if self.is_opening && vec_res.len() == self.opening_load_untilply {
+                        break;
+                    }
                 }
-                let last_elem = moves[moves.len() - 1];
+                let last_elem = moves[moves.len() - 2];
                 let mut score = 0;
                 if last_elem == "1-0" {
                     score = 1;
                 } else if last_elem == "0-1" {
                     score = -1;
+                } else {
+                    assert!(last_elem == "1/2-1/2");
                 }
                 Some((vec_res, vec_gs, score))
             }
@@ -355,31 +368,44 @@ impl Iterator for PGNParser {
         let mut res_str = String::new();
         let mut line = String::new();
         let mut res = self.reader.read_line(&mut line);
-        let mut state = 0;
         while match res {
             Err(_e) => false,
             Ok(_e) => true,
         } {
+            if line.contains("1.") && !line.contains("[") {
+                loop {
+                    res_str.push_str(&line);
+                    if res_str.contains("1-0")
+                        || res_str.contains("0-1")
+                        || res_str.contains("1/2-1/2")
+                        || res_str.contains("*")
+                    {
+                        break;
+                    }
+                    line = String::new();
+                    self.reader
+                        .read_line(&mut line)
+                        .expect("Reader had an error reading moves of game!");
+                }
+                break;
+            }
             line = String::new();
             res = self.reader.read_line(&mut line);
-            res_str += &line;
-            if line.trim().len() == 0usize {
-                if state == 0 {
-                    state += 1;
-                } else {
-                    break;
-                }
-            }
             if let Err(e) = &res {
                 if e.description()
                     .contains("stream did not contain valid UTF-8")
                 {
-                    res = Ok(0);
+                    res = Ok(1);
+                }
+            }
+            if let Ok(e) = &res {
+                if *e == 0usize {
+                    break;
                 }
             }
         }
         if res_str.len() != 0 {
-            Some(res_str.replace("\r\n\r\n", "*_*").replace("\r\n", " "))
+            Some(res_str)
         } else {
             None
         }

@@ -663,6 +663,8 @@ mod tests {
             let reader = BufReader::new(file);
             let parser = GameParser {
                 pgn_parser: PGNParser { reader },
+                is_opening: false,
+                opening_load_untilply: 0usize,
             };
             for _game in parser.into_iter() {
                 //println!("{}", game.1);
