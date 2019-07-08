@@ -2197,7 +2197,7 @@ pub fn add_pin_moves_to_movelist(
     enemy_queens: u64,
     other_pinner_piece_type: PieceType,
 ) -> bool {
-    let pin_quiet_targets = ray_to_king & push_mask;
+    let pin_quiet_targets = ray_to_king & push_mask & !(1u64 << pinned_piece_position);
     let pin_capture_possible = (capture_mask & enemy_pinner) != 0u64;
     let haslegalmove = pin_capture_possible || pin_quiet_targets != 0u64;
     if !only_captures {
@@ -2750,7 +2750,7 @@ pub fn generate_moves2(
                 add_move_to_movelist(
                     &mut legal_moves,
                     pinned_piece_position,
-                    enemy_bishop_position,
+                    stm_pawn_pin_target.trailing_zeros() as usize,
                     PieceType::Pawn,
                     GameMoveType::EnPassant,
                 );
@@ -2863,7 +2863,7 @@ pub fn generate_moves2(
         pinned_pieces,
     );
     //En-Passants
-    let stm_pawn_west_enpassants = stm_pawn_west_captures
+    let stm_pawn_west_enpassants = abb.stm_pawns_westattack
         & g.en_passant
         & if stm_color_iswhite {
             capture_mask << 8
@@ -2872,25 +2872,34 @@ pub fn generate_moves2(
         };
     if stm_pawn_west_enpassants != 0u64
         && if stm_color_iswhite {
-            stm_pawn_west_enpassants << 7
-        } else {
             stm_pawn_west_enpassants >> 7
+        } else {
+            stm_pawn_west_enpassants << 7
         } & pinned_pieces
             == 0u64
     {
         let pawn_index = stm_pawn_west_enpassants.trailing_zeros() as usize;
-        stm_haslegalmove = true;
-        add_move_to_movelist(
-            &mut legal_moves,
-            if stm_color_iswhite {
-                pawn_index - 7
-            } else {
-                pawn_index + 7
-            },
-            pawn_index,
-            PieceType::Pawn,
-            GameMoveType::EnPassant,
-        );
+        let (pawn_from, removed_piece_index) = if stm_color_iswhite {
+            (pawn_index - 7, pawn_index - 8)
+        } else {
+            (pawn_index + 7, pawn_index + 8)
+        };
+        let all_pieces_without_en_passants =
+            abb.all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
+        if rook_attack(stm_king_index, all_pieces_without_en_passants)
+            & bitboards::RANKS[stm_king_index / 8]
+            & enemy_rooks
+            == 0u64
+        {
+            stm_haslegalmove = true;
+            add_move_to_movelist(
+                &mut legal_moves,
+                pawn_from,
+                pawn_index,
+                PieceType::Pawn,
+                GameMoveType::EnPassant,
+            );
+        }
     }
     //5.4 East captures (normal capture, promotion capture, en-passant)
     let stm_pawn_east_captures = abb.stm_pawns_eastattack & capture_mask & abb.enemy_pieces;
@@ -2928,7 +2937,7 @@ pub fn generate_moves2(
         pinned_pieces,
     );
     //En-Passants
-    let stm_pawn_east_enpassants = stm_pawn_east_captures
+    let stm_pawn_east_enpassants = abb.stm_pawns_eastattack
         & g.en_passant
         & if stm_color_iswhite {
             capture_mask << 8
@@ -2937,25 +2946,34 @@ pub fn generate_moves2(
         };
     if stm_pawn_east_enpassants != 0u64
         && if stm_color_iswhite {
-            stm_pawn_east_enpassants << 9
-        } else {
             stm_pawn_east_enpassants >> 9
+        } else {
+            stm_pawn_east_enpassants << 9
         } & pinned_pieces
             == 0u64
     {
         let pawn_index = stm_pawn_east_enpassants.trailing_zeros() as usize;
-        stm_haslegalmove = true;
-        add_move_to_movelist(
-            &mut legal_moves,
-            if stm_color_iswhite {
-                pawn_index - 9
-            } else {
-                pawn_index + 9
-            },
-            pawn_index,
-            PieceType::Pawn,
-            GameMoveType::EnPassant,
-        );
+        let (pawn_from, removed_piece_index) = if stm_color_iswhite {
+            (pawn_index - 9, pawn_index - 8)
+        } else {
+            (pawn_index + 9, pawn_index + 8)
+        };
+        let all_pieces_without_en_passants =
+            abb.all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
+        if rook_attack(stm_king_index, all_pieces_without_en_passants)
+            & bitboards::RANKS[stm_king_index / 8]
+            & enemy_rooks
+            == 0u64
+        {
+            stm_haslegalmove = true;
+            add_move_to_movelist(
+                &mut legal_moves,
+                pawn_from,
+                pawn_index,
+                PieceType::Pawn,
+                GameMoveType::EnPassant,
+            );
+        }
     }
 
     //----------------------------------------------------------------------
@@ -3036,7 +3054,7 @@ pub fn generate_moves2(
     //----------------------------------------------------------------------
     //**********************************************************************
     //7. Castling
-    if !only_captures || !stm_haslegalmove && checkers == 0 {
+    if (!only_captures || !stm_haslegalmove) && checkers == 0 {
         if stm_color_iswhite {
             if g.castle_white_kingside {
                 if (abb.all_pieces | abb.stm_unsafe_squares)
