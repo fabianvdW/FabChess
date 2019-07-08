@@ -1,10 +1,10 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType,
+    GameMove, GameMoveType, GameResult, GameState, PieceType,
 };
 use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
 use super::alphabeta::PrincipalVariation;
-use super::alphabeta::{check_end_condition, leaf_score, GameResult};
+use super::alphabeta::{check_end_condition, leaf_score};
 use super::cache::{Cache, CacheEntry};
 use super::search::Search;
 use super::GradedMove;

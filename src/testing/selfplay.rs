@@ -2,10 +2,11 @@ use crate::async_communication::{
     expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
 };
 use crate::selfplay_splitter::{PlayTask, TaskResult};
-use core::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use core::board_representation::game_state::{
+    GameMove, GameMoveType, GameResult, GameState, PieceType,
+};
 use core::logging::Logger;
 use core::move_generation::movegen;
-use core::search::alphabeta::GameResult;
 use core::search::search::TimeControl;
 use std::fmt::{Display, Formatter, Result};
 use std::process::{Command, Stdio};

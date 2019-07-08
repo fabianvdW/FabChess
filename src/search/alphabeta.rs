@@ -1,4 +1,4 @@
-use super::super::board_representation::game_state::{GameMove, GameMoveType};
+use super::super::board_representation::game_state::{GameMove, GameMoveType, GameResult};
 use super::super::movegen;
 use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
@@ -629,15 +629,6 @@ pub fn check_end_condition(
     }
     GameResult::Ingame
 }
-
-#[derive(PartialEq)]
-pub enum GameResult {
-    Ingame,
-    WhiteWin,
-    BlackWin,
-    Draw,
-}
-
 pub struct PrincipalVariation {
     pub pv: Vec<GameMove>,
     pub score: i16,

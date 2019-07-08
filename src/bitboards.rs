@@ -1,4 +1,6 @@
 use crate::logging::log;
+use crate::move_generation::movegen::{bishop_attack, rook_attack};
+
 lazy_static! {
     pub static ref FILES: [u64; 8] = initialize_files();
     pub static ref NOT_FILES: [u64; 8] = initialize_not_files();
@@ -18,6 +20,10 @@ lazy_static! {
     pub static ref SHIELDING_PAWNS_BLACK: [u64; 64] = init_shielding_pawns_black();
     pub static ref CENTER: u64 = initialize_center();
     pub static ref INNER_CENTER: u64 = initialize_inner_center();
+    pub static ref FREEFIELD_BISHOP_ATTACKS: [u64; 64] = initialize_freefield_bishop_attacks();
+    pub static ref FREEFIELD_ROOK_ATTACKS: [u64; 64] = initialize_freefield_rook_attacks();
+    pub static ref ROOK_RAYS: [[u64; 64]; 64] = initialize_rook_rays();
+    pub static ref BISHOP_RAYS: [[u64; 64]; 64] = initialize_bishop_rays();
 }
 
 pub fn init_bitboards() {
@@ -39,6 +45,123 @@ pub fn init_bitboards() {
     SHIELDING_PAWNS_BLACK.len();
     (*CENTER).trailing_zeros();
     (*INNER_CENTER).trailing_zeros();
+    FREEFIELD_BISHOP_ATTACKS.len();
+    FREEFIELD_ROOK_ATTACKS.len();
+    ROOK_RAYS.len();
+    BISHOP_RAYS.len();
+}
+pub fn initialize_bishop_rays() -> [[u64; 64]; 64] {
+    let mut res = [[0u64; 64]; 64];
+    for king_sq in 0..64 {
+        for bishop_sq in 0..64 {
+            res[king_sq][bishop_sq] =
+                get_bishop_ray_slow(FREEFIELD_BISHOP_ATTACKS[king_sq], king_sq, bishop_sq);
+        }
+    }
+    res
+}
+
+//Gets the ray of one bishop into a specific direction
+pub fn get_bishop_ray_slow(
+    bishop_attack_in_all_directions: u64,
+    target_square: usize,
+    bishop_square: usize,
+) -> u64 {
+    let diff = target_square as isize - bishop_square as isize;
+    let target_rank = target_square / 8;
+    let target_file = target_square % 8;
+    let bishop_rank = bishop_square / 8;
+    let bishop_file = bishop_square % 8;
+    if diff > 0 {
+        if diff % 9 == 0 {
+            return FILES_LESS_THAN[target_file]
+                & FILES_GREATER_THAN[bishop_file]
+                & RANKS_LESS_THAN[target_rank]
+                & RANKS_GREATER_THAN[bishop_rank]
+                & bishop_attack_in_all_directions;
+        } else {
+            return FILES_GREATER_THAN[target_file]
+                & FILES_LESS_THAN[bishop_file]
+                & RANKS_LESS_THAN[target_rank]
+                & RANKS_GREATER_THAN[bishop_rank]
+                & bishop_attack_in_all_directions;
+        }
+    } else {
+        if diff % -9 == 0 {
+            return FILES_GREATER_THAN[target_file]
+                & FILES_LESS_THAN[bishop_file]
+                & RANKS_GREATER_THAN[target_rank]
+                & RANKS_LESS_THAN[bishop_rank]
+                & bishop_attack_in_all_directions;
+        } else {
+            return FILES_LESS_THAN[target_file]
+                & FILES_GREATER_THAN[bishop_file]
+                & RANKS_GREATER_THAN[target_rank]
+                & RANKS_LESS_THAN[bishop_rank]
+                & bishop_attack_in_all_directions;
+        }
+    }
+}
+
+pub fn initialize_rook_rays() -> [[u64; 64]; 64] {
+    let mut res = [[0u64; 64]; 64];
+    for king_sq in 0..64 {
+        for rook_sq in 0..64 {
+            res[king_sq][rook_sq] =
+                get_rook_ray_slow(FREEFIELD_ROOK_ATTACKS[king_sq], king_sq, rook_sq);
+        }
+    }
+    res
+}
+
+//Gets the ray of one rook into a specific direction
+pub fn get_rook_ray_slow(
+    rook_attacks_in_all_directions: u64,
+    target_square: usize,
+    rook_square: usize,
+) -> u64 {
+    let diff = target_square as isize - rook_square as isize;
+    let target_rank = target_square / 8;
+    let target_file = target_square % 8;
+    let rook_rank = rook_square / 8;
+    let rook_file = rook_square % 8;
+    if diff > 0 {
+        //Same vertical
+        if target_rank == rook_rank {
+            return FILES_LESS_THAN[target_file]
+                & FILES_GREATER_THAN[rook_file]
+                & rook_attacks_in_all_directions;
+        } else {
+            return RANKS_LESS_THAN[target_rank]
+                & RANKS_GREATER_THAN[rook_rank]
+                & rook_attacks_in_all_directions;
+        }
+    } else {
+        if target_rank == rook_rank {
+            return FILES_GREATER_THAN[target_file]
+                & FILES_LESS_THAN[rook_file]
+                & rook_attacks_in_all_directions;
+        } else {
+            return RANKS_GREATER_THAN[target_rank]
+                & RANKS_LESS_THAN[rook_rank]
+                & rook_attacks_in_all_directions;
+        }
+    }
+}
+
+pub fn initialize_freefield_rook_attacks() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        res[sq] = rook_attack(sq, 0u64);
+    }
+    res
+}
+pub fn initialize_freefield_bishop_attacks() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        res[sq] = bishop_attack(sq, 0u64);
+    }
+    res
 }
 pub fn initialize_inner_center() -> u64 {
     (FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4])

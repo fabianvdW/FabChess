@@ -1,6 +1,14 @@
 use super::zobrist_hashing::ZOBRIST_KEYS;
 use std::fmt::{Debug, Display, Formatter, Result};
 
+#[derive(PartialEq)]
+pub enum GameResult {
+    Ingame,
+    WhiteWin,
+    BlackWin,
+    Draw,
+}
+
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,

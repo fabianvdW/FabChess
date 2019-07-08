@@ -2,7 +2,6 @@ extern crate core;
 
 use core::logging::log;
 use std::time::Instant;
-
 fn main() {
     let now = Instant::now();
     core::bitboards::init_bitboards();
@@ -17,7 +16,6 @@ fn main() {
         new_now.duration_since(now).as_secs() * 1000
             + new_now.duration_since(now).subsec_millis() as u64
     ));
-
     core::uci::uci_parser::parse_loop();
 }
 

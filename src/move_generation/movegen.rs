@@ -11,54 +11,59 @@ use crate::evaluation::psqt_evaluation::{
 //Knight-Piece-Wise by lookup
 //Bishop/Queen/Rook - Piece-Wise by lookup in Magic
 //Pawn-SetWise by shift
+#[inline(always)]
 pub fn king_attack(square: usize) -> u64 {
     bitboards::KING_ATTACKS[square]
 }
-
+#[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
     Magic::get_attacks(&magic::MAGICS_BISHOPS[square], all_pieces)
 }
-
+#[inline(always)]
 pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
     Magic::get_attacks(&magic::MAGICS_ROOKS[square], all_pieces)
 }
-
+#[inline(always)]
 pub fn knight_attack(square: usize) -> u64 {
     bitboards::KNIGHT_ATTACKS[square]
 }
-
+#[inline(always)]
 pub fn w_single_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::north_one(pawns) & empty
 }
-
+#[inline(always)]
 pub fn w_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::north_one(bitboards::north_one(pawns & bitboards::RANKS[1]) & empty) & empty
 }
-
+#[inline(always)]
 pub fn b_single_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::south_one(pawns) & empty
 }
-
+#[inline(always)]
 pub fn b_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::south_one(bitboards::south_one(pawns & bitboards::RANKS[6]) & empty) & empty
 }
 
 //NorthEast = +9
+#[inline(always)]
 pub fn w_pawn_east_targets(pawns: u64) -> u64 {
     bitboards::north_east_one(pawns)
 }
 
 //NorthWest = +7
+#[inline(always)]
 pub fn w_pawn_west_targets(pawns: u64) -> u64 {
     bitboards::north_west_one(pawns)
 }
 
 //SouthEast = -7
+#[inline(always)]
 pub fn b_pawn_east_targets(pawns: u64) -> u64 {
     bitboards::south_west_one(pawns)
 }
 
 //NorthWest = -9
+#[inline(always)]
 pub fn b_pawn_west_targets(pawns: u64) -> u64 {
     bitboards::south_east_one(pawns)
 }
@@ -983,17 +988,9 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             if checking_piece_is_slider {
                 let checking_piece_square = king_attackers_board.trailing_zeros() as usize;
                 if checking_piece_slider_is_bishop {
-                    push_mask = get_bishop_ray(
-                        bishop_attack(checking_piece_square, 0u64),
-                        my_king_idx,
-                        checking_piece_square,
-                    );
+                    push_mask = get_bishop_ray(my_king_idx, checking_piece_square);
                 } else {
-                    push_mask = get_rook_ray(
-                        rook_attack(checking_piece_square, 0u64),
-                        my_king_idx,
-                        checking_piece_square,
-                    );
+                    push_mask = get_rook_ray(my_king_idx, checking_piece_square);
                 }
             } else {
                 push_mask = 0u64;
@@ -1019,11 +1016,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         while rooks_on_xray != 0 {
             let rook_position = rooks_on_xray.trailing_zeros() as usize;
             rooks_on_xray &= rooks_on_xray - 1;
-            let ray = get_rook_ray(
-                rook_attacks_from_my_king_postion | xray_rooks,
-                rook_position,
-                my_king_idx,
-            );
+            let ray = get_rook_ray(my_king_idx, rook_position);
             let pinned_piece = ray & my_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
             if pinned_piece & my_rooks != 0 {
@@ -1095,11 +1088,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
         while bishops_on_xray != 0 {
             let bishop_position = bishops_on_xray.trailing_zeros() as usize;
             bishops_on_xray &= bishops_on_xray - 1;
-            let ray = get_bishop_ray(
-                bishop_attacks_from_my_king_position | xray_bishops,
-                bishop_position,
-                my_king_idx,
-            );
+            let ray = get_bishop_ray(my_king_idx, bishop_position);
             let pinned_piece = ray & my_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
             if pinned_piece & my_bishops != 0 {
@@ -1208,8 +1197,8 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
                 my_pawns_single_push & !bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
             let my_pawns_promotion =
                 my_pawns_single_push & bitboards::RANKS[if color_to_move == 0 { 7 } else { 0 }];
-            add_quiet_pawn_single_pushes(my_pawns_no_promotion, &color_to_move, &mut move_list);
-            add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list, 8usize);
+            add_pawn_single_pushes(my_pawns_no_promotion, &color_to_move, &mut move_list);
+            add_promotion_push(my_pawns_promotion, &color_to_move, &mut move_list);
         }
         //Double push
         {
@@ -1218,7 +1207,7 @@ pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
             } else {
                 b_double_push_pawn_targets(my_pawns, empty)
             } & push_mask;
-            add_quiet_pawn_double_pushes(my_pawns_double_push, &color_to_move, &mut move_list);
+            add_pawn_double_pushes(my_pawns_double_push, &color_to_move, &mut move_list);
         }
         //Capture west
         {
@@ -1530,7 +1519,7 @@ pub fn find_captured_piece_type(
 }
 
 #[inline(always)]
-pub fn add_quiet_pawn_single_pushes(
+pub fn add_pawn_single_pushes(
     mut single_push_board: u64,
     color_to_move: &usize,
     move_list: &mut Vec<GameMove>,
@@ -1552,7 +1541,7 @@ pub fn add_quiet_pawn_single_pushes(
 }
 
 #[inline(always)]
-pub fn add_quiet_pawn_double_pushes(
+pub fn add_pawn_double_pushes(
     mut double_push_board: u64,
     color_to_move: &usize,
     move_list: &mut Vec<GameMove>,
@@ -1578,15 +1567,14 @@ pub fn add_promotion_push(
     mut promotion_board: u64,
     color_to_move: &usize,
     move_list: &mut Vec<GameMove>,
-    source_shift: usize,
 ) {
     while promotion_board != 0u64 {
         let idx = promotion_board.trailing_zeros() as usize;
         move_list.push(GameMove {
             from: if *color_to_move == 0 {
-                idx - source_shift
+                idx - 8
             } else {
-                idx + source_shift
+                idx + 8
             },
             to: idx,
             move_type: GameMoveType::Promotion(PieceType::Queen, None),
@@ -1594,9 +1582,9 @@ pub fn add_promotion_push(
         });
         move_list.push(GameMove {
             from: if *color_to_move == 0 {
-                idx - source_shift
+                idx - 8
             } else {
-                idx + source_shift
+                idx + 8
             },
             to: idx,
             move_type: GameMoveType::Promotion(PieceType::Rook, None),
@@ -1604,9 +1592,9 @@ pub fn add_promotion_push(
         });
         move_list.push(GameMove {
             from: if *color_to_move == 0 {
-                idx - source_shift
+                idx - 8
             } else {
-                idx + source_shift
+                idx + 8
             },
             to: idx,
             move_type: GameMoveType::Promotion(PieceType::Bishop, None),
@@ -1614,9 +1602,9 @@ pub fn add_promotion_push(
         });
         move_list.push(GameMove {
             from: if *color_to_move == 0 {
-                idx - source_shift
+                idx - 8
             } else {
-                idx + source_shift
+                idx + 8
             },
             to: idx,
             move_type: GameMoveType::Promotion(PieceType::Knight, None),
@@ -1773,103 +1761,36 @@ pub fn add_en_passants(
     }
 }
 
+#[inline(always)]
 pub fn xray_rook_attacks(
-    attacks: u64,
-    occupied_square: u64,
-    one_time_blockers: u64,
+    rook_attacks: u64,
+    occupied_squares: u64,
+    my_pieces: u64,
     rook_square: usize,
 ) -> u64 {
-    return attacks ^ rook_attack(rook_square, occupied_square ^ (one_time_blockers & attacks));
+    return rook_attacks ^ rook_attack(rook_square, occupied_squares ^ (my_pieces & rook_attacks));
 }
-
+#[inline(always)]
 pub fn xray_bishop_attacks(
-    attacks: u64,
-    occupied_square: u64,
-    one_time_blockers: u64,
+    bishop_attacks: u64,
+    occupied_squares: u64,
+    my_pieces: u64,
     bishop_square: usize,
 ) -> u64 {
-    return attacks
+    return bishop_attacks
         ^ bishop_attack(
             bishop_square,
-            occupied_square ^ (one_time_blockers & attacks),
+            occupied_squares ^ (my_pieces & bishop_attacks),
         );
 }
-
-//Gets the ray of one rook into a specific direction
-pub fn get_rook_ray(
-    rook_attacks_in_all_directions: u64,
-    target_square: usize,
-    rook_square: usize,
-) -> u64 {
-    let diff = target_square as isize - rook_square as isize;
-    let target_rank = target_square / 8;
-    let target_file = target_square % 8;
-    let rook_rank = rook_square / 8;
-    let rook_file = rook_square % 8;
-    if diff > 0 {
-        //Same vertical
-        if target_rank == rook_rank {
-            return bitboards::FILES_LESS_THAN[target_file]
-                & bitboards::FILES_GREATER_THAN[rook_file]
-                & rook_attacks_in_all_directions;
-        } else {
-            return bitboards::RANKS_LESS_THAN[target_rank]
-                & bitboards::RANKS_GREATER_THAN[rook_rank]
-                & rook_attacks_in_all_directions;
-        }
-    } else {
-        if target_rank == rook_rank {
-            return bitboards::FILES_GREATER_THAN[target_file]
-                & bitboards::FILES_LESS_THAN[rook_file]
-                & rook_attacks_in_all_directions;
-        } else {
-            return bitboards::RANKS_GREATER_THAN[target_rank]
-                & bitboards::RANKS_LESS_THAN[rook_rank]
-                & rook_attacks_in_all_directions;
-        }
-    }
+#[inline(always)]
+pub fn get_rook_ray(king_square: usize, rook_square: usize) -> u64 {
+    bitboards::ROOK_RAYS[king_square][rook_square]
 }
 
-//Gets the rof of one bishop into a specific direction
-pub fn get_bishop_ray(
-    bishop_attack_in_all_directions: u64,
-    target_square: usize,
-    bishop_square: usize,
-) -> u64 {
-    let diff = target_square as isize - bishop_square as isize;
-    let target_rank = target_square / 8;
-    let target_file = target_square % 8;
-    let bishop_rank = bishop_square / 8;
-    let bishop_file = bishop_square % 8;
-    if diff > 0 {
-        if diff % 9 == 0 {
-            return bitboards::FILES_LESS_THAN[target_file]
-                & bitboards::FILES_GREATER_THAN[bishop_file]
-                & bitboards::RANKS_LESS_THAN[target_rank]
-                & bitboards::RANKS_GREATER_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
-        } else {
-            return bitboards::FILES_GREATER_THAN[target_file]
-                & bitboards::FILES_LESS_THAN[bishop_file]
-                & bitboards::RANKS_LESS_THAN[target_rank]
-                & bitboards::RANKS_GREATER_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
-        }
-    } else {
-        if diff % -9 == 0 {
-            return bitboards::FILES_GREATER_THAN[target_file]
-                & bitboards::FILES_LESS_THAN[bishop_file]
-                & bitboards::RANKS_GREATER_THAN[target_rank]
-                & bitboards::RANKS_LESS_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
-        } else {
-            return bitboards::FILES_LESS_THAN[target_file]
-                & bitboards::FILES_GREATER_THAN[bishop_file]
-                & bitboards::RANKS_GREATER_THAN[target_rank]
-                & bitboards::RANKS_LESS_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
-        }
-    }
+#[inline(always)]
+pub fn get_bishop_ray(king_square: usize, bishop_square: usize) -> u64 {
+    bitboards::BISHOP_RAYS[king_square][bishop_square]
 }
 
 pub fn attackers_from_white(
@@ -1986,4 +1907,1211 @@ pub fn get_b_attacked_squares(
         black_rooks ^= 1u64 << sq;
     }
     res
+}
+
+pub struct AdditionalBitBoards {
+    stm_pieces_without_king: u64,
+    stm_pieces: u64,
+    enemy_pieces: u64,
+    all_pieces_without_stmking: u64,
+    all_pieces: u64,
+
+    stm_pawns_westattack: u64,
+    stm_pawns_eastattack: u64,
+    enemy_pawns_westattack: u64,
+    enemy_pawns_eastattack: u64,
+
+    stm_knights_attacks: Vec<u64>,
+    enemy_knights_attacks: Vec<u64>,
+
+    stm_bishops_attacks: Vec<u64>,
+    enemy_bishops_attacks: Vec<u64>,
+
+    stm_rooks_attacks: Vec<u64>,
+    enemy_rooks_attacks: Vec<u64>,
+
+    stm_queens_attacks: Vec<u64>,
+    enemy_queens_attacks: Vec<u64>,
+
+    stm_king_attacks: u64,
+    enemy_king_attacks: u64,
+
+    stm_unsafe_squares: u64,
+
+    pawn_checkers: u64,
+    knight_checkers: u64,
+    bishop_checkers: u64,
+    rook_checkers: u64,
+    queen_checkers: u64,
+    all_checkers: u64,
+}
+
+/*#[inline(always)]
+pub fn calculate_additionalbitboards_g(
+    g: &game_state::GameState,
+) -> AdditionalBitBoards {
+    let stm_color = g.color_to_move;
+    let enemy_color = 1 - stm_color;
+    let stm_color_iswhite: bool = g.color_to_move == 0;
+
+    let stm_pawns: u64 = g.pieces[0][stm_color];
+    let stm_knights: u64 = g.pieces[1][stm_color];
+    let stm_bishops: u64 = g.pieces[2][stm_color];
+    let stm_rooks: u64 = g.pieces[3][stm_color];
+    let stm_queens: u64 = g.pieces[4][stm_color];
+    let stm_king: u64 = g.pieces[5][stm_color];
+
+    let enemy_pawns: u64 = g.pieces[0][enemy_color];
+    let enemy_knights: u64 = g.pieces[1][enemy_color];
+    let enemy_bishops: u64 = g.pieces[2][enemy_color];
+    let enemy_rooks: u64 = g.pieces[3][enemy_color];
+    let enemy_queens: u64 = g.pieces[4][enemy_color];
+    let enemy_king: u64 = g.pieces[5][enemy_color];
+    calculate_additionalbitboards(
+        stm_pawns,
+        enemy_pawns,
+        stm_knights,
+        enemy_knights,
+        stm_bishops,
+        enemy_bishops,
+        stm_rooks,
+        enemy_rooks,
+        stm_queens,
+        enemy_queens,
+        stm_king,
+        enemy_king,
+        stm_color_iswhite
+    )
+}*/
+
+pub fn calculate_additionalbitboards(
+    stm_pawns: u64,
+    enemy_pawns: u64,
+    mut stm_knights: u64,
+    mut enemy_knights: u64,
+    mut stm_bishops: u64,
+    mut enemy_bishops: u64,
+    mut stm_rooks: u64,
+    mut enemy_rooks: u64,
+    mut stm_queens: u64,
+    mut enemy_queens: u64,
+    stm_king: u64,
+    enemy_king: u64,
+    stm_color_iswhite: bool,
+) -> AdditionalBitBoards {
+    let stm_pieces_without_king: u64 =
+        stm_pawns | stm_knights | stm_bishops | stm_rooks | stm_queens;
+    let stm_pieces: u64 = stm_pieces_without_king | stm_king;
+    let enemy_pieces =
+        enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks | enemy_queens | enemy_king;
+    let all_pieces_without_stmking = enemy_pieces | stm_pieces_without_king;
+    let all_pieces = all_pieces_without_stmking | stm_king;
+
+    let (
+        mut stm_unsafe_squares,
+        mut pawn_checkers,
+        mut knight_checkers,
+        mut bishop_checkers,
+        mut rook_checkers,
+        mut queen_checkers,
+        mut all_checkers,
+    ) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+
+    //Pawns
+    let (
+        stm_pawns_westattack,
+        stm_pawns_eastattack,
+        enemy_pawns_westattack,
+        enemy_pawns_eastattack,
+    ) = if stm_color_iswhite {
+        (
+            w_pawn_west_targets(stm_pawns),
+            w_pawn_east_targets(stm_pawns),
+            b_pawn_west_targets(enemy_pawns),
+            b_pawn_east_targets(enemy_pawns),
+        )
+    } else {
+        (
+            b_pawn_west_targets(stm_pawns),
+            b_pawn_east_targets(stm_pawns),
+            w_pawn_west_targets(enemy_pawns),
+            w_pawn_east_targets(enemy_pawns),
+        )
+    };
+
+    stm_unsafe_squares |= enemy_pawns_westattack | enemy_pawns_eastattack;
+    pawn_checkers |= if stm_color_iswhite {
+        w_pawn_west_targets(stm_king & enemy_pawns_westattack)
+    } else {
+        b_pawn_west_targets(stm_king & enemy_pawns_westattack)
+    } | if stm_color_iswhite {
+        w_pawn_east_targets(stm_king & enemy_pawns_eastattack)
+    } else {
+        b_pawn_east_targets(stm_king & enemy_pawns_eastattack)
+    };
+    all_checkers |= pawn_checkers;
+
+    //Knights
+    let mut stm_knights_attacks: Vec<u64> = Vec::with_capacity(2);
+    while stm_knights != 0u64 {
+        let stm_knightindex = stm_knights.trailing_zeros() as usize;
+        let stm_knight = 1u64 << stm_knightindex;
+        let stm_knightattacks = knight_attack(stm_knightindex);
+        stm_knights_attacks.push(stm_knightattacks & !stm_pieces);
+        stm_knights ^= stm_knight;
+    }
+    let mut enemy_knights_attacks: Vec<u64> = Vec::with_capacity(2);
+    while enemy_knights != 0u64 {
+        let enemy_knightindex = enemy_knights.trailing_zeros() as usize;
+        let enemy_knight = 1u64 << enemy_knightindex;
+        let enemy_knightattacks = knight_attack(enemy_knightindex);
+        enemy_knights_attacks.push(enemy_knightattacks & !enemy_pieces);
+        stm_unsafe_squares |= enemy_knightattacks;
+        if stm_king & enemy_knightattacks != 0u64 {
+            knight_checkers |= enemy_knight;
+            all_checkers |= enemy_knight;
+        }
+        enemy_knights ^= enemy_knight;
+    }
+
+    //Bishops
+    let mut stm_bishops_attacks: Vec<u64> = Vec::with_capacity(2);
+    while stm_bishops != 0u64 {
+        let stm_bishopindex = stm_bishops.trailing_zeros() as usize;
+        let stm_bishop = 1u64 << stm_bishopindex;
+        let stm_bishopattacks = bishop_attack(stm_bishopindex, all_pieces);
+        stm_bishops_attacks.push(stm_bishopattacks & !stm_pieces);
+        stm_bishops ^= stm_bishop;
+    }
+    let mut enemy_bishops_attacks: Vec<u64> = Vec::with_capacity(2);
+    while enemy_bishops != 0u64 {
+        let enemy_bishopindex = enemy_bishops.trailing_zeros() as usize;
+        let enemy_bishop = 1u64 << enemy_bishopindex;
+        let enemy_bishopattacks = bishop_attack(enemy_bishopindex, all_pieces_without_stmking);
+        enemy_bishops_attacks.push(enemy_bishopattacks & !enemy_pieces);
+        stm_unsafe_squares |= enemy_bishopattacks;
+        if stm_king & enemy_bishopattacks != 0u64 {
+            bishop_checkers |= enemy_bishop;
+            all_checkers |= enemy_bishop;
+        }
+        enemy_bishops ^= enemy_bishop;
+    }
+
+    //Rooks
+    let mut stm_rooks_attacks: Vec<u64> = Vec::with_capacity(2);
+    while stm_rooks != 0u64 {
+        let stm_rookindex = stm_rooks.trailing_zeros() as usize;
+        let stm_rook = 1u64 << stm_rookindex;
+        let stm_rookattacks = rook_attack(stm_rookindex, all_pieces);
+        stm_rooks_attacks.push(stm_rookattacks & !stm_pieces);
+        stm_rooks ^= stm_rook;
+    }
+    let mut enemy_rooks_attacks: Vec<u64> = Vec::with_capacity(2);
+    while enemy_rooks != 0u64 {
+        let enemy_rookindex = enemy_rooks.trailing_zeros() as usize;
+        let enemy_rook = 1u64 << enemy_rookindex;
+        let enemy_rookattacks = rook_attack(enemy_rookindex, all_pieces_without_stmking);
+        enemy_rooks_attacks.push(enemy_rookattacks & !enemy_pieces);
+        stm_unsafe_squares |= enemy_rookattacks;
+        if stm_king & enemy_rookattacks != 0u64 {
+            rook_checkers |= enemy_rook;
+            all_checkers |= enemy_rook;
+        }
+        enemy_rooks ^= enemy_rook;
+    }
+
+    //Queens
+    let mut stm_queens_attacks: Vec<u64> = Vec::with_capacity(2);
+    while stm_queens != 0u64 {
+        let stm_queenindex = stm_queens.trailing_zeros() as usize;
+        let stm_queen = 1u64 << stm_queenindex;
+        let stm_queenattacks =
+            bishop_attack(stm_queenindex, all_pieces) | rook_attack(stm_queenindex, all_pieces);
+        stm_queens_attacks.push(stm_queenattacks & !stm_pieces);
+        stm_queens ^= stm_queen;
+    }
+    let mut enemy_queens_attacks: Vec<u64> = Vec::with_capacity(2);
+    while enemy_queens != 0u64 {
+        let enemy_queenindex = enemy_queens.trailing_zeros() as usize;
+        let enemy_queen = 1u64 << enemy_queenindex;
+        let enemy_queenattacks = bishop_attack(enemy_queenindex, all_pieces_without_stmking)
+            | rook_attack(enemy_queenindex, all_pieces_without_stmking);
+        enemy_queens_attacks.push(enemy_queenattacks & !enemy_pieces);
+        stm_unsafe_squares |= enemy_queenattacks;
+        if stm_king & enemy_queenattacks != 0u64 {
+            queen_checkers |= enemy_queen;
+            all_checkers |= enemy_queen;
+        }
+        enemy_queens ^= enemy_queen;
+    }
+    //Kings
+    let stm_king_attacks = king_attack(stm_king.trailing_zeros() as usize) & !stm_pieces;
+    let enemy_king_attacks = king_attack(enemy_king.trailing_zeros() as usize);
+    stm_unsafe_squares |= enemy_king_attacks;
+    AdditionalBitBoards {
+        stm_pieces_without_king,
+        stm_pieces,
+        enemy_pieces,
+        all_pieces_without_stmking,
+        all_pieces,
+        stm_pawns_westattack,
+        stm_pawns_eastattack,
+        enemy_pawns_westattack,
+        enemy_pawns_eastattack,
+        stm_knights_attacks,
+        enemy_knights_attacks,
+        stm_bishops_attacks,
+        enemy_bishops_attacks,
+        stm_rooks_attacks,
+        enemy_rooks_attacks,
+        stm_queens_attacks,
+        enemy_queens_attacks,
+        stm_king_attacks,
+        enemy_king_attacks,
+        stm_unsafe_squares,
+        pawn_checkers,
+        knight_checkers,
+        bishop_checkers,
+        rook_checkers,
+        queen_checkers,
+        all_checkers,
+    }
+}
+
+pub struct AdditionalGameStateInformation {
+    stm_incheck: bool,
+    stm_haslegalmove: bool,
+    additional_bitboards: AdditionalBitBoards,
+}
+#[inline(always)]
+pub fn add_pin_moves_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    only_captures: bool,
+    ray_to_king: u64,
+    push_mask: u64,
+    capture_mask: u64,
+    enemy_pinner: u64,
+    pinned_piece_position: usize,
+    moving_piece_type: PieceType,
+    pinner_position: usize,
+    enemy_queens: u64,
+    other_pinner_piece_type: PieceType,
+) -> bool {
+    let pin_quiet_targets = ray_to_king & push_mask;
+    let pin_capture_possible = (capture_mask & enemy_pinner) != 0u64;
+    let haslegalmove = pin_capture_possible || pin_quiet_targets != 0u64;
+    if !only_captures {
+        add_moves_to_movelist(
+            legal_moves,
+            pinned_piece_position,
+            pin_quiet_targets,
+            moving_piece_type.clone(),
+            GameMoveType::Quiet,
+        );
+    }
+    if pin_capture_possible {
+        add_move_to_movelist(
+            legal_moves,
+            pinned_piece_position,
+            pinner_position,
+            moving_piece_type.clone(),
+            GameMoveType::Capture(if enemy_pinner & enemy_queens != 0u64 {
+                PieceType::Queen
+            } else {
+                other_pinner_piece_type
+            }),
+        );
+    }
+    haslegalmove
+}
+#[inline(always)]
+pub fn add_king_moves_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    only_captures: bool,
+    stm_legal_kingmoves: u64,
+    stm_king_index: usize,
+    enemy_pawns: u64,
+    enemy_knights: u64,
+    enemy_bishops: u64,
+    enemy_rooks: u64,
+    enemy_queens: u64,
+    enemy_pieces: u64,
+) {
+    let mut captures = stm_legal_kingmoves & enemy_pieces;
+    let quiets = stm_legal_kingmoves & !captures;
+    while captures != 0u64 {
+        let capture_index = captures.trailing_zeros() as usize;
+        add_move_to_movelist(
+            legal_moves,
+            stm_king_index,
+            capture_index,
+            PieceType::King,
+            GameMoveType::Capture(find_captured_piece_type(
+                capture_index,
+                enemy_pawns,
+                enemy_knights,
+                enemy_bishops,
+                enemy_rooks,
+                enemy_queens,
+            )),
+        );
+        captures ^= 1u64 << capture_index;
+    }
+    if !only_captures {
+        add_moves_to_movelist(
+            legal_moves,
+            stm_king_index,
+            quiets,
+            PieceType::King,
+            GameMoveType::Quiet,
+        );
+    }
+}
+
+#[inline(always)]
+pub fn add_pawn_moves_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    mut target_board: u64,
+    shift: usize,
+    stm_color_iswhite: bool,
+    enemy_pawns: u64,
+    enemy_knights: u64,
+    enemy_bishops: u64,
+    enemy_rooks: u64,
+    enemy_queens: u64,
+    is_capture: bool,
+    is_promotion: bool,
+    pinned_pieces: u64,
+) -> bool {
+    let mut stm_haslegalmove = false;
+    while target_board != 0u64 {
+        let pawn_index = target_board.trailing_zeros() as usize;
+        let pawn = 1u64 << pawn_index;
+        let from_index = if stm_color_iswhite {
+            pawn_index - shift
+        } else {
+            pawn_index + shift
+        };
+        let from_board = 1u64 << from_index;
+        if from_board & pinned_pieces == 0u64 {
+            stm_haslegalmove = true;
+            let mv_type = if is_capture {
+                GameMoveType::Capture(find_captured_piece_type(
+                    pawn_index,
+                    enemy_pawns,
+                    enemy_knights,
+                    enemy_bishops,
+                    enemy_rooks,
+                    enemy_queens,
+                ))
+            } else {
+                GameMoveType::Quiet
+            };
+            if is_promotion {
+                add_promotion_move_to_movelist(legal_moves, from_index, pawn_index, mv_type);
+            } else {
+                add_move_to_movelist(
+                    legal_moves,
+                    from_index,
+                    pawn_index,
+                    PieceType::Pawn,
+                    mv_type,
+                )
+            }
+        }
+        target_board ^= pawn;
+    }
+    stm_haslegalmove
+}
+#[inline(always)]
+pub fn add_normal_moves_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    piece_type: PieceType,
+    mut piece_board: u64,
+    piece_targets: &Vec<u64>,
+    pinned_pieces: u64,
+    enemy_pawns: u64,
+    enemy_knights: u64,
+    enemy_bishops: u64,
+    enemy_rooks: u64,
+    enemy_queens: u64,
+    enemy_pieces: u64,
+    empty_squares: u64,
+    push_mask: u64,
+    capture_mask: u64,
+    only_captures: bool,
+) -> bool {
+    let mut stm_haslegalmove = false;
+    let mut index = 0;
+    while piece_board != 0u64 {
+        let piece_index = piece_board.trailing_zeros() as usize;
+        let piece = 1u64 << piece_index;
+        if piece & pinned_pieces == 0u64 {
+            let mut captures = piece_targets[index] & capture_mask & enemy_pieces;
+            stm_haslegalmove |= captures != 0u64;
+            while captures != 0u64 {
+                let capture_index = captures.trailing_zeros() as usize;
+                add_move_to_movelist(
+                    legal_moves,
+                    piece_index,
+                    capture_index,
+                    piece_type.clone(),
+                    GameMoveType::Capture(find_captured_piece_type(
+                        capture_index,
+                        enemy_pawns,
+                        enemy_knights,
+                        enemy_bishops,
+                        enemy_rooks,
+                        enemy_queens,
+                    )),
+                );
+                captures ^= 1u64 << capture_index;
+            }
+
+            if !only_captures || !stm_haslegalmove {
+                let quiets = piece_targets[index] & push_mask & empty_squares;
+                stm_haslegalmove |= quiets != 0u64;
+                if !only_captures {
+                    add_moves_to_movelist(
+                        legal_moves,
+                        piece_index,
+                        quiets,
+                        piece_type.clone(),
+                        GameMoveType::Quiet,
+                    );
+                }
+            }
+        }
+        index = index + 1;
+        piece_board ^= piece;
+    }
+    stm_haslegalmove
+}
+#[inline(always)]
+pub fn add_promotion_move_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    from_square: usize,
+    to_square: usize,
+    move_type: GameMoveType,
+) {
+    let new_types = if let GameMoveType::Capture(x) = move_type {
+        (
+            GameMoveType::Promotion(PieceType::Queen, Some(x.clone())),
+            GameMoveType::Promotion(PieceType::Rook, Some(x.clone())),
+            GameMoveType::Promotion(PieceType::Bishop, Some(x.clone())),
+            GameMoveType::Promotion(PieceType::Knight, Some(x.clone())),
+        )
+    } else {
+        (
+            GameMoveType::Promotion(PieceType::Queen, None),
+            GameMoveType::Promotion(PieceType::Rook, None),
+            GameMoveType::Promotion(PieceType::Bishop, None),
+            GameMoveType::Promotion(PieceType::Knight, None),
+        )
+    };
+    add_move_to_movelist(
+        legal_moves,
+        from_square,
+        to_square,
+        PieceType::Pawn,
+        new_types.0,
+    );
+    add_move_to_movelist(
+        legal_moves,
+        from_square,
+        to_square,
+        PieceType::Pawn,
+        new_types.1,
+    );
+    add_move_to_movelist(
+        legal_moves,
+        from_square,
+        to_square,
+        PieceType::Pawn,
+        new_types.2,
+    );
+    add_move_to_movelist(
+        legal_moves,
+        from_square,
+        to_square,
+        PieceType::Pawn,
+        new_types.3,
+    );
+}
+#[inline(always)]
+pub fn add_moves_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    from_square: usize,
+    mut target_board: u64,
+    piece_type: PieceType,
+    move_type: GameMoveType,
+) {
+    while target_board != 0u64 {
+        let target_square = target_board.trailing_zeros() as usize;
+        add_move_to_movelist(
+            legal_moves,
+            from_square,
+            target_square,
+            piece_type.clone(),
+            move_type.clone(),
+        );
+        target_board ^= 1u64 << target_square;
+    }
+}
+#[inline(always)]
+pub fn add_move_to_movelist(
+    legal_moves: &mut Vec<GameMove>,
+    from_square: usize,
+    to_square: usize,
+    piece_type: PieceType,
+    move_type: GameMoveType,
+) {
+    legal_moves.push(GameMove {
+        from: from_square,
+        to: to_square,
+        move_type: move_type,
+        piece_type: piece_type,
+    })
+}
+
+pub fn generate_moves2(
+    g: &game_state::GameState,
+    only_captures: bool,
+) -> (Vec<GameMove>, AdditionalGameStateInformation) {
+    let mut legal_moves: Vec<GameMove> = Vec::with_capacity(38);
+
+    //**********************************************************************
+    //0.General Bitboards and Variable Initialization
+    let stm_color = g.color_to_move;
+    let enemy_color = 1 - stm_color;
+    let stm_color_iswhite: bool = g.color_to_move == 0;
+
+    let mut stm_pawns: u64 = g.pieces[0][stm_color];
+    let stm_knights: u64 = g.pieces[1][stm_color];
+    let stm_bishops: u64 = g.pieces[2][stm_color];
+    let stm_rooks: u64 = g.pieces[3][stm_color];
+    let stm_queens: u64 = g.pieces[4][stm_color];
+    let stm_king: u64 = g.pieces[5][stm_color];
+    let stm_king_index: usize = stm_king.trailing_zeros() as usize;
+
+    let enemy_pawns: u64 = g.pieces[0][enemy_color];
+    let enemy_knights: u64 = g.pieces[1][enemy_color];
+    let enemy_bishops: u64 = g.pieces[2][enemy_color];
+    let enemy_rooks: u64 = g.pieces[3][enemy_color];
+    let enemy_queens: u64 = g.pieces[4][enemy_color];
+    let enemy_king: u64 = g.pieces[5][enemy_color];
+
+    let mut stm_haslegalmove = false;
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //1.Calculate additional needed bitboards
+    let abb = calculate_additionalbitboards(
+        stm_pawns,
+        enemy_pawns,
+        stm_knights,
+        enemy_knights,
+        stm_bishops,
+        enemy_bishops,
+        stm_rooks,
+        enemy_rooks,
+        stm_queens,
+        enemy_queens,
+        stm_king,
+        enemy_king,
+        stm_color_iswhite,
+    );
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //2. Safe King moves
+    let stm_legal_kingmoves = abb.stm_king_attacks & !abb.stm_unsafe_squares;
+    stm_haslegalmove |= stm_legal_kingmoves != 0u64;
+    add_king_moves_to_movelist(
+        &mut legal_moves,
+        only_captures,
+        stm_legal_kingmoves,
+        stm_king_index,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+    );
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //3. Check & Check Evasions
+    let checkers = abb.all_checkers.count_ones() as usize;
+    let stm_incheck = checkers > 0;
+
+    let mut capture_mask = 0xFFFFFFFFFFFFFFFFu64;
+    let mut push_mask = 0xFFFFFFFFFFFFFFFFu64;
+    if checkers > 1 {
+        //Double check, only safe king moves are legal
+        return (
+            legal_moves,
+            AdditionalGameStateInformation {
+                stm_incheck,
+                stm_haslegalmove,
+                additional_bitboards: abb,
+            },
+        );
+    } else if checkers == 1 {
+        //Only a single checker
+        capture_mask = abb.all_checkers;
+        //If it's a slider, we can also push in it's way
+        if abb.all_checkers & (enemy_bishops | enemy_rooks | enemy_queens) != 0u64 {
+            let checker_square = abb.all_checkers.trailing_zeros() as usize;
+            if abb.all_checkers & (bitboards::FREEFIELD_ROOK_ATTACKS[stm_king_index]) != 0u64 {
+                //Checker is rook-like
+                push_mask = get_rook_ray(stm_king_index, checker_square);
+            } else {
+                //Checker is bishop-like
+                push_mask = get_bishop_ray(stm_king_index, checker_square);
+            }
+        } else {
+            //else, we can't do push (quiet) moves
+            push_mask = 0u64;
+        }
+    }
+
+    let empty_squares = !abb.all_pieces;
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //4. Pins and pinned pieces
+    let mut pinned_pieces = 0u64;
+    //4.1 Rook-Like pins
+    let stm_rook_attacks_from_king = rook_attack(stm_king_index, abb.all_pieces);
+    let stm_xray_rook_attacks_from_king = xray_rook_attacks(
+        stm_rook_attacks_from_king,
+        abb.all_pieces,
+        abb.stm_pieces,
+        stm_king_index,
+    );
+    let mut enemy_rooks_on_xray = stm_xray_rook_attacks_from_king & (enemy_rooks | enemy_queens);
+    while enemy_rooks_on_xray != 0u64 {
+        let enemy_rook_position = enemy_rooks_on_xray.trailing_zeros() as usize;
+        let enemy_rook = 1u64 << enemy_rook_position;
+        let ray_to_king = get_rook_ray(stm_king_index, enemy_rook_position);
+        let pinned_piece = ray_to_king & abb.stm_pieces;
+        let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
+        pinned_pieces |= pinned_piece;
+        if pinned_piece & stm_queens != 0u64 {
+            //Add possible queen pushes
+            stm_haslegalmove |= add_pin_moves_to_movelist(
+                &mut legal_moves,
+                only_captures,
+                ray_to_king,
+                push_mask,
+                capture_mask,
+                enemy_rook,
+                pinned_piece_position,
+                PieceType::Queen,
+                enemy_rook_position,
+                enemy_queens,
+                PieceType::Rook,
+            );
+        } else if pinned_piece & stm_rooks != 0u64 {
+            //Add possible rook pushes
+            stm_haslegalmove |= add_pin_moves_to_movelist(
+                &mut legal_moves,
+                only_captures,
+                ray_to_king,
+                push_mask,
+                capture_mask,
+                enemy_rook,
+                pinned_piece_position,
+                PieceType::Rook,
+                enemy_rook_position,
+                enemy_queens,
+                PieceType::Rook,
+            );
+        } else if pinned_piece & stm_pawns != 0u64 {
+            //Add possible pawn pushes
+            stm_pawns ^= pinned_piece;
+            let stm_pawn_pin_single_push = if stm_color_iswhite {
+                w_single_push_pawn_targets(pinned_piece, empty_squares)
+            } else {
+                b_single_push_pawn_targets(pinned_piece, empty_squares)
+            } & ray_to_king
+                & push_mask;
+            let stm_pawn_pin_double_push = if stm_color_iswhite {
+                w_double_push_pawn_targets(pinned_piece, empty_squares)
+            } else {
+                b_double_push_pawn_targets(pinned_piece, empty_squares)
+            } & ray_to_king
+                & push_mask;
+            stm_haslegalmove |= (stm_pawn_pin_single_push | stm_pawn_pin_double_push) != 0u64;
+            if !only_captures {
+                add_moves_to_movelist(
+                    &mut legal_moves,
+                    pinned_piece_position,
+                    stm_pawn_pin_single_push | stm_pawn_pin_double_push,
+                    PieceType::Pawn,
+                    GameMoveType::Quiet,
+                )
+            }
+        }
+        enemy_rooks_on_xray ^= enemy_rook;
+    }
+    //4.2 Bishop-Like pins
+    let stm_bishop_attacks_from_king = bishop_attack(stm_king_index, abb.all_pieces);
+    let stm_xray_bishop_attacks_from_king = xray_bishop_attacks(
+        stm_bishop_attacks_from_king,
+        abb.all_pieces,
+        abb.stm_pieces,
+        stm_king_index,
+    );
+    let mut enemy_bishop_on_xray =
+        stm_xray_bishop_attacks_from_king & (enemy_bishops | enemy_queens);
+    while enemy_bishop_on_xray != 0u64 {
+        let enemy_bishop_position = enemy_bishop_on_xray.trailing_zeros() as usize;
+        let enemy_bishop = 1u64 << enemy_bishop_position;
+        let ray_to_king = get_bishop_ray(stm_king_index, enemy_bishop_position);
+        let pinned_piece = ray_to_king & abb.stm_pieces;
+        let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
+        pinned_pieces |= pinned_piece;
+        if pinned_piece & stm_queens != 0u64 {
+            //Add possible queen pushes
+            stm_haslegalmove |= add_pin_moves_to_movelist(
+                &mut legal_moves,
+                only_captures,
+                ray_to_king,
+                push_mask,
+                capture_mask,
+                enemy_bishop,
+                pinned_piece_position,
+                PieceType::Queen,
+                enemy_bishop_position,
+                enemy_queens,
+                PieceType::Bishop,
+            );
+        } else if pinned_piece & stm_bishops != 0u64 {
+            //Add possible bishop pushes
+            stm_haslegalmove |= add_pin_moves_to_movelist(
+                &mut legal_moves,
+                only_captures,
+                ray_to_king,
+                push_mask,
+                capture_mask,
+                enemy_bishop,
+                pinned_piece_position,
+                PieceType::Bishop,
+                enemy_bishop_position,
+                enemy_queens,
+                PieceType::Bishop,
+            );
+        } else if pinned_piece & stm_pawns != 0u64 {
+            //Add possible pawn captures
+            stm_pawns ^= pinned_piece;
+            //TODO MAKE SURE THIS REMOVED PINNED PAWN DOESN'T CAPTURE FROM ABB.WEST OR ABB.EAST TARGETS
+            let stm_pawn_pin_target = if stm_color_iswhite {
+                w_pawn_east_targets(pinned_piece) | w_pawn_west_targets(pinned_piece)
+            } else {
+                b_pawn_east_targets(pinned_piece) | b_pawn_west_targets(pinned_piece)
+            };
+            //Normal captures
+            let stm_pawn_pin_captures = stm_pawn_pin_target & capture_mask & enemy_bishop;
+            let stm_pawn_pin_promotion_capture =
+                stm_pawn_pin_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+            if stm_pawn_pin_promotion_capture != 0u64 {
+                stm_haslegalmove = true;
+                add_promotion_move_to_movelist(
+                    &mut legal_moves,
+                    pinned_piece_position,
+                    enemy_bishop_position,
+                    GameMoveType::Capture(if enemy_bishop & enemy_queens != 0u64 {
+                        PieceType::Queen
+                    } else {
+                        PieceType::Bishop
+                    }),
+                );
+            }
+            let stm_pawn_pin_nonpromotion_capture =
+                stm_pawn_pin_captures & !stm_pawn_pin_promotion_capture;
+            if stm_pawn_pin_nonpromotion_capture != 0u64 {
+                stm_haslegalmove = true;
+                add_move_to_movelist(
+                    &mut legal_moves,
+                    pinned_piece_position,
+                    enemy_bishop_position,
+                    PieceType::Pawn,
+                    GameMoveType::Capture(if enemy_bishop & enemy_queens != 0u64 {
+                        PieceType::Queen
+                    } else {
+                        PieceType::Bishop
+                    }),
+                );
+            }
+            //En-Passants
+            let stm_pawn_pin_enpassant =
+                stm_pawn_pin_target & g.en_passant & capture_mask & ray_to_king;
+            if stm_pawn_pin_enpassant != 0u64 {
+                stm_haslegalmove = true;
+                add_move_to_movelist(
+                    &mut legal_moves,
+                    pinned_piece_position,
+                    enemy_bishop_position,
+                    PieceType::Pawn,
+                    GameMoveType::EnPassant,
+                );
+            }
+        }
+        enemy_bishop_on_xray ^= enemy_bishop;
+    }
+
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //5. Pawn pushes, captures, and promotions (captures, capture-enpassant,capture-promotion,normal-promotion)
+    //5.1 Single push (Promotions and pushes)
+    let stm_pawns_single_push = if stm_color_iswhite {
+        w_single_push_pawn_targets(stm_pawns, empty_squares)
+    } else {
+        b_single_push_pawn_targets(stm_pawns, empty_squares)
+    } & push_mask;
+    stm_haslegalmove |= stm_pawns_single_push != 0u64;
+    let stm_pawn_promotions =
+        stm_pawns_single_push & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+    add_pawn_moves_to_movelist(
+        &mut legal_moves,
+        stm_pawn_promotions,
+        8,
+        stm_color_iswhite,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        false,
+        true,
+        pinned_pieces,
+    );
+    if !only_captures {
+        let stm_pawns_quiet_single_push = stm_pawns_single_push & !stm_pawn_promotions;
+        add_pawn_moves_to_movelist(
+            &mut legal_moves,
+            stm_pawns_quiet_single_push,
+            8,
+            stm_color_iswhite,
+            enemy_pawns,
+            enemy_knights,
+            enemy_bishops,
+            enemy_rooks,
+            enemy_queens,
+            false,
+            false,
+            pinned_pieces,
+        );
+    }
+    //5.2 Double push
+    if !only_captures || !stm_haslegalmove {
+        let stm_pawns_double_push = if stm_color_iswhite {
+            w_double_push_pawn_targets(stm_pawns, empty_squares)
+        } else {
+            b_double_push_pawn_targets(stm_pawns, empty_squares)
+        } & push_mask;
+        stm_haslegalmove |= stm_pawns_double_push != 0u64;
+        if !only_captures {
+            add_pawn_moves_to_movelist(
+                &mut legal_moves,
+                stm_pawns_double_push,
+                16,
+                stm_color_iswhite,
+                enemy_pawns,
+                enemy_knights,
+                enemy_bishops,
+                enemy_rooks,
+                enemy_queens,
+                false,
+                false,
+                pinned_pieces,
+            );
+        }
+    }
+    //5.3 West captures (normal capture, promotion capture, en-passant)
+    let stm_pawn_west_captures = abb.stm_pawns_westattack & capture_mask & abb.enemy_pieces;
+    //Split up in promotion and non-promotion captures
+    let stm_pawn_west_promotion_capture =
+        stm_pawn_west_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+    stm_haslegalmove |= add_pawn_moves_to_movelist(
+        &mut legal_moves,
+        stm_pawn_west_promotion_capture,
+        7,
+        stm_color_iswhite,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        true,
+        true,
+        pinned_pieces,
+    );
+    let stm_pawn_west_nonpromotion_capture =
+        stm_pawn_west_captures & !stm_pawn_west_promotion_capture;
+    stm_haslegalmove |= add_pawn_moves_to_movelist(
+        &mut legal_moves,
+        stm_pawn_west_nonpromotion_capture,
+        7,
+        stm_color_iswhite,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        true,
+        false,
+        pinned_pieces,
+    );
+    //En-Passants
+    let stm_pawn_west_enpassants = stm_pawn_west_captures
+        & g.en_passant
+        & if stm_color_iswhite {
+            capture_mask << 8
+        } else {
+            capture_mask >> 8
+        };
+    if stm_pawn_west_enpassants != 0u64
+        && if stm_color_iswhite {
+            stm_pawn_west_enpassants << 7
+        } else {
+            stm_pawn_west_enpassants >> 7
+        } & pinned_pieces
+            == 0u64
+    {
+        let pawn_index = stm_pawn_west_enpassants.trailing_zeros() as usize;
+        stm_haslegalmove = true;
+        add_move_to_movelist(
+            &mut legal_moves,
+            if stm_color_iswhite {
+                pawn_index - 7
+            } else {
+                pawn_index + 7
+            },
+            pawn_index,
+            PieceType::Pawn,
+            GameMoveType::EnPassant,
+        );
+    }
+    //5.4 East captures (normal capture, promotion capture, en-passant)
+    let stm_pawn_east_captures = abb.stm_pawns_eastattack & capture_mask & abb.enemy_pieces;
+    //Split up in promotion and non-promotion captures
+    let stm_pawn_east_promotion_capture =
+        stm_pawn_east_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+    stm_haslegalmove |= add_pawn_moves_to_movelist(
+        &mut legal_moves,
+        stm_pawn_east_promotion_capture,
+        9,
+        stm_color_iswhite,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        true,
+        true,
+        pinned_pieces,
+    );
+    let stm_pawn_east_nonpromotion_capture =
+        stm_pawn_east_captures & !stm_pawn_east_promotion_capture;
+    stm_haslegalmove |= add_pawn_moves_to_movelist(
+        &mut legal_moves,
+        stm_pawn_east_nonpromotion_capture,
+        9,
+        stm_color_iswhite,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        true,
+        false,
+        pinned_pieces,
+    );
+    //En-Passants
+    let stm_pawn_east_enpassants = stm_pawn_east_captures
+        & g.en_passant
+        & if stm_color_iswhite {
+            capture_mask << 8
+        } else {
+            capture_mask >> 8
+        };
+    if stm_pawn_east_enpassants != 0u64
+        && if stm_color_iswhite {
+            stm_pawn_east_enpassants << 9
+        } else {
+            stm_pawn_east_enpassants >> 9
+        } & pinned_pieces
+            == 0u64
+    {
+        let pawn_index = stm_pawn_east_enpassants.trailing_zeros() as usize;
+        stm_haslegalmove = true;
+        add_move_to_movelist(
+            &mut legal_moves,
+            if stm_color_iswhite {
+                pawn_index - 9
+            } else {
+                pawn_index + 9
+            },
+            pawn_index,
+            PieceType::Pawn,
+            GameMoveType::EnPassant,
+        );
+    }
+
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //6. All other legal moves (knights,bishops,rooks,queens)
+    //6.1 Knights
+    stm_haslegalmove |= add_normal_moves_to_movelist(
+        &mut legal_moves,
+        PieceType::Knight,
+        stm_knights,
+        &abb.stm_knights_attacks,
+        pinned_pieces,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+        empty_squares,
+        push_mask,
+        capture_mask,
+        only_captures,
+    );
+    //6.2 Bishops
+    stm_haslegalmove |= add_normal_moves_to_movelist(
+        &mut legal_moves,
+        PieceType::Bishop,
+        stm_bishops,
+        &abb.stm_bishops_attacks,
+        pinned_pieces,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+        empty_squares,
+        push_mask,
+        capture_mask,
+        only_captures,
+    );
+    //6.3 Rooks
+    stm_haslegalmove |= add_normal_moves_to_movelist(
+        &mut legal_moves,
+        PieceType::Rook,
+        stm_rooks,
+        &abb.stm_rooks_attacks,
+        pinned_pieces,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+        empty_squares,
+        push_mask,
+        capture_mask,
+        only_captures,
+    );
+    //6.4 Queens
+    stm_haslegalmove |= add_normal_moves_to_movelist(
+        &mut legal_moves,
+        PieceType::Queen,
+        stm_queens,
+        &abb.stm_queens_attacks,
+        pinned_pieces,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+        empty_squares,
+        push_mask,
+        capture_mask,
+        only_captures,
+    );
+    //----------------------------------------------------------------------
+    //**********************************************************************
+    //7. Castling
+    if !only_captures || !stm_haslegalmove && checkers == 0 {
+        if stm_color_iswhite {
+            if g.castle_white_kingside {
+                if (abb.all_pieces | abb.stm_unsafe_squares)
+                    & (bitboards::SQUARES[5] | bitboards::SQUARES[6])
+                    == 0u64
+                {
+                    stm_haslegalmove = true;
+                    if !only_captures {
+                        legal_moves.push(GameMove {
+                            from: stm_king_index,
+                            to: 6usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        });
+                    }
+                }
+            }
+            if g.castle_white_queenside {
+                if ((abb.all_pieces | abb.stm_unsafe_squares)
+                    & (bitboards::SQUARES[2] | bitboards::SQUARES[3])
+                    | abb.all_pieces & bitboards::SQUARES[1])
+                    == 0u64
+                {
+                    stm_haslegalmove = true;
+                    if !only_captures {
+                        legal_moves.push(GameMove {
+                            from: stm_king_index,
+                            to: 2usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        });
+                    }
+                }
+            }
+        } else {
+            if g.castle_black_kingside {
+                if (abb.all_pieces | abb.stm_unsafe_squares)
+                    & (bitboards::SQUARES[61] | bitboards::SQUARES[62])
+                    == 0u64
+                {
+                    stm_haslegalmove = true;
+                    if !only_captures {
+                        legal_moves.push(GameMove {
+                            from: stm_king_index,
+                            to: 62usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        });
+                    }
+                }
+            }
+            if g.castle_black_queenside {
+                if ((abb.all_pieces | abb.stm_unsafe_squares)
+                    & (bitboards::SQUARES[58] | bitboards::SQUARES[59])
+                    | abb.all_pieces & bitboards::SQUARES[57])
+                    == 0u64
+                {
+                    stm_haslegalmove = true;
+                    if !only_captures {
+                        legal_moves.push(GameMove {
+                            from: stm_king_index,
+                            to: 58usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    //----------------------------------------------------------------------
+    let agi = AdditionalGameStateInformation {
+        stm_incheck,
+        stm_haslegalmove,
+        additional_bitboards: abb,
+    };
+    (legal_moves, agi)
 }
