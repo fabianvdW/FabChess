@@ -2671,7 +2671,7 @@ pub fn generate_moves2(
         } else if pinned_piece & stm_pawns != 0u64 {
             //Add possible pawn captures
             stm_pawns ^= pinned_piece;
-            //TODO MAKE SURE THIS REMOVED PINNED PAWN DOESN'T CAPTURE FROM ABB.WEST OR ABB.EAST TARGETS
+
             let stm_pawn_pin_target = if stm_color_iswhite {
                 w_pawn_east_targets(pinned_piece) | w_pawn_west_targets(pinned_piece)
             } else {
