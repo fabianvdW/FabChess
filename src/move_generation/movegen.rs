@@ -1921,28 +1921,10 @@ pub struct AdditionalBitBoards {
     enemy_pawns_westattack: u64,
     enemy_pawns_eastattack: u64,
 
-    stm_knights_attacks: Vec<u64>,
-    enemy_knights_attacks: Vec<u64>,
-
-    stm_bishops_attacks: Vec<u64>,
-    enemy_bishops_attacks: Vec<u64>,
-
-    stm_rooks_attacks: Vec<u64>,
-    enemy_rooks_attacks: Vec<u64>,
-
-    stm_queens_attacks: Vec<u64>,
-    enemy_queens_attacks: Vec<u64>,
-
     stm_king_attacks: u64,
     enemy_king_attacks: u64,
 
     stm_unsafe_squares: u64,
-
-    pawn_checkers: u64,
-    knight_checkers: u64,
-    bishop_checkers: u64,
-    rook_checkers: u64,
-    queen_checkers: u64,
     all_checkers: u64,
 }
 
@@ -2007,15 +1989,7 @@ pub fn calculate_additionalbitboards(
     let all_pieces_without_stmking = enemy_pieces | stm_pieces_without_king;
     let all_pieces = all_pieces_without_stmking | stm_king;
 
-    let (
-        mut stm_unsafe_squares,
-        mut pawn_checkers,
-        mut knight_checkers,
-        mut bishop_checkers,
-        mut rook_checkers,
-        mut queen_checkers,
-        mut all_checkers,
-    ) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+    let (mut stm_unsafe_squares, mut all_checkers) = (0u64, 0u64);
 
     //Pawns
     let (
@@ -2040,7 +2014,7 @@ pub fn calculate_additionalbitboards(
     };
 
     stm_unsafe_squares |= enemy_pawns_westattack | enemy_pawns_eastattack;
-    pawn_checkers |= if stm_color_iswhite {
+    all_checkers |= if stm_color_iswhite {
         w_pawn_west_targets(stm_king & enemy_pawns_westattack)
     } else {
         b_pawn_west_targets(stm_king & enemy_pawns_westattack)
@@ -2049,97 +2023,51 @@ pub fn calculate_additionalbitboards(
     } else {
         b_pawn_east_targets(stm_king & enemy_pawns_eastattack)
     };
-    all_checkers |= pawn_checkers;
 
     //Knights
-    let mut stm_knights_attacks: Vec<u64> = Vec::with_capacity(2);
-    while stm_knights != 0u64 {
-        let stm_knightindex = stm_knights.trailing_zeros() as usize;
-        let stm_knight = 1u64 << stm_knightindex;
-        let stm_knightattacks = knight_attack(stm_knightindex);
-        stm_knights_attacks.push(stm_knightattacks & !stm_pieces);
-        stm_knights ^= stm_knight;
-    }
-    let mut enemy_knights_attacks: Vec<u64> = Vec::with_capacity(2);
     while enemy_knights != 0u64 {
         let enemy_knightindex = enemy_knights.trailing_zeros() as usize;
         let enemy_knight = 1u64 << enemy_knightindex;
         let enemy_knightattacks = knight_attack(enemy_knightindex);
-        enemy_knights_attacks.push(enemy_knightattacks & !enemy_pieces);
         stm_unsafe_squares |= enemy_knightattacks;
         if stm_king & enemy_knightattacks != 0u64 {
-            knight_checkers |= enemy_knight;
             all_checkers |= enemy_knight;
         }
         enemy_knights ^= enemy_knight;
     }
 
     //Bishops
-    let mut stm_bishops_attacks: Vec<u64> = Vec::with_capacity(2);
-    while stm_bishops != 0u64 {
-        let stm_bishopindex = stm_bishops.trailing_zeros() as usize;
-        let stm_bishop = 1u64 << stm_bishopindex;
-        let stm_bishopattacks = bishop_attack(stm_bishopindex, all_pieces);
-        stm_bishops_attacks.push(stm_bishopattacks & !stm_pieces);
-        stm_bishops ^= stm_bishop;
-    }
-    let mut enemy_bishops_attacks: Vec<u64> = Vec::with_capacity(2);
     while enemy_bishops != 0u64 {
         let enemy_bishopindex = enemy_bishops.trailing_zeros() as usize;
         let enemy_bishop = 1u64 << enemy_bishopindex;
         let enemy_bishopattacks = bishop_attack(enemy_bishopindex, all_pieces_without_stmking);
-        enemy_bishops_attacks.push(enemy_bishopattacks & !enemy_pieces);
         stm_unsafe_squares |= enemy_bishopattacks;
         if stm_king & enemy_bishopattacks != 0u64 {
-            bishop_checkers |= enemy_bishop;
             all_checkers |= enemy_bishop;
         }
         enemy_bishops ^= enemy_bishop;
     }
 
     //Rooks
-    let mut stm_rooks_attacks: Vec<u64> = Vec::with_capacity(2);
-    while stm_rooks != 0u64 {
-        let stm_rookindex = stm_rooks.trailing_zeros() as usize;
-        let stm_rook = 1u64 << stm_rookindex;
-        let stm_rookattacks = rook_attack(stm_rookindex, all_pieces);
-        stm_rooks_attacks.push(stm_rookattacks & !stm_pieces);
-        stm_rooks ^= stm_rook;
-    }
-    let mut enemy_rooks_attacks: Vec<u64> = Vec::with_capacity(2);
     while enemy_rooks != 0u64 {
         let enemy_rookindex = enemy_rooks.trailing_zeros() as usize;
         let enemy_rook = 1u64 << enemy_rookindex;
         let enemy_rookattacks = rook_attack(enemy_rookindex, all_pieces_without_stmking);
-        enemy_rooks_attacks.push(enemy_rookattacks & !enemy_pieces);
         stm_unsafe_squares |= enemy_rookattacks;
         if stm_king & enemy_rookattacks != 0u64 {
-            rook_checkers |= enemy_rook;
             all_checkers |= enemy_rook;
         }
         enemy_rooks ^= enemy_rook;
     }
 
     //Queens
-    let mut stm_queens_attacks: Vec<u64> = Vec::with_capacity(2);
-    while stm_queens != 0u64 {
-        let stm_queenindex = stm_queens.trailing_zeros() as usize;
-        let stm_queen = 1u64 << stm_queenindex;
-        let stm_queenattacks =
-            bishop_attack(stm_queenindex, all_pieces) | rook_attack(stm_queenindex, all_pieces);
-        stm_queens_attacks.push(stm_queenattacks & !stm_pieces);
-        stm_queens ^= stm_queen;
-    }
-    let mut enemy_queens_attacks: Vec<u64> = Vec::with_capacity(2);
     while enemy_queens != 0u64 {
         let enemy_queenindex = enemy_queens.trailing_zeros() as usize;
         let enemy_queen = 1u64 << enemy_queenindex;
         let enemy_queenattacks = bishop_attack(enemy_queenindex, all_pieces_without_stmking)
             | rook_attack(enemy_queenindex, all_pieces_without_stmking);
-        enemy_queens_attacks.push(enemy_queenattacks & !enemy_pieces);
         stm_unsafe_squares |= enemy_queenattacks;
         if stm_king & enemy_queenattacks != 0u64 {
-            queen_checkers |= enemy_queen;
             all_checkers |= enemy_queen;
         }
         enemy_queens ^= enemy_queen;
@@ -2158,22 +2086,9 @@ pub fn calculate_additionalbitboards(
         stm_pawns_eastattack,
         enemy_pawns_westattack,
         enemy_pawns_eastattack,
-        stm_knights_attacks,
-        enemy_knights_attacks,
-        stm_bishops_attacks,
-        enemy_bishops_attacks,
-        stm_rooks_attacks,
-        enemy_rooks_attacks,
-        stm_queens_attacks,
-        enemy_queens_attacks,
         stm_king_attacks,
         enemy_king_attacks,
         stm_unsafe_squares,
-        pawn_checkers,
-        knight_checkers,
-        bishop_checkers,
-        rook_checkers,
-        queen_checkers,
         all_checkers,
     }
 }
@@ -2328,7 +2243,6 @@ pub fn add_normal_moves_to_movelist(
     legal_moves: &mut Vec<GameMove>,
     piece_type: PieceType,
     mut piece_board: u64,
-    piece_targets: &Vec<u64>,
     pinned_pieces: u64,
     enemy_pawns: u64,
     enemy_knights: u64,
@@ -2337,6 +2251,7 @@ pub fn add_normal_moves_to_movelist(
     enemy_queens: u64,
     enemy_pieces: u64,
     empty_squares: u64,
+    all_pieces: u64,
     push_mask: u64,
     capture_mask: u64,
     only_captures: bool,
@@ -2347,7 +2262,18 @@ pub fn add_normal_moves_to_movelist(
         let piece_index = piece_board.trailing_zeros() as usize;
         let piece = 1u64 << piece_index;
         if piece & pinned_pieces == 0u64 {
-            let mut captures = piece_targets[index] & capture_mask & enemy_pieces;
+            let piece_target = if let PieceType::Knight = piece_type {
+                knight_attack(piece_index)
+            } else if let PieceType::Bishop = piece_type {
+                bishop_attack(piece_index, all_pieces)
+            } else if let PieceType::Rook = piece_type {
+                rook_attack(piece_index, all_pieces)
+            } else if let PieceType::Queen = piece_type {
+                bishop_attack(piece_index, all_pieces) | rook_attack(piece_index, all_pieces)
+            } else {
+                panic!("Shouldn't get here")
+            };
+            let mut captures = piece_target & capture_mask & enemy_pieces;
             stm_haslegalmove |= captures != 0u64;
             while captures != 0u64 {
                 let capture_index = captures.trailing_zeros() as usize;
@@ -2369,7 +2295,7 @@ pub fn add_normal_moves_to_movelist(
             }
 
             if !only_captures || !stm_haslegalmove {
-                let quiets = piece_targets[index] & push_mask & empty_squares;
+                let quiets = piece_target & push_mask & empty_squares;
                 stm_haslegalmove |= quiets != 0u64;
                 if !only_captures {
                     add_moves_to_movelist(
@@ -2984,7 +2910,6 @@ pub fn generate_moves2(
         &mut legal_moves,
         PieceType::Knight,
         stm_knights,
-        &abb.stm_knights_attacks,
         pinned_pieces,
         enemy_pawns,
         enemy_knights,
@@ -2993,6 +2918,7 @@ pub fn generate_moves2(
         enemy_queens,
         abb.enemy_pieces,
         empty_squares,
+        abb.all_pieces,
         push_mask,
         capture_mask,
         only_captures,
@@ -3002,7 +2928,6 @@ pub fn generate_moves2(
         &mut legal_moves,
         PieceType::Bishop,
         stm_bishops,
-        &abb.stm_bishops_attacks,
         pinned_pieces,
         enemy_pawns,
         enemy_knights,
@@ -3011,6 +2936,7 @@ pub fn generate_moves2(
         enemy_queens,
         abb.enemy_pieces,
         empty_squares,
+        abb.all_pieces,
         push_mask,
         capture_mask,
         only_captures,
@@ -3020,7 +2946,6 @@ pub fn generate_moves2(
         &mut legal_moves,
         PieceType::Rook,
         stm_rooks,
-        &abb.stm_rooks_attacks,
         pinned_pieces,
         enemy_pawns,
         enemy_knights,
@@ -3029,6 +2954,7 @@ pub fn generate_moves2(
         enemy_queens,
         abb.enemy_pieces,
         empty_squares,
+        abb.all_pieces,
         push_mask,
         capture_mask,
         only_captures,
@@ -3038,7 +2964,6 @@ pub fn generate_moves2(
         &mut legal_moves,
         PieceType::Queen,
         stm_queens,
-        &abb.stm_queens_attacks,
         pinned_pieces,
         enemy_pawns,
         enemy_knights,
@@ -3047,6 +2972,7 @@ pub fn generate_moves2(
         enemy_queens,
         abb.enemy_pieces,
         empty_squares,
+        abb.all_pieces,
         push_mask,
         capture_mask,
         only_captures,
