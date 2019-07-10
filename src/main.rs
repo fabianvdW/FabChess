@@ -710,6 +710,47 @@ mod tests {
                 &mut movelist
             )
         );
+        //Missed that special enpassant case for queens(got it for rooks earlier)
+        assert_eq!(
+            29,
+            perft(
+                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+                1,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            865,
+            perft(
+                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+                2,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            22609,
+            perft(
+                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+                3,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            685012,
+            perft(
+                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+                4,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            17252119,
+            perft(
+                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+                5,
+                &mut movelist
+            )
+        );
     }
 
     #[test]
