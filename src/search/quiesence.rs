@@ -3,6 +3,7 @@ use super::super::board_representation::game_state::{
 };
 use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
+use super::super::move_generation::movegen::{AdditionalGameStateInformation, MoveList};
 use super::alphabeta::PrincipalVariation;
 use super::alphabeta::{check_end_condition, leaf_score};
 use super::cache::{Cache, CacheEntry};
@@ -21,13 +22,14 @@ pub fn q_search(
     game_state: &GameState,
     color: i16,
     depth_left: i16,
-    legal_moves: Vec<GameMove>,
-    in_check: bool,
     current_depth: usize,
     search: &mut Search,
     history: &mut Vec<u64>,
     cache: &mut Cache,
     root_plies_played: usize,
+    move_list: &mut MoveList,
+    agsi: AdditionalGameStateInformation,
+    is_q_root: bool,
 ) -> PrincipalVariation {
     search.search_statistics.add_q_node(current_depth);
 
@@ -35,7 +37,12 @@ pub fn q_search(
     if search.stop {
         return pv;
     }
-    let game_status = check_end_condition(&game_state, legal_moves.len() > 0, in_check, history);
+    let game_status = check_end_condition(
+        &game_state,
+        agsi.stm_haslegalmove,
+        agsi.stm_incheck,
+        history,
+    );
     if game_status != GameResult::Ingame {
         pv.score = leaf_score(game_status, color, depth_left);
         return pv;
@@ -59,27 +66,36 @@ pub fn q_search(
         return pv;
     }
 
-    let mut capture_moves = Vec::with_capacity(20);
-    for mv in legal_moves {
-        if !is_capture(&mv) {
+    let (mut mv_index, mut capture_index) = (0, 0);
+    //println!("Debug 1");
+    while mv_index < move_list.counter[current_depth] {
+        let mv: &GameMove = &move_list.move_list[current_depth][mv_index].unwrap();
+        if is_q_root && !is_capture(mv) {
+            mv_index += 1;
             continue;
         }
         if let GameMoveType::EnPassant = mv.move_type {
-            capture_moves.push(GradedMove::new(mv, 100.0));
+            move_list.graded_moves[current_depth][capture_index] =
+                Some(GradedMove::new(mv_index, 100.0));
         } else {
-            if !passes_delta_pruning(&mv, static_evaluation.phase, stand_pat, alpha) {
+            if !passes_delta_pruning(mv, static_evaluation.phase, stand_pat, alpha) {
                 search.search_statistics.add_q_delta_cutoff();
+                mv_index += 1;
                 continue;
             }
-            let score = see(&game_state, &mv, false);
+            let score = see(&game_state, mv, false);
             if score < 0 {
                 search.search_statistics.add_q_see_cutoff();
+                mv_index += 1;
                 continue;
             }
-            capture_moves.push(GradedMove::new(mv, score as f64));
+            move_list.graded_moves[current_depth][capture_index] =
+                Some(GradedMove::new(mv_index, score as f64));
         }
+        mv_index += 1;
+        capture_index += 1;
     }
-
+    //println!("Debug 2");
     //Probe TT
     {
         let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
@@ -112,14 +128,19 @@ pub fn q_search(
                     }
                 }
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                for cmv in capture_moves.iter_mut() {
-                    if cmv.mv.from == mv.from
-                        && cmv.mv.to == mv.to
-                        && cmv.mv.move_type == mv.move_type
+                let mut c_i = 0;
+                while c_i < capture_index {
+                    let other_mv: &GameMove = &move_list.move_list[current_depth]
+                        [move_list.graded_moves[current_depth][c_i].unwrap().mv_index]
+                        .unwrap();
+                    if other_mv.from == mv.from
+                        && other_mv.to == mv.to
+                        && other_mv.move_type == mv.move_type
                     {
-                        cmv.score += 10000.0;
+                        move_list.graded_moves[current_depth][c_i].unwrap().score += 10000.0;
                         break;
                     }
+                    c_i += 1;
                 }
             }
         }
@@ -134,31 +155,34 @@ pub fn q_search(
     next_history.push(game_state.hash);
     let mut index = 0;
     pv.score = stand_pat;
-    while capture_moves.len() > 0 {
-        let gmvindex = super::alphabeta::get_next_gm(&capture_moves);
-        let capture_move = capture_moves.remove(gmvindex);
-        let mv = capture_move.mv;
-        let next_g = movegen::make_move(&game_state, &mv);
-        let next_g_movegen = movegen::generate_moves(&next_g);
+    //println!("Debug 3");
+    while index < capture_index {
+        let gmvindex =
+            super::alphabeta::get_next_gm(move_list, current_depth, index, capture_index);
+        let capture_move = move_list.move_list[current_depth][gmvindex].unwrap();
+        let next_g = movegen::make_move(&game_state, &capture_move);
+        //println!("Generating moves in QS for GameState:\n{}", next_g.to_fen());
+        let next_g_agsi = movegen::generate_moves2(&next_g, true, move_list, current_depth + 1);
         let following_pv = q_search(
             -beta,
             -alpha,
             &next_g,
             -color,
             depth_left - 1,
-            next_g_movegen.0,
-            next_g_movegen.1,
             current_depth + 1,
             search,
             next_history,
             cache,
             root_plies_played,
+            move_list,
+            next_g_agsi,
+            false,
         );
         let score = -following_pv.score;
         if score > pv.score {
             pv.score = score;
             pv.pv.clear();
-            pv.pv.push(mv);
+            pv.pv.push(capture_move);
         }
         if score >= beta {
             search.search_statistics.add_q_beta_cutoff(index);

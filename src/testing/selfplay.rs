@@ -231,8 +231,8 @@ pub fn play_game(
             if let None = output.0 {
                 error_log.log(
                     &format!(
-                        "Player 1 didn't send bestmove in time in game {}! He had {}ms left!\n",
-                        task.id, player1_time
+                        "Player 1 didn't send bestmove in time in game {}! He had {}ms left!\nPosition:\n{}",
+                        task.id, player1_time,position_string.clone()
                     ),
                     true,
                 );

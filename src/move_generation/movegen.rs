@@ -5,6 +5,7 @@ use super::magic::{self, Magic};
 use crate::evaluation::psqt_evaluation::{
     psqt_incremental_add_piece, psqt_incremental_delete_piece, psqt_incremental_move_piece,
 };
+use crate::search::GradedMove;
 
 //Move GEn
 //King- Piece-Wise by lookup
@@ -2094,9 +2095,9 @@ pub fn calculate_additionalbitboards(
 }
 
 pub struct AdditionalGameStateInformation {
-    stm_incheck: bool,
-    stm_haslegalmove: bool,
-    additional_bitboards: AdditionalBitBoards,
+    pub stm_incheck: bool,
+    pub stm_haslegalmove: bool,
+    pub additional_bitboards: AdditionalBitBoards,
 }
 #[inline(always)]
 pub fn add_pin_moves_to_movelist(
@@ -2264,11 +2265,16 @@ pub fn add_normal_moves_to_movelist(
     capture_mask: u64,
     only_captures: bool,
     depth: usize,
+    stm_color_iswhite: bool,
 ) -> bool {
     let mut stm_haslegalmove = false;
     let mut index = 0;
     while piece_board != 0u64 {
-        let piece_index = piece_board.trailing_zeros() as usize;
+        let piece_index = if stm_color_iswhite {
+            63 - piece_board.leading_zeros() as usize
+        } else {
+            piece_board.trailing_zeros() as usize
+        };
         let piece = 1u64 << piece_index;
         if piece & pinned_pieces == 0u64 {
             let piece_target = if let PieceType::Knight = piece_type {
@@ -2423,12 +2429,14 @@ pub fn add_move_to_movelist(
 }
 pub struct MoveList {
     pub move_list: [[Option<GameMove>; 128]; 100],
+    pub graded_moves: [[Option<GradedMove>; 128]; 100],
     pub counter: [usize; 100],
 }
 impl MoveList {
     pub fn new() -> Self {
         MoveList {
             move_list: [[None; 128]; 100],
+            graded_moves: [[None; 128]; 100],
             counter: [0; 100],
         }
     }
@@ -2742,21 +2750,23 @@ pub fn generate_moves2(
     stm_haslegalmove |= stm_pawns_single_push != 0u64;
     let stm_pawn_promotions =
         stm_pawns_single_push & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
-    add_pawn_moves_to_movelist(
-        movelist,
-        stm_pawn_promotions,
-        8,
-        stm_color_iswhite,
-        enemy_pawns,
-        enemy_knights,
-        enemy_bishops,
-        enemy_rooks,
-        enemy_queens,
-        false,
-        true,
-        pinned_pieces,
-        depth,
-    );
+    if !only_captures {
+        add_pawn_moves_to_movelist(
+            movelist,
+            stm_pawn_promotions,
+            8,
+            stm_color_iswhite,
+            enemy_pawns,
+            enemy_knights,
+            enemy_bishops,
+            enemy_rooks,
+            enemy_queens,
+            false,
+            true,
+            pinned_pieces,
+            depth,
+        );
+    }
     if !only_captures {
         let stm_pawns_quiet_single_push = stm_pawns_single_push & !stm_pawn_promotions;
         add_pawn_moves_to_movelist(
@@ -2977,44 +2987,7 @@ pub fn generate_moves2(
         capture_mask,
         only_captures,
         depth,
-    );
-    //6.2 Bishops
-    stm_haslegalmove |= add_normal_moves_to_movelist(
-        movelist,
-        PieceType::Bishop,
-        stm_bishops,
-        pinned_pieces,
-        enemy_pawns,
-        enemy_knights,
-        enemy_bishops,
-        enemy_rooks,
-        enemy_queens,
-        abb.enemy_pieces,
-        empty_squares,
-        abb.all_pieces,
-        push_mask,
-        capture_mask,
-        only_captures,
-        depth,
-    );
-    //6.3 Rooks
-    stm_haslegalmove |= add_normal_moves_to_movelist(
-        movelist,
-        PieceType::Rook,
-        stm_rooks,
-        pinned_pieces,
-        enemy_pawns,
-        enemy_knights,
-        enemy_bishops,
-        enemy_rooks,
-        enemy_queens,
-        abb.enemy_pieces,
-        empty_squares,
-        abb.all_pieces,
-        push_mask,
-        capture_mask,
-        only_captures,
-        depth,
+        stm_color_iswhite,
     );
     //6.4 Queens
     stm_haslegalmove |= add_normal_moves_to_movelist(
@@ -3034,6 +3007,48 @@ pub fn generate_moves2(
         capture_mask,
         only_captures,
         depth,
+        stm_color_iswhite,
+    );
+
+    //6.2 Bishops
+    stm_haslegalmove |= add_normal_moves_to_movelist(
+        movelist,
+        PieceType::Bishop,
+        stm_bishops,
+        pinned_pieces,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+        empty_squares,
+        abb.all_pieces,
+        push_mask,
+        capture_mask,
+        only_captures,
+        depth,
+        stm_color_iswhite,
+    );
+    //6.3 Rooks
+    stm_haslegalmove |= add_normal_moves_to_movelist(
+        movelist,
+        PieceType::Rook,
+        stm_rooks,
+        pinned_pieces,
+        enemy_pawns,
+        enemy_knights,
+        enemy_bishops,
+        enemy_rooks,
+        enemy_queens,
+        abb.enemy_pieces,
+        empty_squares,
+        abb.all_pieces,
+        push_mask,
+        capture_mask,
+        only_captures,
+        depth,
+        stm_color_iswhite,
     );
     //----------------------------------------------------------------------
     //**********************************************************************

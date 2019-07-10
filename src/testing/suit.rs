@@ -3,7 +3,6 @@ use crate::write_to_buf;
 use crate::STS_SUB_SUITS;
 use core::board_representation::game_state::{GameMove, GameState};
 use core::misc::parse_move;
-use core::search::GradedMove;
 use std::fmt::{Display, Formatter, Result};
 use std::fs::File;
 use std::io::prelude::*;
@@ -15,6 +14,10 @@ use std::thread;
 pub struct TestSuitResult {
     suit: SuitTest,
     mv: GameMove,
+}
+pub struct AwardedMove {
+    mv: GameMove,
+    score: f64,
 }
 pub struct SuitInfos {
     move_time: u64,
@@ -69,7 +72,7 @@ impl Display for SuitInfos {
 
 pub struct SuitTest {
     game_state: GameState,
-    optimal_moves: Vec<GradedMove>,
+    optimal_moves: Vec<AwardedMove>,
     subsuit: isize,
 }
 
@@ -172,7 +175,7 @@ fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
         }
         let fenbmvec = linevec[0].split("bm").collect::<Vec<&str>>();
         let state = GameState::from_fen(fenbmvec[0].trim_end());
-        let mut optimal_moves: Vec<GradedMove> = Vec::with_capacity(4);
+        let mut optimal_moves: Vec<AwardedMove> = Vec::with_capacity(4);
         let mut subsuit_index = -1;
         for otherlines in linevec {
             if otherlines.trim().starts_with("c0") {
@@ -185,7 +188,7 @@ fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
                     //println!("MoveDesc: {:?}", move_desc_split);
                     let (move_desc, _) = parse_move(&state, &move_desc_split[0].trim().to_owned());
                     let score = move_desc_split[1].parse::<u64>().unwrap();
-                    optimal_moves.push(GradedMove {
+                    optimal_moves.push(AwardedMove {
                         mv: move_desc,
                         score: score as f64,
                     });

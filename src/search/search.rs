@@ -4,6 +4,7 @@ use super::alphabeta::PrincipalVariation;
 use super::cache::{Cache, CacheEntry};
 use super::statistics::SearchStatistics;
 use super::GameMove;
+use crate::move_generation::movegen;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -71,7 +72,7 @@ impl Search {
             }
         }
         self.search_statistics = SearchStatistics::new();
-
+        let mut move_list = movegen::MoveList::new();
         let mut best_pv = PrincipalVariation::new(0);
         for d in 1..(depth + 1) {
             let mut pv;
@@ -88,6 +89,7 @@ impl Search {
                     &mut hist,
                     &stop_ref,
                     cache,
+                    &mut move_list,
                 );
             } else {
                 //Aspiration Window
@@ -108,6 +110,7 @@ impl Search {
                         &mut hist,
                         &stop_ref,
                         cache,
+                        &mut move_list,
                     );
                     if self.stop {
                         break;

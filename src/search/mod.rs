@@ -11,14 +11,15 @@ pub fn init_constants() {
     quiesence::PIECE_VALUES.len();
 }
 
+#[derive(Clone, Copy)]
 pub struct GradedMove {
-    pub mv: GameMove,
+    pub mv_index: usize,
     pub score: f64,
 }
 
 impl GradedMove {
-    pub fn new(mv: GameMove, score: f64) -> GradedMove {
-        GradedMove { mv, score }
+    pub fn new(mv_index: usize, score: f64) -> GradedMove {
+        GradedMove { mv_index, score }
     }
 }
 

@@ -1,5 +1,6 @@
 use super::super::board_representation::game_state::{GameMove, GameMoveType, GameResult};
 use super::super::movegen;
+use super::super::movegen::MoveList;
 use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
 use super::quiesence::{is_capture, q_search, see};
@@ -27,6 +28,7 @@ pub fn principal_variation_search(
     history: &mut Vec<u64>,
     stop: &Arc<AtomicBool>,
     cache: &mut Cache,
+    move_list: &mut MoveList,
 ) -> PrincipalVariation {
     search.search_statistics.add_normal_node(current_depth);
     if search.search_statistics.nodes_searched % 1024 == 0 {
@@ -39,10 +41,14 @@ pub fn principal_variation_search(
     if search.stop {
         return pv;
     }
-    let (legal_moves, in_check) = movegen::generate_moves(&game_state);
+    let agsi = movegen::generate_moves2(&game_state, false, move_list, current_depth);
     if !root {
-        let game_status =
-            check_end_condition(&game_state, legal_moves.len() > 0, in_check, history);
+        let game_status = check_end_condition(
+            &game_state,
+            agsi.stm_haslegalmove,
+            agsi.stm_incheck,
+            history,
+        );
         if game_status != GameResult::Ingame {
             pv.score = leaf_score(game_status, color, depth_left);
             return pv;
@@ -50,7 +56,7 @@ pub fn principal_variation_search(
     }
 
     //Check extensions
-    if in_check && !root {
+    if agsi.stm_incheck && !root {
         depth_left += 1;
     }
     //Max Search depth reached
@@ -68,13 +74,14 @@ pub fn principal_variation_search(
             &game_state,
             color,
             0,
-            legal_moves,
-            in_check,
             current_depth,
             search,
             history,
             cache,
             root_pliesplayed,
+            move_list,
+            agsi,
+            true,
         );
         return pv;
     }
@@ -88,39 +95,48 @@ pub fn principal_variation_search(
     //5. Killer moves + 5000
     //6. Non captures (history heuristic) history heuristic score
     //7. Losing captures (see<0) see score
-    let mut graded_moves = Vec::with_capacity(legal_moves.len());
-    for mv in legal_moves {
-        if is_capture(&mv) {
+    let mut mv_index = 0;
+    while mv_index < move_list.counter[current_depth] {
+        let mv: &GameMove = &move_list.move_list[current_depth][mv_index].unwrap();
+        if is_capture(mv) {
             if GameMoveType::EnPassant == mv.move_type {
-                graded_moves.push(GradedMove::new(mv, 9999.0));
+                move_list.graded_moves[current_depth][mv_index] =
+                    Some(GradedMove::new(mv_index, 9999.0));
             } else {
                 let mut sval = see(&game_state, &mv, true) as f64;
                 if sval >= 0.0 {
                     sval += 10000.0;
                 }
-                graded_moves.push(GradedMove::new(mv, sval));
+                move_list.graded_moves[current_depth][mv_index] =
+                    Some(GradedMove::new(mv_index, sval));
             }
         } else {
             //History Heuristic
             let score = search.hh_score[mv.from][mv.to] as f64
                 / search.bf_score[mv.from][mv.to] as f64
                 / 1000.0;
-            graded_moves.push(GradedMove::new(mv, score));
+            move_list.graded_moves[current_depth][mv_index] =
+                Some(GradedMove::new(mv_index, score));
         }
+        mv_index += 1;
     }
 
     {
         //Killer moves
         if let Some(s) = search.killer_moves[current_depth][0] {
-            let mv_index = find_move(&s, &graded_moves, false);
-            if mv_index < graded_moves.len() {
-                graded_moves[mv_index].score += 5000.0;
+            let mv_index = find_move(&s, move_list, current_depth, false);
+            if mv_index < move_list.counter[current_depth] {
+                move_list.graded_moves[current_depth][mv_index]
+                    .unwrap()
+                    .score += 5000.0;
             }
         }
         if let Some(s) = search.killer_moves[current_depth][1] {
-            let mv_index = find_move(&s, &graded_moves, false);
-            if mv_index < graded_moves.len() {
-                graded_moves[mv_index].score += 5000.0;
+            let mv_index = find_move(&s, move_list, current_depth, false);
+            if mv_index < move_list.counter[current_depth] {
+                move_list.graded_moves[current_depth][mv_index]
+                    .unwrap()
+                    .score += 5000.0;
             }
         }
     }
@@ -131,8 +147,10 @@ pub fn principal_variation_search(
             if ce.hash == game_state.hash {
                 in_pv = true;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &graded_moves, true);
-                graded_moves[mv_index].score = 30000.0;
+                let mv_index = find_move(&mv, move_list, current_depth, true);
+                move_list.graded_moves[current_depth][mv_index]
+                    .unwrap()
+                    .score = 30000.0;
             }
         }
     }
@@ -174,8 +192,10 @@ pub fn principal_variation_search(
                 }
                 static_evaluation = ce.static_evaluation;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, &graded_moves, true);
-                graded_moves[mv_index].score = 29900.0;
+                let mv_index = find_move(&mv, move_list, current_depth, true);
+                move_list.graded_moves[current_depth][mv_index]
+                    .unwrap()
+                    .score = 29900.0;
                 cache_hit = true;
             }
         }
@@ -190,7 +210,7 @@ pub fn principal_variation_search(
     next_history.push(game_state.hash);
 
     if beta - alpha == 1
-        && !in_check
+        && !agsi.stm_incheck
         && (game_state.pieces[1][game_state.color_to_move]
             | game_state.pieces[2][game_state.color_to_move]
             | game_state.pieces[3][game_state.color_to_move]
@@ -214,6 +234,7 @@ pub fn principal_variation_search(
                 next_history,
                 stop,
                 cache,
+                move_list,
             )
             .score;
             if rat >= beta {
@@ -239,15 +260,18 @@ pub fn principal_variation_search(
             next_history,
             stop,
             cache,
+            move_list,
         );
         next_history.push(game_state.hash);
         if iid.pv.len() == 0 {
             panic!("IID PV is 0");
         }
-        let mv_index = find_move(&iid.pv[0], &graded_moves, true);
-        graded_moves[mv_index].score = 29900.0;
+        let mv_index = find_move(&iid.pv[0], move_list, current_depth, true);
+        move_list.graded_moves[current_depth][mv_index]
+            .unwrap()
+            .score = 29900.0;
     }
-    let mut futil_pruning = depth_left <= 8 && !in_check;
+    let mut futil_pruning = depth_left <= 8 && !agsi.stm_incheck;
     let mut futil_margin = 0;
     if futil_pruning {
         if let None = static_evaluation {
@@ -256,10 +280,14 @@ pub fn principal_variation_search(
         futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
     }
     let mut index: usize = 0;
-    while graded_moves.len() > 0 {
-        let gmvindex = get_next_gm(&graded_moves);
-        let gmv = graded_moves.remove(gmvindex);
-        let mv = gmv.mv;
+    while index < move_list.counter[current_depth] {
+        let gmvindex = get_next_gm(
+            move_list,
+            current_depth,
+            index,
+            move_list.counter[current_depth],
+        );
+        let mv = move_list.move_list[current_depth][gmvindex].unwrap();
         let isc = is_capture(&mv);
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
             true
@@ -276,6 +304,7 @@ pub fn principal_variation_search(
             && !gives_check(&mv, &game_state, &next_state)
         {
             if futil_margin <= alpha {
+                index += 1;
                 continue;
             } else {
                 futil_pruning = false;
@@ -285,7 +314,7 @@ pub fn principal_variation_search(
         let mut reduction = 0;
         if depth_left > 2
             && !in_pv
-            && !in_check
+            && !agsi.stm_incheck
             && !isc
             && index >= 2
             && !isp
@@ -313,6 +342,7 @@ pub fn principal_variation_search(
                 next_history,
                 stop,
                 cache,
+                move_list,
             );
             if reduction > 0 && -following_pv.score > alpha {
                 following_pv = principal_variation_search(
@@ -327,6 +357,7 @@ pub fn principal_variation_search(
                     next_history,
                     stop,
                     cache,
+                    move_list,
                 );
             }
         } else {
@@ -342,6 +373,7 @@ pub fn principal_variation_search(
                 next_history,
                 stop,
                 cache,
+                move_list,
             );
             let rating = -following_pv.score;
             if rating > alpha {
@@ -357,6 +389,7 @@ pub fn principal_variation_search(
                     next_history,
                     stop,
                     cache,
+                    move_list,
                 );
             }
         }
@@ -477,33 +510,43 @@ pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
 }
 
 #[inline(always)]
-pub fn get_next_gm(mv_list: &Vec<GradedMove>) -> usize {
-    if mv_list.len() == 0 {
+pub fn get_next_gm(
+    mv_list: &mut MoveList,
+    current_depth: usize,
+    mv_index: usize,
+    max_moves: usize,
+) -> usize {
+    if mv_list.counter[current_depth] == 0 {
         panic!("List has to be longer than 1")
     } else {
-        let mut best_mv = &mv_list[0];
-        let mut index = 0;
-        for i in 1..mv_list.len() {
-            if mv_list[i].score > best_mv.score {
-                best_mv = &mv_list[i];
+        let mut index = mv_index;
+        for i in (mv_index + 1)..max_moves {
+            if mv_list.graded_moves[current_depth][i].unwrap().score
+                > mv_list.graded_moves[current_depth][index].unwrap().score
+            {
                 index = i;
             }
         }
-        return index;
+        let saved = mv_list.graded_moves[current_depth][mv_index];
+        mv_list.graded_moves[current_depth][mv_index] = mv_list.graded_moves[current_depth][index];
+        mv_list.graded_moves[current_depth][index] = saved;
+        return mv_list.graded_moves[current_depth][mv_index]
+            .unwrap()
+            .mv_index;
     }
 }
 
 #[inline(always)]
-pub fn find_move(mv: &GameMove, mv_list: &Vec<GradedMove>, contains: bool) -> usize {
+pub fn find_move(mv: &GameMove, mv_list: &MoveList, current_depth: usize, contains: bool) -> usize {
     let mut mv_index = 0;
-    for gmvs in mv_list {
-        let mvs = &gmvs.mv;
+    while mv_index < mv_list.counter[current_depth] {
+        let mvs = &mv_list.move_list[current_depth][mv_index].unwrap();
         if mvs.from == mv.from && mvs.to == mv.to && mvs.move_type == mv.move_type {
             break;
         }
         mv_index += 1;
     }
-    if mv_index < mv_list.len() {
+    if mv_index < mv_list.counter[current_depth] {
         return mv_index;
     } else if contains {
         panic!("Type 2 error");
