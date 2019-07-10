@@ -2728,7 +2728,7 @@ pub fn generate_moves2(
                 add_move_to_movelist(
                     movelist,
                     pinned_piece_position,
-                    stm_pawn_pin_target.trailing_zeros() as usize,
+                    stm_pawn_pin_enpassant.trailing_zeros() as usize,
                     PieceType::Pawn,
                     GameMoveType::EnPassant,
                     depth,

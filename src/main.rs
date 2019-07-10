@@ -669,6 +669,47 @@ mod tests {
                 &mut movelist
             )
         );
+        //A case that passed all others before + the pgn test, because of its absurdity.
+        assert_eq!(
+            30,
+            perft(
+                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+                1,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            885,
+            perft(
+                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+                2,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            21360,
+            perft(
+                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+                3,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            601693,
+            perft(
+                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+                4,
+                &mut movelist
+            )
+        );
+        assert_eq!(
+            16183274,
+            perft(
+                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+                5,
+                &mut movelist
+            )
+        );
     }
 
     #[test]

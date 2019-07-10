@@ -43,7 +43,7 @@ pub fn parse_loop() {
             }
             "go" => {
                 stop.store(false, Ordering::Relaxed);
-                let tc = go(&us, &arg[1..]);
+                let (tc, depth) = go(&us, &arg[1..]);
                 let mut new_history = vec![];
                 for gs in &history {
                     new_history.push(gs.clone());
@@ -52,7 +52,7 @@ pub fn parse_loop() {
                 let cl = Arc::clone(&stop);
                 let cc = Arc::clone(&cache);
                 thread::spawn(move || {
-                    start_search(cl, new_state, new_history, tc, cc);
+                    start_search(cl, new_state, new_history, tc, cc, depth);
                 });
             }
             "stop" => {
@@ -99,9 +99,10 @@ pub fn start_search(
     history: Vec<GameState>,
     tc: TimeControl,
     cache: Arc<RwLock<Cache>>,
+    depth: usize,
 ) {
     let mut s = Search::new(tc);
-    let res = s.search(100, game_state, history, stop, cache);
+    let res = s.search(depth as i16, game_state, history, stop, cache);
     println!("bestmove {:?}", res.pv[0]);
 }
 
@@ -110,17 +111,21 @@ pub fn print_internal_state(engine: &UCIEngine) {
     println!("FEN: {}", engine.internal_state.to_fen());
 }
 
-pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
+pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
     let mut wtime: u64 = 0;
     let mut btime: u64 = 0;
     let mut winc: u64 = 0;
     let mut binc: u64 = 0;
+    let mut depth = 100;
     if cmd[0].to_lowercase() == "infinite" {
         if engine.internal_state.color_to_move == 0 {
-            return TimeControl::Infinite;
+            return (TimeControl::Infinite, depth);
         } else {
-            return TimeControl::Infinite;
+            return (TimeControl::Infinite, depth);
         }
+    } else if cmd[0].to_lowercase() == "depth" {
+        depth = cmd[1].parse::<usize>().unwrap();
+        return (TimeControl::Infinite, depth);
     }
     let mut index = 0;
     while index < cmd.len() {
@@ -139,16 +144,16 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> TimeControl {
             }
             "movetime" => {
                 let mvtime = cmd[index + 1].parse::<u64>().unwrap();
-                return TimeControl::MoveTime(mvtime);
+                return (TimeControl::MoveTime(mvtime), depth);
             }
             _ => panic!("Invalid go command"),
         };
         index += 2;
     }
     if engine.internal_state.color_to_move == 0 {
-        return TimeControl::Incremental(wtime, winc);
+        return (TimeControl::Incremental(wtime, winc), depth);
     } else {
-        return TimeControl::Incremental(btime, binc);
+        return (TimeControl::Incremental(btime, binc), depth);
     }
 }
 

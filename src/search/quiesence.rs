@@ -161,7 +161,11 @@ pub fn q_search(
             super::alphabeta::get_next_gm(move_list, current_depth, index, capture_index);
         let capture_move = move_list.move_list[current_depth][gmvindex].unwrap();
         let next_g = movegen::make_move(&game_state, &capture_move);
-        //println!("Generating moves in QS for GameState:\n{}", next_g.to_fen());
+        //if is_q_root && current_depth >= 14 {
+        //    println!("Position before:\n{}", game_state.to_fen());
+        //    println!("After making the move:\n{:?}\n", capture_move);
+        //    println!("Generating moves in QS for GameState:\n{}", next_g.to_fen());
+        //}
         let next_g_agsi = movegen::generate_moves2(&next_g, true, move_list, current_depth + 1);
         let following_pv = q_search(
             -beta,
