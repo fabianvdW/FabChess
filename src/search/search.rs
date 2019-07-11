@@ -91,6 +91,8 @@ impl Search {
                     &stop_ref,
                     cache,
                     &mut move_list,
+                    false,
+                    None,
                 );
             } else {
                 //Aspiration Window
@@ -112,6 +114,8 @@ impl Search {
                         &stop_ref,
                         cache,
                         &mut move_list,
+                        false,
+                        None,
                     );
                     if self.stop {
                         break;

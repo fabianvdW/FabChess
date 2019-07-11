@@ -1,15 +1,6 @@
-FabChess:
-Clean up movegen code
-Try: Make/Unmake
-In Search: Don't move movelist into GradedMove. GradedMove now has attribute mv: usize which represents index in movelist. Movelist now is never mutable and can thus be referenced and doesn't need to be moved.
-Only generate captures in q-search
 
-Thoughts:
-Need movelist on stack at all times. This will force search to deal with this aswell. This comes in handy with the proposed change above of getting rid of GradedMoves. Introduce another datastructe on the stack, which contains the (sorted) indices to the stack-list
-Avoid vec<>'s allocation at all costs.
 
-Cleaning up the code is definitly necessary.!
-
+Cleaning up the code is definitly necessary
 
 QOL
 Make MoveList a trait, so we dont have to waste huge amounts of stack when we only need 1 depth movelist

@@ -181,6 +181,7 @@ pub fn attackers_from_black(
     (attackers, slider_flag, bishop_slider)
 }
 
+#[derive(Clone)]
 pub struct AdditionalBitBoards {
     stm_pieces_without_king: u64,
     stm_pieces: u64,
@@ -365,6 +366,7 @@ pub fn calculate_additionalbitboards(
     }
 }
 
+#[derive(Clone)]
 pub struct AdditionalGameStateInformation {
     pub stm_incheck: bool,
     pub stm_haslegalmove: bool,

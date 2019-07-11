@@ -1,6 +1,6 @@
 use super::super::board_representation::game_state::{GameMove, GameMoveType, GameResult};
 use super::super::movegen;
-use super::super::movegen::MoveList;
+use super::super::movegen::{AdditionalGameStateInformation, MoveList};
 use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
 use super::quiesence::{is_capture, q_search, see};
@@ -30,6 +30,8 @@ pub fn principal_variation_search(
     stop: &Arc<AtomicBool>,
     cache: &mut Cache,
     move_list: &mut MoveList,
+    calculated_moves: bool,
+    agsi_pre: Option<AdditionalGameStateInformation>,
 ) -> PrincipalVariation {
     search.search_statistics.add_normal_node(current_depth);
     if search.search_statistics.nodes_searched % 1024 == 0 {
@@ -42,7 +44,11 @@ pub fn principal_variation_search(
     if search.stop {
         return pv;
     }
-    let agsi = movegen::generate_moves2(&game_state, false, move_list, current_depth);
+    let agsi = if calculated_moves {
+        agsi_pre.expect("Couldn't unwrap agsi_pre")
+    } else {
+        movegen::generate_moves2(&game_state, false, move_list, current_depth)
+    };
     if !root {
         let game_status = check_end_condition(
             &game_state,
@@ -57,7 +63,7 @@ pub fn principal_variation_search(
     }
 
     //Check extensions
-    if agsi.stm_incheck && !root {
+    if agsi.stm_incheck && !root && !calculated_moves {
         depth_left += 1;
     }
     //Max Search depth reached
@@ -242,6 +248,8 @@ pub fn principal_variation_search(
                 stop,
                 cache,
                 move_list,
+                false,
+                None,
             )
             .score;
             if rat >= beta {
@@ -268,8 +276,13 @@ pub fn principal_variation_search(
             stop,
             cache,
             move_list,
+            true,
+            Some(agsi.clone()),
         );
         next_history.push(game_state.hash);
+        if search.stop {
+            return pv;
+        }
         if iid.pv.len() == 0 {
             panic!("IID PV is 0");
         }
@@ -352,6 +365,8 @@ pub fn principal_variation_search(
                 stop,
                 cache,
                 move_list,
+                false,
+                None,
             );
             if reduction > 0 && -following_pv.score > alpha {
                 following_pv = principal_variation_search(
@@ -367,6 +382,8 @@ pub fn principal_variation_search(
                     stop,
                     cache,
                     move_list,
+                    false,
+                    None,
                 );
             }
         } else {
@@ -383,6 +400,8 @@ pub fn principal_variation_search(
                 stop,
                 cache,
                 move_list,
+                false,
+                None,
             );
             let rating = -following_pv.score;
             if rating > alpha {
@@ -399,6 +418,8 @@ pub fn principal_variation_search(
                     stop,
                     cache,
                     move_list,
+                    false,
+                    None,
                 );
             }
         }

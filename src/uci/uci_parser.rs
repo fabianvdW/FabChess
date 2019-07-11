@@ -52,9 +52,12 @@ pub fn parse_loop() {
                 let new_state = us.internal_state.clone();
                 let cl = Arc::clone(&stop);
                 let cc = Arc::clone(&cache);
-                thread::spawn(move || {
-                    start_search(cl, new_state, new_history, tc, cc, depth);
-                });
+                thread::Builder::new()
+                    .stack_size(2 * 1024 * 1024)
+                    .spawn(move || {
+                        start_search(cl, new_state, new_history, tc, cc, depth);
+                    })
+                    .expect("Couldn't start thread");
             }
             "stop" => {
                 stop.store(true, Ordering::Relaxed);
