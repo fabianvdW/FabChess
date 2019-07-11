@@ -998,7 +998,7 @@ pub fn generate_moves2(
                     depth,
                 );
             }
-            //En-Passants
+            //En passants
             let stm_pawn_pin_enpassant =
                 stm_pawn_pin_target & g.en_passant & capture_mask & ray_to_king;
             if stm_pawn_pin_enpassant != 0u64 {
@@ -1089,7 +1089,7 @@ pub fn generate_moves2(
             );
         }
     }
-    //5.3 West captures (normal capture, promotion capture, en-passant)
+    //5.3 West captures (normal capture, promotion capture, en passant)
     let stm_pawn_west_captures = abb.stm_pawns_westattack & capture_mask & abb.enemy_pieces;
     //Split up in promotion and non-promotion captures
     let stm_pawn_west_promotion_capture =
@@ -1126,7 +1126,7 @@ pub fn generate_moves2(
         pinned_pieces,
         depth,
     );
-    //En-Passants
+    //En passants
     let stm_pawn_west_enpassants = abb.stm_pawns_westattack
         & g.en_passant
         & if stm_color_iswhite {
@@ -1166,7 +1166,7 @@ pub fn generate_moves2(
             );
         }
     }
-    //5.4 East captures (normal capture, promotion capture, en-passant)
+    //5.4 East captures (normal capture, promotion capture, en passant)
     let stm_pawn_east_captures = abb.stm_pawns_eastattack & capture_mask & abb.enemy_pieces;
     //Split up in promotion and non-promotion captures
     let stm_pawn_east_promotion_capture =
@@ -1203,7 +1203,7 @@ pub fn generate_moves2(
         pinned_pieces,
         depth,
     );
-    //En-Passants
+    //En passants
     let stm_pawn_east_enpassants = abb.stm_pawns_eastattack
         & g.en_passant
         & if stm_color_iswhite {
