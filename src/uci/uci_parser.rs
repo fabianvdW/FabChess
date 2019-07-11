@@ -39,7 +39,7 @@ pub fn parse_loop() {
             }
             "isready" => isready(),
             "position" => {
-                history = position(&mut us, &arg[1..]);
+                history = position(&mut us, &arg[1..], &mut movelist);
             }
             "go" => {
                 stop.store(false, Ordering::Relaxed);
@@ -157,7 +157,11 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
     }
 }
 
-pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
+pub fn position(
+    engine: &mut UCIEngine,
+    cmd: &[&str],
+    movelist: &mut movegen::MoveList,
+) -> Vec<GameState> {
     let mut move_index = 1;
     match cmd[0] {
         "fen" => {
@@ -186,7 +190,7 @@ pub fn position(engine: &mut UCIEngine, cmd: &[&str]) -> Vec<GameState> {
                 let mv = cmd[move_index];
                 let (from, to, promo) = GameMove::string_to_move(mv);
                 engine.internal_state =
-                    scout_and_make_draftmove(from, to, promo, &engine.internal_state);
+                    scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
                 history.push(engine.internal_state.clone());
                 move_index += 1;
             }
@@ -201,10 +205,12 @@ pub fn scout_and_make_draftmove(
     to: usize,
     promo_pieces: Option<PieceType>,
     game_state: &GameState,
-    movelist: &movegen::MoveList,
+    movelist: &mut movegen::MoveList,
 ) -> GameState {
-    let (moves, _) = movegen::generate_moves(&game_state);
-    for mv in moves {
+    movegen::generate_moves2(&game_state, false, movelist, 0);
+    let mut index = 0;
+    while index < movelist.counter[0] {
+        let mv = movelist.move_list[0][index].as_ref().unwrap();
         if mv.from == from && mv.to == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {
@@ -220,6 +226,7 @@ pub fn scout_and_make_draftmove(
             }
             return movegen::make_move(&game_state, &mv);
         }
+        index += 1;
     }
     panic!("Invalid move; not found in list!");
 }

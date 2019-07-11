@@ -22,6 +22,7 @@ pub fn play_game(
     tcp1: &TimeControl,
     tcp2: &TimeControl,
     error_log: Arc<Logger>,
+    movelist: &mut movegen::MoveList,
 ) -> TaskResult {
     let player1_disq = TaskResult {
         p1_won: false,
@@ -137,10 +138,15 @@ pub fn play_game(
     //-------------------------------------------------------------
     //Setup Game
     let opening_fen = task.opening.to_fen();
-    let (mut legal_moves, mut in_check) = movegen::generate_moves(&task.opening);
+    let agsi = movegen::generate_moves2(&task.opening, false, movelist, 0);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
-    let mut status =
-        check_end_condition(&task.opening, legal_moves.len() > 0, in_check, &history).0;
+    let mut status = check_end_condition(
+        &task.opening,
+        agsi.stm_haslegalmove,
+        agsi.stm_incheck,
+        &history,
+    )
+    .0;
     history.push(task.opening.clone());
     let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
     let mut fen_history: Vec<String> = Vec::with_capacity(100);
@@ -252,7 +258,7 @@ pub fn play_game(
             let split_line: Vec<&str> = line.split_whitespace().collect();
             if split_line[0] == "bestmove" {
                 let mv = GameMove::string_to_move(split_line[1]);
-                let found_move = find_move(mv.0, mv.1, mv.2, &legal_moves);
+                let found_move = find_move(mv.0, mv.1, mv.2, movelist);
                 if let None = found_move {
                     error_log.log(
                         &format!("Player 1 sent illegal {} in game {}\n", line, task.id),
@@ -384,7 +390,7 @@ pub fn play_game(
             let split_line: Vec<&str> = line.split_whitespace().collect();
             if split_line[0] == "bestmove" {
                 let mv = GameMove::string_to_move(split_line[1]);
-                let found_move = find_move(mv.0, mv.1, mv.2, &legal_moves);
+                let found_move = find_move(mv.0, mv.1, mv.2, movelist);
                 if let None = found_move {
                     error_log.log(
                         &format!("Player 2 sent illegal {} in game {}\n", line, task.id),
@@ -470,10 +476,8 @@ pub fn play_game(
         if state.half_moves == 0 || state.full_moves < 35 {
             draw_adjucation = 0;
         }
-        let (lm, ic) = movegen::generate_moves(&state);
-        legal_moves = lm;
-        in_check = ic;
-        let check = check_end_condition(&state, legal_moves.len() > 0, in_check, &history);
+        let agsi = movegen::generate_moves2(&state, false, movelist, 0);
+        let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
         status = check.0;
         endcondition = check.1;
         //Check for adjucation
@@ -597,9 +601,11 @@ pub fn find_move(
     from: usize,
     to: usize,
     promo_pieces: Option<PieceType>,
-    legal_moves: &Vec<GameMove>,
+    move_list: &movegen::MoveList,
 ) -> Option<&GameMove> {
-    for mv in legal_moves {
+    let mut index = 0;
+    while index < move_list.counter[0] {
+        let mv = move_list.move_list[0][index].as_ref().unwrap();
         if mv.from == from && mv.to == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {
@@ -615,6 +621,7 @@ pub fn find_move(
             }
             return Some(mv);
         }
+        index += 1;
     }
     None
 }

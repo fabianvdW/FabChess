@@ -2,6 +2,7 @@ use crate::queue::ThreadSafeQueue;
 use crate::write_to_buf;
 use core::board_representation::game_state::{GameMove, GameState};
 use core::misc::parse_move;
+use core::move_generation::movegen;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
@@ -148,6 +149,7 @@ fn award_points(dur: u128) -> usize {
 }
 
 fn load_lct2suit(path_to_lct2: &str) -> Vec<Lct2Test> {
+    let mut movelist = movegen::MoveList::new();
     let mut res = Vec::with_capacity(30);
     let mut file: File = File::open(path_to_lct2).expect("Unable to open file");
     let mut contents = String::new();
@@ -161,7 +163,7 @@ fn load_lct2suit(path_to_lct2: &str) -> Vec<Lct2Test> {
         }
         let state = GameState::from_fen(linevec[0].trim_end());
         let mv = linevec[1].trim().split(" ").collect::<Vec<&str>>()[0].replace(";", "");
-        let (optimal_move, _) = parse_move(&state, &mv.to_string());
+        let (optimal_move, _) = parse_move(&state, &mv.to_string(), &mut movelist);
         res.push(Lct2Test {
             game_state: state,
             optimal_move,

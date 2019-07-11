@@ -2,11 +2,13 @@ use crate::queue::ThreadSafeQueue;
 use crate::selfplay_splitter::PlayTask;
 use core::board_representation::game_state::GameState;
 use core::misc::{GameParser, PGNParser};
+use core::move_generation::movegen;
 use rand::Rng;
 use std::fs::File;
 use std::io::BufReader;
 
 pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
+    let movelist = movegen::MoveList::new();
     let mut res: Vec<GameState> = Vec::with_capacity(100000);
     let res_file = File::open(db).expect("Unable to open opening database");
     let reader = BufReader::new(res_file);
@@ -14,6 +16,7 @@ pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
         pgn_parser: PGNParser { reader },
         is_opening: true,
         opening_load_untilply: until,
+        move_list: movelist,
     };
     for game in parser {
         if game.1.len() > until {

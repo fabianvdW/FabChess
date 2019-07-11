@@ -3,6 +3,7 @@ use crate::queue::ThreadSafeQueue;
 use crate::selfplay::{play_game, EndConditionInformation};
 use core::board_representation::game_state::GameState;
 use core::logging::Logger;
+use core::move_generation::movegen;
 use core::search::search::TimeControl;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -177,9 +178,18 @@ pub fn start_self_play_thread(
     tcp2: &TimeControl,
     error_log: Arc<Logger>,
 ) {
+    let mut movelist = movegen::MoveList::new();
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
-        let res = play_game(task, p1.clone(), p2.clone(), tcp1, tcp2, error_log.clone());
+        let res = play_game(
+            task,
+            p1.clone(),
+            p2.clone(),
+            tcp1,
+            tcp2,
+            error_log.clone(),
+            &mut movelist,
+        );
         if res.p1_disq || res.p2_disq {
             thread::sleep(Duration::from_millis(150));
         }

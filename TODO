@@ -9,3 +9,7 @@ Need movelist on stack at all times. This will force search to deal with this as
 Avoid vec<>'s allocation at all costs.
 
 Cleaning up the code is definitly necessary.!
+
+
+QOL
+Make MoveList a trait, so we dont have to waste huge amounts of stack when we only need 1 depth movelist

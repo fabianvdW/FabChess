@@ -59,6 +59,7 @@ pub fn parse_pgn_find_static_eval_mistakes() {
             pgn_parser: PGNParser { reader },
             is_opening: false,
             opening_load_untilply: 0usize,
+            move_list: movegen::MoveList::new(),
         };
         for _game in parser.into_iter() {
             let last_game_state = &_game.1[_game.1.len() - 1];
@@ -85,6 +86,7 @@ pub struct GameParser {
     pub pgn_parser: PGNParser,
     pub is_opening: bool,
     pub opening_load_untilply: usize,
+    pub move_list: movegen::MoveList,
 }
 
 impl Iterator for GameParser {
@@ -113,8 +115,11 @@ impl Iterator for GameParser {
                         continue;
                     }
                     //println!("{} || len: {}", move_str, move_str.len());
-                    let parsed_move =
-                        parse_move(&vec_gs[vec_gs.len() - 1], &mut String::from(move_str));
+                    let parsed_move = parse_move(
+                        &vec_gs[vec_gs.len() - 1],
+                        &mut String::from(move_str),
+                        &mut self.move_list,
+                    );
                     vec_gs.push(parsed_move.1);
                     vec_res.push(parsed_move.0);
                     if self.is_opening && vec_res.len() == self.opening_load_untilply {
@@ -136,14 +141,19 @@ impl Iterator for GameParser {
     }
 }
 
-pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
+pub fn parse_move(
+    g: &GameState,
+    move_str: &String,
+    movelist: &mut movegen::MoveList,
+) -> (GameMove, GameState) {
+    let depth = 0;
     let mut my_string = move_str.clone();
     my_string = my_string
         .replace("#", "")
         .replace("+", "")
         .replace("=", "")
         .replace("x", "");
-    let available_moves = movegen::generate_moves(&g).0;
+    movegen::generate_moves2(&g, false, movelist, depth);
     if my_string.contains("-") {
         //Castle
         //Kingside
@@ -153,14 +163,15 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
             } else {
                 assert_eq!(true, g.castle_black_kingside);
             }
-            for game_moves in &available_moves {
-                if game_moves.move_type == GameMoveType::Castle
-                    && game_moves.to as isize - game_moves.from as isize == 2
-                {
-                    let res = game_moves.clone();
+            let mut index = 0;
+            while index < movelist.counter[depth] {
+                let mv = movelist.move_list[depth][index].as_ref().unwrap();
+                if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == 2 {
+                    let res = mv.clone();
                     let state = movegen::make_move(&g, &res);
                     return (res, state);
                 }
+                index += 1;
             }
         } else {
             if g.color_to_move == 0 {
@@ -168,14 +179,15 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
             } else {
                 assert_eq!(true, g.castle_black_queenside);
             }
-            for game_moves in &available_moves {
-                if game_moves.move_type == GameMoveType::Castle
-                    && game_moves.to as isize - game_moves.from as isize == -2
-                {
-                    let res = game_moves.clone();
+            let mut index = 0;
+            while index < movelist.counter[depth] {
+                let mv = movelist.move_list[depth][index].as_ref().unwrap();
+                if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == -2 {
+                    let res = mv.clone();
                     let state = movegen::make_move(&g, &res);
                     return (res, state);
                 }
+                index += 1;
             }
         }
     } else {
@@ -217,20 +229,23 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
         if my_string.len() == 2 {
             let target_square =
                 8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
-            for game_move in &available_moves {
-                if game_move.to == target_square && game_move.piece_type == moving_piece_type {
+            let mut index = 0;
+            while index < movelist.counter[depth] {
+                let mv = movelist.move_list[depth][index].as_ref().unwrap();
+                if mv.to == target_square && mv.piece_type == moving_piece_type {
                     if !is_promotion_move
                         || is_promotion_move
-                            && match &game_move.move_type {
+                            && match &mv.move_type {
                                 GameMoveType::Promotion(piece, _) => Some(piece),
                                 _ => None,
                             } == Some(&promotion_piece)
                     {
-                        let res = game_move.clone();
+                        let res = mv.clone();
                         let state = movegen::make_move(&g, &res);
                         return (res, state);
                     }
                 }
+                index += 1;
             }
         } else if my_string.len() == 3 {
             let target_square =
@@ -238,43 +253,49 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
             let first = my_string.chars().nth(0);
             if is_file(first) {
                 let file = match_file(first);
-                for game_move in &available_moves {
-                    if game_move.to == target_square
-                        && game_move.piece_type == moving_piece_type
-                        && game_move.from % 8 == file
+                let mut index = 0;
+                while index < movelist.counter[depth] {
+                    let mv = movelist.move_list[depth][index].as_ref().unwrap();
+                    if mv.to == target_square
+                        && mv.piece_type == moving_piece_type
+                        && mv.from % 8 == file
                     {
                         if !is_promotion_move
                             || is_promotion_move
-                                && match &game_move.move_type {
+                                && match &mv.move_type {
                                     GameMoveType::Promotion(piece, _) => Some(piece),
                                     _ => None,
                                 } == Some(&promotion_piece)
                         {
-                            let res = game_move.clone();
+                            let res = mv.clone();
                             let state = movegen::make_move(&g, &res);
                             return (res, state);
                         }
                     }
+                    index += 1;
                 }
             } else {
                 let rank = match_rank(first);
-                for game_move in &available_moves {
-                    if game_move.to == target_square
-                        && game_move.piece_type == moving_piece_type
-                        && game_move.from / 8 == rank
+                let mut index = 0;
+                while index < movelist.counter[depth] {
+                    let mv = movelist.move_list[depth][index].as_ref().unwrap();
+                    if mv.to == target_square
+                        && mv.piece_type == moving_piece_type
+                        && mv.from / 8 == rank
                     {
                         if !is_promotion_move
                             || is_promotion_move
-                                && match &game_move.move_type {
+                                && match &mv.move_type {
                                     GameMoveType::Promotion(piece, _) => Some(piece),
                                     _ => None,
                                 } == Some(&promotion_piece)
                         {
-                            let res = game_move.clone();
+                            let res = mv.clone();
                             let state = movegen::make_move(&g, &res);
                             return (res, state);
                         }
                     }
+                    index += 1;
                 }
             }
         } else if my_string.len() == 4 {
@@ -282,19 +303,22 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
                 8 * match_rank(my_string.chars().nth(3)) + match_file(my_string.chars().nth(2));
             let from_square =
                 8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
-            for game_move in &available_moves {
-                if game_move.to == target_square
-                    && game_move.from == from_square
+            let mut index = 0;
+            while index < movelist.counter[depth] {
+                let mv = movelist.move_list[depth][index].as_ref().unwrap();
+                if mv.to == target_square
+                    && mv.from == from_square
                     && (!is_promotion_move
-                        || match &game_move.move_type {
+                        || match &mv.move_type {
                             GameMoveType::Promotion(piece, _) => *piece == promotion_piece,
                             _ => false,
                         })
                 {
-                    let res = game_move.clone();
+                    let res = mv.clone();
                     let state = movegen::make_move(&g, &res);
                     return (res, state);
                 }
+                index += 1;
             }
         } else if my_string.len() == 5 {
         }
@@ -302,7 +326,12 @@ pub fn parse_move(g: &GameState, move_str: &String) -> (GameMove, GameState) {
     println!("{}", move_str);
     println!("{}", my_string);
     println!("{}", g);
-    println!("{:?}", available_moves);
+    //println!("{:?}", available_moves);
+    let mut index = 0;
+    while index < movelist.counter[depth] {
+        println!("{:?}", movelist.move_list[depth][index].as_ref().unwrap());
+        index += 1;
+    }
     panic!("Shouldn't get here");
 }
 

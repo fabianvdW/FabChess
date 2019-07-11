@@ -756,6 +756,7 @@ mod tests {
     #[test]
     fn zobrist_hash_test() {
         //Tests incremental update of hash
+        let mut movelist = movegen::MoveList::new();
         let mut rng = rand::thread_rng();
         for _i in 0..10000 {
             let mut g = GameState::standard();
@@ -772,11 +773,16 @@ mod tests {
                         g.en_passant
                     )
                 );
-                let legal_moves = movegen::generate_moves(&g).0;
-                if legal_moves.len() == 0 {
+                let agsi = movegen::generate_moves2(&g, false, &mut movelist, 0);
+                if !agsi.stm_haslegalmove {
                     break;
                 }
-                g = movegen::make_move(&g, &legal_moves[rng.gen_range(0, legal_moves.len())])
+                g = movegen::make_move(
+                    &g,
+                    movelist.move_list[0][rng.gen_range(0, movelist.counter[0])]
+                        .as_ref()
+                        .unwrap(),
+                )
             }
         }
     }
@@ -784,17 +790,23 @@ mod tests {
     #[test]
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
+        let mut movelist = movegen::MoveList::new();
         for _i in 0..100000 {
             let mut g = GameState::standard();
             let psqt = psqt_slow(&g.pieces);
             assert_eq!(g.psqt_mg, psqt.0);
             assert_eq!(g.psqt_eg, psqt.1);
             for _j in 0..200 {
-                let legal_moves = movegen::generate_moves(&g).0;
-                if legal_moves.len() == 0 {
+                let agsi = movegen::generate_moves2(&g, false, &mut movelist, 0);
+                if !agsi.stm_haslegalmove {
                     break;
                 }
-                g = movegen::make_move(&g, &legal_moves[rng.gen_range(0, legal_moves.len())]);
+                g = movegen::make_move(
+                    &g,
+                    movelist.move_list[0][rng.gen_range(0, movelist.counter[0])]
+                        .as_ref()
+                        .unwrap(),
+                );
                 let psqt = psqt_slow(&g.pieces);
                 assert_eq!(g.psqt_mg, psqt.0);
                 assert_eq!(g.psqt_eg, psqt.1);
@@ -842,6 +854,7 @@ mod tests {
                 pgn_parser: PGNParser { reader },
                 is_opening: false,
                 opening_load_untilply: 0usize,
+                move_list: movegen::MoveList::new(),
             };
             for _game in parser.into_iter() {
                 //println!("{}", game.1);
