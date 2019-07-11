@@ -612,10 +612,12 @@ pub fn find_move(
                 match promo_pieces {
                     Some(piece) => {
                         if piece != ps {
+                            index += 1;
                             continue;
                         }
                     }
                     None => {
+                        index += 1;
                         continue;
                     }
                 }

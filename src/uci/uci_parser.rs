@@ -217,10 +217,12 @@ pub fn scout_and_make_draftmove(
                 match promo_pieces {
                     Some(piece) => {
                         if piece != ps {
+                            index += 1;
                             continue;
                         }
                     }
                     None => {
+                        index += 1;
                         continue;
                     }
                 }

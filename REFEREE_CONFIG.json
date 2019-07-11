@@ -1,5 +1,5 @@
 {
-	"processors":3,
+	"processors":4,
 	"selfplaytests":true,
 	"games": 1000,
 	"engine1_path":"./target/release/schach_reworked.exe",

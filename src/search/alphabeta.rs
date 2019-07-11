@@ -466,37 +466,48 @@ pub fn principal_variation_search(
 #[inline(always)]
 pub fn gives_check(_mv: &GameMove, game_state: &GameState, next_state: &GameState) -> bool {
     //Check if move gives check
-    let ctm = 1 - game_state.color_to_move;
-    let blockers = game_state.pieces[0][ctm]
-        | game_state.pieces[1][ctm]
-        | game_state.pieces[2][ctm]
-        | game_state.pieces[3][ctm]
-        | game_state.pieces[4][ctm];
-    let enemy_king_idx = next_state.pieces[5][1 - ctm].trailing_zeros() as usize;
-    let enemy_pawns = next_state.pieces[0][1 - ctm];
-    let enemy_knights = next_state.pieces[1][1 - ctm];
-    let enemy_bishops = next_state.pieces[2][1 - ctm] | next_state.pieces[4][1 - ctm];
-    let enemy_rooks = next_state.pieces[3][1 - ctm] | next_state.pieces[4][1 - ctm];
-    let unsafe_white_squares = if ctm == 0 {
-        movegen::get_b_attacked_squares(
-            enemy_king_idx,
+    let stm_nextstate_iswhite = next_state.color_to_move == 0;
+    let next_state_stm_king = next_state.pieces[5][next_state.color_to_move];
+    let next_state_stm_king_sq = next_state_stm_king.trailing_zeros() as usize;
+    let enemy_pawns = game_state.pieces[0][1 - next_state.color_to_move];
+    let enemy_knights = game_state.pieces[1][1 - next_state.color_to_move];
+    let enemy_bishops = game_state.pieces[2][1 - next_state.color_to_move]
+        | game_state.pieces[4][1 - next_state.color_to_move];
+    let enemy_rooks = game_state.pieces[3][1 - next_state.color_to_move]
+        | game_state.pieces[4][1 - next_state.color_to_move];
+    let blockers = enemy_pawns
+        | enemy_knights
+        | enemy_bishops
+        | enemy_rooks
+        | next_state.pieces[5][1 - next_state.color_to_move]
+        | next_state.pieces[0][next_state.color_to_move]
+        | next_state.pieces[1][next_state.color_to_move]
+        | next_state.pieces[2][next_state.color_to_move]
+        | next_state.pieces[3][next_state.color_to_move]
+        | next_state.pieces[4][next_state.color_to_move];
+    (if stm_nextstate_iswhite {
+        movegen::attackers_from_black(
+            next_state_stm_king,
+            next_state_stm_king_sq,
             enemy_pawns,
             enemy_knights,
             enemy_bishops,
             enemy_rooks,
             blockers,
         )
+        .0
     } else {
-        movegen::get_w_attacked_squares(
-            enemy_king_idx,
+        movegen::attackers_from_white(
+            next_state_stm_king,
+            next_state_stm_king_sq,
             enemy_pawns,
             enemy_knights,
             enemy_bishops,
             enemy_rooks,
             blockers,
         )
-    };
-    (unsafe_white_squares & next_state.pieces[5][ctm]) != 0u64
+        .0
+    }) != 0u64
 }
 
 #[inline(always)]
