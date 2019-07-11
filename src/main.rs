@@ -628,7 +628,7 @@ mod tests {
                 &mut movelist
             )
         );
-        //Pawn enpassant capture when pinned
+        //Pawn en passant capture when pinned
         //Capture is possible when 1) on capture mask and 2) on ray or capturing the pinning piece
         assert_eq!(
             48,
@@ -711,7 +711,7 @@ mod tests {
                 &mut movelist
             )
         );
-        //Missed that special enpassant case for queens(got it for rooks earlier)
+        //Missed that special en passant case for queens(got it for rooks earlier)
         assert_eq!(
             29,
             perft(

@@ -68,7 +68,6 @@ pub fn start_self_play(
         thread::sleep(Duration::from_millis(50));
         if let Some(result) = result_queue.pop() {
             results_collected += 1;
-            //Verarbeite Resultat
             println!("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
             println!("Game {} finished!", result.task_id);
             if let Some(reason) = result.endcondition {
@@ -103,7 +102,7 @@ pub fn start_self_play(
             if result.p2_disq {
                 p2_disqs += 1;
             }
-            //Make some statistics
+            //Calculate statistics
             let mut elo_gain_p1 = 0.0;
             let mut elo_plus_p1 = 0.0;
             //let mut elo_minus_p1 = 0.0;
@@ -138,7 +137,7 @@ pub fn start_self_play(
             );
             println!("-------------------------------------------------");
 
-            //Write all fens of game to String
+            //Write all fens of game to string
             if result.fen_history.len() > 0 {
                 let mut game_string = String::new();
                 game_string.push_str("New Game:\n");

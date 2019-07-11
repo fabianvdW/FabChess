@@ -58,10 +58,10 @@ pub fn play_game(
         time_left_p2: 0,
     };
     //-------------------------------------------------------------
-    //Setup Tokio runtime
+    //Set tokio runtime up
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
     //-------------------------------------------------------------
-    //Setup Players
+    //Set players up
     //Player 1
     let (mut player1_time, player1_inc) = match tcp1 {
         TimeControl::Incremental(time, inc) => (*time, *inc),
@@ -137,7 +137,7 @@ pub fn play_game(
     }
     let mut player2_output = output.1.unwrap();
     //-------------------------------------------------------------
-    //Setup Game
+    //Set game up
     let opening_fen = task.opening.to_fen();
     let agsi = movegen::generate_moves2(&task.opening, false, movelist, 0);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
@@ -153,10 +153,10 @@ pub fn play_game(
     let mut fen_history: Vec<String> = Vec::with_capacity(100);
     let mut endcondition = None;
     //-------------------------------------------------------------
-    //Adjucations
-    let mut draw_adjucation = 0;
-    let mut win_adjucation = 0;
-    let mut win_adjucation_for_p1 = true;
+    //Adjudications
+    let mut draw_adjudication = 0;
+    let mut win_adjudication = 0;
+    let mut win_adjudication_for_p1 = true;
     //-------------------------------------------------------------
     //Additional information about players
     let mut average_depth_p1: f64 = 0.0;
@@ -286,19 +286,19 @@ pub fn play_game(
                     _ => false,
                 };
                 if info.negative_mate_found | info.positive_mate_found {
-                    draw_adjucation = 0;
+                    draw_adjudication = 0;
                     if info.negative_mate_found {
-                        if win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = false;
-                            win_adjucation = 0;
+                        if win_adjudication_for_p1 {
+                            win_adjudication_for_p1 = false;
+                            win_adjudication = 0;
                         }
-                        win_adjucation += 1;
+                        win_adjudication += 1;
                     } else {
-                        if !win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = true;
-                            win_adjucation = 0;
+                        if !win_adjudication_for_p1 {
+                            win_adjudication_for_p1 = true;
+                            win_adjudication = 0;
                         }
-                        win_adjucation += 1;
+                        win_adjudication += 1;
                     }
                 } else {
                     if !has_score || info.cp_score.unwrap().abs() < 10000 {
@@ -307,28 +307,28 @@ pub fn play_game(
                     if has_score {
                         let score = info.cp_score.unwrap();
                         if score.abs() <= 10 {
-                            draw_adjucation += 1;
+                            draw_adjudication += 1;
                         } else {
-                            draw_adjucation = 0;
+                            draw_adjudication = 0;
                         }
                         if score < -1000 {
-                            if win_adjucation_for_p1 {
-                                win_adjucation_for_p1 = false;
-                                win_adjucation = 0;
+                            if win_adjudication_for_p1 {
+                                win_adjudication_for_p1 = false;
+                                win_adjudication = 0;
                             }
-                            win_adjucation += 1;
+                            win_adjudication += 1;
                         } else if score > 1000 {
-                            if !win_adjucation_for_p1 {
-                                win_adjucation_for_p1 = true;
-                                win_adjucation = 0;
+                            if !win_adjudication_for_p1 {
+                                win_adjudication_for_p1 = true;
+                                win_adjudication = 0;
                             }
-                            win_adjucation += 1;
+                            win_adjudication += 1;
                         } else {
-                            win_adjucation = 0;
+                            win_adjudication = 0;
                         }
                     } else {
-                        draw_adjucation = 0;
-                        win_adjucation = 0;
+                        draw_adjudication = 0;
+                        win_adjudication = 0;
                     }
                 }
 
@@ -418,19 +418,19 @@ pub fn play_game(
                     _ => false,
                 };
                 if info.negative_mate_found | info.positive_mate_found {
-                    draw_adjucation = 0;
+                    draw_adjudication = 0;
                     if info.negative_mate_found {
-                        if !win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = true;
-                            win_adjucation = 0;
+                        if !win_adjudication_for_p1 {
+                            win_adjudication_for_p1 = true;
+                            win_adjudication = 0;
                         }
-                        win_adjucation += 1;
+                        win_adjudication += 1;
                     } else {
-                        if win_adjucation_for_p1 {
-                            win_adjucation_for_p1 = false;
-                            win_adjucation = 0;
+                        if win_adjudication_for_p1 {
+                            win_adjudication_for_p1 = false;
+                            win_adjudication = 0;
                         }
-                        win_adjucation += 1;
+                        win_adjudication += 1;
                     }
                 } else {
                     if !has_score || info.cp_score.unwrap().abs() < 10000 {
@@ -439,28 +439,28 @@ pub fn play_game(
                     if has_score {
                         let score = info.cp_score.unwrap();
                         if score.abs() <= 10 {
-                            draw_adjucation += 1;
+                            draw_adjudication += 1;
                         } else {
-                            draw_adjucation = 0;
+                            draw_adjudication = 0;
                         }
                         if score < -1000 {
-                            if !win_adjucation_for_p1 {
-                                win_adjucation_for_p1 = true;
-                                win_adjucation = 0;
+                            if !win_adjudication_for_p1 {
+                                win_adjudication_for_p1 = true;
+                                win_adjudication = 0;
                             }
-                            win_adjucation += 1;
+                            win_adjudication += 1;
                         } else if score > 1000 {
-                            if win_adjucation_for_p1 {
-                                win_adjucation_for_p1 = false;
-                                win_adjucation = 0;
+                            if win_adjudication_for_p1 {
+                                win_adjudication_for_p1 = false;
+                                win_adjudication = 0;
                             }
-                            win_adjucation += 1;
+                            win_adjudication += 1;
                         } else {
-                            win_adjucation = 0;
+                            win_adjudication = 0;
                         }
                     } else {
-                        draw_adjucation = 0;
-                        win_adjucation = 0;
+                        draw_adjudication = 0;
+                        win_adjudication = 0;
                     }
                 }
                 if let Some(s) = info.depth {
@@ -475,21 +475,21 @@ pub fn play_game(
         move_history.push(game_move.clone());
         let state = make_move(latest_state, game_move);
         if state.half_moves == 0 || state.full_moves < 35 {
-            draw_adjucation = 0;
+            draw_adjudication = 0;
         }
         let agsi = movegen::generate_moves2(&state, false, movelist, 0);
         let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
         status = check.0;
         endcondition = check.1;
-        //Check for adjucation
+        //Check for adjudication
         if let GameResult::Ingame = status {
-            //Check adjucation values
-            if draw_adjucation >= 10 {
+            //Check adjudication values
+            if draw_adjudication >= 10 {
                 status = GameResult::Draw;
-                endcondition = Some(EndConditionInformation::DrawByAdjucation);
-            } else if win_adjucation >= 10 {
-                endcondition = Some(EndConditionInformation::MateByAdjucation);
-                if win_adjucation_for_p1 {
+                endcondition = Some(EndConditionInformation::DrawByadjudication);
+            } else if win_adjudication >= 10 {
+                endcondition = Some(EndConditionInformation::MateByadjudication);
+                if win_adjudication_for_p1 {
                     if task.p1_is_white {
                         status = GameResult::WhiteWin;
                     } else {
@@ -694,11 +694,11 @@ pub fn get_occurences(history: &Vec<GameState>, state: &GameState) -> usize {
 pub enum EndConditionInformation {
     HundredMoveDraw,
     ThreeFoldRepetition,
-    DrawByAdjucation,
+    DrawByadjudication,
     DrawByMissingPieces,
     StaleMate,
     Mate,
-    MateByAdjucation,
+    MateByadjudication,
 }
 impl Display for EndConditionInformation {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
@@ -706,11 +706,11 @@ impl Display for EndConditionInformation {
         res_str.push_str(match *self {
             EndConditionInformation::HundredMoveDraw => "Hundred Move Draw",
             EndConditionInformation::ThreeFoldRepetition => "Draw by Three Fold Repetition",
-            EndConditionInformation::DrawByAdjucation => "Draw by Adjucation",
+            EndConditionInformation::DrawByadjudication => "Draw by adjudication",
             EndConditionInformation::DrawByMissingPieces => "Draw by missing pieces",
             EndConditionInformation::StaleMate => "Draw by Stalemate",
             EndConditionInformation::Mate => "Win by Mate",
-            EndConditionInformation::MateByAdjucation => "Win by Adjucation",
+            EndConditionInformation::MateByadjudication => "Win by adjudication",
         });
         write!(formatter, "{}", res_str)
     }
