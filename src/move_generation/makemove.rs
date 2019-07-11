@@ -241,7 +241,7 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Check new castle rights
-    //The enemies castle rights can't change on a quiet move
+    //The enemy's castle rights can't change on a quiet move
     let (castle_white_kingside, castle_white_queenside) = if g.color_to_move == 0 {
         check_castle_flags(
             g.castle_white_kingside,
