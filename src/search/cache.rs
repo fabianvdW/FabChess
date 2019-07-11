@@ -18,21 +18,15 @@ impl Cache {
 
 #[derive(Copy, Clone)]
 pub struct CacheEntry {
-    pub hash: u64,
-    //64-Bit
-    pub depth: i8,
-    //16-Bit
-    pub plies_played: u16,
-    //16-Bit
-    pub score: i16,
-    //64-Bit
-    pub alpha: bool,
-    //1-Bit
-    pub beta: bool,
-    //1-Bit
-    pub mv: u16, //16-Bit
-    //16-Bit
-    pub static_evaluation: Option<i16>, //Insg 130-Bit 17-Bytes
+    pub hash: u64, //64 bits
+    pub depth: i8, //8 bits
+    pub plies_played: u16, //16 bits
+    pub score: i16, //64 bits
+    pub alpha: bool, //8 bits
+    pub beta: bool, //8 bits
+    pub mv: u16, //16 bits
+    pub static_evaluation: Option<i16>, //16 bits
+    //Summed 200 bits 25 bytes
 }
 
 impl CacheEntry {
