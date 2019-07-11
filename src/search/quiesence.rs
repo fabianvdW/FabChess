@@ -10,6 +10,7 @@ use super::cache::{Cache, CacheEntry};
 use super::search::Search;
 use super::GradedMove;
 use crate::bitboards;
+use crate::move_generation::makemove::make_move;
 
 pub const DELTA_PRUNING: i16 = 100;
 lazy_static! {
@@ -67,7 +68,6 @@ pub fn q_search(
     }
 
     let (mut mv_index, mut capture_index) = (0, 0);
-    //println!("Debug 1");
     while mv_index < move_list.counter[current_depth] {
         let mv: &GameMove = move_list.move_list[current_depth][mv_index]
             .as_ref()
@@ -97,7 +97,6 @@ pub fn q_search(
         mv_index += 1;
         capture_index += 1;
     }
-    //println!("Debug 2");
     //Probe TT
     {
         let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
@@ -154,7 +153,6 @@ pub fn q_search(
             }
         }
     }
-
     let mut my_history: Vec<u64> = Vec::with_capacity(10);
     let next_history: &mut Vec<u64> = if game_state.half_moves == 0 {
         &mut my_history
@@ -164,17 +162,11 @@ pub fn q_search(
     next_history.push(game_state.hash);
     let mut index = 0;
     pv.score = stand_pat;
-    //println!("Debug 3");
     while index < capture_index {
         let gmvindex =
             super::alphabeta::get_next_gm(move_list, current_depth, index, capture_index);
         let capture_move = move_list.move_list[current_depth][gmvindex].unwrap();
-        let next_g = movegen::make_move(&game_state, &capture_move);
-        //if is_q_root && current_depth >= 11 {
-        //    println!("Position before:\n{}", game_state.to_fen());
-        //    println!("After making the move:\n{:?}\n", capture_move);
-        //    println!("Generating moves in QS for GameState:\n{}", next_g.to_fen());
-        //}
+        let next_g = make_move(&game_state, &capture_move);
         let next_g_agsi = movegen::generate_moves2(&next_g, true, move_list, current_depth + 1);
         let following_pv = q_search(
             -beta,

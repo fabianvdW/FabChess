@@ -25,6 +25,7 @@ mod tests {
     use core::evaluation::psqt_evaluation::{psqt_eval, psqt_slow};
     use core::evaluation::ParallelEvaluation;
     use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
+    use core::move_generation::makemove::make_move;
     use core::move_generation::movegen;
     use core::perft;
     use rand::Rng;
@@ -777,7 +778,7 @@ mod tests {
                 if !agsi.stm_haslegalmove {
                     break;
                 }
-                g = movegen::make_move(
+                g = make_move(
                     &g,
                     movelist.move_list[0][rng.gen_range(0, movelist.counter[0])]
                         .as_ref()
@@ -801,7 +802,7 @@ mod tests {
                 if !agsi.stm_haslegalmove {
                     break;
                 }
-                g = movegen::make_move(
+                g = make_move(
                     &g,
                     movelist.move_list[0][rng.gen_range(0, movelist.counter[0])]
                         .as_ref()

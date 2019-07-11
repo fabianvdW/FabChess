@@ -4,6 +4,7 @@ use super::alphabeta::PrincipalVariation;
 use super::cache::{Cache, CacheEntry};
 use super::statistics::SearchStatistics;
 use super::GameMove;
+use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -162,15 +163,9 @@ impl Search {
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {
                 if i == 0 {
-                    pv_stack.push(crate::move_generation::movegen::make_move(
-                        &game_state,
-                        &pair,
-                    ));
+                    pv_stack.push(make_move(&game_state, &pair));
                 } else {
-                    pv_stack.push(crate::move_generation::movegen::make_move(
-                        &pv_stack[i - 1],
-                        &pair,
-                    ))
+                    pv_stack.push(make_move(&pv_stack[i - 1], &pair))
                 }
             }
             for (i, pair) in pv.pv.iter().enumerate() {

@@ -7,6 +7,7 @@ use super::quiesence::{is_capture, q_search, see};
 use super::search::Search;
 use super::GradedMove;
 use crate::evaluation::eval_game_state;
+use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -227,7 +228,7 @@ pub fn principal_variation_search(
             static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
         if static_evaluation.unwrap() * color >= beta {
-            let nextgs = movegen::make_nullmove(&game_state);
+            let nextgs = make_nullmove(&game_state);
             let rat = -principal_variation_search(
                 -beta,
                 -beta + 1,
@@ -302,7 +303,7 @@ pub fn principal_variation_search(
         } else {
             false
         };
-        let next_state = movegen::make_move(&game_state, &mv);
+        let next_state = make_move(&game_state, &mv);
         //--------------------------------------------------------------
         //Futility Pruning
         if futil_pruning

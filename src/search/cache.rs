@@ -209,7 +209,7 @@ impl CacheEntry {
 mod tests {
     use super::CacheEntry;
     use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
-    use crate::move_generation::movegen;
+    use crate::move_generation::makemove::make_move;
 
     #[test]
     fn mv_to_u16_test() {
@@ -383,7 +383,7 @@ mod tests {
             assert_eq!(e7e8nres.move_type, e7e8n.move_type);
             assert_eq!(e7e8nres.piece_type, e7e8n.piece_type);
         }
-        game_state = movegen::make_move(
+        game_state = make_move(
             &game_state,
             &GameMove {
                 from: 23,
@@ -392,7 +392,7 @@ mod tests {
                 move_type: GameMoveType::Quiet,
             },
         );
-        game_state = movegen::make_move(
+        game_state = make_move(
             &game_state,
             &GameMove {
                 from: 50,

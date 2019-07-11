@@ -6,6 +6,7 @@ use core::board_representation::game_state::{
     GameMove, GameMoveType, GameResult, GameState, PieceType,
 };
 use core::logging::Logger;
+use core::move_generation::makemove::make_move;
 use core::move_generation::movegen;
 use core::search::search::TimeControl;
 use std::fmt::{Display, Formatter, Result};
@@ -472,7 +473,7 @@ pub fn play_game(
         }
         //Make new state with move
         move_history.push(game_move.clone());
-        let state = movegen::make_move(latest_state, game_move);
+        let state = make_move(latest_state, game_move);
         if state.half_moves == 0 || state.full_moves < 35 {
             draw_adjucation = 0;
         }

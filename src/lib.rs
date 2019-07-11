@@ -12,6 +12,7 @@ pub mod search;
 pub mod uci;
 
 use self::board_representation::game_state::GameState;
+use self::move_generation::makemove::make_move;
 use self::move_generation::movegen;
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
@@ -21,7 +22,7 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let mut index = 0;
     while index < movelist.counter[depth] {
         let mv = movelist.move_list[depth][index].unwrap();
-        let next_g = movegen::make_move(&g, &mv);
+        let next_g = make_move(&g, &mv);
         let res = perft(&next_g, depth - 1, &mut movelist);
         println!("{:?}: {}", mv, res);
         count += res;
@@ -43,7 +44,7 @@ pub fn perft(g: &GameState, depth: usize, movelist: &mut movegen::MoveList) -> u
         let mut index = 0;
         while index < movelist.counter[depth] {
             let mv = movelist.move_list[depth][index].as_ref().unwrap();
-            res += perft(&movegen::make_move(&g, &mv), depth - 1, movelist);
+            res += perft(&make_move(&g, &mv), depth - 1, movelist);
             index += 1;
         }
         res

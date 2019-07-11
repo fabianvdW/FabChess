@@ -1,5 +1,6 @@
 use super::uci_engine::UCIEngine;
 use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::Cache;
 use crate::search::search::Search;
@@ -224,7 +225,7 @@ pub fn scout_and_make_draftmove(
                     }
                 }
             }
-            return movegen::make_move(&game_state, &mv);
+            return make_move(&game_state, &mv);
         }
         index += 1;
     }

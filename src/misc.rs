@@ -1,6 +1,7 @@
 use super::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use super::evaluation;
 use crate::logging::log;
+use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use std::error::Error;
 use std::fs::File;
@@ -168,7 +169,7 @@ pub fn parse_move(
                 let mv = movelist.move_list[depth][index].as_ref().unwrap();
                 if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == 2 {
                     let res = mv.clone();
-                    let state = movegen::make_move(&g, &res);
+                    let state = make_move(&g, &res);
                     return (res, state);
                 }
                 index += 1;
@@ -184,7 +185,7 @@ pub fn parse_move(
                 let mv = movelist.move_list[depth][index].as_ref().unwrap();
                 if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == -2 {
                     let res = mv.clone();
-                    let state = movegen::make_move(&g, &res);
+                    let state = make_move(&g, &res);
                     return (res, state);
                 }
                 index += 1;
@@ -241,7 +242,7 @@ pub fn parse_move(
                             } == Some(&promotion_piece)
                     {
                         let res = mv.clone();
-                        let state = movegen::make_move(&g, &res);
+                        let state = make_move(&g, &res);
                         return (res, state);
                     }
                 }
@@ -268,7 +269,7 @@ pub fn parse_move(
                                 } == Some(&promotion_piece)
                         {
                             let res = mv.clone();
-                            let state = movegen::make_move(&g, &res);
+                            let state = make_move(&g, &res);
                             return (res, state);
                         }
                     }
@@ -291,7 +292,7 @@ pub fn parse_move(
                                 } == Some(&promotion_piece)
                         {
                             let res = mv.clone();
-                            let state = movegen::make_move(&g, &res);
+                            let state = make_move(&g, &res);
                             return (res, state);
                         }
                     }
@@ -315,7 +316,7 @@ pub fn parse_move(
                         })
                 {
                     let res = mv.clone();
-                    let state = movegen::make_move(&g, &res);
+                    let state = make_move(&g, &res);
                     return (res, state);
                 }
                 index += 1;
