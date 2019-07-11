@@ -42,7 +42,7 @@ pub fn perft(g: &GameState, depth: usize, movelist: &mut movegen::MoveList) -> u
         let _ = movegen::generate_moves2(&g, false, movelist, depth);
         let mut index = 0;
         while index < movelist.counter[depth] {
-            let mv = movelist.move_list[depth][index].unwrap();
+            let mv = movelist.move_list[depth][index].as_ref().unwrap();
             res += perft(&movegen::make_move(&g, &mv), depth - 1, movelist);
             index += 1;
         }

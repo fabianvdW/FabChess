@@ -97,7 +97,9 @@ pub fn principal_variation_search(
     //7. Losing captures (see<0) see score
     let mut mv_index = 0;
     while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = &move_list.move_list[current_depth][mv_index].unwrap();
+        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
+            .as_ref()
+            .unwrap();
         if is_capture(mv) {
             if GameMoveType::EnPassant == mv.move_type {
                 move_list.graded_moves[current_depth][mv_index] =
@@ -554,7 +556,7 @@ pub fn get_next_gm(
 pub fn find_move(mv: &GameMove, mv_list: &MoveList, current_depth: usize, contains: bool) -> usize {
     let mut mv_index = 0;
     while mv_index < mv_list.counter[current_depth] {
-        let mvs = &mv_list.move_list[current_depth][mv_index].unwrap();
+        let mvs = mv_list.move_list[current_depth][mv_index].as_ref().unwrap();
         if mvs.from == mv.from && mvs.to == mv.to && mvs.move_type == mv.move_type {
             break;
         }

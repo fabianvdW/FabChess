@@ -1,6 +1,6 @@
 {
 	"processors":3,
-	"selfplaytests":false,
+	"selfplaytests":true,
 	"games": 1000,
 	"engine1_path":"./target/release/schach_reworked.exe",
 	"engine2_path":"./versions/FabChessv1.2.exe",
@@ -14,7 +14,7 @@
 	"testsuitetests":false,
 	"suite_movetime":1000,
 	"suite_path":"./testsuites/sts.epd",
-	"lct2tests":true,
+	"lct2tests":false,
 	"lct2_path":"./testsuites/lct2.epd"
 	
 }

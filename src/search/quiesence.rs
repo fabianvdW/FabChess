@@ -69,7 +69,9 @@ pub fn q_search(
     let (mut mv_index, mut capture_index) = (0, 0);
     //println!("Debug 1");
     while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = &move_list.move_list[current_depth][mv_index].unwrap();
+        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
+            .as_ref()
+            .unwrap();
         if is_q_root && !is_capture(mv) {
             mv_index += 1;
             continue;
