@@ -863,7 +863,7 @@ pub fn make_promotion_move(
     }
 }
 
-pub fn generate_moves(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
+pub fn generate_moves1(g: &game_state::GameState) -> (Vec<GameMove>, bool) {
     //Following this guide:
     // https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/
 

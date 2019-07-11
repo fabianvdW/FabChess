@@ -16,7 +16,7 @@ pub fn parse_loop() {
     let mut us = UCIEngine::standard();
     let stop = Arc::new(AtomicBool::new(false));
     let mut cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
-
+    let mut movelist = movegen::MoveList::new();
     let stdin = io::stdin();
     let mut line = String::new();
     loop {
@@ -201,6 +201,7 @@ pub fn scout_and_make_draftmove(
     to: usize,
     promo_pieces: Option<PieceType>,
     game_state: &GameState,
+    movelist: &movegen::MoveList,
 ) -> GameState {
     let (moves, _) = movegen::generate_moves(&game_state);
     for mv in moves {

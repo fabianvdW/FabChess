@@ -130,14 +130,21 @@ pub fn q_search(
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 let mut c_i = 0;
                 while c_i < capture_index {
-                    let other_mv: &GameMove = &move_list.move_list[current_depth]
-                        [move_list.graded_moves[current_depth][c_i].unwrap().mv_index]
+                    let other_mv: &GameMove = &move_list.move_list[current_depth][move_list
+                        .graded_moves[current_depth][c_i]
+                        .as_ref()
+                        .unwrap()
+                        .mv_index]
+                        .as_ref()
                         .unwrap();
                     if other_mv.from == mv.from
                         && other_mv.to == mv.to
                         && other_mv.move_type == mv.move_type
                     {
-                        move_list.graded_moves[current_depth][c_i].unwrap().score += 10000.0;
+                        move_list.graded_moves[current_depth][c_i]
+                            .as_mut()
+                            .unwrap()
+                            .score += 10000.0;
                         break;
                     }
                     c_i += 1;

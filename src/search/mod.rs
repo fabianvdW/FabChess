@@ -11,7 +11,7 @@ pub fn init_constants() {
     quiesence::PIECE_VALUES.len();
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct GradedMove {
     pub mv_index: usize,
     pub score: f64,

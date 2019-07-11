@@ -127,6 +127,7 @@ pub fn principal_variation_search(
             let mv_index = find_move(&s, move_list, current_depth, false);
             if mv_index < move_list.counter[current_depth] {
                 move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
                     .unwrap()
                     .score += 5000.0;
             }
@@ -135,6 +136,7 @@ pub fn principal_variation_search(
             let mv_index = find_move(&s, move_list, current_depth, false);
             if mv_index < move_list.counter[current_depth] {
                 move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
                     .unwrap()
                     .score += 5000.0;
             }
@@ -149,6 +151,7 @@ pub fn principal_variation_search(
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 let mv_index = find_move(&mv, move_list, current_depth, true);
                 move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
                     .unwrap()
                     .score = 30000.0;
             }
@@ -194,6 +197,7 @@ pub fn principal_variation_search(
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 let mv_index = find_move(&mv, move_list, current_depth, true);
                 move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
                     .unwrap()
                     .score = 29900.0;
                 cache_hit = true;
@@ -268,6 +272,7 @@ pub fn principal_variation_search(
         }
         let mv_index = find_move(&iid.pv[0], move_list, current_depth, true);
         move_list.graded_moves[current_depth][mv_index]
+            .as_mut()
             .unwrap()
             .score = 29900.0;
     }
@@ -281,7 +286,7 @@ pub fn principal_variation_search(
     }
     let mut index: usize = 0;
     let mut mv_index: usize = 0;
-    while index < move_list.counter[current_depth] {
+    while mv_index < move_list.counter[current_depth] {
         let gmvindex = get_next_gm(
             move_list,
             current_depth,
@@ -523,18 +528,25 @@ pub fn get_next_gm(
     } else {
         let mut index = mv_index;
         for i in (mv_index + 1)..max_moves {
-            if mv_list.graded_moves[current_depth][i].unwrap().score
-                >= mv_list.graded_moves[current_depth][index].unwrap().score
+            if mv_list.graded_moves[current_depth][i]
+                .as_ref()
+                .unwrap()
+                .score
+                > mv_list.graded_moves[current_depth][index]
+                    .as_ref()
+                    .unwrap()
+                    .score
             {
                 index = i;
             }
         }
-        let saved = mv_list.graded_moves[current_depth][mv_index];
-        mv_list.graded_moves[current_depth][mv_index] = mv_list.graded_moves[current_depth][index];
-        mv_list.graded_moves[current_depth][index] = saved;
-        return mv_list.graded_moves[current_depth][mv_index]
+        let result = mv_list.graded_moves[current_depth][index]
+            .as_ref()
             .unwrap()
             .mv_index;
+        mv_list.graded_moves[current_depth][index] =
+            mv_list.graded_moves[current_depth][mv_index].clone();
+        result
     }
 }
 
@@ -683,7 +695,7 @@ impl PrincipalVariation {
     pub fn new(depth_left: usize) -> PrincipalVariation {
         PrincipalVariation {
             pv: Vec::with_capacity(depth_left),
-            score: -32768,
+            score: -32767,
         }
     }
 }
