@@ -2429,16 +2429,18 @@ pub fn add_move_to_movelist(
 }
 pub struct MoveList {
     pub move_list: [[Option<GameMove>; 128]; 100],
-    pub graded_moves: Vec<Vec<Option<GradedMove>>>,
-    //pub graded_moves: [[Option<GradedMove>; 128]; 100],
+    pub graded_moves: [[Option<GradedMove>; 128]; 100],
+    //pub graded_moves: Vec<Vec<Option<GradedMove>>>,
     pub counter: [usize; 100],
 }
 impl MoveList {
     pub fn new() -> Self {
         MoveList {
-            move_list: [[None; 128]; 100],
-            graded_moves: vec![vec![None; 128]; 100],
+            move_list: unsafe { std::mem::uninitialized() },
+            graded_moves: unsafe { std::mem::uninitialized() },
+            //move_list: [[None; 128]; 100],
             //graded_moves: [[None; 128]; 100],
+            //graded_moves: vec![vec![None; 128]; 100],
             counter: [0; 100],
         }
     }

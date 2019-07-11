@@ -157,6 +157,7 @@ impl Search {
                     pv_str
                 )
             );
+            //println!("{}", self.search_statistics);
             //Set PV in table
             let mut pv_stack = Vec::with_capacity(pv.pv.len());
             for (i, pair) in pv.pv.iter().enumerate() {

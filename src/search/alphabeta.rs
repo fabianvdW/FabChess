@@ -60,7 +60,7 @@ pub fn principal_variation_search(
         depth_left += 1;
     }
     //Max Search depth reached
-    if current_depth >= MAX_SEARCH_DEPTH {
+    if current_depth >= (MAX_SEARCH_DEPTH - 1) {
         pv.score = eval_game_state(&game_state, false).final_eval * color;
         return pv;
     }
@@ -280,11 +280,12 @@ pub fn principal_variation_search(
         futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
     }
     let mut index: usize = 0;
+    let mut mv_index: usize = 0;
     while index < move_list.counter[current_depth] {
         let gmvindex = get_next_gm(
             move_list,
             current_depth,
-            index,
+            mv_index,
             move_list.counter[current_depth],
         );
         let mv = move_list.move_list[current_depth][gmvindex].unwrap();
@@ -304,7 +305,7 @@ pub fn principal_variation_search(
             && !gives_check(&mv, &game_state, &next_state)
         {
             if futil_margin <= alpha {
-                index += 1;
+                mv_index += 1;
                 continue;
             } else {
                 futil_pruning = false;
@@ -431,6 +432,7 @@ pub fn principal_variation_search(
                 search.bf_score[mv.from][mv.to] += BF_INCREMENT;
             }
         }
+        mv_index += 1;
         index += 1;
     }
     next_history.pop();
@@ -522,7 +524,7 @@ pub fn get_next_gm(
         let mut index = mv_index;
         for i in (mv_index + 1)..max_moves {
             if mv_list.graded_moves[current_depth][i].unwrap().score
-                > mv_list.graded_moves[current_depth][index].unwrap().score
+                >= mv_list.graded_moves[current_depth][index].unwrap().score
             {
                 index = i;
             }
