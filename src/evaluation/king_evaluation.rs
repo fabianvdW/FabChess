@@ -62,6 +62,13 @@ pub fn king_eval(
     } else {
         bitboards::SHIELDING_PAWNS_BLACK[king_index]
     };
+    let mut king_front_span = if is_white {
+        bitboards::w_front_span(king)
+    } else {
+        bitboards::b_front_span(king)
+    };
+    king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
+
     let mut shields_missing = 0;
     let mut shields_on_open_missing = 0;
     if full_moves >= 1 {
@@ -71,7 +78,7 @@ pub fn king_eval(
             let file = bitboards::FILES[idx % 8];
             if my_pawns & shield & file == 0u64 {
                 shields_missing += 1;
-                if enemy_pawns & file == 0u64 {
+                if enemy_pawns & file & king_front_span == 0u64 {
                     shields_on_open_missing += 1;
                 }
             }
