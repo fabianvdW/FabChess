@@ -96,7 +96,6 @@ impl Search {
                 );
             } else {
                 //Aspiration Window
-                //Start with half window of last time
                 let mut delta = 20;
                 let mut alpha = best_pv.score - delta;
                 let mut beta = best_pv.score + delta;

@@ -3,11 +3,11 @@ use super::super::board_representation::game_state::{self, GameMove, GameMoveTyp
 use super::magic::{self, Magic};
 use crate::search::GradedMove;
 
-//Move GEn
-//King- Piece-Wise by lookup
-//Knight-Piece-Wise by lookup
-//Bishop/Queen/Rook - Piece-Wise by lookup in Magic
-//Pawn-SetWise by shift
+//Movegen
+//King - piecewise by lookup
+//Knight - piecewise by lookup
+//Bishop/Queen/Rook - piecewise by lookup in magic
+//Pawn - setwise by shift
 #[inline(always)]
 pub fn king_attack(square: usize) -> u64 {
     bitboards::KING_ATTACKS[square]
@@ -79,7 +79,7 @@ pub fn find_captured_piece_type(
         PieceType::Pawn
     } else if e_knights & to_board != 0u64 {
         PieceType::Knight
-    //Find queens before bishops and rooks since it's in all three boards.
+    //Find queens before bishops and rooks since it's in all three boards
     } else if e_queens & to_board != 0u64 {
         PieceType::Queen
     } else if e_bishops & to_board != 0u64 {
@@ -728,8 +728,9 @@ pub fn generate_moves2(
     movelist: &mut MoveList,
     depth: usize,
 ) -> AdditionalGameStateInformation {
+    //----------------------------------------------------------------------
     //**********************************************************************
-    //0.General Bitboards and Variable Initialization
+    //0. General bitboards and variable initialization
     movelist.counter[depth] = 0;
 
     let stm_color = g.color_to_move;
@@ -754,7 +755,7 @@ pub fn generate_moves2(
     let mut stm_haslegalmove = false;
     //----------------------------------------------------------------------
     //**********************************************************************
-    //1.Calculate additional needed bitboards
+    //1. Calculate additional needed bitboards
     let abb = calculate_additionalbitboards(
         stm_pawns,
         enemy_pawns,
@@ -806,7 +807,7 @@ pub fn generate_moves2(
     } else if checkers == 1 {
         //Only a single checker
         capture_mask = abb.all_checkers;
-        //If it's a slider, we can also push in it's way
+        //If it's a slider, we can also push in its way
         if abb.all_checkers & (enemy_bishops | enemy_rooks | enemy_queens) != 0u64 {
             let checker_square = abb.all_checkers.trailing_zeros() as usize;
             if abb.all_checkers & (bitboards::FREEFIELD_ROOK_ATTACKS[stm_king_index]) != 0u64 {
@@ -997,7 +998,7 @@ pub fn generate_moves2(
                     depth,
                 );
             }
-            //En-Passants
+            //En passants
             let stm_pawn_pin_enpassant =
                 stm_pawn_pin_target & g.en_passant & capture_mask & ray_to_king;
             if stm_pawn_pin_enpassant != 0u64 {
@@ -1017,8 +1018,8 @@ pub fn generate_moves2(
 
     //----------------------------------------------------------------------
     //**********************************************************************
-    //5. Pawn pushes, captures, and promotions (captures, capture-enpassant,capture-promotion,normal-promotion)
-    //5.1 Single push (Promotions and pushes)
+    //5. Pawn pushes, captures, and promotions (captures, capture-enpassant, capture-promotion, normal-promotion)
+    //5.1 Single push (promotions and pushes)
     let stm_pawns_single_push = if stm_color_iswhite {
         w_single_push_pawn_targets(stm_pawns, empty_squares)
     } else {
@@ -1088,7 +1089,7 @@ pub fn generate_moves2(
             );
         }
     }
-    //5.3 West captures (normal capture, promotion capture, en-passant)
+    //5.3 West captures (normal capture, promotion capture, en passant)
     let stm_pawn_west_captures = abb.stm_pawns_westattack & capture_mask & abb.enemy_pieces;
     //Split up in promotion and non-promotion captures
     let stm_pawn_west_promotion_capture =
@@ -1125,7 +1126,7 @@ pub fn generate_moves2(
         pinned_pieces,
         depth,
     );
-    //En-Passants
+    //En passants
     let stm_pawn_west_enpassants = abb.stm_pawns_westattack
         & g.en_passant
         & if stm_color_iswhite {
@@ -1165,7 +1166,7 @@ pub fn generate_moves2(
             );
         }
     }
-    //5.4 East captures (normal capture, promotion capture, en-passant)
+    //5.4 East captures (normal capture, promotion capture, en passant)
     let stm_pawn_east_captures = abb.stm_pawns_eastattack & capture_mask & abb.enemy_pieces;
     //Split up in promotion and non-promotion captures
     let stm_pawn_east_promotion_capture =
@@ -1202,7 +1203,7 @@ pub fn generate_moves2(
         pinned_pieces,
         depth,
     );
-    //En-Passants
+    //En passants
     let stm_pawn_east_enpassants = abb.stm_pawns_eastattack
         & g.en_passant
         & if stm_color_iswhite {
@@ -1245,7 +1246,7 @@ pub fn generate_moves2(
 
     //----------------------------------------------------------------------
     //**********************************************************************
-    //6. All other legal moves (knights,bishops,rooks,queens)
+    //6. All other legal moves (knights, bishops, rooks, queens)
     //6.1 Knights
     stm_haslegalmove |= add_normal_moves_to_movelist(
         movelist,

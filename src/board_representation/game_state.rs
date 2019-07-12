@@ -167,8 +167,8 @@ fn file_to_string(file: usize) -> &'static str {
 }
 
 pub struct GameState {
-    // 0 = white
-    // 1 = black
+    // 0 = White
+    // 1 = Black
     pub color_to_move: usize,
 
     //Array saving all the bitboards
@@ -206,7 +206,7 @@ impl GameState {
             panic!("Invalid FEN");
         }
         //Parse through FEN
-        //Piecess
+        //Pieces
         let pieces: Vec<&str> = vec[0].split("/").collect();
         if pieces.len() != 8 {
             panic!("Invalid FEN");
@@ -311,13 +311,13 @@ impl GameState {
             _ => panic!("Invalid FEN!"),
         };
 
-        //CastlingAbilities
+        //Castling-Abilities
         let castle_white_kingside = vec[2].contains("K");
         let castle_white_queenside = vec[2].contains("Q");
         let castle_black_kingside = vec[2].contains("k");
         let castle_black_queenside = vec[2].contains("q");
 
-        //En Passant target square
+        //En passant target square
         let mut en_passant: u64 = 0u64;
         if vec[3] != "-" {
             let mut idx: usize = 0usize;
@@ -392,7 +392,7 @@ impl GameState {
         let mut half_moves = 0;
         let mut full_moves = 1;
         if vec.len() > 4 {
-            //HalfMoveClock
+            //Half move clock
             half_moves = vec[4].parse().unwrap();
 
             full_moves = vec[5].parse().unwrap();

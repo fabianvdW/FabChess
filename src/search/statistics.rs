@@ -202,7 +202,7 @@ impl Display for SearchStatistics {
 
         res_str.push_str("\n");
         res_str.push_str(&format!(
-            "Quiesence nodes: {} ({}%)\n",
+            "Quiescence nodes: {} ({}%)\n",
             self.q_nodes_searched,
             (self.q_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)
         ));

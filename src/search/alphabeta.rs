@@ -3,7 +3,7 @@ use super::super::movegen;
 use super::super::movegen::{AdditionalGameStateInformation, MoveList};
 use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
-use super::quiesence::{is_capture, q_search, see};
+use super::quiescence::{is_capture, q_search, see};
 use super::search::Search;
 use super::GradedMove;
 use crate::evaluation::eval_game_state;
@@ -62,17 +62,17 @@ pub fn principal_variation_search(
         }
     }
 
-    //Check extensions
+    //Check Extensions
     if agsi.stm_incheck && !root && !calculated_moves {
         depth_left += 1;
     }
-    //Max Search depth reached
+    //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
         pv.score = eval_game_state(&game_state, false).final_eval * color;
         return pv;
     }
 
-    //Drop into quiesence search
+    //Drop into quiescence search
     if depth_left <= 0 {
         search.search_statistics.add_q_root();
         pv = q_search(
@@ -96,12 +96,12 @@ pub fn principal_variation_search(
     //Move Ordering
     //1. PV-Move +30000
     //2. Hash move + 29999
-    //if see>0
+    //if SEE>0
     //3. Winning captures Sort by SEE + 10000
     //4. Equal captures Sort by SEE+ 10000
     //5. Killer moves + 5000
     //6. Non captures (history heuristic) history heuristic score
-    //7. Losing captures (see<0) see score
+    //7. Losing captures (SEE<0) see score
     let mut mv_index = 0;
     while mv_index < move_list.counter[current_depth] {
         let mv: &GameMove = move_list.move_list[current_depth][mv_index]

@@ -241,7 +241,7 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Check new castle rights
-    //The enemies castle right's can't change on a quiet move
+    //The enemy's castle rights can't change on a quiet move
     let (castle_white_kingside, castle_white_queenside) = if g.color_to_move == 0 {
         check_castle_flags(
             g.castle_white_kingside,
@@ -268,7 +268,7 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     let mut en_passant = 0u64;
     let mut half_moves = g.half_moves + 1;
 
-    //Reset half moves if its a pawn move and also check if its a double pawn move, if so, set en passant flag
+    //Reset half moves if it's a pawn move and also check if it's a double pawn move, if so, set en passant flag
     match mv.piece_type {
         PieceType::Pawn => {
             half_moves = 0;
@@ -326,7 +326,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
     let mut pieces = g.pieces.clone();
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
-    //Delete to from enemy pieces
+    //Delete destination-piece from enemy pieces
     delete_piece(&mut pieces, &captured_piece, mv.to, color_to_move);
 
     let (mut castle_white_kingside, mut castle_white_queenside) = if g.color_to_move == 0 {
@@ -353,7 +353,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
     };
 
     if g.color_to_move == 0 {
-        //Check that blacks rook didn't get captured
+        //Check that black's rook didn't get captured
         if pieces[3][1] & bitboards::SQUARES[56] == 0 {
             castle_black_queenside = false;
         }
@@ -643,7 +643,7 @@ pub fn make_promotion_move(
     }
     //Delete my pawn
     pieces[0][g.color_to_move] ^= bitboards::SQUARES[mv.to];
-    //Add piece respectivly
+    //Add piece respectively
     pieces[match mv.move_type {
         GameMoveType::Promotion(PieceType::Queen, _) => 4,
         GameMoveType::Promotion(PieceType::Knight, _) => 1,
@@ -658,7 +658,7 @@ pub fn make_promotion_move(
     let mut castle_black_queenside = g.castle_black_queenside;
 
     if g.color_to_move == 0 {
-        //Check that blacks rook didn't get captured
+        //Check that black's rook didn't get captured
         if pieces[3][1] & bitboards::SQUARES[56] == 0 {
             castle_black_queenside = false;
         }

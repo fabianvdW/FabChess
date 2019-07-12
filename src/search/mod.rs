@@ -3,12 +3,12 @@ use std::cmp::Ordering;
 
 pub mod alphabeta;
 pub mod cache;
-pub mod quiesence;
+pub mod quiescence;
 pub mod search;
 pub mod statistics;
 
 pub fn init_constants() {
-    quiesence::PIECE_VALUES.len();
+    quiescence::PIECE_VALUES.len();
 }
 
 #[derive(Clone)]

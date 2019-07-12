@@ -194,7 +194,7 @@ pub fn init_magics_rooks() -> Vec<Magic> {
         for _i in 0..(1 << shift) {
             lookup_table.push(0u64);
         }
-        //Calculate look-up table
+        //Calculate lookup table
         for i in 0..(1 << shift) {
             let j = transform(blockers_by_index[i], magic_num, shift);
             if lookup_table[j] == 0u64 {
@@ -268,7 +268,7 @@ pub fn init_magics_bishops() -> Vec<Magic> {
         for _i in 0..(1 << shift) {
             lookup_table.push(0u64);
         }
-        //Calculate look-up table
+        //Calculate lookup table
         for i in 0..(1 << shift) {
             let j = transform(blockers_by_index[i], magic_num, shift);
             if lookup_table[j] == 0u64 {
@@ -327,7 +327,7 @@ pub fn bishop_attacks_slow(square: usize, blocks: u64) -> u64 {
     res
 }
 
-//General Magic stuff
+//General magic stuff
 pub fn transform(blockers: u64, magic: u64, n_bits: usize) -> usize {
     ((blockers.wrapping_mul(magic)) >> (64 - n_bits)) as usize
 }

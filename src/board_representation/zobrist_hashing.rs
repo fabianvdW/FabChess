@@ -4,7 +4,6 @@ use std::u64;
 
 pub fn rand_u64() -> u64 {
     let mut rng = rand::thread_rng();
-    //Lets test the distribution
     let res: u64 = rng.gen();
     res
 }
