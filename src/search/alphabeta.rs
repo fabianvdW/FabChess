@@ -125,28 +125,6 @@ pub fn principal_variation_search(
         mv_index += 1;
     }
 
-    {
-        //Killer moves
-        if let Some(s) = search.killer_moves[current_depth][0] {
-            let mv_index = find_move(&s, move_list, current_depth, false);
-            if mv_index < move_list.counter[current_depth] {
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score += 5000.0;
-            }
-        }
-        if let Some(s) = search.killer_moves[current_depth][1] {
-            let mv_index = find_move(&s, move_list, current_depth, false);
-            if mv_index < move_list.counter[current_depth] {
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score += 5000.0;
-            }
-        }
-    }
-
     let mut in_pv = false;
     {
         if let Some(ce) = search.principal_variation[current_depth] {
@@ -157,7 +135,7 @@ pub fn principal_variation_search(
                 move_list.graded_moves[current_depth][mv_index]
                     .as_mut()
                     .unwrap()
-                    .score = 30000.0;
+                    .score = 40000.0;
             }
         }
     }
@@ -302,6 +280,29 @@ pub fn principal_variation_search(
             .score += score;
         mv_index += 1;
     }
+
+    {
+        //Killer moves
+        if let Some(s) = search.killer_moves[current_depth][0] {
+            let mv_index = find_move(&s, move_list, current_depth, false);
+            if mv_index < move_list.counter[current_depth] {
+                move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
+                    .unwrap()
+                    .score += 5000.0;
+            }
+        }
+        if let Some(s) = search.killer_moves[current_depth][1] {
+            let mv_index = find_move(&s, move_list, current_depth, false);
+            if mv_index < move_list.counter[current_depth] {
+                move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
+                    .unwrap()
+                    .score += 5000.0;
+            }
+        }
+    }
+
     let mut futil_pruning = depth_left <= 8 && !agsi.stm_incheck;
     let mut futil_margin = 0;
     if futil_pruning {
