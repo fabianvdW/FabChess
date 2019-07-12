@@ -120,12 +120,7 @@ pub fn principal_variation_search(
                     Some(GradedMove::new(mv_index, sval));
             }
         } else {
-            //History Heuristic
-            let score = search.hh_score[mv.from][mv.to] as f64
-                / search.bf_score[mv.from][mv.to] as f64
-                / 1000.0;
-            move_list.graded_moves[current_depth][mv_index] =
-                Some(GradedMove::new(mv_index, score));
+            move_list.graded_moves[current_depth][mv_index] = Some(GradedMove::new(mv_index, 0.0));
         }
         mv_index += 1;
     }
@@ -261,12 +256,12 @@ pub fn principal_variation_search(
         }
     }
 
-    if false && beta - alpha > 1 && !in_pv && !cache_hit && depth_left > 4 {
+    if beta - alpha > 1 && !in_pv && !cache_hit && depth_left > 6 {
         next_history.pop();
         let iid = principal_variation_search(
             alpha,
             beta,
-            depth_left / 2,
+            depth_left - 2,
             &game_state,
             color,
             current_depth,
@@ -291,6 +286,21 @@ pub fn principal_variation_search(
             .as_mut()
             .unwrap()
             .score = 29900.0;
+    }
+    //History Heuristic
+    let mut mv_index = 0;
+    while mv_index < move_list.counter[current_depth] {
+        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
+            .as_ref()
+            .unwrap();
+        let score = search.hh_score[mv.from][mv.to] as f64
+            / search.bf_score[mv.from][mv.to] as f64
+            / 1000.0;
+        move_list.graded_moves[current_depth][mv_index]
+            .as_mut()
+            .unwrap()
+            .score += score;
+        mv_index += 1;
     }
     let mut futil_pruning = depth_left <= 8 && !agsi.stm_incheck;
     let mut futil_margin = 0;
