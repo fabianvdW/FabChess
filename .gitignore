@@ -6,3 +6,5 @@ KingBase/*
 O-Deville/*
 fens.txt
 old_fens.txt
+.gitignore
+REFEREE_CONFIG.json

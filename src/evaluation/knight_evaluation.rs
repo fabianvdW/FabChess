@@ -166,7 +166,7 @@ pub fn knight_eval(
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         let file_int = supp_knight_index % 8;
         let file = bitboards::FILES[file_int];
-        if enemy_pawns & front_span != 0u64 {
+        if enemy_pawns & front_span == 0u64 {
             outposts |= outpost;
         }
         supp &= !file;
