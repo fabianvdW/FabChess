@@ -18,6 +18,15 @@ pub const ROOK_MOBILITY_BONUS_MG: [i16; 15] =
 pub const ROOK_MOBILITY_BONUS_EG: [i16; 15] = [
     -80, -60, -40, -30, -25, 0, 25, 35, 45, 50, 55, 60, 65, 70, 75,
 ];
+pub const QUEEN_MOBILITY_BONUS_MG: [i16; 28] = [
+    -40, -30, -20, -10, -5, 0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30, 33, 35, 38, 40, 43, 45,
+    48, 50, 53, 55,
+];
+
+pub const QUEEN_MOBILITY_BONUS_EG: [i16; 28] = [
+    -40, -30, -20, -10, -5, 0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 30, 35, 40, 45, 50, 55, 60, 65,
+    70, 75, 80, 85,
+];
 
 //pub const BISHOP_SUPPORTED_BONUS_MG_BY_RANK: [i16; 8] = [0, 0, 3, 8, 13, 18, 25, 0];
 //pub const BISHOP_FULLY_BLOCKED: i16 = -150;
@@ -26,6 +35,7 @@ pub struct PiecewiseEvaluation {
     my_rooks: u64,
     my_bishops: u64,
     my_knights: u64,
+    my_queens: u64,
     is_white: bool,
     all_pawns: u64,
     my_pieces: u64,
@@ -75,6 +85,15 @@ impl Evaluation for PiecewiseEvaluation {
             res += KNIGHT_MOBILITY_BONUS_MG[targets.count_ones() as usize];
             knights ^= pos;
         }
+        let mut queens = self.my_queens;
+        while queens != 0u64 {
+            let idx = queens.trailing_zeros() as usize;
+            let targets = (bishop_attack(idx, self.all_pieces_without_enemy_king)
+                | rook_attack(idx, self.all_pieces_without_enemy_king))
+                & !self.my_pieces;
+            res += QUEEN_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            queens ^= 1u64 << idx;
+        }
         res
     }
     fn eval_eg(&self) -> i16 {
@@ -118,6 +137,15 @@ impl Evaluation for PiecewiseEvaluation {
             let targets = knight_attack(idx) & !self.my_pieces;
             res += KNIGHT_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             knights ^= pos;
+        }
+        let mut queens = self.my_queens;
+        while queens != 0u64 {
+            let idx = queens.trailing_zeros() as usize;
+            let targets = (bishop_attack(idx, self.all_pieces_without_enemy_king)
+                | rook_attack(idx, self.all_pieces_without_enemy_king))
+                & !self.my_pieces;
+            res += QUEEN_MOBILITY_BONUS_EG[targets.count_ones() as usize];
+            queens ^= 1u64 << idx;
         }
         res
     }
@@ -178,6 +206,16 @@ impl ParallelEvaluation for PiecewiseEvaluation {
             eg_res += KNIGHT_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             knights ^= pos;
         }
+        let mut queens = self.my_queens;
+        while queens != 0u64 {
+            let idx = queens.trailing_zeros() as usize;
+            let targets = (bishop_attack(idx, self.all_pieces_without_enemy_king)
+                | rook_attack(idx, self.all_pieces_without_enemy_king))
+                & !self.my_pieces;
+            mg_res += QUEEN_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            eg_res += QUEEN_MOBILITY_BONUS_EG[targets.count_ones() as usize];
+            queens ^= 1u64 << idx;
+        }
         (mg_res, eg_res)
     }
 }
@@ -230,6 +268,16 @@ impl MidGameDisplay for PiecewiseEvaluation {
             knight_mobility += KNIGHT_MOBILITY_BONUS_MG[targets.count_ones() as usize];
             knights ^= pos;
         }
+        let mut queen_mobility = 0;
+        let mut queens = self.my_queens;
+        while queens != 0u64 {
+            let idx = queens.trailing_zeros() as usize;
+            let targets = (bishop_attack(idx, self.all_pieces_without_enemy_king)
+                | rook_attack(idx, self.all_pieces_without_enemy_king))
+                & !self.my_pieces;
+            queen_mobility += QUEEN_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            queens ^= 1u64 << idx;
+        }
         let mut res_str = String::new();
         res_str.push_str("\tPiecewiseEvaluation-MidGame\n");
         res_str.push_str(&format!(
@@ -262,6 +310,11 @@ impl MidGameDisplay for PiecewiseEvaluation {
             rook_mobility
         ));
         res_str.push_str(&format!(
+            "\t\tQueen mobility:                 {} -> {}\n",
+            self.my_queens.count_ones(),
+            queen_mobility
+        ));
+        res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
                 + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_MG
@@ -269,6 +322,7 @@ impl MidGameDisplay for PiecewiseEvaluation {
                 + knight_mobility
                 + bishop_mobility
                 + rook_mobility
+                + queen_mobility
         ));
         res_str
     }
@@ -322,6 +376,16 @@ impl EndGameDisplay for PiecewiseEvaluation {
             knight_mobility += KNIGHT_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             knights ^= pos;
         }
+        let mut queen_mobility = 0;
+        let mut queens = self.my_queens;
+        while queens != 0u64 {
+            let idx = queens.trailing_zeros() as usize;
+            let targets = (bishop_attack(idx, self.all_pieces_without_enemy_king)
+                | rook_attack(idx, self.all_pieces_without_enemy_king))
+                & !self.my_pieces;
+            queen_mobility += QUEEN_MOBILITY_BONUS_EG[targets.count_ones() as usize];
+            queens ^= 1u64 << idx;
+        }
         let mut res_str = String::new();
         res_str.push_str("\tPiecewiseEvaluation-EndGame\n");
         res_str.push_str(&format!(
@@ -354,12 +418,18 @@ impl EndGameDisplay for PiecewiseEvaluation {
             rook_mobility
         ));
         res_str.push_str(&format!(
+            "\t\tQueen mobility:                 {} -> {}\n",
+            self.my_queens.count_ones(),
+            queen_mobility
+        ));
+        res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
                 + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_EG
                 + rooks_on_seventh * ROOK_ON_SEVENTH_EG
                 + bishop_mobility
                 + rook_mobility
+                + queen_mobility
         ));
         res_str
     }
@@ -370,6 +440,7 @@ pub fn piecewise_eval(
     my_rooks: u64,
     my_bishops: u64,
     my_knights: u64,
+    my_queens: u64,
     is_white: bool,
     all_pawns: u64,
     my_pieces: u64,
@@ -380,6 +451,7 @@ pub fn piecewise_eval(
         my_rooks,
         my_bishops,
         my_knights,
+        my_queens,
         is_white,
         all_pawns,
         my_pieces,
