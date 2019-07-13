@@ -119,8 +119,26 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     let black_queen_eval = queen_eval(b_queens);
     let white_king_eval = king_eval(w_king, w_pawns, b_pawns, true, g.full_moves);
     let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false, g.full_moves);
-    let white_piecewise_eval = piecewise_eval(w_pawns, w_rooks, w_bishops, true, all_pawns);
-    let black_piecewise_eval = piecewise_eval(b_pawns, b_rooks, b_bishops, false, all_pawns);
+    let white_piecewise_eval = piecewise_eval(
+        w_pawns,
+        w_rooks,
+        w_bishops,
+        w_knights,
+        true,
+        all_pawns,
+        white_pieces,
+        (white_pieces | black_pieces) & !b_king,
+    );
+    let black_piecewise_eval = piecewise_eval(
+        b_pawns,
+        b_rooks,
+        b_bishops,
+        b_knights,
+        false,
+        all_pawns,
+        black_pieces,
+        (white_pieces | black_pieces) & !w_king,
+    );
 
     let phase = calculate_phase(
         w_queens, b_queens, w_knights, b_knights, w_bishops, b_bishops, w_rooks, b_rooks,

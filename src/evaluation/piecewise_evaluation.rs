@@ -1,21 +1,30 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
-
+use crate::move_generation::movegen::{bishop_attack, knight_attack};
 pub const ROOK_ON_OPEN_FILE_BONUS_MG: i16 = 20;
 pub const ROOK_ON_SEVENTH_MG: i16 = 10;
 pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = 20;
 pub const ROOK_ON_SEVENTH_EG: i16 = 10;
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [30, 15, 0, -40, -100];
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [30, 15, 0, -40, -100];
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [0, 0, 0, -40, -100];
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [0, 0, 0, -40, -100];
 
-pub const KNIGHT_MOBILITY_BONUS_MG: [i16; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+pub const KNIGHT_MOBILITY_BONUS_MG: [i16; 9] = [-75, -50, -15, -5, 5, 15, 25, 35, 45];
+pub const KNIGHT_MOBILITY_BONUS_EG: [i16; 9] = [-75, -50, -15, -5, 3, 7, 12, 15, 20];
+pub const BISHOP_MOBILITY_BONUS_MG: [i16; 14] =
+    [-50, -25, 0, 15, 25, 35, 45, 55, 65, 70, 75, 80, 85, 90];
+pub const BISHOP_MOBILITY_BONUS_EG: [i16; 14] =
+    [-50, -25, 0, 8, 12, 17, 23, 27, 35, 40, 45, 50, 55, 60];
+
 //pub const BISHOP_SUPPORTED_BONUS_MG_BY_RANK: [i16; 8] = [0, 0, 3, 8, 13, 18, 25, 0];
 //pub const BISHOP_FULLY_BLOCKED: i16 = -150;
 pub struct PiecewiseEvaluation {
     my_pawns: u64,
     my_rooks: u64,
     my_bishops: u64,
+    my_knights: u64,
     is_white: bool,
     all_pawns: u64,
+    my_pieces: u64,
+    all_pieces_without_enemy_king: u64,
 }
 
 impl Evaluation for PiecewiseEvaluation {
@@ -47,7 +56,17 @@ impl Evaluation for PiecewiseEvaluation {
             if bonus <= 0 || pos & (*bitboards::CENTER) != 0u64 {
                 res += bonus;
             }
+            let targets = bishop_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            res += BISHOP_MOBILITY_BONUS_MG[targets.count_ones() as usize];
             bishops ^= pos;
+        }
+        let mut knights = self.my_knights;
+        while knights != 0u64 {
+            let idx = knights.trailing_zeros() as usize;
+            let pos = 1u64 << idx;
+            let targets = knight_attack(idx) & !self.my_pieces;
+            res += KNIGHT_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            knights ^= pos;
         }
         res
     }
@@ -79,7 +98,17 @@ impl Evaluation for PiecewiseEvaluation {
             if bonus <= 0 || pos & (*bitboards::CENTER) != 0u64 {
                 res += bonus;
             }
+            let targets = bishop_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            res += BISHOP_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             bishops ^= pos;
+        }
+        let mut knights = self.my_knights;
+        while knights != 0u64 {
+            let idx = knights.trailing_zeros() as usize;
+            let pos = 1u64 << idx;
+            let targets = knight_attack(idx) & !self.my_pieces;
+            res += KNIGHT_MOBILITY_BONUS_EG[targets.count_ones() as usize];
+            knights ^= pos;
         }
         res
     }
@@ -123,7 +152,19 @@ impl ParallelEvaluation for PiecewiseEvaluation {
             if bonus_eg < 0 || pos & (*bitboards::CENTER) != 0u64 {
                 eg_res += bonus_eg;
             }
+            let targets = bishop_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            mg_res += BISHOP_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            eg_res += BISHOP_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             bishops ^= pos;
+        }
+        let mut knights = self.my_knights;
+        while knights != 0u64 {
+            let idx = knights.trailing_zeros() as usize;
+            let pos = 1u64 << idx;
+            let targets = knight_attack(idx) & !self.my_pieces;
+            mg_res += KNIGHT_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            eg_res += KNIGHT_MOBILITY_BONUS_EG[targets.count_ones() as usize];
+            knights ^= pos;
         }
         (mg_res, eg_res)
     }
@@ -151,6 +192,7 @@ impl MidGameDisplay for PiecewiseEvaluation {
             rooks ^= 1u64 << idx;
         }
         let mut bishop_adjacent_score = 0;
+        let mut bishop_mobility = 0;
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
@@ -160,9 +202,19 @@ impl MidGameDisplay for PiecewiseEvaluation {
             if bonus < 0 || pos & (*bitboards::CENTER) != 0u64 {
                 bishop_adjacent_score += bonus
             }
+            let targets = bishop_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            bishop_mobility += BISHOP_MOBILITY_BONUS_MG[targets.count_ones() as usize];
             bishops ^= pos;
         }
-
+        let mut knight_mobility = 0;
+        let mut knights = self.my_knights;
+        while knights != 0u64 {
+            let idx = knights.trailing_zeros() as usize;
+            let pos = 1u64 << idx;
+            let targets = knight_attack(idx) & !self.my_pieces;
+            knight_mobility += KNIGHT_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            knights ^= pos;
+        }
         let mut res_str = String::new();
         res_str.push_str("\tPiecewiseEvaluation-MidGame\n");
         res_str.push_str(&format!(
@@ -180,10 +232,22 @@ impl MidGameDisplay for PiecewiseEvaluation {
             bishop_adjacent_score
         ));
         res_str.push_str(&format!(
+            "\t\tKnight mobility:                {} -> {}\n",
+            self.my_knights.count_ones(),
+            knight_mobility
+        ));
+        res_str.push_str(&format!(
+            "\t\tBishop mobility:                {} -> {}\n",
+            self.my_bishops.count_ones(),
+            bishop_mobility
+        ));
+        res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
                 + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_MG
                 + rooks_on_seventh * ROOK_ON_SEVENTH_MG
+                + knight_mobility
+                + bishop_mobility
         ));
         res_str
     }
@@ -211,6 +275,7 @@ impl EndGameDisplay for PiecewiseEvaluation {
             rooks ^= 1u64 << idx;
         }
         let mut bishop_adjacent_score = 0;
+        let mut bishop_mobility = 0;
         let mut bishops = self.my_bishops;
         while bishops != 0u64 {
             let idx = bishops.trailing_zeros() as usize;
@@ -220,9 +285,19 @@ impl EndGameDisplay for PiecewiseEvaluation {
             if bonus < 0 || pos & (*bitboards::CENTER) != 0u64 {
                 bishop_adjacent_score += bonus
             }
+            let targets = bishop_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            bishop_mobility += BISHOP_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             bishops ^= pos;
         }
-
+        let mut knight_mobility = 0;
+        let mut knights = self.my_knights;
+        while knights != 0u64 {
+            let idx = knights.trailing_zeros() as usize;
+            let pos = 1u64 << idx;
+            let targets = knight_attack(idx) & !self.my_pieces;
+            knight_mobility += KNIGHT_MOBILITY_BONUS_EG[targets.count_ones() as usize];
+            knights ^= pos;
+        }
         let mut res_str = String::new();
         res_str.push_str("\tPiecewiseEvaluation-EndGame\n");
         res_str.push_str(&format!(
@@ -240,10 +315,21 @@ impl EndGameDisplay for PiecewiseEvaluation {
             bishop_adjacent_score
         ));
         res_str.push_str(&format!(
+            "\t\tKnight mobility:                {} -> {}\n",
+            self.my_knights.count_ones(),
+            knight_mobility
+        ));
+        res_str.push_str(&format!(
+            "\t\tBishop mobility:                {} -> {}\n",
+            self.my_bishops.count_ones(),
+            bishop_mobility
+        ));
+        res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
                 + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_EG
                 + rooks_on_seventh * ROOK_ON_SEVENTH_EG
+                + bishop_mobility
         ));
         res_str
     }
@@ -253,14 +339,20 @@ pub fn piecewise_eval(
     my_pawns: u64,
     my_rooks: u64,
     my_bishops: u64,
+    my_knights: u64,
     is_white: bool,
     all_pawns: u64,
+    my_pieces: u64,
+    all_pieces_without_enemy_king: u64,
 ) -> PiecewiseEvaluation {
     PiecewiseEvaluation {
         my_pawns,
         my_rooks,
         my_bishops,
+        my_knights,
         is_white,
         all_pawns,
+        my_pieces,
+        all_pieces_without_enemy_king,
     }
 }
