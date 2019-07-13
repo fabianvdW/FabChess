@@ -1,5 +1,5 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
-use crate::move_generation::movegen::{bishop_attack, knight_attack};
+use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
 pub const ROOK_ON_OPEN_FILE_BONUS_MG: i16 = 20;
 pub const ROOK_ON_SEVENTH_MG: i16 = 10;
 pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = 20;
@@ -13,6 +13,11 @@ pub const BISHOP_MOBILITY_BONUS_MG: [i16; 14] =
     [-50, -25, 0, 15, 25, 35, 45, 55, 65, 70, 75, 80, 85, 90];
 pub const BISHOP_MOBILITY_BONUS_EG: [i16; 14] =
     [-50, -25, 0, 8, 12, 17, 23, 27, 35, 40, 45, 50, 55, 60];
+pub const ROOK_MOBILITY_BONUS_MG: [i16; 15] =
+    [-30, -10, -5, 0, 2, 5, 7, 10, 13, 15, 17, 20, 25, 30, 35];
+pub const ROOK_MOBILITY_BONUS_EG: [i16; 15] = [
+    -80, -60, -40, -30, -25, 0, 25, 35, 45, 50, 55, 60, 65, 70, 75,
+];
 
 //pub const BISHOP_SUPPORTED_BONUS_MG_BY_RANK: [i16; 8] = [0, 0, 3, 8, 13, 18, 25, 0];
 //pub const BISHOP_FULLY_BLOCKED: i16 = -150;
@@ -45,6 +50,8 @@ impl Evaluation for PiecewiseEvaluation {
             if bitboards::FILES[idx % 8] & self.all_pawns == 0u64 {
                 res += ROOK_ON_OPEN_FILE_BONUS_MG;
             }
+            let targets = rook_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            res += ROOK_MOBILITY_BONUS_MG[targets.count_ones() as usize];
             rooks ^= 1u64 << idx;
         }
         let mut bishops = self.my_bishops;
@@ -87,6 +94,8 @@ impl Evaluation for PiecewiseEvaluation {
             if bitboards::FILES[idx % 8] & self.all_pawns == 0u64 {
                 res += ROOK_ON_OPEN_FILE_BONUS_EG;
             }
+            let targets = rook_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            res += ROOK_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             rooks ^= 1u64 << idx;
         }
         let mut bishops = self.my_bishops;
@@ -136,6 +145,9 @@ impl ParallelEvaluation for PiecewiseEvaluation {
                 mg_res += ROOK_ON_OPEN_FILE_BONUS_MG;
                 eg_res += ROOK_ON_OPEN_FILE_BONUS_EG;
             }
+            let targets = rook_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            mg_res += ROOK_MOBILITY_BONUS_MG[targets.count_ones() as usize];
+            eg_res += ROOK_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             rooks ^= 1u64 << idx;
         }
         let mut bishops = self.my_bishops;
@@ -174,6 +186,7 @@ impl MidGameDisplay for PiecewiseEvaluation {
     fn display_mg(&self) -> String {
         let mut rooks_on_open = 0;
         let mut rooks_on_seventh = 0;
+        let mut rook_mobility = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -189,6 +202,8 @@ impl MidGameDisplay for PiecewiseEvaluation {
             if bitboards::FILES[idx % 8] & self.all_pawns == 0u64 {
                 rooks_on_open += 1;
             }
+            let targets = rook_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            rook_mobility += ROOK_MOBILITY_BONUS_MG[targets.count_ones() as usize];
             rooks ^= 1u64 << idx;
         }
         let mut bishop_adjacent_score = 0;
@@ -242,12 +257,18 @@ impl MidGameDisplay for PiecewiseEvaluation {
             bishop_mobility
         ));
         res_str.push_str(&format!(
+            "\t\tRook mobility:                  {} -> {}\n",
+            self.my_rooks.count_ones(),
+            rook_mobility
+        ));
+        res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
                 + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_MG
                 + rooks_on_seventh * ROOK_ON_SEVENTH_MG
                 + knight_mobility
                 + bishop_mobility
+                + rook_mobility
         ));
         res_str
     }
@@ -257,6 +278,7 @@ impl EndGameDisplay for PiecewiseEvaluation {
     fn display_eg(&self) -> String {
         let mut rooks_on_open = 0;
         let mut rooks_on_seventh = 0;
+        let mut rook_mobility = 0;
         let mut rooks = self.my_rooks;
         while rooks != 0u64 {
             let idx = rooks.trailing_zeros() as usize;
@@ -272,6 +294,8 @@ impl EndGameDisplay for PiecewiseEvaluation {
             if bitboards::FILES[idx % 8] & self.all_pawns == 0u64 {
                 rooks_on_open += 1;
             }
+            let targets = rook_attack(idx, self.all_pieces_without_enemy_king) & !self.my_pieces;
+            rook_mobility += ROOK_MOBILITY_BONUS_EG[targets.count_ones() as usize];
             rooks ^= 1u64 << idx;
         }
         let mut bishop_adjacent_score = 0;
@@ -325,11 +349,17 @@ impl EndGameDisplay for PiecewiseEvaluation {
             bishop_mobility
         ));
         res_str.push_str(&format!(
+            "\t\tRook mobility:                  {} -> {}\n",
+            self.my_rooks.count_ones(),
+            rook_mobility
+        ));
+        res_str.push_str(&format!(
             "\tSum: {}\n",
             bishop_adjacent_score
                 + rooks_on_open * ROOK_ON_OPEN_FILE_BONUS_EG
                 + rooks_on_seventh * ROOK_ON_SEVENTH_EG
                 + bishop_mobility
+                + rook_mobility
         ));
         res_str
     }
