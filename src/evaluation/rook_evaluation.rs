@@ -1,7 +1,7 @@
 use super::{EndGameDisplay, Evaluation, MidGameDisplay};
 
-pub const ROOK_PIECE_VALUE_MG: i16 = 710;
-pub const ROOK_PIECE_VALUE_EG: i16 = 920;
+pub const ROOK_PIECE_VALUE_MG: i16 = 650;
+pub const ROOK_PIECE_VALUE_EG: i16 = 870;
 
 pub struct RookEvaluation {
     amount_of_rooks: i16,

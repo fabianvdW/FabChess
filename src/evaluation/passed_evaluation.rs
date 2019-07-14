@@ -1,9 +1,9 @@
 use super::{bitboards, EndGameDisplay, Evaluation, MidGameDisplay, ParallelEvaluation};
 
-const PAWN_PASSED_VALUES_MG: [i16; 7] = [0, -20, -10, 30, 55, 75, 125];
-const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [i16; 7] = [0, 0, 30, 55, 70, 110, 160];
-const PAWN_PASSED_VALUES_EG: [i16; 7] = [0, -40, -20, 20, 100, 160, 250];
-const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16; 7] = [0, 0, 0, 50, 120, 180, 300];
+const PAWN_PASSED_VALUES_MG: [i16; 7] = [0, -20, -10, 30, 50, 70, 90];
+const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [i16; 7] = [0, 0, 30, 50, 70, 90, 110];
+const PAWN_PASSED_VALUES_EG: [i16; 7] = [0, -40, -20, 20, 40, 60, 80];
+const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16; 7] = [0, 0, 0, 50, 80, 110, 140];
 
 pub struct PassedEvaluation {
     passed_pawns: u64,
