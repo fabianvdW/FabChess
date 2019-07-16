@@ -24,7 +24,8 @@ Safety Table is also still a copy from Stockfish's implementation.
 FabChess also comes with a referee which supports 1 vs 1 Engine tourneys for any UCI compliant chess engine.
 The referee can load any opening and supports any Timecontrol.
 It can also load different epd testsuits (such as the Strategic Test suite).
-Inspired by:
+
+## Inspired by:
 
 - https://www.chessprogramming.org/Main_Page
 - Stockfish
