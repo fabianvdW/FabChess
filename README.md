@@ -1,2 +1,4 @@
-# ChessInRust
-Chess in Rust
+# FabChess
+UCI compliant chess engine.
+Features:
+
