@@ -85,7 +85,7 @@ pub fn q_search(
                 mv_index += 1;
                 continue;
             }
-            let score = see(&game_state, mv, false);
+            let score = see(&game_state, mv, false, &mut search.see_buffer);
             if score < 0 {
                 search.search_statistics.add_q_see_cutoff();
                 mv_index += 1;
@@ -270,8 +270,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: i16, alph
 }
 
 #[inline(always)]
-pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> i16 {
-    let mut gain = Vec::with_capacity(32);
+pub fn see(game_state: &GameState, mv: &GameMove, exact: bool, gain: &mut Vec<i16>) -> i16 {
     let may_xray = game_state.pieces[0][0]
         | game_state.pieces[0][1]
         | game_state.pieces[2][0]
@@ -283,7 +282,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> i16 {
     let mut from_set = 1u64 << mv.from;
     let mut occ = get_occupied_board(&game_state);
     let mut attadef = attacks_to(&game_state, mv.to, occ);
-    gain.push(capture_value(&mv));
+    gain[0] = capture_value(&mv);
     let mut color_to_move = game_state.color_to_move;
     let mut attacked_piece = match mv.piece_type {
         PieceType::Pawn => 0,
@@ -298,7 +297,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool) -> i16 {
     while from_set != 0u64 {
         deleted_pieces |= from_set;
         index += 1;
-        gain.push(PIECE_VALUES[attacked_piece] - gain[index - 1]);
+        gain[index] = PIECE_VALUES[attacked_piece] - gain[index - 1];
         if !exact && (-gain[index - 1]).max(gain[index]) < 0 {
             break;
         }
@@ -429,6 +428,7 @@ mod tests {
 
     #[test]
     fn see_test() {
+        let mut see_buffer = vec![0i16; 128];
         assert_eq!(
             see(
                 &GameState::from_fen("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
@@ -438,7 +438,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Rook,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             100
         );
@@ -451,7 +452,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Rook,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             -400
         );
@@ -464,7 +466,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Knight,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             -200
         );
@@ -477,7 +480,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Knight),
                     piece_type: PieceType::Knight,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             0
         );
@@ -490,7 +494,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Knight,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             -90
         );
@@ -503,7 +508,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Rook,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             100
         );
@@ -516,7 +522,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Rook),
                     piece_type: PieceType::Queen,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             500
         );
@@ -529,7 +536,8 @@ mod tests {
                     move_type: GameMoveType::Capture(PieceType::Rook),
                     piece_type: PieceType::Queen,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             -400
         );
@@ -542,7 +550,8 @@ mod tests {
                     move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
                     piece_type: PieceType::Pawn,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             0
         );
@@ -555,7 +564,8 @@ mod tests {
                     move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
                     piece_type: PieceType::Pawn,
                 },
-                true
+                true,
+                &mut see_buffer
             ),
             100
         );

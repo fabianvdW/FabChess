@@ -112,7 +112,7 @@ pub fn principal_variation_search(
                 move_list.graded_moves[current_depth][mv_index] =
                     Some(GradedMove::new(mv_index, 9999.0));
             } else {
-                let mut sval = see(&game_state, &mv, true) as f64;
+                let mut sval = see(&game_state, &mv, true, &mut search.see_buffer) as f64;
                 if sval >= 0.0 {
                     sval += 10000.0;
                 }
