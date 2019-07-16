@@ -23,7 +23,7 @@ debug=true
 name="core"
 path= "src/lib.rs"
 [[bin]]
-name="schach_reworked"
+name="fabchess"
 path="src/main.rs"
 [[bin]]
 name="referee"

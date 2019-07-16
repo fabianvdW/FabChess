@@ -1,3 +1,3 @@
-cargo rustc --release --bin schach_reworked -- -C target-cpu=native
-"./target/release/schach_reworked.exe"
+cargo rustc --release --bin fabchess -- -C target-cpu=native
+"./target/release/fabchess.exe"
 pause
