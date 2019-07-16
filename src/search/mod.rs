@@ -6,6 +6,7 @@ pub mod cache;
 pub mod quiescence;
 pub mod search;
 pub mod statistics;
+pub mod timecontrol;
 
 pub fn init_constants() {
     quiescence::PIECE_VALUES.len();

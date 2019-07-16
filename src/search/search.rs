@@ -3,14 +3,16 @@ use super::alphabeta::principal_variation_search;
 use super::alphabeta::PrincipalVariation;
 use super::cache::{Cache, CacheEntry};
 use super::statistics::SearchStatistics;
+use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-const MOVE_OVERHEAD: u64 = 20;
 pub struct Search {
     pub principal_variation: [Option<CacheEntry>; 100],
     pub killer_moves: [[Option<GameMove>; 2]; 100],
@@ -18,33 +20,12 @@ pub struct Search {
     pub bf_score: [[usize; 64]; 64],
     pub search_statistics: SearchStatistics,
     pub tc: TimeControl,
-    pub saved_time: usize,
+    pub tc_information: TimeControlInformation,
     pub stop: bool,
 }
 
-#[derive(Clone)]
-pub enum TimeControl {
-    Incremental(u64, u64),
-    MoveTime(u64),
-    Infinite,
-}
-
-impl TimeControl {
-    pub fn time_over(&self, time_spent: u64) -> bool {
-        if let TimeControl::Incremental(mytime, myinc) = self {
-            return time_spent > mytime - 40
-                || time_spent > (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
-        } else if let TimeControl::MoveTime(move_time) = self {
-            return time_spent > move_time - MOVE_OVERHEAD || *move_time < MOVE_OVERHEAD;
-        } else if let TimeControl::Infinite = self {
-            return false;
-        }
-        panic!("Invalid Timecontrol");
-    }
-}
-
 impl Search {
-    pub fn new(tc: TimeControl) -> Search {
+    pub fn new(tc: TimeControl, tc_information: TimeControlInformation) -> Search {
         Search {
             principal_variation: [None; 100],
             search_statistics: SearchStatistics::new(),
@@ -52,7 +33,7 @@ impl Search {
             hh_score: [[1; 64]; 64],
             bf_score: [[1; 64]; 64],
             tc,
-            saved_time: 0,
+            tc_information,
             stop: false,
         }
     }
@@ -64,6 +45,7 @@ impl Search {
         history: Vec<GameState>,
         stop_ref: Arc<AtomicBool>,
         cache_uc: Arc<RwLock<Cache>>,
+        saved_time: Arc<AtomicU64>,
     ) -> PrincipalVariation {
         let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
         let cache = &mut (*cache_uc).write().unwrap();
@@ -189,9 +171,24 @@ impl Search {
                     None,
                 ));
             }
+            if best_pv.pv.len() > 0 {
+                let old_mv: &GameMove = &best_pv.pv[0];
+                let new_mv: &GameMove = &pv.pv[0];
+                if (*old_mv) == (*new_mv) {
+                    self.tc_information.stable_pv = true;
+                } else {
+                    self.tc_information.stable_pv = false;
+                }
+            }
             best_pv = pv;
         }
         self.search_statistics.refresh_time_elapsed();
+        //println!("Time elapsed: {}", self.search_statistics.time_elapsed);
+        let mut new_timesaved: i64 = self.tc_information.time_saved as i64
+            + self.tc.time_saved(self.search_statistics.time_elapsed);
+        new_timesaved = new_timesaved.max(0);
+        saved_time.store(new_timesaved as u64, Ordering::Relaxed);
+        //println!("Time saved: {}", saved_time.load(Ordering::Relaxed));
         return best_pv;
     }
 }

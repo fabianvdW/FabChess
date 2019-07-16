@@ -4,9 +4,9 @@ use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::Cache;
 use crate::search::search::Search;
-use crate::search::search::TimeControl;
+use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
-use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock};
+use std::sync::{atomic::AtomicBool, atomic::AtomicU64, atomic::Ordering, Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -18,6 +18,7 @@ pub fn parse_loop() {
     let stop = Arc::new(AtomicBool::new(false));
     let mut cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
     let mut movelist = movegen::MoveList::new();
+    let saved_time = Arc::new(AtomicU64::new(0u64));
     let stdin = io::stdin();
     let mut line = String::new();
     loop {
@@ -37,6 +38,7 @@ pub fn parse_loop() {
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
                 cache = Arc::new(RwLock::new(Cache::new()));
+                saved_time.store(0, Ordering::Relaxed);
             }
             "isready" => isready(),
             "position" => {
@@ -52,10 +54,11 @@ pub fn parse_loop() {
                 let new_state = us.internal_state.clone();
                 let cl = Arc::clone(&stop);
                 let cc = Arc::clone(&cache);
+                let st = Arc::clone(&saved_time);
                 thread::Builder::new()
                     .stack_size(2 * 1024 * 1024)
                     .spawn(move || {
-                        start_search(cl, new_state, new_history, tc, cc, depth);
+                        start_search(cl, new_state, new_history, tc, cc, depth, st);
                     })
                     .expect("Couldn't start thread");
             }
@@ -104,9 +107,13 @@ pub fn start_search(
     tc: TimeControl,
     cache: Arc<RwLock<Cache>>,
     depth: usize,
+    saved_time: Arc<AtomicU64>,
 ) {
-    let mut s = Search::new(tc);
-    let res = s.search(depth as i16, game_state, history, stop, cache);
+    let mut s = Search::new(
+        tc,
+        TimeControlInformation::new(saved_time.load(Ordering::Relaxed)),
+    );
+    let res = s.search(depth as i16, game_state, history, stop, cache, saved_time);
     println!("bestmove {:?}", res.pv[0]);
 }
 

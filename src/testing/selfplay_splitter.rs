@@ -4,7 +4,7 @@ use crate::selfplay::{play_game, EndConditionInformation};
 use core::board_representation::game_state::GameState;
 use core::logging::Logger;
 use core::move_generation::movegen;
-use core::search::search::TimeControl;
+use core::search::timecontrol::TimeControl;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;

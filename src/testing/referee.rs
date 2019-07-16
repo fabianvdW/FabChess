@@ -5,7 +5,7 @@ extern crate tokio;
 extern crate tokio_io;
 extern crate tokio_process;
 
-use core::search::search::TimeControl;
+use core::search::timecontrol::TimeControl;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;

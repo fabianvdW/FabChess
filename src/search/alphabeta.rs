@@ -556,7 +556,11 @@ pub fn get_occurences(history: &Vec<u64>, game_state: &GameState) -> usize {
 #[inline(always)]
 pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
     search.search_statistics.refresh_time_elapsed();
-    if search.tc.time_over(search.search_statistics.time_elapsed) || stop.load(Ordering::Relaxed) {
+    if search.tc.time_over(
+        search.search_statistics.time_elapsed,
+        &search.tc_information,
+    ) || stop.load(Ordering::Relaxed)
+    {
         search.stop = true;
         //println!("{}", search.search_statistics);
     }

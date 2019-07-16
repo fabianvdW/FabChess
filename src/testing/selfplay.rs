@@ -8,7 +8,7 @@ use core::board_representation::game_state::{
 use core::logging::Logger;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen;
-use core::search::search::TimeControl;
+use core::search::timecontrol::TimeControl;
 use std::fmt::{Display, Formatter, Result};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
