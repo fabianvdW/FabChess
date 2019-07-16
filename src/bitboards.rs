@@ -24,6 +24,8 @@ lazy_static! {
     pub static ref FREEFIELD_ROOK_ATTACKS: [u64; 64] = initialize_freefield_rook_attacks();
     pub static ref ROOK_RAYS: [[u64; 64]; 64] = initialize_rook_rays();
     pub static ref BISHOP_RAYS: [[u64; 64]; 64] = initialize_bishop_rays();
+    pub static ref KING_ZONE_WHITE: [u64; 64] = initialize_king_zone_white();
+    pub static ref KING_ZONE_BLACK: [u64; 64] = initialize_king_zone_black();
 }
 
 pub fn init_bitboards() {
@@ -49,6 +51,26 @@ pub fn init_bitboards() {
     FREEFIELD_ROOK_ATTACKS.len();
     ROOK_RAYS.len();
     BISHOP_RAYS.len();
+    KING_ZONE_WHITE.len();
+    KING_ZONE_BLACK.len();
+}
+
+pub fn initialize_king_zone_black() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for king_sq in 0..64 {
+        let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
+        res[king_sq] = zone | south_one(zone);
+    }
+    res
+}
+
+pub fn initialize_king_zone_white() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    for king_sq in 0..64 {
+        let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
+        res[king_sq] = zone | north_one(zone);
+    }
+    res
 }
 pub fn initialize_bishop_rays() -> [[u64; 64]; 64] {
     let mut res = [[0u64; 64]; 64];

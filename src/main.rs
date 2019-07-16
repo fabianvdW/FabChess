@@ -16,6 +16,7 @@ fn main() {
         new_now.duration_since(now).as_secs() * 1000
             + new_now.duration_since(now).subsec_millis() as u64
     ));
+
     core::uci::uci_parser::parse_loop();
 }
 

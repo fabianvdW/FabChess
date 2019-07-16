@@ -129,6 +129,8 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
         all_pawns,
         white_pieces,
         (white_pieces | black_pieces) & !b_king,
+        b_king.trailing_zeros() as usize,
+        black_pawn_attacks,
     );
     let black_piecewise_eval = piecewise_eval(
         b_pawns,
@@ -140,6 +142,8 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
         all_pawns,
         black_pieces,
         (white_pieces | black_pieces) & !w_king,
+        w_king.trailing_zeros() as usize,
+        white_pawn_attacks,
     );
 
     let phase = calculate_phase(
@@ -797,7 +801,7 @@ pub fn make_log(
                 black_piecewise_eval_mg,
                 verbose_mg + white_piecewise_eval_mg - black_piecewise_eval_mg
             ));
-            //verbose_mg += white_piecewise_eval_mg - black_piecewise_eval_mg;
+            verbose_mg += white_piecewise_eval_mg - black_piecewise_eval_mg;
         }
         if phase != 128.0 {
             log(&format!(
@@ -807,7 +811,7 @@ pub fn make_log(
                 black_piecewise_eval_eg,
                 verbose_eg + white_piecewise_eval_eg - black_piecewise_eval_eg
             ));
-            //verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
+            verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
         }
     }
     if color_to_move == 0 {
