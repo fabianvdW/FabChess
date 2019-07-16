@@ -1,6 +1,0 @@
-
-
-Cleaning up the code is definitly necessary
-
-QOL
-Make MoveList a trait, so we dont have to waste huge amounts of stack when we only need 1 depth movelist

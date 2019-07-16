@@ -122,11 +122,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
     let mut binc: u64 = 0;
     let mut depth = 100;
     if cmd[0].to_lowercase() == "infinite" {
-        if engine.internal_state.color_to_move == 0 {
-            return (TimeControl::Infinite, depth);
-        } else {
-            return (TimeControl::Infinite, depth);
-        }
+        return (TimeControl::Infinite, depth);
     } else if cmd[0].to_lowercase() == "depth" {
         depth = cmd[1].parse::<usize>().unwrap();
         return (TimeControl::Infinite, depth);

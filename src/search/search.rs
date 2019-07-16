@@ -18,6 +18,7 @@ pub struct Search {
     pub bf_score: [[usize; 64]; 64],
     pub search_statistics: SearchStatistics,
     pub tc: TimeControl,
+    pub saved_time: usize,
     pub stop: bool,
 }
 
@@ -51,6 +52,7 @@ impl Search {
             hh_score: [[1; 64]; 64],
             bf_score: [[1; 64]; 64],
             tc,
+            saved_time: 0,
             stop: false,
         }
     }

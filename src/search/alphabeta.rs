@@ -309,7 +309,7 @@ pub fn principal_variation_search(
         if let None = static_evaluation {
             static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
-        futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
+        futil_margin = static_evaluation.unwrap() * color + depth_left * 120;
     }
     let mut index: usize = 0;
     let mut mv_index: usize = 0;
