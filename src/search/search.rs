@@ -1,6 +1,8 @@
 use super::super::GameState;
 use super::alphabeta::principal_variation_search;
 use super::alphabeta::PrincipalVariation;
+use super::alphabeta::MAX_SEARCH_DEPTH;
+use super::alphabeta::STANDARD_SCORE;
 use super::cache::{Cache, CacheEntry};
 use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
@@ -14,8 +16,9 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 pub struct Search {
-    pub principal_variation: [Option<CacheEntry>; 100],
-    pub killer_moves: [[Option<GameMove>; 2]; 100],
+    pub principal_variation: [Option<CacheEntry>; MAX_SEARCH_DEPTH],
+    pub pv_table: Vec<PrincipalVariation>,
+    pub killer_moves: [[Option<GameMove>; 2]; MAX_SEARCH_DEPTH],
     pub hh_score: [[usize; 64]; 64],
     pub bf_score: [[usize; 64]; 64],
     pub see_buffer: Vec<i16>,
@@ -27,13 +30,18 @@ pub struct Search {
 
 impl Search {
     pub fn new(tc: TimeControl, tc_information: TimeControlInformation) -> Search {
+        let mut pv_table = Vec::with_capacity(MAX_SEARCH_DEPTH);
+        for i in 0..MAX_SEARCH_DEPTH {
+            pv_table.push(PrincipalVariation::new(MAX_SEARCH_DEPTH - i));
+        }
         Search {
-            principal_variation: [None; 100],
+            principal_variation: [None; MAX_SEARCH_DEPTH],
+            pv_table,
             search_statistics: SearchStatistics::new(),
-            killer_moves: [[None; 2]; 100],
+            killer_moves: [[None; 2]; MAX_SEARCH_DEPTH],
             hh_score: [[1; 64]; 64],
             bf_score: [[1; 64]; 64],
-            see_buffer: vec![0i16; 100],
+            see_buffer: vec![0i16; MAX_SEARCH_DEPTH],
             tc,
             tc_information,
             stop: false,
@@ -48,7 +56,7 @@ impl Search {
         stop_ref: Arc<AtomicBool>,
         cache_uc: Arc<RwLock<Cache>>,
         saved_time: Arc<AtomicU64>,
-    ) -> PrincipalVariation {
+    ) -> i16 {
         let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
         let cache = &mut (*cache_uc).write().unwrap();
         let mut hist: Vec<u64> = Vec::with_capacity(history.len());
@@ -60,11 +68,11 @@ impl Search {
         }
         self.search_statistics = SearchStatistics::new();
         let mut move_list = movegen::MoveList::new();
-        let mut best_pv = PrincipalVariation::new(0);
+        let mut best_pv_score = STANDARD_SCORE;
         for d in 1..(depth + 1) {
-            let mut pv;
+            let mut pv_score;
             if d == 1 {
-                pv = principal_variation_search(
+                pv_score = principal_variation_search(
                     -16000,
                     16000,
                     d,
@@ -83,10 +91,10 @@ impl Search {
             } else {
                 //Aspiration Window
                 let mut delta = 20;
-                let mut alpha = best_pv.score - delta;
-                let mut beta = best_pv.score + delta;
+                let mut alpha = best_pv_score - delta;
+                let mut beta = best_pv_score + delta;
                 loop {
-                    pv = principal_variation_search(
+                    pv_score = principal_variation_search(
                         alpha,
                         beta,
                         d,
@@ -105,17 +113,17 @@ impl Search {
                     if self.stop {
                         break;
                     }
-                    if pv.score > alpha && pv.score < beta && pv.pv.len() > 0 {
+                    if pv_score > alpha && pv_score < beta {
                         break;
                     }
-                    if pv.score <= alpha {
+                    if pv_score <= alpha {
                         if alpha < -10000 {
                             alpha = -16000;
                         } else {
                             alpha -= delta;
                         }
                     }
-                    if pv.score >= beta {
+                    if pv_score >= beta {
                         if beta > 10000 {
                             beta = 16000;
                         } else {
@@ -130,8 +138,10 @@ impl Search {
             }
             //println!("{}", format!("Depth {} with nodes {} and pv: {}", d, stats.nodes_searched, pv));
             let mut pv_str = String::new();
-            for mv in &pv.pv {
+            let mut index = 0;
+            while let Some(mv) = self.pv_table[0].pv[index].as_ref() {
                 pv_str.push_str(&format!("{:?} ", mv));
+                index += 1;
             }
             let nps = self.search_statistics.getnps();
             println!(
@@ -143,46 +153,53 @@ impl Search {
                     self.search_statistics.nodes_searched,
                     nps,
                     self.search_statistics.time_elapsed,
-                    pv.score,
+                    pv_score,
                     pv_str
                 )
             );
-            //println!("{}", self.search_statistics);
-            //Set PV in table
-            let mut pv_stack = Vec::with_capacity(pv.pv.len());
-            for (i, pair) in pv.pv.iter().enumerate() {
-                if i == 0 {
-                    pv_stack.push(make_move(&game_state, &pair));
-                } else {
-                    pv_stack.push(make_move(&pv_stack[i - 1], &pair))
-                }
-            }
-            for (i, pair) in pv.pv.iter().enumerate() {
-                let state = if i == 0 {
-                    &game_state
-                } else {
-                    &pv_stack[i - 1]
-                };
-                self.principal_variation[i] = Some(CacheEntry::new(
-                    state,
-                    d - i as i16,
-                    pv.score,
-                    false,
-                    false,
-                    &pair,
-                    None,
-                ));
-            }
-            if best_pv.pv.len() > 0 {
-                let old_mv: &GameMove = &best_pv.pv[0];
-                let new_mv: &GameMove = &pv.pv[0];
-                if (*old_mv) == (*new_mv) {
+            //Compare old pv to new pv
+            if let Some(ce) = self.principal_variation[0].as_ref() {
+                let old_mv: GameMove = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                let new_mv: &GameMove = self.pv_table[0].pv[0]
+                    .as_ref()
+                    .expect("Couldn't unwrap first move of new pv");
+                if old_mv == (*new_mv) {
                     self.tc_information.stable_pv = true;
                 } else {
                     self.tc_information.stable_pv = false;
                 }
             }
-            best_pv = pv;
+            //println!("{}", self.search_statistics);
+            //Set PV in table
+            let mut pv_stack = Vec::with_capacity(d as usize);
+            let mut index = 0;
+            while let Some(pair) = self.pv_table[0].pv[index].as_ref() {
+                if index == 0 {
+                    pv_stack.push(make_move(&game_state, &pair));
+                } else {
+                    pv_stack.push(make_move(&pv_stack[index - 1], &pair));
+                }
+                index += 1;
+            }
+            index = 0;
+            while let Some(pair) = self.pv_table[0].pv[index].as_ref() {
+                let state = if index == 0 {
+                    &game_state
+                } else {
+                    &pv_stack[index - 1]
+                };
+                self.principal_variation[index] = Some(CacheEntry::new(
+                    state,
+                    d - index as i16,
+                    pv_score,
+                    false,
+                    false,
+                    &pair,
+                    None,
+                ));
+                index += 1;
+            }
+            best_pv_score = pv_score;
         }
         self.search_statistics.refresh_time_elapsed();
         //println!("Time elapsed: {}", self.search_statistics.time_elapsed);
@@ -191,6 +208,6 @@ impl Search {
         new_timesaved = new_timesaved.max(0);
         saved_time.store(new_timesaved as u64, Ordering::Relaxed);
         //println!("Time saved: {}", saved_time.load(Ordering::Relaxed));
-        return best_pv;
+        return best_pv_score;
     }
 }

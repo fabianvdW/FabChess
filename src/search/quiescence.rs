@@ -4,8 +4,8 @@ use super::super::board_representation::game_state::{
 use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
 use super::super::move_generation::movegen::{AdditionalGameStateInformation, MoveList};
-use super::alphabeta::PrincipalVariation;
-use super::alphabeta::{check_end_condition, leaf_score};
+use super::alphabeta::STANDARD_SCORE;
+use super::alphabeta::{check_end_condition, clear_pv, leaf_score};
 use super::cache::{Cache, CacheEntry};
 use super::search::Search;
 use super::GradedMove;
@@ -31,12 +31,11 @@ pub fn q_search(
     move_list: &mut MoveList,
     agsi: AdditionalGameStateInformation,
     is_q_root: bool,
-) -> PrincipalVariation {
+) -> i16 {
     search.search_statistics.add_q_node(current_depth);
-
-    let mut pv: PrincipalVariation = PrincipalVariation::new(1);
+    clear_pv(current_depth, search);
     if search.stop {
-        return pv;
+        return STANDARD_SCORE;
     }
     let game_status = check_end_condition(
         &game_state,
@@ -45,15 +44,13 @@ pub fn q_search(
         history,
     );
     if game_status != GameResult::Ingame {
-        pv.score = leaf_score(game_status, color, depth_left);
-        return pv;
+        return leaf_score(game_status, color, depth_left);
     }
 
     let static_evaluation = eval_game_state(&game_state, false);
     let stand_pat = static_evaluation.final_eval * color;
     if stand_pat >= beta {
-        pv.score = stand_pat;
-        return pv;
+        return stand_pat;
     }
     if stand_pat > alpha {
         alpha = stand_pat;
@@ -63,8 +60,7 @@ pub fn q_search(
     let diff = alpha - stand_pat - DELTA_PRUNING;
     //Missing stats
     if diff > 0 && best_move_value(game_state) < diff {
-        pv.score = stand_pat;
-        return pv;
+        return stand_pat;
     }
 
     let (mut mv_index, mut capture_index) = (0, 0);
@@ -107,9 +103,9 @@ pub fn q_search(
                 if ce.depth >= depth_left as i8 {
                     if !ce.alpha && !ce.beta {
                         search.search_statistics.add_cache_hit_replace_qs();
-                        pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                        pv.score = ce.score;
-                        return pv;
+                        search.pv_table[current_depth].pv[0] =
+                            Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                        return ce.score;
                     } else {
                         if ce.beta {
                             if ce.score > alpha {
@@ -122,9 +118,9 @@ pub fn q_search(
                         }
                         if alpha >= beta {
                             search.search_statistics.add_cache_hit_aj_replace_qs();
-                            pv.score = ce.score;
-                            pv.pv.push(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                            return pv;
+                            search.pv_table[current_depth].pv[0] =
+                                Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                            return ce.score;
                         }
                     }
                 }
@@ -161,14 +157,15 @@ pub fn q_search(
     };
     next_history.push(game_state.hash);
     let mut index = 0;
-    pv.score = stand_pat;
+    let mut current_max_score = stand_pat;
+    let mut has_move = false;
     while index < capture_index {
         let gmvindex =
             super::alphabeta::get_next_gm(move_list, current_depth, index, capture_index);
         let capture_move = move_list.move_list[current_depth][gmvindex].unwrap();
         let next_g = make_move(&game_state, &capture_move);
         let next_g_agsi = movegen::generate_moves2(&next_g, true, move_list, current_depth + 1);
-        let following_pv = q_search(
+        let score = -q_search(
             -beta,
             -alpha,
             &next_g,
@@ -183,11 +180,11 @@ pub fn q_search(
             next_g_agsi,
             false,
         );
-        let score = -following_pv.score;
-        if score > pv.score {
-            pv.score = score;
-            pv.pv.clear();
-            pv.pv.push(capture_move);
+        if score > current_max_score {
+            current_max_score = score;
+            search.pv_table[current_depth].pv[0] = Some(capture_move);
+            has_move = true;
+            //Hang on following pv in theory
         }
         if score >= beta {
             search.search_statistics.add_q_beta_cutoff(index);
@@ -199,15 +196,16 @@ pub fn q_search(
         index += 1;
     }
     next_history.pop();
-    if pv.score < beta {
+    if current_max_score < beta {
         if index > 0 {
             search.search_statistics.add_q_beta_noncutoff();
         }
     }
-    if pv.pv.len() > 0 {
+    if has_move {
         super::alphabeta::make_cache(
             cache,
-            &pv,
+            &search.pv_table[current_depth],
+            current_max_score,
             &game_state,
             alpha,
             beta,
@@ -216,7 +214,7 @@ pub fn q_search(
             Some(static_evaluation.final_eval),
         );
     }
-    pv
+    current_max_score
 }
 
 #[inline(always)]

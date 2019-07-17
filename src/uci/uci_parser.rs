@@ -3,6 +3,7 @@ use crate::board_representation::game_state::{GameMove, GameMoveType, GameState,
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::Cache;
+use crate::search::cache::CacheEntry;
 use crate::search::search::Search;
 use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
@@ -113,8 +114,17 @@ pub fn start_search(
         tc,
         TimeControlInformation::new(saved_time.load(Ordering::Relaxed)),
     );
-    let res = s.search(depth as i16, game_state, history, stop, cache, saved_time);
-    println!("bestmove {:?}", res.pv[0]);
+    s.search(
+        depth as i16,
+        game_state.clone(),
+        history,
+        stop,
+        cache,
+        saved_time,
+    );
+    let bestmove =
+        CacheEntry::u16_to_mv(s.principal_variation[0].as_ref().unwrap().mv, &game_state);
+    println!("bestmove {:?}", bestmove);
 }
 
 pub fn print_internal_state(engine: &UCIEngine) {
