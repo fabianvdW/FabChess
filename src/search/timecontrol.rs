@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter, Result};
+
 const MOVE_OVERHEAD: u64 = 20;
 
 pub struct TimeControlInformation {
@@ -50,5 +52,25 @@ impl TimeControl {
         } else {
             0
         }
+    }
+}
+
+impl Display for TimeControl {
+    fn fmt(&self, formatter: &mut Formatter) -> Result {
+        let mut res_str: String = String::new();
+        if let TimeControl::Incremental(mytime, myinc) = self {
+            res_str.push_str(&format!("My Time: {}", mytime));
+            res_str.push_str(&format!("My Inc: {}", myinc));
+            let normal_time = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
+            let time_aspired = (normal_time as f64 * 0.85) as u64;
+            res_str.push_str(&format!("My normal time I would spend: {}", normal_time));
+            res_str.push_str(&format!("My aspired time I would spend: {}", time_aspired));
+        } else if let TimeControl::MoveTime(time) = self {
+            res_str.push_str(&format!("Limited movetime: {}", time));
+        } else {
+            res_str.push_str("Infinite Time!");
+        }
+
+        write!(formatter, "{}", res_str)
     }
 }

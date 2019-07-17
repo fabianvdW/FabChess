@@ -82,7 +82,7 @@ pub fn q_search(
                 mv_index += 1;
                 continue;
             }
-            let score = see(&game_state, mv, false, &mut search.see_buffer);
+            let score = see(&game_state, mv, true, &mut search.see_buffer);
             if score < 0 {
                 search.search_statistics.add_q_see_cutoff();
                 mv_index += 1;

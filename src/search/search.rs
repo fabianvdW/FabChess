@@ -208,12 +208,20 @@ impl Search {
             best_pv_score = pv_score;
         }
         self.search_statistics.refresh_time_elapsed();
+        //println!("{}", self.tc);
         //println!("Time elapsed: {}", self.search_statistics.time_elapsed);
+        //println!(
+        //    "Time saved in this: {}",
+        //        self.tc.time_saved(self.search_statistics.time_elapsed)
+        //);
         let mut new_timesaved: i64 = self.tc_information.time_saved as i64
             + self.tc.time_saved(self.search_statistics.time_elapsed);
         new_timesaved = new_timesaved.max(0);
         saved_time.store(new_timesaved as u64, Ordering::Relaxed);
-        //println!("Time saved: {}", saved_time.load(Ordering::Relaxed));
+        //println!(
+        //    "New total time saved: {}",
+        //    saved_time.load(Ordering::Relaxed)
+        //);
         return best_pv_score;
     }
 }
