@@ -19,6 +19,11 @@ pub const HH_INCREMENT: usize = 1;
 pub const BF_INCREMENT: usize = 1;
 pub const MAX_SEARCH_DEPTH: usize = 100;
 pub const STANDARD_SCORE: i16 = -32767;
+
+//TODO Static Null Move Pruning, Delta Pruning
+//Clean up arguments
+//Additional Thoughts:
+//Do most of the forward pruning before movegen
 pub fn principal_variation_search(
     mut alpha: i16,
     mut beta: i16,
@@ -349,7 +354,7 @@ pub fn principal_variation_search(
             && !isp
             && !gives_check(&mv, &game_state, &next_state)
         {
-            //let mut reduction = 1;
+            //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
             reduction = (((depth_left - 1) as f64).sqrt() + ((index - 1) as f64).sqrt()) as i16;
             if beta - alpha > 1 {
                 reduction = (reduction as f64 * 0.66) as i16;
