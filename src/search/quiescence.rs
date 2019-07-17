@@ -7,6 +7,7 @@ use super::super::move_generation::movegen::{AdditionalGameStateInformation, Mov
 use super::alphabeta::STANDARD_SCORE;
 use super::alphabeta::{check_end_condition, clear_pv, leaf_score};
 use super::cache::{Cache, CacheEntry};
+use super::history::History;
 use super::search::Search;
 use super::GradedMove;
 use crate::bitboards;
@@ -25,7 +26,7 @@ pub fn q_search(
     depth_left: i16,
     current_depth: usize,
     search: &mut Search,
-    history: &mut Vec<u64>,
+    history: &mut History,
     cache: &mut Cache,
     root_plies_played: usize,
     move_list: &mut MoveList,
@@ -149,13 +150,7 @@ pub fn q_search(
             }
         }
     }
-    let mut my_history: Vec<u64> = Vec::with_capacity(10);
-    let next_history: &mut Vec<u64> = if game_state.half_moves == 0 {
-        &mut my_history
-    } else {
-        history
-    };
-    next_history.push(game_state.hash);
+    history.push(game_state.hash, game_state.half_moves == 0);
     let mut index = 0;
     let mut current_max_score = stand_pat;
     let mut has_move = false;
@@ -173,7 +168,7 @@ pub fn q_search(
             depth_left - 1,
             current_depth + 1,
             search,
-            next_history,
+            history,
             cache,
             root_plies_played,
             move_list,
@@ -195,7 +190,7 @@ pub fn q_search(
         }
         index += 1;
     }
-    next_history.pop();
+    history.pop();
     if current_max_score < beta {
         if index > 0 {
             search.search_statistics.add_q_beta_noncutoff();

@@ -4,6 +4,7 @@ use super::alphabeta::PrincipalVariation;
 use super::alphabeta::MAX_SEARCH_DEPTH;
 use super::alphabeta::STANDARD_SCORE;
 use super::cache::{Cache, CacheEntry};
+use super::history::History;
 use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
@@ -59,13 +60,18 @@ impl Search {
     ) -> i16 {
         let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
         let cache = &mut (*cache_uc).write().unwrap();
-        let mut hist: Vec<u64> = Vec::with_capacity(history.len());
+        let mut hist: History = History::new();
+        let mut relevant_hashes: Vec<u64> = Vec::with_capacity(100);
         for gs in history.iter().rev() {
-            hist.push(gs.hash);
+            relevant_hashes.push(gs.hash);
             if gs.half_moves == 0 {
                 break;
             }
         }
+        for hashes in relevant_hashes.iter().rev() {
+            hist.push(*hashes, false);
+        }
+
         self.search_statistics = SearchStatistics::new();
         let mut move_list = movegen::MoveList::new();
         let mut best_pv_score = STANDARD_SCORE;

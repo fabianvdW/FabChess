@@ -3,6 +3,7 @@ use super::super::movegen;
 use super::super::movegen::{AdditionalGameStateInformation, MoveList};
 use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
+use super::history::History;
 use super::quiescence::{is_capture, q_search, see};
 use super::search::Search;
 use super::GradedMove;
@@ -27,7 +28,7 @@ pub fn principal_variation_search(
     current_depth: usize,
     search: &mut Search,
     root_pliesplayed: usize,
-    history: &mut Vec<u64>,
+    history: &mut History,
     stop: &Arc<AtomicBool>,
     cache: &mut Cache,
     move_list: &mut MoveList,
@@ -185,13 +186,7 @@ pub fn principal_variation_search(
         }
     }
 
-    let mut my_history: Vec<u64> = Vec::with_capacity(10);
-    let next_history: &mut Vec<u64> = if game_state.half_moves == 0 {
-        &mut my_history
-    } else {
-        history
-    };
-    next_history.push(game_state.hash);
+    history.push(game_state.hash, game_state.half_moves == 0);
 
     if beta - alpha == 1
         && !agsi.stm_incheck
@@ -215,7 +210,7 @@ pub fn principal_variation_search(
                 current_depth + 1,
                 search,
                 root_pliesplayed,
-                next_history,
+                history,
                 stop,
                 cache,
                 move_list,
@@ -224,14 +219,14 @@ pub fn principal_variation_search(
             );
             if rat >= beta {
                 search.search_statistics.add_nm_pruning();
-                next_history.pop();
+                history.pop();
                 return rat;
             }
         }
     }
 
     if beta - alpha > 1 && !in_pv && !cache_hit && depth_left > 6 {
-        next_history.pop();
+        history.pop();
         principal_variation_search(
             alpha,
             beta,
@@ -241,14 +236,14 @@ pub fn principal_variation_search(
             current_depth,
             search,
             root_pliesplayed,
-            next_history,
+            history,
             stop,
             cache,
             move_list,
             true,
             Some(agsi.clone()),
         );
-        next_history.push(game_state.hash);
+        history.push(game_state.hash, game_state.half_moves == 0);
         if search.stop {
             return STANDARD_SCORE;
         }
@@ -309,7 +304,7 @@ pub fn principal_variation_search(
         if let None = static_evaluation {
             static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
-        futil_margin = static_evaluation.unwrap() * color + depth_left * 120;
+        futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
     }
     let mut current_max_score = STANDARD_SCORE;
     let mut index: usize = 0;
@@ -373,7 +368,7 @@ pub fn principal_variation_search(
                 current_depth + 1,
                 search,
                 root_pliesplayed,
-                next_history,
+                history,
                 stop,
                 cache,
                 move_list,
@@ -390,7 +385,7 @@ pub fn principal_variation_search(
                     current_depth + 1,
                     search,
                     root_pliesplayed,
-                    next_history,
+                    history,
                     stop,
                     cache,
                     move_list,
@@ -408,7 +403,7 @@ pub fn principal_variation_search(
                 current_depth + 1,
                 search,
                 root_pliesplayed,
-                next_history,
+                history,
                 stop,
                 cache,
                 move_list,
@@ -425,7 +420,7 @@ pub fn principal_variation_search(
                     current_depth + 1,
                     search,
                     root_pliesplayed,
-                    next_history,
+                    history,
                     stop,
                     cache,
                     move_list,
@@ -475,7 +470,7 @@ pub fn principal_variation_search(
         index += 1;
     }
 
-    next_history.pop();
+    history.pop();
     if alpha < beta {
         search.search_statistics.add_normal_node_non_beta_cutoff();
     }
@@ -562,17 +557,6 @@ pub fn gives_check(_mv: &GameMove, game_state: &GameState, next_state: &GameStat
         )
         .0
     }) != 0u64
-}
-
-#[inline(always)]
-pub fn get_occurences(history: &Vec<u64>, game_state: &GameState) -> usize {
-    let mut occurences = 0;
-    for gs in history.iter().rev() {
-        if *gs == game_state.hash {
-            occurences += 1;
-        }
-    }
-    occurences
 }
 
 #[inline(always)]
@@ -724,7 +708,7 @@ pub fn check_end_condition(
     game_state: &GameState,
     has_legal_moves: bool,
     in_check: bool,
-    history: &Vec<u64>,
+    history: &History,
 ) -> GameResult {
     if in_check && !has_legal_moves {
         if game_state.color_to_move == 0 {
@@ -754,9 +738,10 @@ pub fn check_end_condition(
         return GameResult::Draw;
     }
 
-    if get_occurences(history, game_state) >= 1 {
+    if history.get_occurences(game_state) >= 1 {
         return GameResult::Draw;
     }
+
     GameResult::Ingame
 }
 pub struct PrincipalVariation {

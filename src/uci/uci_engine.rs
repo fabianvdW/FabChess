@@ -9,7 +9,7 @@ pub struct UCIEngine<'a> {
 impl<'a> UCIEngine<'a> {
     pub fn standard() -> UCIEngine<'a> {
         UCIEngine {
-            name: &"FabChess v1.6",
+            name: &"FabChess v1.7",
             author: &"Fabian von der Warth",
             internal_state: GameState::standard(),
         }
