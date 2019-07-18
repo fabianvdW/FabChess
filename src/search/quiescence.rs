@@ -4,8 +4,10 @@ use super::super::board_representation::game_state::{
 use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
 use super::super::move_generation::movegen::{AdditionalGameStateInformation, MoveList};
-use super::alphabeta::STANDARD_SCORE;
-use super::alphabeta::{check_end_condition, clear_pv, leaf_score};
+use super::alphabeta::{
+    check_end_condition, check_for_draw, clear_pv, get_next_gm, leaf_score, MAX_SEARCH_DEPTH,
+    STANDARD_SCORE,
+};
 use super::cache::{Cache, CacheEntry};
 use super::history::History;
 use super::search::Search;
@@ -30,25 +32,23 @@ pub fn q_search(
     cache: &mut Cache,
     root_plies_played: usize,
     move_list: &mut MoveList,
-    agsi: AdditionalGameStateInformation,
-    is_q_root: bool,
 ) -> i16 {
     search.search_statistics.add_q_node(current_depth);
     clear_pv(current_depth, search);
     if search.stop {
         return STANDARD_SCORE;
     }
-    let game_status = check_end_condition(
-        &game_state,
-        agsi.stm_haslegalmove,
-        agsi.stm_incheck,
-        history,
-    );
-    if game_status != GameResult::Ingame {
-        return leaf_score(game_status, color, depth_left);
+    //Max search-depth reached
+    if current_depth >= (MAX_SEARCH_DEPTH - 1) {
+        return eval_game_state(&game_state, false).final_eval * color;
     }
 
+    //check for draw
+    if check_for_draw(game_state, history) {
+        return leaf_score(GameResult::Draw, color, depth_left);
+    }
     let static_evaluation = eval_game_state(&game_state, false);
+    //Stand-Pat pruning
     let stand_pat = static_evaluation.final_eval * color;
     if stand_pat >= beta {
         return stand_pat;
@@ -64,36 +64,8 @@ pub fn q_search(
         return stand_pat;
     }
 
-    let (mut mv_index, mut capture_index) = (0, 0);
-    while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
-            .as_ref()
-            .unwrap();
-        if is_q_root && !is_capture(mv) {
-            mv_index += 1;
-            continue;
-        }
-        if let GameMoveType::EnPassant = mv.move_type {
-            move_list.graded_moves[current_depth][capture_index] =
-                Some(GradedMove::new(mv_index, 100.0));
-        } else {
-            if !passes_delta_pruning(mv, static_evaluation.phase, stand_pat, alpha) {
-                search.search_statistics.add_q_delta_cutoff();
-                mv_index += 1;
-                continue;
-            }
-            let score = see(&game_state, mv, true, &mut search.see_buffer);
-            if score < 0 {
-                search.search_statistics.add_q_see_cutoff();
-                mv_index += 1;
-                continue;
-            }
-            move_list.graded_moves[current_depth][capture_index] =
-                Some(GradedMove::new(mv_index, score as f64));
-        }
-        mv_index += 1;
-        capture_index += 1;
-    }
+    let mut tt_move: Option<GameMove> = None;
+    let mut has_ttmove = false;
     //Probe TT
     {
         let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
@@ -126,40 +98,73 @@ pub fn q_search(
                     }
                 }
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mut c_i = 0;
-                while c_i < capture_index {
-                    let other_mv: &GameMove = &move_list.move_list[current_depth][move_list
-                        .graded_moves[current_depth][c_i]
-                        .as_ref()
-                        .unwrap()
-                        .mv_index]
-                        .as_ref()
-                        .unwrap();
-                    if other_mv.from == mv.from
-                        && other_mv.to == mv.to
-                        && other_mv.move_type == mv.move_type
-                    {
-                        move_list.graded_moves[current_depth][c_i]
-                            .as_mut()
-                            .unwrap()
-                            .score += 10000.0;
-                        break;
-                    }
-                    c_i += 1;
-                }
+                tt_move = Some(mv);
+                has_ttmove = true;
             }
         }
     }
+
+    let mut hash_move_counter = 0;
+    let mut incheck = false;
+    let mut has_legal_move = false;
+    {
+        if has_ttmove {
+            hash_move_counter += 1;
+        }
+    }
     history.push(game_state.hash, game_state.half_moves == 0);
-    let mut index = 0;
     let mut current_max_score = stand_pat;
-    let mut has_move = false;
-    while index < capture_index {
-        let gmvindex =
-            super::alphabeta::get_next_gm(move_list, current_depth, index, capture_index);
-        let capture_move = move_list.move_list[current_depth][gmvindex].unwrap();
+    let mut has_pv = false;
+
+    let mut index = 0;
+    let mut moves_from_movelist_tried: usize = 0;
+    let mut has_generated_moves = false;
+
+    let mut available_captures_in_movelist = 0;
+
+    while index < available_captures_in_movelist + hash_move_counter || !has_generated_moves {
+        if index == hash_move_counter && !has_generated_moves {
+            has_generated_moves = true;
+            let (agsi, mvs) = make_and_evaluate_moves_qsearch(
+                game_state,
+                search,
+                current_depth,
+                move_list,
+                static_evaluation.phase,
+                stand_pat,
+                alpha,
+            );
+            incheck = agsi.stm_incheck;
+            has_legal_move = agsi.stm_haslegalmove;
+            available_captures_in_movelist = mvs;
+            continue;
+        }
+        let capture_move: GameMove = if index < hash_move_counter {
+            tt_move.expect("Couldn't unwrap tt move in q search")
+        } else {
+            move_list.move_list[current_depth][get_next_gm(
+                move_list,
+                current_depth,
+                moves_from_movelist_tried,
+                available_captures_in_movelist,
+            )]
+            .expect("Could not get next gm")
+        };
+        //Make sure that our move is not the same as tt move if we have any
+        if index >= hash_move_counter {
+            moves_from_movelist_tried += 1;
+            if hash_move_counter > 0 {
+                if *tt_move
+                    .as_ref()
+                    .expect("Couldn't unwrap hash move counter in move check")
+                    == capture_move
+                {
+                    index += 1;
+                    continue;
+                }
+            }
+        }
         let next_g = make_move(&game_state, &capture_move);
-        let next_g_agsi = movegen::generate_moves2(&next_g, true, move_list, current_depth + 1);
         let score = -q_search(
             -beta,
             -alpha,
@@ -172,13 +177,11 @@ pub fn q_search(
             cache,
             root_plies_played,
             move_list,
-            next_g_agsi,
-            false,
         );
         if score > current_max_score {
             current_max_score = score;
             search.pv_table[current_depth].pv[0] = Some(capture_move);
-            has_move = true;
+            has_pv = true;
             //Hang on following pv in theory
         }
         if score >= beta {
@@ -196,7 +199,12 @@ pub fn q_search(
             search.search_statistics.add_q_beta_noncutoff();
         }
     }
-    if has_move {
+    let game_status = check_end_condition(&game_state, has_legal_move, incheck);
+    if game_status != GameResult::Ingame {
+        clear_pv(current_depth, search);
+        return leaf_score(game_status, color, depth_left);
+    }
+    if has_pv {
         super::alphabeta::make_cache(
             cache,
             &search.pv_table[current_depth],
@@ -212,6 +220,45 @@ pub fn q_search(
     current_max_score
 }
 
+#[inline(always)]
+pub fn make_and_evaluate_moves_qsearch(
+    game_state: &GameState,
+    search: &mut Search,
+    current_depth: usize,
+    move_list: &mut MoveList,
+    phase: f64,
+    stand_pat: i16,
+    alpha: i16,
+) -> (AdditionalGameStateInformation, usize) {
+    let agsi = movegen::generate_moves2(&game_state, true, move_list, current_depth);
+    let (mut mv_index, mut capture_index) = (0, 0);
+    while mv_index < move_list.counter[current_depth] {
+        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
+            .as_ref()
+            .unwrap();
+        if let GameMoveType::EnPassant = mv.move_type {
+            move_list.graded_moves[current_depth][capture_index] =
+                Some(GradedMove::new(mv_index, 100.0));
+        } else {
+            if !passes_delta_pruning(mv, phase, stand_pat, alpha) {
+                search.search_statistics.add_q_delta_cutoff();
+                mv_index += 1;
+                continue;
+            }
+            let score = see(&game_state, mv, true, &mut search.see_buffer);
+            if score < 0 {
+                search.search_statistics.add_q_see_cutoff();
+                mv_index += 1;
+                continue;
+            }
+            move_list.graded_moves[current_depth][capture_index] =
+                Some(GradedMove::new(mv_index, score as f64));
+        }
+        mv_index += 1;
+        capture_index += 1;
+    }
+    (agsi, capture_index)
+}
 #[inline(always)]
 pub fn is_capture(mv: &GameMove) -> bool {
     match &mv.move_type {

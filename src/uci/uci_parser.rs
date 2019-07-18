@@ -163,6 +163,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
                 let mvtime = cmd[index + 1].parse::<u64>().unwrap();
                 return (TimeControl::MoveTime(mvtime), depth);
             }
+            "movestogo" => {}
             _ => panic!("Invalid go command"),
         };
         index += 2;

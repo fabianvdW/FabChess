@@ -52,6 +52,10 @@ pub fn principal_variation_search(
     }
 
     let root = current_depth == 0;
+    //Check for draw
+    if !root && check_for_draw(game_state, history) {
+        return leaf_score(GameResult::Draw, color, depth_left);
+    }
     let is_pv_node = beta - alpha > 1;
     let incheck = in_check(game_state);
     let is_likelystalemate = !incheck && is_likelystalemate(game_state);
@@ -64,7 +68,6 @@ pub fn principal_variation_search(
     //Drop into quiescence search
     if depth_left <= 0 {
         search.search_statistics.add_q_root();
-        let agsi = movegen::generate_moves2(&game_state, true, move_list, current_depth);
         return q_search(
             alpha,
             beta,
@@ -77,8 +80,6 @@ pub fn principal_variation_search(
             cache,
             root_pliesplayed,
             move_list,
-            agsi,
-            true,
         );
     }
 
@@ -438,12 +439,10 @@ pub fn principal_variation_search(
     }
 
     history.pop();
-    if !root {
-        let game_status = check_end_condition(&game_state, moves_tried > 0, incheck, history);
-        if game_status != GameResult::Ingame {
-            clear_pv(current_depth, search);
-            return leaf_score(game_status, color, depth_left);
-        }
+    let game_status = check_end_condition(&game_state, moves_tried > 0, incheck);
+    if game_status != GameResult::Ingame {
+        clear_pv(current_depth, search);
+        return leaf_score(game_status, color, depth_left);
     }
 
     if alpha < beta {
@@ -819,23 +818,9 @@ pub fn leaf_score(game_status: GameResult, color: i16, depth_left: i16) -> i16 {
     panic!("Invalid Leaf");
 }
 
+//Doesn't actually check for stalemate
 #[inline(always)]
-pub fn check_end_condition(
-    game_state: &GameState,
-    has_legal_moves: bool,
-    in_check: bool,
-    history: &History,
-) -> GameResult {
-    if in_check && !has_legal_moves {
-        if game_state.color_to_move == 0 {
-            return GameResult::BlackWin;
-        } else {
-            return GameResult::WhiteWin;
-        }
-    }
-    if !in_check && !has_legal_moves {
-        return GameResult::Draw;
-    }
+pub fn check_for_draw(game_state: &GameState, history: &History) -> bool {
     if game_state.pieces[0][0]
         | game_state.pieces[1][0]
         | game_state.pieces[2][0]
@@ -848,16 +833,33 @@ pub fn check_end_condition(
         | game_state.pieces[4][1]
         == 0u64
     {
-        return GameResult::Draw;
+        return true;
     }
     if game_state.half_moves >= 100 {
-        return GameResult::Draw;
+        return true;
     }
 
     if history.get_occurences(game_state) >= 1 {
+        return true;
+    }
+    false
+}
+#[inline(always)]
+pub fn check_end_condition(
+    game_state: &GameState,
+    has_legal_moves: bool,
+    in_check: bool,
+) -> GameResult {
+    if in_check && !has_legal_moves {
+        if game_state.color_to_move == 0 {
+            return GameResult::BlackWin;
+        } else {
+            return GameResult::WhiteWin;
+        }
+    }
+    if !in_check && !has_legal_moves {
         return GameResult::Draw;
     }
-
     GameResult::Ingame
 }
 
