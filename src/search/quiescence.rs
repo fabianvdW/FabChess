@@ -8,9 +8,8 @@ use super::alphabeta::{
     check_end_condition, check_for_draw, clear_pv, get_next_gm, leaf_score, MAX_SEARCH_DEPTH,
     STANDARD_SCORE,
 };
-use super::cache::{Cache, CacheEntry};
-use super::history::History;
-use super::search::Search;
+use super::cache::CacheEntry;
+use super::search::{Search, SearchUtils};
 use super::GradedMove;
 use crate::bitboards;
 use crate::move_generation::makemove::make_move;
@@ -27,15 +26,11 @@ pub fn q_search(
     color: i16,
     depth_left: i16,
     current_depth: usize,
-    search: &mut Search,
-    history: &mut History,
-    cache: &mut Cache,
-    root_plies_played: usize,
-    move_list: &mut MoveList,
+    su: &mut SearchUtils,
 ) -> i16 {
-    search.search_statistics.add_q_node(current_depth);
-    clear_pv(current_depth, search);
-    if search.stop {
+    su.search.search_statistics.add_q_node(current_depth);
+    clear_pv(current_depth, su.search);
+    if su.search.stop {
         return STANDARD_SCORE;
     }
     //Max search-depth reached
@@ -44,7 +39,7 @@ pub fn q_search(
     }
 
     //check for draw
-    if check_for_draw(game_state, history) {
+    if check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, depth_left);
     }
     let static_evaluation = eval_game_state(&game_state, false);
@@ -68,15 +63,15 @@ pub fn q_search(
     let mut has_ttmove = false;
     //Probe TT
     {
-        let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
+        let ce = &su.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
-                search.search_statistics.add_cache_hit_qs();
+                su.search.search_statistics.add_cache_hit_qs();
                 if ce.depth >= depth_left as i8 {
                     if !ce.alpha && !ce.beta {
-                        search.search_statistics.add_cache_hit_replace_qs();
-                        search.pv_table[current_depth].pv[0] =
+                        su.search.search_statistics.add_cache_hit_replace_qs();
+                        su.search.pv_table[current_depth].pv[0] =
                             Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
                         return ce.score;
                     } else {
@@ -90,8 +85,8 @@ pub fn q_search(
                             }
                         }
                         if alpha >= beta {
-                            search.search_statistics.add_cache_hit_aj_replace_qs();
-                            search.pv_table[current_depth].pv[0] =
+                            su.search.search_statistics.add_cache_hit_aj_replace_qs();
+                            su.search.pv_table[current_depth].pv[0] =
                                 Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
                             return ce.score;
                         }
@@ -112,7 +107,7 @@ pub fn q_search(
             hash_move_counter += 1;
         }
     }
-    history.push(game_state.hash, game_state.half_moves == 0);
+    su.history.push(game_state.hash, game_state.half_moves == 0);
     let mut current_max_score = stand_pat;
     let mut has_pv = false;
 
@@ -127,9 +122,9 @@ pub fn q_search(
             has_generated_moves = true;
             let (agsi, mvs) = make_and_evaluate_moves_qsearch(
                 game_state,
-                search,
+                su.search,
                 current_depth,
-                move_list,
+                su.move_list,
                 static_evaluation.phase,
                 stand_pat,
                 alpha,
@@ -142,8 +137,8 @@ pub fn q_search(
         let capture_move: GameMove = if index < hash_move_counter {
             tt_move.expect("Couldn't unwrap tt move in q search")
         } else {
-            move_list.move_list[current_depth][get_next_gm(
-                move_list,
+            su.move_list.move_list[current_depth][get_next_gm(
+                su.move_list,
                 current_depth,
                 moves_from_movelist_tried,
                 available_captures_in_movelist,
@@ -172,20 +167,16 @@ pub fn q_search(
             -color,
             depth_left - 1,
             current_depth + 1,
-            search,
-            history,
-            cache,
-            root_plies_played,
-            move_list,
+            su,
         );
         if score > current_max_score {
             current_max_score = score;
-            search.pv_table[current_depth].pv[0] = Some(capture_move);
+            su.search.pv_table[current_depth].pv[0] = Some(capture_move);
             has_pv = true;
             //Hang on following pv in theory
         }
         if score >= beta {
-            search.search_statistics.add_q_beta_cutoff(index);
+            su.search.search_statistics.add_q_beta_cutoff(index);
             break;
         }
         if score > alpha {
@@ -193,27 +184,27 @@ pub fn q_search(
         }
         index += 1;
     }
-    history.pop();
+    su.history.pop();
     if current_max_score < beta {
         if index > 0 {
-            search.search_statistics.add_q_beta_noncutoff();
+            su.search.search_statistics.add_q_beta_noncutoff();
         }
     }
     let game_status = check_end_condition(&game_state, has_legal_move, incheck);
     if game_status != GameResult::Ingame {
-        clear_pv(current_depth, search);
+        clear_pv(current_depth, su.search);
         return leaf_score(game_status, color, depth_left);
     }
     if has_pv {
         super::alphabeta::make_cache(
-            cache,
-            &search.pv_table[current_depth],
+            su.cache,
+            &su.search.pv_table[current_depth],
             current_max_score,
             &game_state,
             alpha,
             beta,
             0,
-            root_plies_played,
+            su.root_pliesplayed,
             Some(static_evaluation.final_eval),
         );
     }

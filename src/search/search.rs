@@ -10,12 +10,40 @@ use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
+use crate::move_generation::movegen::MoveList;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+pub struct SearchUtils<'a> {
+    pub root_pliesplayed: usize,
+    pub search: &'a mut Search,
+    pub history: &'a mut History,
+    pub stop: &'a Arc<AtomicBool>,
+    pub cache: &'a mut Cache,
+    pub move_list: &'a mut MoveList,
+}
+impl<'a> SearchUtils<'a> {
+    pub fn new(
+        root_pliesplayed: usize,
+        search: &'a mut Search,
+        history: &'a mut History,
+        stop: &'a Arc<AtomicBool>,
+        cache: &'a mut Cache,
+        move_list: &'a mut MoveList,
+    ) -> Self {
+        SearchUtils {
+            root_pliesplayed,
+            search,
+            history,
+            stop,
+            cache,
+            move_list,
+        }
+    }
+}
 pub struct Search {
     pub principal_variation: [Option<CacheEntry>; MAX_SEARCH_DEPTH],
     pub pv_table: Vec<PrincipalVariation>,
@@ -75,9 +103,18 @@ impl Search {
         self.search_statistics = SearchStatistics::new();
         let mut move_list = movegen::MoveList::new();
         let mut best_pv_score = STANDARD_SCORE;
+
         for d in 1..(depth + 1) {
             let mut pv_score;
             if d == 1 {
+                let mut searchutils = SearchUtils::new(
+                    root_plies_played,
+                    self,
+                    &mut hist,
+                    &stop_ref,
+                    cache,
+                    &mut move_list,
+                );
                 pv_score = principal_variation_search(
                     -16000,
                     16000,
@@ -85,12 +122,7 @@ impl Search {
                     &game_state,
                     if game_state.color_to_move == 0 { 1 } else { -1 },
                     0,
-                    self,
-                    root_plies_played,
-                    &mut hist,
-                    &stop_ref,
-                    cache,
-                    &mut move_list,
+                    &mut searchutils,
                 );
             } else {
                 //Aspiration Window
@@ -98,6 +130,14 @@ impl Search {
                 let mut alpha = best_pv_score - delta;
                 let mut beta = best_pv_score + delta;
                 loop {
+                    let mut searchutils = SearchUtils::new(
+                        root_plies_played,
+                        self,
+                        &mut hist,
+                        &stop_ref,
+                        cache,
+                        &mut move_list,
+                    );
                     pv_score = principal_variation_search(
                         alpha,
                         beta,
@@ -105,12 +145,7 @@ impl Search {
                         &game_state,
                         if game_state.color_to_move == 0 { 1 } else { -1 },
                         0,
-                        self,
-                        root_plies_played,
-                        &mut hist,
-                        &stop_ref,
-                        cache,
-                        &mut move_list,
+                        &mut searchutils,
                     );
                     if self.stop {
                         break;

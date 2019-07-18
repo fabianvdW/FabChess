@@ -6,6 +6,7 @@ use super::cache::{Cache, CacheEntry};
 use super::history::History;
 use super::quiescence::{is_capture, q_search, see};
 use super::search::Search;
+use super::search::SearchUtils;
 use super::GradedMove;
 use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
@@ -31,19 +32,14 @@ pub fn principal_variation_search(
     game_state: &GameState,
     color: i16,
     current_depth: usize,
-    search: &mut Search,
-    root_pliesplayed: usize,
-    history: &mut History,
-    stop: &Arc<AtomicBool>,
-    cache: &mut Cache,
-    move_list: &mut MoveList,
+    su: &mut SearchUtils,
 ) -> i16 {
-    search.search_statistics.add_normal_node(current_depth);
-    clear_pv(current_depth, search);
-    if search.search_statistics.nodes_searched % 1024 == 0 {
-        checkup(search, stop);
+    su.search.search_statistics.add_normal_node(current_depth);
+    clear_pv(current_depth, su.search);
+    if su.search.search_statistics.nodes_searched % 1024 == 0 {
+        checkup(su.search, su.stop);
     }
-    if search.stop {
+    if su.search.stop {
         return STANDARD_SCORE;
     }
     //Max search-depth reached
@@ -53,7 +49,7 @@ pub fn principal_variation_search(
 
     let root = current_depth == 0;
     //Check for draw
-    if !root && check_for_draw(game_state, history) {
+    if !root && check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, depth_left);
     }
     let is_pv_node = beta - alpha > 1;
@@ -67,20 +63,8 @@ pub fn principal_variation_search(
 
     //Drop into quiescence search
     if depth_left <= 0 {
-        search.search_statistics.add_q_root();
-        return q_search(
-            alpha,
-            beta,
-            &game_state,
-            color,
-            0,
-            current_depth,
-            search,
-            history,
-            cache,
-            root_pliesplayed,
-            move_list,
-        );
+        su.search.search_statistics.add_q_root();
+        return q_search(alpha, beta, &game_state, color, 0, current_depth, su);
     }
 
     let mut pv_table_move: Option<GameMove> = None;
@@ -90,7 +74,7 @@ pub fn principal_variation_search(
 
     //PV-Table lookup
     {
-        if let Some(ce) = search.principal_variation[current_depth] {
+        if let Some(ce) = su.search.principal_variation[current_depth] {
             if ce.hash == game_state.hash {
                 has_pvmove = true;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
@@ -102,16 +86,16 @@ pub fn principal_variation_search(
     //Probe TT
     let mut static_evaluation = None;
     {
-        let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
+        let ce = &su.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
-                search.search_statistics.add_cache_hit_ns();
+                su.search.search_statistics.add_cache_hit_ns();
                 if ce.depth >= depth_left as i8 {
                     if beta - alpha == 1 {
                         if !ce.alpha && !ce.beta {
-                            search.search_statistics.add_cache_hit_replace_ns();
-                            search.pv_table[current_depth].pv[0] =
+                            su.search.search_statistics.add_cache_hit_replace_ns();
+                            su.search.pv_table[current_depth].pv[0] =
                                 Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
                             return ce.score;
                         } else {
@@ -125,8 +109,8 @@ pub fn principal_variation_search(
                                 }
                             }
                             if alpha >= beta {
-                                search.search_statistics.add_cache_hit_aj_replace_ns();
-                                search.pv_table[current_depth].pv[0] =
+                                su.search.search_statistics.add_cache_hit_aj_replace_ns();
+                                su.search.pv_table[current_depth].pv[0] =
                                     Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
                                 return ce.score;
                             }
@@ -141,7 +125,7 @@ pub fn principal_variation_search(
         }
     }
 
-    history.push(game_state.hash, game_state.half_moves == 0);
+    su.history.push(game_state.hash, game_state.half_moves == 0);
 
     //Static Null Move Pruning
     //Null Move Forward Pruning
@@ -166,16 +150,11 @@ pub fn principal_variation_search(
                 &nextgs,
                 -color,
                 current_depth + 1,
-                search,
-                root_pliesplayed,
-                history,
-                stop,
-                cache,
-                move_list,
+                su,
             );
             if rat >= beta {
-                search.search_statistics.add_nm_pruning();
-                history.pop();
+                su.search.search_statistics.add_nm_pruning();
+                su.history.pop();
                 return rat;
             }
         }
@@ -185,7 +164,7 @@ pub fn principal_variation_search(
     let mut has_generated_moves = false;
     if is_pv_node && !incheck && !is_likelystalemate && !has_pvmove && !has_ttmove && depth_left > 6
     {
-        history.pop();
+        su.history.pop();
         principal_variation_search(
             alpha,
             beta,
@@ -193,18 +172,13 @@ pub fn principal_variation_search(
             &game_state,
             color,
             current_depth,
-            search,
-            root_pliesplayed,
-            history,
-            stop,
-            cache,
-            move_list,
+            su,
         );
-        history.push(game_state.hash, game_state.half_moves == 0);
-        if search.stop {
+        su.history.push(game_state.hash, game_state.half_moves == 0);
+        if su.search.stop {
             return STANDARD_SCORE;
         }
-        tt_move = search.pv_table[current_depth].pv[0];
+        tt_move = su.search.pv_table[current_depth].pv[0];
         has_ttmove = if let Some(_) = tt_move.as_ref() {
             true
         } else {
@@ -223,7 +197,7 @@ pub fn principal_variation_search(
         futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
     }
     if !has_generated_moves {
-        move_list.counter[current_depth] = 0;
+        su.move_list.counter[current_depth] = 0;
     }
     let mut hash_and_pv_move_counter = 0;
     {
@@ -250,12 +224,12 @@ pub fn principal_variation_search(
     let mut index: usize = 0;
     let mut moves_tried: usize = 0;
     let mut moves_from_movelist_tried: usize = 0;
-    while moves_tried < move_list.counter[current_depth] + hash_and_pv_move_counter
+    while moves_tried < su.move_list.counter[current_depth] + hash_and_pv_move_counter
         || !has_generated_moves
     {
         if moves_tried == hash_and_pv_move_counter && !has_generated_moves {
             has_generated_moves = true;
-            make_and_evaluate_moves(game_state, search, current_depth, move_list);
+            make_and_evaluate_moves(game_state, su.search, current_depth, su.move_list);
             continue;
         }
         let mv: GameMove = if moves_tried < hash_and_pv_move_counter {
@@ -269,11 +243,11 @@ pub fn principal_variation_search(
                 tt_move.expect("Moves tried >0 and no tt move")
             }
         } else {
-            move_list.move_list[current_depth][get_next_gm(
-                move_list,
+            su.move_list.move_list[current_depth][get_next_gm(
+                su.move_list,
                 current_depth,
                 moves_from_movelist_tried,
-                move_list.counter[current_depth],
+                su.move_list.counter[current_depth],
             )]
             .unwrap()
         };
@@ -343,12 +317,7 @@ pub fn principal_variation_search(
                 &next_state,
                 -color,
                 current_depth + 1,
-                search,
-                root_pliesplayed,
-                history,
-                stop,
-                cache,
-                move_list,
+                su,
             );
             if reduction > 0 && following_score > alpha {
                 following_score = -principal_variation_search(
@@ -358,12 +327,7 @@ pub fn principal_variation_search(
                     &next_state,
                     -color,
                     current_depth + 1,
-                    search,
-                    root_pliesplayed,
-                    history,
-                    stop,
-                    cache,
-                    move_list,
+                    su,
                 );
             }
         } else {
@@ -374,12 +338,7 @@ pub fn principal_variation_search(
                 &next_state,
                 -color,
                 current_depth + 1,
-                search,
-                root_pliesplayed,
-                history,
-                stop,
-                cache,
-                move_list,
+                su,
             );
             if following_score > alpha {
                 following_score = -principal_variation_search(
@@ -389,76 +348,75 @@ pub fn principal_variation_search(
                     &next_state,
                     -color,
                     current_depth + 1,
-                    search,
-                    root_pliesplayed,
-                    history,
-                    stop,
-                    cache,
-                    move_list,
+                    su,
                 );
             }
         }
 
         if following_score > current_max_score {
-            search.pv_table[current_depth].pv[0] = Some(mv);
+            su.search.pv_table[current_depth].pv[0] = Some(mv);
             current_max_score = following_score;
 
-            concatenate_pv(current_depth, search);
+            concatenate_pv(current_depth, su.search);
         }
         if following_score > alpha {
             alpha = following_score;
         }
         if alpha >= beta {
-            search.search_statistics.add_normal_node_beta_cutoff(index);
+            su.search
+                .search_statistics
+                .add_normal_node_beta_cutoff(index);
             if !isc {
-                search.hh_score[mv.from][mv.to] += HH_INCREMENT;
+                su.search.hh_score[mv.from][mv.to] += HH_INCREMENT;
                 //Replace killers
                 //Dont replace if already in table
-                if let Some(s) = search.killer_moves[current_depth][0] {
+                if let Some(s) = su.search.killer_moves[current_depth][0] {
                     if s.from == mv.from && s.to == mv.to && s.move_type == mv.move_type {
                         break;
                     }
                 }
-                if let Some(s) = search.killer_moves[current_depth][1] {
+                if let Some(s) = su.search.killer_moves[current_depth][1] {
                     if s.from == mv.from && s.to == mv.to && s.move_type == mv.move_type {
                         break;
                     }
                 }
-                if let Some(s) = search.killer_moves[current_depth][0] {
-                    search.killer_moves[current_depth][1] = Some(s);
+                if let Some(s) = su.search.killer_moves[current_depth][0] {
+                    su.search.killer_moves[current_depth][1] = Some(s);
                 }
-                search.killer_moves[current_depth][0] = Some(mv);
+                su.search.killer_moves[current_depth][0] = Some(mv);
             }
             break;
         } else {
             if !isc {
-                search.bf_score[mv.from][mv.to] += BF_INCREMENT;
+                su.search.bf_score[mv.from][mv.to] += BF_INCREMENT;
             }
         }
         index += 1;
     }
 
-    history.pop();
+    su.history.pop();
     let game_status = check_end_condition(&game_state, moves_tried > 0, incheck);
     if game_status != GameResult::Ingame {
-        clear_pv(current_depth, search);
+        clear_pv(current_depth, su.search);
         return leaf_score(game_status, color, depth_left);
     }
 
     if alpha < beta {
-        search.search_statistics.add_normal_node_non_beta_cutoff();
+        su.search
+            .search_statistics
+            .add_normal_node_non_beta_cutoff();
     }
     //Make cache
-    if !search.stop {
+    if !su.search.stop {
         make_cache(
-            cache,
-            &search.pv_table[current_depth],
+            su.cache,
+            &su.search.pv_table[current_depth],
             current_max_score,
             &game_state,
             alpha,
             beta,
             depth_left,
-            root_pliesplayed,
+            su.root_pliesplayed,
             static_evaluation,
         );
     }

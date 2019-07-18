@@ -145,6 +145,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
         return (TimeControl::Infinite, depth);
     }
     let mut index = 0;
+    let mut movestogo: Option<usize> = None;
     while index < cmd.len() {
         match cmd[index] {
             "wtime" => {
@@ -163,15 +164,28 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
                 let mvtime = cmd[index + 1].parse::<u64>().unwrap();
                 return (TimeControl::MoveTime(mvtime), depth);
             }
-            "movestogo" => {}
+            "movestogo" => movestogo = Some(cmd[index + 1].parse::<usize>().unwrap()),
             _ => panic!("Invalid go command"),
         };
         index += 2;
     }
-    if engine.internal_state.color_to_move == 0 {
-        return (TimeControl::Incremental(wtime, winc), depth);
+    if let None = movestogo {
+        if engine.internal_state.color_to_move == 0 {
+            return (TimeControl::Incremental(wtime, winc), depth);
+        } else {
+            return (TimeControl::Incremental(btime, binc), depth);
+        }
+    } else if let Some(mvs) = movestogo {
+        if mvs == 0 {
+            panic!("movestogo = 0");
+        }
+        if engine.internal_state.color_to_move == 0 {
+            return (TimeControl::Tournament(wtime, winc, mvs), depth);
+        } else {
+            return (TimeControl::Tournament(btime, binc, mvs), depth);
+        }
     } else {
-        return (TimeControl::Incremental(btime, binc), depth);
+        panic!("Something went wrong in go!");
     }
 }
 
