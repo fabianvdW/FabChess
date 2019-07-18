@@ -1,6 +1,6 @@
 use super::super::board_representation::game_state::{GameMove, GameMoveType, GameResult};
 use super::super::movegen;
-use super::super::movegen::{AdditionalGameStateInformation, MoveList};
+use super::super::movegen::MoveList;
 use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
 use super::history::History;
@@ -37,49 +37,34 @@ pub fn principal_variation_search(
     stop: &Arc<AtomicBool>,
     cache: &mut Cache,
     move_list: &mut MoveList,
-    calculated_moves: bool,
-    agsi_pre: Option<AdditionalGameStateInformation>,
 ) -> i16 {
     search.search_statistics.add_normal_node(current_depth);
+    clear_pv(current_depth, search);
     if search.search_statistics.nodes_searched % 1024 == 0 {
         checkup(search, stop);
     }
-
-    clear_pv(current_depth, search);
-    let root = root_pliesplayed == ((game_state.full_moves - 1) * 2 + game_state.color_to_move);
-
     if search.stop {
         return STANDARD_SCORE;
-    }
-    let agsi = if calculated_moves {
-        agsi_pre.expect("Couldn't unwrap agsi_pre")
-    } else {
-        movegen::generate_moves2(&game_state, false, move_list, current_depth)
-    };
-    if !root {
-        let game_status = check_end_condition(
-            &game_state,
-            agsi.stm_haslegalmove,
-            agsi.stm_incheck,
-            history,
-        );
-        if game_status != GameResult::Ingame {
-            return leaf_score(game_status, color, depth_left);
-        }
-    }
-
-    //Check Extensions
-    if agsi.stm_incheck && !root && !calculated_moves {
-        depth_left += 1;
     }
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
         return eval_game_state(&game_state, false).final_eval * color;
     }
 
+    let root = current_depth == 0;
+    let is_pv_node = beta - alpha > 1;
+    let incheck = in_check(game_state);
+    let is_likelystalemate = !incheck && is_likelystalemate(game_state);
+
+    //Check Extensions and extend if you would drop into q search but estimate a stalemate
+    if incheck && !root || depth_left == 0 && is_likelystalemate {
+        depth_left += 1;
+    }
+
     //Drop into quiescence search
     if depth_left <= 0 {
         search.search_statistics.add_q_root();
+        let agsi = movegen::generate_moves2(&game_state, true, move_list, current_depth);
         return q_search(
             alpha,
             beta,
@@ -97,56 +82,24 @@ pub fn principal_variation_search(
         );
     }
 
-    //Move Ordering
-    //1. PV-Move +30000
-    //2. Hash move + 29999
-    //if SEE>0
-    //3. Winning captures Sort by SEE + 10000
-    //4. Equal captures Sort by SEE+ 10000
-    //5. Killer moves + 5000
-    //6. Non captures (history heuristic) history heuristic score
-    //7. Losing captures (SEE<0) see score
-    let mut mv_index = 0;
-    while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
-            .as_ref()
-            .unwrap();
-        if is_capture(mv) {
-            if GameMoveType::EnPassant == mv.move_type {
-                move_list.graded_moves[current_depth][mv_index] =
-                    Some(GradedMove::new(mv_index, 9999.0));
-            } else {
-                let mut sval = see(&game_state, &mv, true, &mut search.see_buffer) as f64;
-                if sval >= 0.0 {
-                    sval += 10000.0;
-                }
-                move_list.graded_moves[current_depth][mv_index] =
-                    Some(GradedMove::new(mv_index, sval));
-            }
-        } else {
-            move_list.graded_moves[current_depth][mv_index] = Some(GradedMove::new(mv_index, 0.0));
-        }
-        mv_index += 1;
-    }
+    let mut pv_table_move: Option<GameMove> = None;
+    let mut has_pvmove = false;
+    let mut tt_move: Option<GameMove> = None;
+    let mut has_ttmove = false;
 
-    let mut in_pv = false;
+    //PV-Table lookup
     {
         if let Some(ce) = search.principal_variation[current_depth] {
             if ce.hash == game_state.hash {
-                in_pv = true;
+                has_pvmove = true;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, move_list, current_depth, true);
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score = 40000.0;
+                pv_table_move = Some(mv);
             }
         }
     }
 
     //Probe TT
     let mut static_evaluation = None;
-    let mut cache_hit = false;
     {
         let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
@@ -181,20 +134,19 @@ pub fn principal_variation_search(
                 }
                 static_evaluation = ce.static_evaluation;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                let mv_index = find_move(&mv, move_list, current_depth, true);
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score = 29900.0;
-                cache_hit = true;
+                tt_move = Some(mv);
+                has_ttmove = true;
             }
         }
     }
 
     history.push(game_state.hash, game_state.half_moves == 0);
 
-    if beta - alpha == 1
-        && !agsi.stm_incheck
+    //Static Null Move Pruning
+    //Null Move Forward Pruning
+    if !is_pv_node
+        && !incheck
+        && !is_likelystalemate
         && (game_state.pieces[1][game_state.color_to_move]
             | game_state.pieces[2][game_state.color_to_move]
             | game_state.pieces[3][game_state.color_to_move]
@@ -219,8 +171,6 @@ pub fn principal_variation_search(
                 stop,
                 cache,
                 move_list,
-                false,
-                None,
             );
             if rat >= beta {
                 search.search_statistics.add_nm_pruning();
@@ -230,7 +180,10 @@ pub fn principal_variation_search(
         }
     }
 
-    if beta - alpha > 1 && !in_pv && !cache_hit && depth_left > 6 {
+    //Internal Iterative Deepening
+    let mut has_generated_moves = false;
+    if is_pv_node && !incheck && !is_likelystalemate && !has_pvmove && !has_ttmove && depth_left > 6
+    {
         history.pop();
         principal_variation_search(
             alpha,
@@ -245,65 +198,22 @@ pub fn principal_variation_search(
             stop,
             cache,
             move_list,
-            true,
-            Some(agsi.clone()),
         );
         history.push(game_state.hash, game_state.half_moves == 0);
         if search.stop {
             return STANDARD_SCORE;
         }
-        let mv_index = find_move(
-            search.pv_table[current_depth].pv[0]
-                .as_ref()
-                .expect("Couldn't unwrap IID Pv move 0"),
-            move_list,
-            current_depth,
-            true,
-        );
-        move_list.graded_moves[current_depth][mv_index]
-            .as_mut()
-            .unwrap()
-            .score = 29900.0;
-    }
-    //History Heuristic
-    let mut mv_index = 0;
-    while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
-            .as_ref()
-            .unwrap();
-        let score = search.hh_score[mv.from][mv.to] as f64
-            / search.bf_score[mv.from][mv.to] as f64
-            / 1000.0;
-        move_list.graded_moves[current_depth][mv_index]
-            .as_mut()
-            .unwrap()
-            .score += score;
-        mv_index += 1;
+        tt_move = search.pv_table[current_depth].pv[0];
+        has_ttmove = if let Some(_) = tt_move.as_ref() {
+            true
+        } else {
+            false
+        };
+        has_generated_moves = true;
     }
 
-    {
-        //Killer moves
-        if let Some(s) = search.killer_moves[current_depth][0] {
-            let mv_index = find_move(&s, move_list, current_depth, false);
-            if mv_index < move_list.counter[current_depth] {
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score += 5000.0;
-            }
-        }
-        if let Some(s) = search.killer_moves[current_depth][1] {
-            let mv_index = find_move(&s, move_list, current_depth, false);
-            if mv_index < move_list.counter[current_depth] {
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score += 5000.0;
-            }
-        }
-    }
-
-    let mut futil_pruning = depth_left <= 8 && !agsi.stm_incheck;
+    //Prepare Futility Pruning
+    let mut futil_pruning = depth_left <= 8 && !incheck;
     let mut futil_margin = 0;
     if futil_pruning {
         if let None = static_evaluation {
@@ -311,17 +221,79 @@ pub fn principal_variation_search(
         }
         futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
     }
+    if !has_generated_moves {
+        move_list.counter[current_depth] = 0;
+    }
+    let mut hash_and_pv_move_counter = 0;
+    {
+        if has_pvmove {
+            hash_and_pv_move_counter += 1;
+        }
+        if has_ttmove && !has_pvmove {
+            hash_and_pv_move_counter += 1;
+        } else if has_ttmove {
+            //Make sure that tt_move != pv_table_move
+            if *tt_move
+                .as_ref()
+                .expect("Couldn't unwrap tt move although we have one")
+                != *pv_table_move
+                    .as_ref()
+                    .expect("Couldn't unwrap pv move although we have one")
+            {
+                hash_and_pv_move_counter += 1;
+            }
+        }
+    }
     let mut current_max_score = STANDARD_SCORE;
+
     let mut index: usize = 0;
-    let mut mv_index: usize = 0;
-    while mv_index < move_list.counter[current_depth] {
-        let gmvindex = get_next_gm(
-            move_list,
-            current_depth,
-            mv_index,
-            move_list.counter[current_depth],
-        );
-        let mv = move_list.move_list[current_depth][gmvindex].unwrap();
+    let mut moves_tried: usize = 0;
+    let mut moves_from_movelist_tried: usize = 0;
+    while moves_tried < move_list.counter[current_depth] + hash_and_pv_move_counter
+        || !has_generated_moves
+    {
+        if moves_tried == hash_and_pv_move_counter && !has_generated_moves {
+            has_generated_moves = true;
+            make_and_evaluate_moves(game_state, search, current_depth, move_list);
+            continue;
+        }
+        let mv: GameMove = if moves_tried < hash_and_pv_move_counter {
+            if moves_tried == 0 {
+                if let Some(pvmv) = pv_table_move {
+                    pvmv
+                } else {
+                    tt_move.expect("Moves tried ==0 and no pv move, couldn't unwrap even tt move")
+                }
+            } else {
+                tt_move.expect("Moves tried >0 and no tt move")
+            }
+        } else {
+            move_list.move_list[current_depth][get_next_gm(
+                move_list,
+                current_depth,
+                moves_from_movelist_tried,
+                move_list.counter[current_depth],
+            )]
+            .unwrap()
+        };
+        //Make sure that our move is not the same as tt or pv move, if we have any
+        if moves_tried >= hash_and_pv_move_counter {
+            moves_from_movelist_tried += 1;
+            if let Some(pv_move) = pv_table_move.as_ref() {
+                if mv == *pv_move {
+                    moves_tried += 1;
+                    continue;
+                }
+            }
+            if let Some(tt_mv) = tt_move.as_ref() {
+                if mv == *tt_mv {
+                    moves_tried += 1;
+                    continue;
+                }
+            }
+        }
+        moves_tried += 1;
+
         let isc = is_capture(&mv);
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
             true
@@ -335,10 +307,9 @@ pub fn principal_variation_search(
             && !isc
             && !isp
             && current_max_score > MATED_IN_MAX
-            && !gives_check(&mv, &game_state, &next_state)
+            && !in_check(&next_state)
         {
             if futil_margin <= alpha {
-                mv_index += 1;
                 continue;
             } else {
                 futil_pruning = false;
@@ -347,23 +318,23 @@ pub fn principal_variation_search(
         let mut following_score: i16;
         let mut reduction = 0;
         if depth_left > 2
-            && !in_pv
-            && !agsi.stm_incheck
+            && !has_pvmove
+            && !incheck
             && !isc
             && index >= 2
             && !isp
-            && !gives_check(&mv, &game_state, &next_state)
+            && !in_check(&next_state)
         {
             //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
             reduction = (((depth_left - 1) as f64).sqrt() + ((index - 1) as f64).sqrt()) as i16;
-            if beta - alpha > 1 {
+            if is_pv_node {
                 reduction = (reduction as f64 * 0.66) as i16;
             }
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
         }
-        if depth_left <= 2 || !in_pv || index == 0 {
+        if depth_left <= 2 || !has_pvmove || index == 0 {
             following_score = -principal_variation_search(
                 -beta,
                 -alpha,
@@ -377,8 +348,6 @@ pub fn principal_variation_search(
                 stop,
                 cache,
                 move_list,
-                false,
-                None,
             );
             if reduction > 0 && following_score > alpha {
                 following_score = -principal_variation_search(
@@ -394,8 +363,6 @@ pub fn principal_variation_search(
                     stop,
                     cache,
                     move_list,
-                    false,
-                    None,
                 );
             }
         } else {
@@ -412,8 +379,6 @@ pub fn principal_variation_search(
                 stop,
                 cache,
                 move_list,
-                false,
-                None,
             );
             if following_score > alpha {
                 following_score = -principal_variation_search(
@@ -429,8 +394,6 @@ pub fn principal_variation_search(
                     stop,
                     cache,
                     move_list,
-                    false,
-                    None,
                 );
             }
         }
@@ -438,7 +401,7 @@ pub fn principal_variation_search(
         if following_score > current_max_score {
             search.pv_table[current_depth].pv[0] = Some(mv);
             current_max_score = following_score;
-            //pv.pv.append(&mut following_pv.pv);
+
             concatenate_pv(current_depth, search);
         }
         if following_score > alpha {
@@ -471,11 +434,18 @@ pub fn principal_variation_search(
                 search.bf_score[mv.from][mv.to] += BF_INCREMENT;
             }
         }
-        mv_index += 1;
         index += 1;
     }
 
     history.pop();
+    if !root {
+        let game_status = check_end_condition(&game_state, moves_tried > 0, incheck, history);
+        if game_status != GameResult::Ingame {
+            clear_pv(current_depth, search);
+            return leaf_score(game_status, color, depth_left);
+        }
+    }
+
     if alpha < beta {
         search.search_statistics.add_normal_node_non_beta_cutoff();
     }
@@ -495,7 +465,142 @@ pub fn principal_variation_search(
     }
     return current_max_score;
 }
+#[inline(always)]
+pub fn make_and_evaluate_moves(
+    game_state: &GameState,
+    search: &mut Search,
+    current_depth: usize,
+    move_list: &mut MoveList,
+) {
+    movegen::generate_moves2(&game_state, false, move_list, current_depth);
+    //Move Ordering
+    //1. PV-Move +30000
+    //2. Hash move + 29999
+    //if SEE>0
+    //3. Winning captures Sort by SEE + 10000
+    //4. Equal captures Sort by SEE+ 10000
+    //5. Killer moves + 5000
+    //6. Non captures (history heuristic) history heuristic score
+    //7. Losing captures (SEE<0) see score
+    let mut mv_index = 0;
+    while mv_index < move_list.counter[current_depth] {
+        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
+            .as_ref()
+            .unwrap();
+        if is_capture(mv) {
+            if GameMoveType::EnPassant == mv.move_type {
+                move_list.graded_moves[current_depth][mv_index] =
+                    Some(GradedMove::new(mv_index, 9999.0));
+            } else {
+                let mut sval = see(&game_state, &mv, true, &mut search.see_buffer) as f64;
+                if sval >= 0.0 {
+                    sval += 10000.0;
+                }
+                move_list.graded_moves[current_depth][mv_index] =
+                    Some(GradedMove::new(mv_index, sval));
+            }
+        } else {
+            //Assing history score
+            let score = search.hh_score[mv.from][mv.to] as f64
+                / search.bf_score[mv.from][mv.to] as f64
+                / 1000.0;
+            move_list.graded_moves[current_depth][mv_index] =
+                Some(GradedMove::new(mv_index, score));
+        }
+        mv_index += 1;
+    }
 
+    {
+        //Killer moves
+        if let Some(s) = search.killer_moves[current_depth][0] {
+            let mv_index = find_move(&s, move_list, current_depth, false);
+            if mv_index < move_list.counter[current_depth] {
+                move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
+                    .unwrap()
+                    .score += 5000.0;
+            }
+        }
+        if let Some(s) = search.killer_moves[current_depth][1] {
+            let mv_index = find_move(&s, move_list, current_depth, false);
+            if mv_index < move_list.counter[current_depth] {
+                move_list.graded_moves[current_depth][mv_index]
+                    .as_mut()
+                    .unwrap()
+                    .score += 5000.0;
+            }
+        }
+    }
+}
+#[inline(always)]
+pub fn is_likelystalemate(game_state: &GameState) -> bool {
+    if (game_state.pieces[2][0]
+        | game_state.pieces[2][1]
+        | game_state.pieces[3][0]
+        | game_state.pieces[3][1]
+        | game_state.pieces[4][0]
+        | game_state.pieces[4][1])
+        != 0u64
+    {
+        return false;
+    }
+    //Else calculate all legal moves
+    let my_pieces = game_state.pieces[0][game_state.color_to_move]
+        | game_state.pieces[1][game_state.color_to_move]
+        | game_state.pieces[2][game_state.color_to_move]
+        | game_state.pieces[3][game_state.color_to_move]
+        | game_state.pieces[4][game_state.color_to_move]
+        | game_state.pieces[5][game_state.color_to_move];
+    let enemy_pieces = game_state.pieces[0][1 - game_state.color_to_move]
+        | game_state.pieces[1][1 - game_state.color_to_move]
+        | game_state.pieces[2][1 - game_state.color_to_move]
+        | game_state.pieces[3][1 - game_state.color_to_move]
+        | game_state.pieces[4][1 - game_state.color_to_move]
+        | game_state.pieces[5][1 - game_state.color_to_move];
+    let mut my_knights = game_state.pieces[1][game_state.color_to_move];
+    while my_knights != 0u64 {
+        let idx = my_knights.trailing_zeros() as usize;
+        if movegen::knight_attack(idx) & !my_pieces != 0u64 {
+            return false;
+        }
+        my_knights ^= 1u64 << idx;
+    }
+    if movegen::king_attack(
+        game_state.pieces[5][game_state.color_to_move].trailing_zeros() as usize,
+    ) & !my_pieces
+        != 0u64
+    {
+        return false;
+    }
+    if game_state.color_to_move == 0 {
+        if movegen::w_pawn_west_targets(game_state.pieces[0][0])
+            | movegen::w_pawn_east_targets(game_state.pieces[0][0])
+                & (game_state.en_passant | enemy_pieces)
+            != 0u64
+        {
+            return false;
+        }
+        if movegen::w_single_push_pawn_targets(game_state.pieces[0][0], !my_pieces & !enemy_pieces)
+            != 0u64
+        {
+            return false;
+        }
+    } else {
+        if movegen::b_pawn_west_targets(game_state.pieces[0][1])
+            | movegen::b_pawn_east_targets(game_state.pieces[0][1])
+                & (game_state.en_passant | enemy_pieces)
+            != 0u64
+        {
+            return false;
+        }
+        if movegen::b_single_push_pawn_targets(game_state.pieces[0][1], !my_pieces & !enemy_pieces)
+            != 0u64
+        {
+            return false;
+        }
+    }
+    true
+}
 #[inline(always)]
 pub fn clear_pv(at_depth: usize, search: &mut Search) {
     let mut index = 0;
@@ -517,51 +622,57 @@ pub fn concatenate_pv(at_depth: usize, search: &mut Search) {
         index += 1;
     }
 }
+
 #[inline(always)]
-pub fn gives_check(_mv: &GameMove, game_state: &GameState, next_state: &GameState) -> bool {
-    //Check if move gives check
-    let stm_nextstate_iswhite = next_state.color_to_move == 0;
-    let next_state_stm_king = next_state.pieces[5][next_state.color_to_move];
-    let next_state_stm_king_sq = next_state_stm_king.trailing_zeros() as usize;
-    let enemy_pawns = game_state.pieces[0][1 - next_state.color_to_move];
-    let enemy_knights = game_state.pieces[1][1 - next_state.color_to_move];
-    let enemy_bishops = game_state.pieces[2][1 - next_state.color_to_move]
-        | game_state.pieces[4][1 - next_state.color_to_move];
-    let enemy_rooks = game_state.pieces[3][1 - next_state.color_to_move]
-        | game_state.pieces[4][1 - next_state.color_to_move];
-    let blockers = enemy_pawns
-        | enemy_knights
-        | enemy_bishops
-        | enemy_rooks
-        | next_state.pieces[5][1 - next_state.color_to_move]
-        | next_state.pieces[0][next_state.color_to_move]
-        | next_state.pieces[1][next_state.color_to_move]
-        | next_state.pieces[2][next_state.color_to_move]
-        | next_state.pieces[3][next_state.color_to_move]
-        | next_state.pieces[4][next_state.color_to_move];
-    (if stm_nextstate_iswhite {
-        movegen::attackers_from_black(
-            next_state_stm_king,
-            next_state_stm_king_sq,
-            enemy_pawns,
-            enemy_knights,
-            enemy_bishops,
-            enemy_rooks,
-            blockers,
-        )
-        .0
+pub fn in_check(game_state: &GameState) -> bool {
+    let my_king = game_state.pieces[5][game_state.color_to_move];
+    if (movegen::knight_attack(my_king.trailing_zeros() as usize)
+        & game_state.pieces[1][1 - game_state.color_to_move])
+        != 0u64
+    {
+        return true;
+    }
+    if game_state.color_to_move == 0 {
+        if (movegen::w_pawn_west_targets(my_king) | movegen::w_pawn_east_targets(my_king))
+            & game_state.pieces[0][1 - game_state.color_to_move]
+            != 0u64
+        {
+            return true;
+        }
     } else {
-        movegen::attackers_from_white(
-            next_state_stm_king,
-            next_state_stm_king_sq,
-            enemy_pawns,
-            enemy_knights,
-            enemy_bishops,
-            enemy_rooks,
-            blockers,
-        )
-        .0
-    }) != 0u64
+        if (movegen::b_pawn_west_targets(my_king) | movegen::b_pawn_east_targets(my_king))
+            & game_state.pieces[0][1 - game_state.color_to_move]
+            != 0u64
+        {
+            return true;
+        }
+    }
+    let all_pieces = game_state.pieces[0][game_state.color_to_move]
+        | game_state.pieces[1][game_state.color_to_move]
+        | game_state.pieces[2][game_state.color_to_move]
+        | game_state.pieces[3][game_state.color_to_move]
+        | game_state.pieces[4][game_state.color_to_move]
+        | game_state.pieces[0][1 - game_state.color_to_move]
+        | game_state.pieces[1][1 - game_state.color_to_move]
+        | game_state.pieces[2][1 - game_state.color_to_move]
+        | game_state.pieces[3][1 - game_state.color_to_move]
+        | game_state.pieces[4][1 - game_state.color_to_move]
+        | game_state.pieces[5][1 - game_state.color_to_move];
+    if movegen::bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
+        & (game_state.pieces[2][1 - game_state.color_to_move]
+            | game_state.pieces[4][1 - game_state.color_to_move])
+        != 0u64
+    {
+        return true;
+    }
+    if movegen::rook_attack(my_king.trailing_zeros() as usize, all_pieces)
+        & (game_state.pieces[3][1 - game_state.color_to_move]
+            | game_state.pieces[4][1 - game_state.color_to_move])
+        != 0u64
+    {
+        return true;
+    }
+    false
 }
 
 #[inline(always)]
@@ -749,6 +860,7 @@ pub fn check_end_condition(
 
     GameResult::Ingame
 }
+
 pub struct PrincipalVariation {
     pub pv: Vec<Option<GameMove>>,
 }
