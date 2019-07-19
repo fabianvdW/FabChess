@@ -4,6 +4,9 @@ version = "1.8.0"
 authors = ["fabianvdW"]
 edition = "2018"
 
+[features]
+default = []
+display-eval=[]
 [dependencies]
 lazy_static = "1.2.0"
 rand = "0.6.4"

@@ -20,11 +20,12 @@ pub const HH_INCREMENT: usize = 1;
 pub const BF_INCREMENT: usize = 1;
 pub const MAX_SEARCH_DEPTH: usize = 100;
 pub const STANDARD_SCORE: i16 = -32767;
+pub const FUTILITY_MARGIN: i16 = 90;
+pub const FUTILITY_DEPTH: i16 = 8;
+pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
+pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
+pub const NULL_MOVE_PRUNING_DEPTH: i16 = 3;
 
-//TODO Static Null Move Pruning, Delta Pruning
-//Clean up arguments
-//Additional Thoughts:
-//Do most of the forward pruning before movegen
 pub fn principal_variation_search(
     mut alpha: i16,
     mut beta: i16,
@@ -128,6 +129,21 @@ pub fn principal_variation_search(
     su.history.push(game_state.hash, game_state.half_moves == 0);
 
     //Static Null Move Pruning
+    if false
+        && !is_pv_node
+        && !incheck
+        && !is_likelystalemate
+        && depth_left <= STATIC_NULL_MOVE_DEPTH
+    {
+        if let None = static_evaluation {
+            static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
+        }
+        if static_evaluation.unwrap() * color - STATIC_NULL_MOVE_MARGIN * depth_left >= beta {
+            //add statistic TODO
+            su.history.pop();
+            return static_evaluation.unwrap() * color - STATIC_NULL_MOVE_DEPTH * depth_left;
+        }
+    }
     //Null Move Forward Pruning
     if !is_pv_node
         && !incheck
@@ -137,6 +153,7 @@ pub fn principal_variation_search(
             | game_state.pieces[3][game_state.color_to_move]
             | game_state.pieces[4][game_state.color_to_move])
             != 0u64
+        && depth_left >= NULL_MOVE_PRUNING_DEPTH
     {
         if let None = static_evaluation {
             static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
@@ -188,13 +205,13 @@ pub fn principal_variation_search(
     }
 
     //Prepare Futility Pruning
-    let mut futil_pruning = depth_left <= 8 && !incheck;
+    let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck;
     let mut futil_margin = 0;
     if futil_pruning {
         if let None = static_evaluation {
             static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
-        futil_margin = static_evaluation.unwrap() * color + depth_left * 90;
+        futil_margin = static_evaluation.unwrap() * color + depth_left * FUTILITY_MARGIN;
     }
     if !has_generated_moves {
         su.move_list.counter[current_depth] = 0;
@@ -305,7 +322,7 @@ pub fn principal_variation_search(
             if is_pv_node {
                 reduction = (reduction as f64 * 0.66) as i16;
             }
-            if reduction > depth_left - 2 {
+            if reduction > depth_left - 2 && is_pv_node {
                 reduction = depth_left - 2
             }
         }
