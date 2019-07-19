@@ -129,12 +129,7 @@ pub fn principal_variation_search(
     su.history.push(game_state.hash, game_state.half_moves == 0);
 
     //Static Null Move Pruning
-    if false
-        && !is_pv_node
-        && !incheck
-        && !is_likelystalemate
-        && depth_left <= STATIC_NULL_MOVE_DEPTH
-    {
+    if !is_pv_node && !incheck && !is_likelystalemate && depth_left <= STATIC_NULL_MOVE_DEPTH {
         if let None = static_evaluation {
             static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
         }
