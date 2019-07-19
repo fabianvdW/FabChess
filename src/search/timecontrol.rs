@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Result};
 
-const MOVE_OVERHEAD: u64 = 20;
+const MOVE_OVERHEAD: u64 = 25;
 
 pub struct TimeControlInformation {
     pub time_saved: u64,
@@ -63,7 +63,7 @@ impl TimeControl {
     pub fn time_saved(&self, time_spent: u64) -> i64 {
         if let TimeControl::Incremental(mytime, myinc) = self {
             let normal_timecontrol = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
-            return normal_timecontrol as i64 - time_spent as i64 + MOVE_OVERHEAD as i64;
+            return normal_timecontrol as i64 - time_spent as i64;
         } else if let TimeControl::Tournament(mytime, myinc, movestogo) = self {
             let normal_timecontrol =
                 (*mytime as f64 / *movestogo as f64) as u64 + myinc - MOVE_OVERHEAD;
