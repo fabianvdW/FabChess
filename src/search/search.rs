@@ -8,6 +8,7 @@ use super::history::History;
 use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
+//use crate::logging::log;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::MoveList;
@@ -239,20 +240,27 @@ impl Search {
             best_pv_score = pv_score;
         }
         self.search_statistics.refresh_time_elapsed();
-        //println!("{}", self.tc);
-        //println!("Time elapsed: {}", self.search_statistics.time_elapsed);
-        //println!(
-        //    "Time saved in this: {}",
-        //        self.tc.time_saved(self.search_statistics.time_elapsed)
-        //);
+        /*log(&format!(
+            "\nFinished calculating game_state with plies: {}\n",
+            game_state.full_moves
+        ));
+        log(&format!("{}\n", self.tc));
+        log(&format!(
+            "Time elapsed: {}\n",
+            self.search_statistics.time_elapsed
+        ));
+        log(&format!(
+            "Time saved in this: {}\n",
+            self.tc.time_saved(self.search_statistics.time_elapsed),
+        ));*/
         let mut new_timesaved: i64 = self.tc_information.time_saved as i64
             + self.tc.time_saved(self.search_statistics.time_elapsed);
         new_timesaved = new_timesaved.max(0);
         saved_time.store(new_timesaved as u64, Ordering::Relaxed);
-        //println!(
-        //    "New total time saved: {}",
-        //    saved_time.load(Ordering::Relaxed)
-        //);
+        /*log(&format!(
+            "New total time saved: {}\n",
+            saved_time.load(Ordering::Relaxed)
+        ));*/
         return best_pv_score;
     }
 }

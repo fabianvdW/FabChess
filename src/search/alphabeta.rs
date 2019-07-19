@@ -322,7 +322,7 @@ pub fn principal_variation_search(
             if is_pv_node {
                 reduction = (reduction as f64 * 0.66) as i16;
             }
-            if reduction > depth_left - 2 && is_pv_node {
+            if reduction > depth_left - 2 {
                 reduction = depth_left - 2
             }
         }

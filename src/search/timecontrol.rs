@@ -29,7 +29,7 @@ impl TimeControl {
                 return true;
             }
             let normal_time = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
-            let time_aspired = (normal_time as f64 * 0.85) as u64;
+            let time_aspired = ((normal_time as f64 * 0.85) as u64).max(*myinc);
             if time_spent < time_aspired {
                 return false;
             }
@@ -63,7 +63,7 @@ impl TimeControl {
     pub fn time_saved(&self, time_spent: u64) -> i64 {
         if let TimeControl::Incremental(mytime, myinc) = self {
             let normal_timecontrol = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
-            return normal_timecontrol as i64 - time_spent as i64;
+            return normal_timecontrol as i64 - time_spent as i64 + MOVE_OVERHEAD as i64;
         } else if let TimeControl::Tournament(mytime, myinc, movestogo) = self {
             let normal_timecontrol =
                 (*mytime as f64 / *movestogo as f64) as u64 + myinc - MOVE_OVERHEAD;
@@ -78,24 +78,30 @@ impl Display for TimeControl {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
         if let TimeControl::Incremental(mytime, myinc) = self {
-            res_str.push_str(&format!("My Time: {}", mytime));
-            res_str.push_str(&format!("My Inc: {}", myinc));
+            res_str.push_str(&format!("My Time: {}\n", mytime));
+            res_str.push_str(&format!("My Inc: {}\n", myinc));
             let normal_time = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
-            let time_aspired = (normal_time as f64 * 0.85) as u64;
-            res_str.push_str(&format!("My normal time I would spend: {}", normal_time));
-            res_str.push_str(&format!("My aspired time I would spend: {}", time_aspired));
+            let time_aspired = ((normal_time as f64 * 0.85) as u64).max(*myinc);
+            res_str.push_str(&format!("My normal time I would spend: {}\n", normal_time));
+            res_str.push_str(&format!(
+                "My aspired time I would spend: {}\n",
+                time_aspired
+            ));
         } else if let TimeControl::MoveTime(time) = self {
-            res_str.push_str(&format!("Limited movetime: {}", time));
+            res_str.push_str(&format!("Limited movetime: {}\n", time));
         } else if let TimeControl::Infinite = self {
-            res_str.push_str("Infinite Time!");
+            res_str.push_str("Infinite Time!\n");
         } else if let TimeControl::Tournament(mytime, myinc, movestogo) = self {
-            res_str.push_str(&format!("My Time: {}", mytime));
-            res_str.push_str(&format!("My Inc: {}", myinc));
-            res_str.push_str(&format!("Moves to go : {}", movestogo));
+            res_str.push_str(&format!("My Time: {}\n", mytime));
+            res_str.push_str(&format!("My Inc: {}\n", myinc));
+            res_str.push_str(&format!("Moves to go : {}\n", movestogo));
             let normal_time = (*mytime as f64 / *movestogo as f64) as u64 + myinc - MOVE_OVERHEAD;
             let time_aspired = (normal_time as f64 * 0.85) as u64;
-            res_str.push_str(&format!("My normal time I would spend: {}", normal_time));
-            res_str.push_str(&format!("My aspired time I would spend: {}", time_aspired));
+            res_str.push_str(&format!("My normal time I would spend: {}\n", normal_time));
+            res_str.push_str(&format!(
+                "My aspired time I would spend: {}\n",
+                time_aspired
+            ));
         }
 
         write!(formatter, "{}", res_str)
