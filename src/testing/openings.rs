@@ -1,11 +1,16 @@
-use crate::queue::ThreadSafeQueue;
-use crate::selfplay_splitter::PlayTask;
-use core::board_representation::game_state::GameState;
-use core::misc::{GameParser, PGNParser};
-use core::move_generation::movegen;
+use super::queue::ThreadSafeQueue;
+use crate::board_representation::game_state::GameState;
+use crate::misc::{GameParser, PGNParser};
+use crate::move_generation::movegen;
 use rand::Rng;
 use std::fs::File;
 use std::io::BufReader;
+
+pub struct PlayTask {
+    pub opening: GameState,
+    pub p1_is_white: bool,
+    pub id: usize,
+}
 
 pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
     let movelist = movegen::MoveList::new();

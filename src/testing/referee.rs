@@ -14,8 +14,6 @@ use std::io::Write;
 
 pub mod async_communication;
 pub mod lct2;
-pub mod openings;
-pub mod queue;
 pub mod selfplay;
 pub mod selfplay_splitter;
 pub mod suit;

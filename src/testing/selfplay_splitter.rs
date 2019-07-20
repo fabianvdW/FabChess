@@ -1,10 +1,11 @@
-use crate::openings::{load_db_until, load_openings_into_queue};
-use crate::queue::ThreadSafeQueue;
 use crate::selfplay::{play_game, EndConditionInformation};
 use core::board_representation::game_state::GameState;
 use core::logging::Logger;
 use core::move_generation::movegen;
 use core::search::timecontrol::TimeControl;
+use core::testing::openings::PlayTask;
+use core::testing::openings::{load_db_until, load_openings_into_queue};
+use core::testing::queue::ThreadSafeQueue;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
@@ -195,13 +196,6 @@ pub fn start_self_play_thread(
         result_queue.push(res);
     }
 }
-
-pub struct PlayTask {
-    pub opening: GameState,
-    pub p1_is_white: bool,
-    pub id: usize,
-}
-
 pub struct TaskResult {
     pub p1_won: bool,
     pub draw: bool,

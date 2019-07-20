@@ -1,7 +1,7 @@
 use crate::async_communication::{
     expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
 };
-use crate::selfplay_splitter::{PlayTask, TaskResult};
+use crate::selfplay_splitter::TaskResult;
 use core::board_representation::game_state::{
     GameMove, GameMoveType, GameResult, GameState, PieceType,
 };
@@ -9,6 +9,7 @@ use core::logging::Logger;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen;
 use core::search::timecontrol::TimeControl;
+use core::testing::openings::PlayTask;
 use std::fmt::{Display, Formatter, Result};
 use std::process::{Command, Stdio};
 use std::sync::Arc;

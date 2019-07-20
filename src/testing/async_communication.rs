@@ -1,5 +1,5 @@
-use crate::queue::ThreadSafeString;
 use core::logging::Logger;
+use core::testing::queue::ThreadSafeString;
 use std::io::BufReader;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

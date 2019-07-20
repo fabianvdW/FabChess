@@ -1,6 +1,6 @@
 [package]
 name = "FabChess"
-version = "1.8.0"
+version = "1.9.0"
 authors = ["fabianvdW"]
 edition = "2018"
 
@@ -31,3 +31,6 @@ path="src/main.rs"
 [[bin]]
 name="referee"
 path="src/testing/referee.rs"
+[[bin]]
+name="benchmarking"
+path="src/benchmarking/benchmarks.rs"

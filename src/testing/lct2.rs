@@ -1,8 +1,8 @@
-use crate::queue::ThreadSafeQueue;
 use crate::write_to_buf;
 use core::board_representation::game_state::{GameMove, GameState};
 use core::misc::parse_move;
 use core::move_generation::movegen;
+use core::testing::queue::ThreadSafeQueue;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
