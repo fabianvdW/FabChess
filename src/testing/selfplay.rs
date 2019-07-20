@@ -3,7 +3,8 @@ use crate::async_communication::{
 };
 use crate::selfplay_splitter::TaskResult;
 use core::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, GameState, PieceType,
+    GameMove, GameMoveType, GameResult, GameState, PieceType, BISHOP, BLACK, KNIGHT, PAWN, QUEEN,
+    ROOK, WHITE,
 };
 use core::logging::Logger;
 use core::move_generation::makemove::make_move;
@@ -140,7 +141,7 @@ pub fn play_game(
     //-------------------------------------------------------------
     //Set game up
     let opening_fen = task.opening.to_fen();
-    let agsi = movegen::generate_moves2(&task.opening, false, movelist, 0);
+    let agsi = movegen::generate_moves(&task.opening, false, movelist, 0);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
@@ -478,7 +479,7 @@ pub fn play_game(
         if state.half_moves == 0 || state.full_moves < 35 {
             draw_adjudication = 0;
         }
-        let agsi = movegen::generate_moves2(&state, false, movelist, 0);
+        let agsi = movegen::generate_moves(&state, false, movelist, 0);
         let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
         status = check.0;
         endcondition = check.1;
@@ -649,16 +650,16 @@ pub fn check_end_condition(
     }
 
     //Missing pieces
-    if game_state.pieces[0][0]
-        | game_state.pieces[1][0]
-        | game_state.pieces[2][0]
-        | game_state.pieces[3][0]
-        | game_state.pieces[4][0]
-        | game_state.pieces[0][1]
-        | game_state.pieces[1][1]
-        | game_state.pieces[2][1]
-        | game_state.pieces[3][1]
-        | game_state.pieces[4][1]
+    if game_state.pieces[PAWN][WHITE]
+        | game_state.pieces[KNIGHT][WHITE]
+        | game_state.pieces[BISHOP][WHITE]
+        | game_state.pieces[ROOK][WHITE]
+        | game_state.pieces[QUEEN][WHITE]
+        | game_state.pieces[PAWN][BLACK]
+        | game_state.pieces[KNIGHT][BLACK]
+        | game_state.pieces[BISHOP][BLACK]
+        | game_state.pieces[ROOK][BLACK]
+        | game_state.pieces[QUEEN][BLACK]
         == 0u64
     {
         return (

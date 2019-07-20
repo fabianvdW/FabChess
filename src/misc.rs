@@ -1,4 +1,6 @@
-use super::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use super::board_representation::game_state::{
+    GameMove, GameMoveType, GameState, PieceType, WHITE,
+};
 use super::evaluation;
 use crate::logging::log;
 use crate::move_generation::makemove::make_move;
@@ -154,12 +156,12 @@ pub fn parse_move(
         .replace("+", "")
         .replace("=", "")
         .replace("x", "");
-    movegen::generate_moves2(&g, false, movelist, depth);
+    movegen::generate_moves(&g, false, movelist, depth);
     if my_string.contains("-") {
         //Castle
         //Kingside
         if my_string.len() == 3 {
-            if g.color_to_move == 0 {
+            if g.color_to_move == WHITE {
                 assert_eq!(true, g.castle_white_kingside);
             } else {
                 assert_eq!(true, g.castle_black_kingside);
@@ -175,7 +177,7 @@ pub fn parse_move(
                 index += 1;
             }
         } else {
-            if g.color_to_move == 0 {
+            if g.color_to_move == WHITE {
                 assert_eq!(true, g.castle_white_queenside);
             } else {
                 assert_eq!(true, g.castle_black_queenside);

@@ -232,51 +232,51 @@ impl GameState {
                 match next_char {
                     Some(x) => match x {
                         'P' => {
-                            pieces_arr[0][0] |= 1u64 << idx;
+                            pieces_arr[PAWN][WHITE] |= 1u64 << idx;
                             file += 1;
                         }
                         'p' => {
-                            pieces_arr[0][1] |= 1u64 << idx;
+                            pieces_arr[PAWN][BLACK] |= 1u64 << idx;
                             file += 1;
                         }
                         'N' => {
-                            pieces_arr[1][0] |= 1u64 << idx;
+                            pieces_arr[KNIGHT][WHITE] |= 1u64 << idx;
                             file += 1;
                         }
                         'n' => {
-                            pieces_arr[1][1] |= 1u64 << idx;
+                            pieces_arr[KNIGHT][BLACK] |= 1u64 << idx;
                             file += 1;
                         }
                         'B' => {
-                            pieces_arr[2][0] |= 1u64 << idx;
+                            pieces_arr[BISHOP][WHITE] |= 1u64 << idx;
                             file += 1;
                         }
                         'b' => {
-                            pieces_arr[2][1] |= 1u64 << idx;
+                            pieces_arr[BISHOP][BLACK] |= 1u64 << idx;
                             file += 1;
                         }
                         'R' => {
-                            pieces_arr[3][0] |= 1u64 << idx;
+                            pieces_arr[ROOK][WHITE] |= 1u64 << idx;
                             file += 1;
                         }
                         'r' => {
-                            pieces_arr[3][1] |= 1u64 << idx;
+                            pieces_arr[ROOK][BLACK] |= 1u64 << idx;
                             file += 1;
                         }
                         'Q' => {
-                            pieces_arr[4][0] |= 1u64 << idx;
+                            pieces_arr[QUEEN][WHITE] |= 1u64 << idx;
                             file += 1;
                         }
                         'q' => {
-                            pieces_arr[4][1] |= 1u64 << idx;
+                            pieces_arr[QUEEN][BLACK] |= 1u64 << idx;
                             file += 1;
                         }
                         'K' => {
-                            pieces_arr[5][0] |= 1u64 << idx;
+                            pieces_arr[KING][WHITE] |= 1u64 << idx;
                             file += 1;
                         }
                         'k' => {
-                            pieces_arr[5][1] |= 1u64 << idx;
+                            pieces_arr[KING][BLACK] |= 1u64 << idx;
                             file += 1;
                         }
                         '1' => {
@@ -442,73 +442,73 @@ impl GameState {
                 let shift = big_endian_rank * 8 + file;
                 file += 1;
                 files_skipped += 1;
-                if (self.pieces[0][0] >> shift) & 1u64 != 0u64 {
+                if (self.pieces[PAWN][WHITE] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("P");
-                } else if (self.pieces[1][0] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[KNIGHT][WHITE] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("N");
-                } else if (self.pieces[2][0] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[BISHOP][WHITE] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("B");
-                } else if (self.pieces[3][0] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[ROOK][WHITE] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("R");
-                } else if (self.pieces[4][0] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[QUEEN][WHITE] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("Q");
-                } else if (self.pieces[5][0] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[KING][WHITE] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("K");
-                } else if (self.pieces[0][1] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[PAWN][BLACK] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("p");
-                } else if (self.pieces[1][1] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[KNIGHT][BLACK] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("n");
-                } else if (self.pieces[2][1] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[BISHOP][BLACK] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("b");
-                } else if (self.pieces[3][1] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[ROOK][BLACK] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("r");
-                } else if (self.pieces[4][1] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[QUEEN][BLACK] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
                     res_str.push_str("q");
-                } else if (self.pieces[5][1] >> shift) & 1u64 != 0u64 {
+                } else if (self.pieces[KING][BLACK] >> shift) & 1u64 != 0u64 {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
@@ -630,73 +630,73 @@ impl GameState {
             hash ^= ZOBRIST_KEYS.en_passant[file];
         }
         //W Pawns
-        let mut w_pawns = pieces[0][0];
+        let mut w_pawns = pieces[PAWN][WHITE];
         while w_pawns != 0u64 {
             let idx = w_pawns.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_pawns[idx];
             w_pawns ^= 1u64 << idx;
         }
-        let mut w_knights = pieces[1][0];
+        let mut w_knights = pieces[KNIGHT][WHITE];
         while w_knights != 0u64 {
             let idx = w_knights.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_knights[idx];
             w_knights ^= 1u64 << idx;
         }
-        let mut w_bishops = pieces[2][0];
+        let mut w_bishops = pieces[BISHOP][WHITE];
         while w_bishops != 0u64 {
             let idx = w_bishops.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_bishops[idx];
             w_bishops ^= 1u64 << idx;
         }
-        let mut w_rooks = pieces[3][0];
+        let mut w_rooks = pieces[ROOK][WHITE];
         while w_rooks != 0u64 {
             let idx = w_rooks.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_rooks[idx];
             w_rooks ^= 1u64 << idx;
         }
-        let mut w_queens = pieces[4][0];
+        let mut w_queens = pieces[QUEEN][WHITE];
         while w_queens != 0u64 {
             let idx = w_queens.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_queens[idx];
             w_queens ^= 1u64 << idx;
         }
-        let mut w_king = pieces[5][0];
+        let mut w_king = pieces[KING][WHITE];
         while w_king != 0u64 {
             let idx = w_king.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.w_king[idx];
             w_king ^= 1u64 << idx;
         }
-        let mut b_pawns = pieces[0][1];
+        let mut b_pawns = pieces[PAWN][BLACK];
         while b_pawns != 0u64 {
             let idx = b_pawns.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_pawns[idx];
             b_pawns ^= 1u64 << idx;
         }
-        let mut b_knights = pieces[1][1];
+        let mut b_knights = pieces[KNIGHT][BLACK];
         while b_knights != 0u64 {
             let idx = b_knights.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_knights[idx];
             b_knights ^= 1u64 << idx;
         }
-        let mut b_bishops = pieces[2][1];
+        let mut b_bishops = pieces[BISHOP][BLACK];
         while b_bishops != 0u64 {
             let idx = b_bishops.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_bishops[idx];
             b_bishops ^= 1u64 << idx;
         }
-        let mut b_rooks = pieces[3][1];
+        let mut b_rooks = pieces[ROOK][BLACK];
         while b_rooks != 0u64 {
             let idx = b_rooks.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_rooks[idx];
             b_rooks ^= 1u64 << idx;
         }
-        let mut b_queens = pieces[4][1];
+        let mut b_queens = pieces[QUEEN][BLACK];
         while b_queens != 0u64 {
             let idx = b_queens.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_queens[idx];
             b_queens ^= 1u64 << idx;
         }
-        let mut b_king = pieces[5][1];
+        let mut b_king = pieces[KING][BLACK];
         while b_king != 0u64 {
             let idx = b_king.trailing_zeros() as usize;
             hash ^= ZOBRIST_KEYS.b_king[idx];
@@ -732,29 +732,29 @@ impl Display for GameState {
             res_str.push_str("| ");
             for file in 0..8 {
                 let idx = 8 * (7 - rank) + file;
-                if (self.pieces[0][0] >> idx) & 1u64 != 0u64 {
+                if (self.pieces[PAWN][WHITE] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("P");
-                } else if (self.pieces[0][1] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[PAWN][BLACK] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("p");
-                } else if (self.pieces[1][0] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[KNIGHT][WHITE] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("N");
-                } else if (self.pieces[1][1] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[KNIGHT][BLACK] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("n");
-                } else if (self.pieces[2][0] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[BISHOP][WHITE] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("B");
-                } else if (self.pieces[2][1] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[BISHOP][BLACK] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("b");
-                } else if (self.pieces[3][0] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[ROOK][WHITE] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("R");
-                } else if (self.pieces[3][1] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[ROOK][BLACK] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("r");
-                } else if (self.pieces[4][0] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[QUEEN][WHITE] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("Q");
-                } else if (self.pieces[4][1] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[QUEEN][BLACK] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("q");
-                } else if (self.pieces[5][0] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[KING][WHITE] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("K");
-                } else if (self.pieces[5][1] >> idx) & 1u64 != 0u64 {
+                } else if (self.pieces[KING][BLACK] >> idx) & 1u64 != 0u64 {
                     res_str.push_str("k");
                 } else {
                     res_str.push_str(" ");
@@ -787,18 +787,48 @@ impl Debug for GameState {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
         res_str.push_str(&format!("Color: {}\n", self.color_to_move));
-        res_str.push_str(&format!("WhitePawns: 0x{:x}u64\n", self.pieces[0][0]));
-        res_str.push_str(&format!("WhiteKnights: 0x{:x}u64\n", self.pieces[1][0]));
-        res_str.push_str(&format!("WhiteBishops: 0x{:x}u64\n", self.pieces[2][0]));
-        res_str.push_str(&format!("WhiteRooks: 0x{:x}u64\n", self.pieces[3][0]));
-        res_str.push_str(&format!("WhiteQueens: 0x{:x}u64\n", self.pieces[4][0]));
-        res_str.push_str(&format!("WhiteKing: 0x{:x}u64\n", self.pieces[5][0]));
-        res_str.push_str(&format!("BlackPawns: 0x{:x}u64\n", self.pieces[0][1]));
-        res_str.push_str(&format!("BlackKnights: 0x{:x}u64\n", self.pieces[1][1]));
-        res_str.push_str(&format!("BlackBishops: 0x{:x}u64\n", self.pieces[2][1]));
-        res_str.push_str(&format!("BlackRooks: 0x{:x}u64\n", self.pieces[3][1]));
-        res_str.push_str(&format!("BlackQueens: 0x{:x}u64\n", self.pieces[4][1]));
-        res_str.push_str(&format!("BlackKing: 0x{:x}u64\n", self.pieces[5][1]));
+        res_str.push_str(&format!(
+            "WhitePawns: 0x{:x}u64\n",
+            self.pieces[PAWN][WHITE]
+        ));
+        res_str.push_str(&format!(
+            "WhiteKnights: 0x{:x}u64\n",
+            self.pieces[KNIGHT][WHITE]
+        ));
+        res_str.push_str(&format!(
+            "WhiteBishops: 0x{:x}u64\n",
+            self.pieces[BISHOP][WHITE]
+        ));
+        res_str.push_str(&format!(
+            "WhiteRooks: 0x{:x}u64\n",
+            self.pieces[ROOK][WHITE]
+        ));
+        res_str.push_str(&format!(
+            "WhiteQueens: 0x{:x}u64\n",
+            self.pieces[QUEEN][WHITE]
+        ));
+        res_str.push_str(&format!("WhiteKing: 0x{:x}u64\n", self.pieces[KING][WHITE]));
+        res_str.push_str(&format!(
+            "BlackPawns: 0x{:x}u64\n",
+            self.pieces[PAWN][BLACK]
+        ));
+        res_str.push_str(&format!(
+            "BlackKnights: 0x{:x}u64\n",
+            self.pieces[KNIGHT][BLACK]
+        ));
+        res_str.push_str(&format!(
+            "BlackBishops: 0x{:x}u64\n",
+            self.pieces[BISHOP][BLACK]
+        ));
+        res_str.push_str(&format!(
+            "BlackRooks: 0x{:x}u64\n",
+            self.pieces[ROOK][BLACK]
+        ));
+        res_str.push_str(&format!(
+            "BlackQueens: 0x{:x}u64\n",
+            self.pieces[QUEEN][BLACK]
+        ));
+        res_str.push_str(&format!("BlackKing: 0x{:x}u64\n", self.pieces[KING][BLACK]));
         res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside));
         res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside));
         res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside));

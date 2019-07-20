@@ -33,21 +33,21 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         g.pieces[ROOK][WHITE],
         g.pieces[ROOK][BLACK],
     );
-    let (psqt_w, psqt_b) = (psqt(true, &g.pieces), psqt(false, &g.pieces));
+    let psqt_mg;
+    let psqt_eg;
+    if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
+        let (psqt_w, psqt_b) = (psqt(true, &g.pieces), psqt(false, &g.pieces));
+        psqt_mg = psqt_w.0 - psqt_b.0;
+        psqt_eg = psqt_w.1 - psqt_b.1;
+    } else {
+        psqt_mg = g.psqt_mg;
+        psqt_eg = g.psqt_eg;
+    }
+
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nMG PSQT Sum: {} - {} -> {}\n",
-            psqt_w.0,
-            psqt_b.0,
-            psqt_w.0 - psqt_b.0
-        ));
-        log(&format!(
-            "EG PSQT Sum: {} - {} -> {}\n",
-            psqt_w.1,
-            psqt_b.1,
-            psqt_w.1 - psqt_b.1
-        ));
+        log(&format!("\nMG PSQT Sum: {}\n", psqt_mg));
+        log(&format!("EG PSQT Sum: {}\n", psqt_eg));
     }
     let (knights_w, knights_b) = (knights(true, g), knights(false, g));
     #[cfg(feature = "display-eval")]
@@ -142,10 +142,12 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         }
         log(&format!("\nTempo:({} , {})\n", tempo_mg, tempo_eg,));
     }
-    let mut mg_eval = (psqt_w.0 + knights_w.0 + piecewise_w.0 + king_w.0 + pawns_w.0 + pieces_w.0)
-        - (psqt_b.0 + knights_b.0 + piecewise_b.0 + king_b.0 + pawns_b.0 + pieces_b.0);
-    let mut eg_eval = (psqt_w.1 + knights_w.1 + piecewise_w.1 + king_w.1 + pawns_w.1 + pieces_w.1)
-        - (psqt_b.1 + knights_b.1 + piecewise_b.1 + king_b.1 + pawns_b.1 + pieces_b.1);;
+    let mut mg_eval = (knights_w.0 + piecewise_w.0 + king_w.0 + pawns_w.0 + pieces_w.0)
+        - (knights_b.0 + piecewise_b.0 + king_b.0 + pawns_b.0 + pieces_b.0)
+        + psqt_mg;
+    let mut eg_eval = (knights_w.1 + piecewise_w.1 + king_w.1 + pawns_w.1 + pieces_w.1)
+        - (knights_b.1 + piecewise_b.1 + king_b.1 + pawns_b.1 + pieces_b.1)
+        + psqt_eg;
     if g.color_to_move == 0 {
         mg_eval += TEMPO_BONUS_MG;
         eg_eval += TEMPO_BONUS_EG;
@@ -159,7 +161,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     {
         log(&format!(
             "\nMG Sum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
-            psqt_w.0 - psqt_b.0,
+            psqt_mg,
             knights_w.0 - knights_b.0,
             piecewise_w.0 - piecewise_b.0,
             king_w.0 - king_b.0,
@@ -174,7 +176,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         ));
         log(&format!(
             "\nEG Sum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
-            psqt_w.1 - psqt_b.1,
+            psqt_eg,
             knights_w.1 - knights_b.1,
             piecewise_w.1 - piecewise_b.1,
             king_w.1 - king_b.1,
@@ -762,10 +764,10 @@ pub fn calculate_phase(
     w_rooks: u64,
     b_rooks: u64,
 ) -> f64 {
-    let mut npm = (w_queens | b_queens).count_ones() as i16 * QUEEN_PIECE_VALUE_MG
-        + (w_bishops | b_bishops).count_ones() as i16 * BISHOP_PIECE_VALUE_MG
-        + (w_rooks | b_rooks).count_ones() as i16 * ROOK_PIECE_VALUE_MG
-        + (w_knights | b_knights).count_ones() as i16 * KNIGHT_PIECE_VALUE_MG;
+    let mut npm = (w_queens | b_queens).count_ones() as i16 * 1500
+        + (w_bishops | b_bishops).count_ones() as i16 * 510
+        + (w_rooks | b_rooks).count_ones() as i16 * 650
+        + (w_knights | b_knights).count_ones() as i16 * 500;
     if npm < EG_LIMIT {
         npm = EG_LIMIT;
     }

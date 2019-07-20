@@ -1,4 +1,3 @@
-use super::super::GameState;
 use super::alphabeta::principal_variation_search;
 use super::alphabeta::PrincipalVariation;
 use super::alphabeta::MAX_SEARCH_DEPTH;
@@ -8,6 +7,7 @@ use super::history::History;
 use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
+use crate::board_representation::game_state::{GameState, WHITE};
 //use crate::logging::log;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
@@ -121,7 +121,11 @@ impl Search {
                     16000,
                     d,
                     &game_state,
-                    if game_state.color_to_move == 0 { 1 } else { -1 },
+                    if game_state.color_to_move == WHITE {
+                        1
+                    } else {
+                        -1
+                    },
                     0,
                     &mut searchutils,
                 );
@@ -144,7 +148,11 @@ impl Search {
                         beta,
                         d,
                         &game_state,
-                        if game_state.color_to_move == 0 { 1 } else { -1 },
+                        if game_state.color_to_move == WHITE {
+                            1
+                        } else {
+                            -1
+                        },
                         0,
                         &mut searchutils,
                     );

@@ -1,4 +1,6 @@
-use super::super::board_representation::game_state::{GameMove, GameMoveType, GameResult};
+use super::super::board_representation::game_state::{
+    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+};
 use super::super::movegen;
 use super::super::movegen::MoveList;
 use super::super::GameState;
@@ -441,7 +443,7 @@ pub fn make_and_evaluate_moves(
     current_depth: usize,
     move_list: &mut MoveList,
 ) {
-    movegen::generate_moves2(&game_state, false, move_list, current_depth);
+    movegen::generate_moves(&game_state, false, move_list, current_depth);
     //Move Ordering
     //1. PV-Move +30000
     //2. Hash move + 29999
@@ -503,30 +505,30 @@ pub fn make_and_evaluate_moves(
 }
 #[inline(always)]
 pub fn is_likelystalemate(game_state: &GameState) -> bool {
-    if (game_state.pieces[2][0]
-        | game_state.pieces[2][1]
-        | game_state.pieces[3][0]
-        | game_state.pieces[3][1]
-        | game_state.pieces[4][0]
-        | game_state.pieces[4][1])
+    if (game_state.pieces[BISHOP][WHITE]
+        | game_state.pieces[BISHOP][BLACK]
+        | game_state.pieces[ROOK][WHITE]
+        | game_state.pieces[ROOK][BLACK]
+        | game_state.pieces[QUEEN][WHITE]
+        | game_state.pieces[QUEEN][BLACK])
         != 0u64
     {
         return false;
     }
     //Else calculate all legal moves
-    let my_pieces = game_state.pieces[0][game_state.color_to_move]
-        | game_state.pieces[1][game_state.color_to_move]
-        | game_state.pieces[2][game_state.color_to_move]
-        | game_state.pieces[3][game_state.color_to_move]
-        | game_state.pieces[4][game_state.color_to_move]
-        | game_state.pieces[5][game_state.color_to_move];
-    let enemy_pieces = game_state.pieces[0][1 - game_state.color_to_move]
-        | game_state.pieces[1][1 - game_state.color_to_move]
-        | game_state.pieces[2][1 - game_state.color_to_move]
-        | game_state.pieces[3][1 - game_state.color_to_move]
-        | game_state.pieces[4][1 - game_state.color_to_move]
-        | game_state.pieces[5][1 - game_state.color_to_move];
-    let mut my_knights = game_state.pieces[1][game_state.color_to_move];
+    let my_pieces = game_state.pieces[PAWN][game_state.color_to_move]
+        | game_state.pieces[KNIGHT][game_state.color_to_move]
+        | game_state.pieces[BISHOP][game_state.color_to_move]
+        | game_state.pieces[ROOK][game_state.color_to_move]
+        | game_state.pieces[QUEEN][game_state.color_to_move]
+        | game_state.pieces[KING][game_state.color_to_move];
+    let enemy_pieces = game_state.pieces[PAWN][1 - game_state.color_to_move]
+        | game_state.pieces[KNIGHT][1 - game_state.color_to_move]
+        | game_state.pieces[BISHOP][1 - game_state.color_to_move]
+        | game_state.pieces[ROOK][1 - game_state.color_to_move]
+        | game_state.pieces[QUEEN][1 - game_state.color_to_move]
+        | game_state.pieces[KING][1 - game_state.color_to_move];
+    let mut my_knights = game_state.pieces[KNIGHT][game_state.color_to_move];
     while my_knights != 0u64 {
         let idx = my_knights.trailing_zeros() as usize;
         if movegen::knight_attack(idx) & !my_pieces != 0u64 {
@@ -535,35 +537,39 @@ pub fn is_likelystalemate(game_state: &GameState) -> bool {
         my_knights ^= 1u64 << idx;
     }
     if movegen::king_attack(
-        game_state.pieces[5][game_state.color_to_move].trailing_zeros() as usize,
+        game_state.pieces[KING][game_state.color_to_move].trailing_zeros() as usize,
     ) & !my_pieces
         != 0u64
     {
         return false;
     }
-    if game_state.color_to_move == 0 {
-        if movegen::w_pawn_west_targets(game_state.pieces[0][0])
-            | movegen::w_pawn_east_targets(game_state.pieces[0][0])
+    if game_state.color_to_move == WHITE {
+        if movegen::w_pawn_west_targets(game_state.pieces[PAWN][WHITE])
+            | movegen::w_pawn_east_targets(game_state.pieces[PAWN][WHITE])
                 & (game_state.en_passant | enemy_pieces)
             != 0u64
         {
             return false;
         }
-        if movegen::w_single_push_pawn_targets(game_state.pieces[0][0], !my_pieces & !enemy_pieces)
-            != 0u64
+        if movegen::w_single_push_pawn_targets(
+            game_state.pieces[PAWN][WHITE],
+            !my_pieces & !enemy_pieces,
+        ) != 0u64
         {
             return false;
         }
     } else {
-        if movegen::b_pawn_west_targets(game_state.pieces[0][1])
-            | movegen::b_pawn_east_targets(game_state.pieces[0][1])
+        if movegen::b_pawn_west_targets(game_state.pieces[PAWN][BLACK])
+            | movegen::b_pawn_east_targets(game_state.pieces[PAWN][BLACK])
                 & (game_state.en_passant | enemy_pieces)
             != 0u64
         {
             return false;
         }
-        if movegen::b_single_push_pawn_targets(game_state.pieces[0][1], !my_pieces & !enemy_pieces)
-            != 0u64
+        if movegen::b_single_push_pawn_targets(
+            game_state.pieces[PAWN][BLACK],
+            !my_pieces & !enemy_pieces,
+        ) != 0u64
         {
             return false;
         }
@@ -594,49 +600,49 @@ pub fn concatenate_pv(at_depth: usize, search: &mut Search) {
 
 #[inline(always)]
 pub fn in_check(game_state: &GameState) -> bool {
-    let my_king = game_state.pieces[5][game_state.color_to_move];
+    let my_king = game_state.pieces[KING][game_state.color_to_move];
     if (movegen::knight_attack(my_king.trailing_zeros() as usize)
-        & game_state.pieces[1][1 - game_state.color_to_move])
+        & game_state.pieces[KNIGHT][1 - game_state.color_to_move])
         != 0u64
     {
         return true;
     }
-    if game_state.color_to_move == 0 {
+    if game_state.color_to_move == WHITE {
         if (movegen::w_pawn_west_targets(my_king) | movegen::w_pawn_east_targets(my_king))
-            & game_state.pieces[0][1 - game_state.color_to_move]
+            & game_state.pieces[PAWN][BLACK]
             != 0u64
         {
             return true;
         }
     } else {
         if (movegen::b_pawn_west_targets(my_king) | movegen::b_pawn_east_targets(my_king))
-            & game_state.pieces[0][1 - game_state.color_to_move]
+            & game_state.pieces[PAWN][WHITE]
             != 0u64
         {
             return true;
         }
     }
-    let all_pieces = game_state.pieces[0][game_state.color_to_move]
-        | game_state.pieces[1][game_state.color_to_move]
-        | game_state.pieces[2][game_state.color_to_move]
-        | game_state.pieces[3][game_state.color_to_move]
-        | game_state.pieces[4][game_state.color_to_move]
-        | game_state.pieces[0][1 - game_state.color_to_move]
-        | game_state.pieces[1][1 - game_state.color_to_move]
-        | game_state.pieces[2][1 - game_state.color_to_move]
-        | game_state.pieces[3][1 - game_state.color_to_move]
-        | game_state.pieces[4][1 - game_state.color_to_move]
-        | game_state.pieces[5][1 - game_state.color_to_move];
+    let all_pieces = game_state.pieces[PAWN][game_state.color_to_move]
+        | game_state.pieces[KNIGHT][game_state.color_to_move]
+        | game_state.pieces[BISHOP][game_state.color_to_move]
+        | game_state.pieces[ROOK][game_state.color_to_move]
+        | game_state.pieces[QUEEN][game_state.color_to_move]
+        | game_state.pieces[PAWN][1 - game_state.color_to_move]
+        | game_state.pieces[KNIGHT][1 - game_state.color_to_move]
+        | game_state.pieces[BISHOP][1 - game_state.color_to_move]
+        | game_state.pieces[ROOK][1 - game_state.color_to_move]
+        | game_state.pieces[QUEEN][1 - game_state.color_to_move]
+        | game_state.pieces[KING][1 - game_state.color_to_move];
     if movegen::bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[2][1 - game_state.color_to_move]
-            | game_state.pieces[4][1 - game_state.color_to_move])
+        & (game_state.pieces[BISHOP][1 - game_state.color_to_move]
+            | game_state.pieces[QUEEN][1 - game_state.color_to_move])
         != 0u64
     {
         return true;
     }
     if movegen::rook_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[3][1 - game_state.color_to_move]
-            | game_state.pieces[4][1 - game_state.color_to_move])
+        & (game_state.pieces[ROOK][1 - game_state.color_to_move]
+            | game_state.pieces[QUEEN][1 - game_state.color_to_move])
         != 0u64
     {
         return true;
@@ -791,19 +797,20 @@ pub fn leaf_score(game_status: GameResult, color: i16, depth_left: i16) -> i16 {
 //Doesn't actually check for stalemate
 #[inline(always)]
 pub fn check_for_draw(game_state: &GameState, history: &History) -> bool {
-    if game_state.pieces[0][0]
-        | game_state.pieces[1][0]
-        | game_state.pieces[2][0]
-        | game_state.pieces[3][0]
-        | game_state.pieces[4][0]
-        | game_state.pieces[0][1]
-        | game_state.pieces[1][1]
-        | game_state.pieces[2][1]
-        | game_state.pieces[3][1]
-        | game_state.pieces[4][1]
+    if game_state.pieces[PAWN][WHITE]
+        | game_state.pieces[ROOK][WHITE]
+        | game_state.pieces[QUEEN][WHITE]
+        | game_state.pieces[PAWN][BLACK]
+        | game_state.pieces[ROOK][BLACK]
+        | game_state.pieces[QUEEN][BLACK]
         == 0u64
     {
-        return true;
+        if (game_state.pieces[KNIGHT][WHITE] | game_state.pieces[BISHOP][WHITE]).count_ones() <= 1
+            && (game_state.pieces[KNIGHT][BLACK] | game_state.pieces[BISHOP][BLACK]).count_ones()
+                <= 1
+        {
+            return true;
+        }
     }
     if game_state.half_moves >= 100 {
         return true;
@@ -821,7 +828,7 @@ pub fn check_end_condition(
     in_check: bool,
 ) -> GameResult {
     if in_check && !has_legal_moves {
-        if game_state.color_to_move == 0 {
+        if game_state.color_to_move == WHITE {
             return GameResult::BlackWin;
         } else {
             return GameResult::WhiteWin;

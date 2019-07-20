@@ -239,7 +239,7 @@ pub fn scout_and_make_draftmove(
     game_state: &GameState,
     movelist: &mut movegen::MoveList,
 ) -> GameState {
-    movegen::generate_moves2(&game_state, false, movelist, 0);
+    movegen::generate_moves(&game_state, false, movelist, 0);
     let mut index = 0;
     while index < movelist.counter[0] {
         let mv = movelist.move_list[0][index].as_ref().unwrap();

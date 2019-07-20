@@ -1,4 +1,6 @@
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use crate::board_representation::game_state::{
+    GameMove, GameMoveType, GameState, PieceType, BISHOP, KNIGHT, PAWN, QUEEN, ROOK,
+};
 
 //2^20 Entrys
 pub const CACHE_MASK: usize = 0x7FFFFF;
@@ -18,15 +20,15 @@ impl Cache {
 
 #[derive(Copy, Clone)]
 pub struct CacheEntry {
-    pub hash: u64, //64 bits
-    pub depth: i8, //8 bits
+    pub hash: u64,         //64 bits
+    pub depth: i8,         //8 bits
     pub plies_played: u16, //16 bits
-    pub score: i16, //64 bits
-    pub alpha: bool, //8 bits
-    pub beta: bool, //8 bits
-    pub mv: u16, //16 bits
+    pub score: i16,        //64 bits
+    pub alpha: bool,       //8 bits
+    pub beta: bool,        //8 bits
+    pub mv: u16,           //16 bits
     pub static_evaluation: Option<i16>, //16 bits
-    //Summed 200 bits 25 bytes
+                           //Summed 200 bits 25 bytes
 }
 
 impl CacheEntry {
@@ -81,15 +83,15 @@ impl CacheEntry {
         let to_board = 1u64 << to;
         let color_to_move = game_state.color_to_move;
         let enemy_color = 1 - color_to_move;
-        let piece_type = if (game_state.pieces[0][color_to_move] & from_board) != 0u64 {
+        let piece_type = if (game_state.pieces[PAWN][color_to_move] & from_board) != 0u64 {
             PieceType::Pawn
-        } else if (game_state.pieces[1][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[KNIGHT][color_to_move] & from_board) != 0u64 {
             PieceType::Knight
-        } else if (game_state.pieces[2][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[BISHOP][color_to_move] & from_board) != 0u64 {
             PieceType::Bishop
-        } else if (game_state.pieces[3][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[ROOK][color_to_move] & from_board) != 0u64 {
             PieceType::Rook
-        } else if (game_state.pieces[4][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[QUEEN][color_to_move] & from_board) != 0u64 {
             PieceType::Queen
         } else {
             PieceType::King
@@ -118,15 +120,15 @@ impl CacheEntry {
                     move_type: GameMoveType::EnPassant,
                 };
             }
-            let captured_piece_type = if (game_state.pieces[0][enemy_color] & to_board) != 0u64 {
+            let captured_piece_type = if (game_state.pieces[PAWN][enemy_color] & to_board) != 0u64 {
                 PieceType::Pawn
-            } else if (game_state.pieces[1][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[KNIGHT][enemy_color] & to_board) != 0u64 {
                 PieceType::Knight
-            } else if (game_state.pieces[2][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[BISHOP][enemy_color] & to_board) != 0u64 {
                 PieceType::Bishop
-            } else if (game_state.pieces[3][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[ROOK][enemy_color] & to_board) != 0u64 {
                 PieceType::Rook
-            } else if (game_state.pieces[4][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[QUEEN][enemy_color] & to_board) != 0u64 {
                 PieceType::Queen
             } else {
                 PieceType::King

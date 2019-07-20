@@ -7,6 +7,7 @@ edition = "2018"
 [features]
 default = []
 display-eval=[]
+texel-tuning=[]
 [dependencies]
 lazy_static = "1.2.0"
 rand = "0.6.4"

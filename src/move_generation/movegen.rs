@@ -1,5 +1,7 @@
 use super::super::bitboards;
-use super::super::board_representation::game_state::{self, GameMove, GameMoveType, PieceType};
+use super::super::board_representation::game_state::{
+    self, GameMove, GameMoveType, PieceType, BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+};
 use super::magic::{self, Magic};
 use crate::search::GradedMove;
 
@@ -200,44 +202,6 @@ pub struct AdditionalBitBoards {
     stm_unsafe_squares: u64,
     all_checkers: u64,
 }
-
-/*#[inline(always)]
-pub fn calculate_additionalbitboards_g(
-    g: &game_state::GameState,
-) -> AdditionalBitBoards {
-    let stm_color = g.color_to_move;
-    let enemy_color = 1 - stm_color;
-    let stm_color_iswhite: bool = g.color_to_move == 0;
-
-    let stm_pawns: u64 = g.pieces[0][stm_color];
-    let stm_knights: u64 = g.pieces[1][stm_color];
-    let stm_bishops: u64 = g.pieces[2][stm_color];
-    let stm_rooks: u64 = g.pieces[3][stm_color];
-    let stm_queens: u64 = g.pieces[4][stm_color];
-    let stm_king: u64 = g.pieces[5][stm_color];
-
-    let enemy_pawns: u64 = g.pieces[0][enemy_color];
-    let enemy_knights: u64 = g.pieces[1][enemy_color];
-    let enemy_bishops: u64 = g.pieces[2][enemy_color];
-    let enemy_rooks: u64 = g.pieces[3][enemy_color];
-    let enemy_queens: u64 = g.pieces[4][enemy_color];
-    let enemy_king: u64 = g.pieces[5][enemy_color];
-    calculate_additionalbitboards(
-        stm_pawns,
-        enemy_pawns,
-        stm_knights,
-        enemy_knights,
-        stm_bishops,
-        enemy_bishops,
-        stm_rooks,
-        enemy_rooks,
-        stm_queens,
-        enemy_queens,
-        stm_king,
-        enemy_king,
-        stm_color_iswhite
-    )
-}*/
 
 pub fn calculate_additionalbitboards(
     stm_pawns: u64,
@@ -722,7 +686,7 @@ impl MoveList {
         self.counter[depth] += 1;
     }
 }
-pub fn generate_moves2(
+pub fn generate_moves(
     g: &game_state::GameState,
     only_captures: bool,
     movelist: &mut MoveList,
@@ -735,22 +699,22 @@ pub fn generate_moves2(
 
     let stm_color = g.color_to_move;
     let enemy_color = 1 - stm_color;
-    let stm_color_iswhite: bool = g.color_to_move == 0;
+    let stm_color_iswhite: bool = g.color_to_move == WHITE;
 
-    let mut stm_pawns: u64 = g.pieces[0][stm_color];
-    let stm_knights: u64 = g.pieces[1][stm_color];
-    let stm_bishops: u64 = g.pieces[2][stm_color];
-    let stm_rooks: u64 = g.pieces[3][stm_color];
-    let stm_queens: u64 = g.pieces[4][stm_color];
-    let stm_king: u64 = g.pieces[5][stm_color];
+    let mut stm_pawns: u64 = g.pieces[PAWN][stm_color];
+    let stm_knights: u64 = g.pieces[KNIGHT][stm_color];
+    let stm_bishops: u64 = g.pieces[BISHOP][stm_color];
+    let stm_rooks: u64 = g.pieces[ROOK][stm_color];
+    let stm_queens: u64 = g.pieces[QUEEN][stm_color];
+    let stm_king: u64 = g.pieces[KING][stm_color];
     let stm_king_index: usize = stm_king.trailing_zeros() as usize;
 
-    let enemy_pawns: u64 = g.pieces[0][enemy_color];
-    let enemy_knights: u64 = g.pieces[1][enemy_color];
-    let enemy_bishops: u64 = g.pieces[2][enemy_color];
-    let enemy_rooks: u64 = g.pieces[3][enemy_color];
-    let enemy_queens: u64 = g.pieces[4][enemy_color];
-    let enemy_king: u64 = g.pieces[5][enemy_color];
+    let enemy_pawns: u64 = g.pieces[PAWN][enemy_color];
+    let enemy_knights: u64 = g.pieces[KNIGHT][enemy_color];
+    let enemy_bishops: u64 = g.pieces[BISHOP][enemy_color];
+    let enemy_rooks: u64 = g.pieces[ROOK][enemy_color];
+    let enemy_queens: u64 = g.pieces[QUEEN][enemy_color];
+    let enemy_king: u64 = g.pieces[KING][enemy_color];
 
     let mut stm_haslegalmove = false;
     //----------------------------------------------------------------------

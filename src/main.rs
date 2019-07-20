@@ -774,7 +774,7 @@ mod tests {
                         g.en_passant
                     )
                 );
-                let agsi = movegen::generate_moves2(&g, false, &mut movelist, 0);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist, 0);
                 if !agsi.stm_haslegalmove {
                     break;
                 }
@@ -799,7 +799,7 @@ mod tests {
             assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
             assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             for _j in 0..200 {
-                let agsi = movegen::generate_moves2(&g, false, &mut movelist, 0);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist, 0);
                 if !agsi.stm_haslegalmove {
                     break;
                 }

@@ -19,7 +19,7 @@ use self::move_generation::movegen;
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let mut count = 0u64;
     let mut movelist = movegen::MoveList::new();
-    let _ = movegen::generate_moves2(&g, false, &mut movelist, depth);
+    let _ = movegen::generate_moves(&g, false, &mut movelist, depth);
     let mut index = 0;
     while index < movelist.counter[depth] {
         let mv = movelist.move_list[depth][index].unwrap();
@@ -34,14 +34,14 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
 
 pub fn perft(g: &GameState, depth: usize, movelist: &mut movegen::MoveList) -> u64 {
     if depth == 1 {
-        let _ = movegen::generate_moves2(&g, false, movelist, depth);
+        let _ = movegen::generate_moves(&g, false, movelist, depth);
         return movelist.counter[depth] as u64;
     } else {
         if depth == 0 {
             return 1;
         }
         let mut res = 0;
-        let _ = movegen::generate_moves2(&g, false, movelist, depth);
+        let _ = movegen::generate_moves(&g, false, movelist, depth);
         let mut index = 0;
         while index < movelist.counter[depth] {
             let mv = movelist.move_list[depth][index].as_ref().unwrap();
