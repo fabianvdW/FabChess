@@ -35,14 +35,14 @@ pub fn q_search(
     }
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        return eval_game_state(&game_state, false).final_eval * color;
+        return eval_game_state(&game_state).final_eval * color;
     }
 
     //check for draw
     if check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, depth_left);
     }
-    let static_evaluation = eval_game_state(&game_state, false);
+    let static_evaluation = eval_game_state(&game_state);
     //Stand-Pat pruning
     let stand_pat = static_evaluation.final_eval * color;
     if stand_pat >= beta {

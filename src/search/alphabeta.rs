@@ -45,7 +45,7 @@ pub fn principal_variation_search(
     }
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        return eval_game_state(&game_state, false).final_eval * color;
+        return eval_game_state(&game_state).final_eval * color;
     }
 
     let root = current_depth == 0;
@@ -131,7 +131,7 @@ pub fn principal_variation_search(
     //Static Null Move Pruning
     if !is_pv_node && !incheck && !is_likelystalemate && depth_left <= STATIC_NULL_MOVE_DEPTH {
         if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
+            static_evaluation = Some(eval_game_state(&game_state).final_eval);
         }
         if static_evaluation.unwrap() * color - STATIC_NULL_MOVE_MARGIN * depth_left >= beta {
             //add statistic TODO
@@ -151,7 +151,7 @@ pub fn principal_variation_search(
         && depth_left >= NULL_MOVE_PRUNING_DEPTH
     {
         if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
+            static_evaluation = Some(eval_game_state(&game_state).final_eval);
         }
         if static_evaluation.unwrap() * color >= beta {
             let nextgs = make_nullmove(&game_state);
@@ -204,7 +204,7 @@ pub fn principal_variation_search(
     let mut futil_margin = 0;
     if futil_pruning {
         if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state, false).final_eval);
+            static_evaluation = Some(eval_game_state(&game_state).final_eval);
         }
         futil_margin = static_evaluation.unwrap() * color + depth_left * FUTILITY_MARGIN;
     }

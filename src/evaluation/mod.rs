@@ -1,47 +1,19 @@
-pub mod bishop_evaluation;
-pub mod king_evaluation;
-pub mod knight_evaluation;
-pub mod passed_evaluation;
-pub mod pawn_evaluation;
-pub mod piecewise_evaluation;
+pub mod params;
 pub mod psqt_evaluation;
-pub mod queen_evaluation;
-pub mod rook_evaluation;
 
-use self::bishop_evaluation::{bishop_eval, BishopEvaluation, BISHOP_PIECE_VALUE_MG};
-use self::king_evaluation::{king_eval, KingEvaluation};
-use self::knight_evaluation::{knight_eval, KnightEvaluation, KNIGHT_PIECE_VALUE_MG};
-use self::passed_evaluation::{passed_eval_black, passed_eval_white, PassedEvaluation};
-use self::pawn_evaluation::{pawn_eval_black, pawn_eval_white, PawnEvaluation};
-use self::piecewise_evaluation::{piecewise_eval, PiecewiseEvaluation};
-use self::psqt_evaluation::{psqt_eval, PSQT};
-use self::queen_evaluation::{queen_eval, QueenEvaluation, QUEEN_PIECE_VALUE_MG};
-use self::rook_evaluation::{rook_eval, RookEvaluation, ROOK_PIECE_VALUE_MG};
 use super::bitboards;
-use super::board_representation::game_state::{GameState, PieceType};
+use super::board_representation::game_state::{
+    GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+};
+#[cfg(feature = "display-eval")]
 use super::logging::log;
 use super::move_generation::movegen;
+use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
+use params::*;
+use psqt_evaluation::psqt;
 
 const MG_LIMIT: i16 = 9100;
 const EG_LIMIT: i16 = 2350;
-const TEMPO_BONUS_MG: i16 = 20;
-const TEMPO_BONUS_EG: i16 = 0;
-pub trait Evaluation {
-    fn eval_mg(&self) -> i16;
-    fn eval_eg(&self) -> i16;
-}
-
-pub trait ParallelEvaluation {
-    fn eval_mg_eg(&self) -> (i16, i16);
-}
-
-pub trait MidGameDisplay {
-    fn display_mg(&self) -> String;
-}
-
-pub trait EndGameDisplay {
-    fn display_eg(&self) -> String;
-}
 
 pub struct EvaluationResult {
     pub mg_eval: i16,
@@ -50,233 +22,130 @@ pub struct EvaluationResult {
     pub final_eval: i16,
 }
 
-pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
-    let w_pawns = g.pieces[0][0];
-    let w_knights = g.pieces[1][0];
-    let w_bishops = g.pieces[2][0];
-    let w_rooks = g.pieces[3][0];
-    let w_queens = g.pieces[4][0];
-    let w_king = g.pieces[5][0];
-    let white_pieces = w_pawns | w_knights | w_bishops | w_rooks | w_queens | w_king;
-
-    let b_pawns = g.pieces[0][1];
-    let b_knights = g.pieces[1][1];
-    let b_bishops = g.pieces[2][1];
-    let b_rooks = g.pieces[3][1];
-    let b_queens = g.pieces[4][1];
-    let b_king = g.pieces[5][1];
-    let black_pieces = b_pawns | b_knights | b_bishops | b_rooks | b_queens | b_king;
-
-    let white_pawn_attacks =
-        movegen::w_pawn_west_targets(w_pawns) | movegen::w_pawn_east_targets(w_pawns);
-    let black_pawn_attacks =
-        movegen::b_pawn_west_targets(b_pawns) | movegen::b_pawn_east_targets(b_pawns);
-    let all_pawns = w_pawns | b_pawns;
-    let pawns_on_board = all_pawns.count_ones() as usize;
-    //White general bitboards
-    let w_pawns_front_span = bitboards::w_front_span(w_pawns);
-    let w_pawns_west_attack_front_span = bitboards::west_one(w_pawns_front_span);
-    let w_pawns_east_attack_front_span = bitboards::east_one(w_pawns_front_span);
-    let w_pawns_attack_span = w_pawns_east_attack_front_span | w_pawns_west_attack_front_span;
-    let w_pawns_all_front_spans = w_pawns_front_span | w_pawns_attack_span;
-    //Black general bitboards
-    let b_pawns_front_span = bitboards::b_front_span(b_pawns);
-    let b_pawns_west_attack_front_span = bitboards::west_one(b_pawns_front_span);
-    let b_pawns_east_attack_front_span = bitboards::east_one(b_pawns_front_span);
-    let b_pawns_attack_span = b_pawns_east_attack_front_span | b_pawns_west_attack_front_span;
-    let b_pawns_all_front_spans = b_pawns_front_span | b_pawns_attack_span;
-
-    let white_pawns_eval = pawn_eval_white(
-        w_pawns,
-        w_pawns_front_span,
-        w_pawns_attack_span,
-        black_pawn_attacks,
-        white_pawn_attacks,
-    );
-    let black_pawns_eval = pawn_eval_black(
-        b_pawns,
-        b_pawns_front_span,
-        b_pawns_attack_span,
-        white_pawn_attacks,
-        black_pawn_attacks,
-    );
-    let white_passed_eval = passed_eval_white(w_pawns, b_pawns_all_front_spans, black_pieces);
-    let black_passed_eval = passed_eval_black(b_pawns, w_pawns_all_front_spans, white_pieces);
-    let white_knights_eval =
-        knight_eval(w_knights, white_pawn_attacks, pawns_on_board, b_pawns, true);
-    let black_knights_eval = knight_eval(
-        b_knights,
-        black_pawn_attacks,
-        pawns_on_board,
-        w_pawns,
-        false,
-    );
-    let white_bishops_eval = bishop_eval(w_bishops);
-    let black_bishops_eval = bishop_eval(b_bishops);
-    let white_rooks_eval = rook_eval(w_rooks);
-    let black_rooks_eval = rook_eval(b_rooks);
-    let white_queen_eval = queen_eval(w_queens);
-    let black_queen_eval = queen_eval(b_queens);
-    let white_king_eval = king_eval(w_king, w_pawns, b_pawns, true, g.full_moves);
-    let black_king_eval = king_eval(b_king, b_pawns, w_pawns, false, g.full_moves);
-    let white_piecewise_eval = piecewise_eval(
-        w_pawns,
-        w_rooks,
-        w_bishops,
-        w_knights,
-        w_queens,
-        true,
-        all_pawns,
-        white_pieces,
-        (white_pieces | black_pieces) & !b_king,
-        b_king.trailing_zeros() as usize,
-        black_pawn_attacks,
-    );
-    let black_piecewise_eval = piecewise_eval(
-        b_pawns,
-        b_rooks,
-        b_bishops,
-        b_knights,
-        b_queens,
-        false,
-        all_pawns,
-        black_pieces,
-        (white_pieces | black_pieces) & !w_king,
-        w_king.trailing_zeros() as usize,
-        white_pawn_attacks,
-    );
-
+pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     let phase = calculate_phase(
-        w_queens, b_queens, w_knights, b_knights, w_bishops, b_bishops, w_rooks, b_rooks,
+        g.pieces[QUEEN][WHITE],
+        g.pieces[QUEEN][BLACK],
+        g.pieces[KNIGHT][WHITE],
+        g.pieces[KNIGHT][BLACK],
+        g.pieces[BISHOP][WHITE],
+        g.pieces[BISHOP][BLACK],
+        g.pieces[ROOK][WHITE],
+        g.pieces[ROOK][BLACK],
     );
-    let mut mg_eval = 0;
-    let mut eg_eval = 0;
-    let (
-        mut white_pawns_eval_mg,
-        mut white_pawns_eval_eg,
-        mut black_pawns_eval_mg,
-        mut black_pawns_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_passed_eval_mg,
-        mut white_passed_eval_eg,
-        mut black_passed_eval_mg,
-        mut black_passed_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_knights_eval_mg,
-        mut white_knights_eval_eg,
-        mut black_knights_eval_mg,
-        mut black_knights_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_bishops_eval_mg,
-        mut white_bishops_eval_eg,
-        mut black_bishops_eval_mg,
-        mut black_bishops_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_rooks_eval_mg,
-        mut white_rooks_eval_eg,
-        mut black_rooks_eval_mg,
-        mut black_rooks_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_queen_eval_mg,
-        mut white_queen_eval_eg,
-        mut black_queen_eval_mg,
-        mut black_queen_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_king_eval_mg,
-        mut white_king_eval_eg,
-        mut black_king_eval_mg,
-        mut black_king_eval_eg,
-    ) = (0, 0, 0, 0);
-    let (
-        mut white_piecewise_eval_mg,
-        mut white_piecewise_eval_eg,
-        mut black_piecewise_eval_mg,
-        mut black_piecewise_eval_eg,
-    ) = (0, 0, 0, 0);
-    //Non parallel eval
+    let (psqt_w, psqt_b) = (psqt(true, &g.pieces), psqt(false, &g.pieces));
+    #[cfg(feature = "display-eval")]
     {
-        if phase != 128.0 {
-            //Do EG evaluation
-            white_pawns_eval_eg = white_pawns_eval.eval_eg();
-            black_pawns_eval_eg = black_pawns_eval.eval_eg();
-            white_knights_eval_eg = white_knights_eval.eval_eg();
-            black_knights_eval_eg = black_knights_eval.eval_eg();
-            white_bishops_eval_eg = white_bishops_eval.eval_eg();
-            black_bishops_eval_eg = black_bishops_eval.eval_eg();
-            white_rooks_eval_eg = white_rooks_eval.eval_eg();
-            black_rooks_eval_eg = black_rooks_eval.eval_eg();
-            white_queen_eval_eg = white_queen_eval.eval_eg();
-            black_queen_eval_eg = black_queen_eval.eval_eg();
-            white_king_eval_eg = white_king_eval.eval_eg();
-            black_king_eval_eg = black_king_eval.eval_eg();
-            eg_eval += white_pawns_eval_eg - black_pawns_eval_eg;
-            eg_eval += white_knights_eval_eg - black_knights_eval_eg;
-            eg_eval += white_bishops_eval_eg - black_bishops_eval_eg;
-            eg_eval += white_rooks_eval_eg - black_rooks_eval_eg;
-            eg_eval += white_queen_eval_eg - black_queen_eval_eg;
-            eg_eval += white_king_eval_eg - black_king_eval_eg;
-        }
-        if phase != 0.0 {
-            //Do MG evaluation
-            white_pawns_eval_mg = white_pawns_eval.eval_mg();
-            black_pawns_eval_mg = black_pawns_eval.eval_mg();
-            white_knights_eval_mg = white_knights_eval.eval_mg();
-            black_knights_eval_mg = black_knights_eval.eval_mg();
-            white_bishops_eval_mg = white_bishops_eval.eval_mg();
-            black_bishops_eval_mg = black_bishops_eval.eval_mg();
-            white_rooks_eval_mg = white_rooks_eval.eval_mg();
-            black_rooks_eval_mg = black_rooks_eval.eval_mg();
-            white_queen_eval_mg = white_queen_eval.eval_mg();
-            black_queen_eval_mg = black_queen_eval.eval_mg();
-            white_king_eval_mg = white_king_eval.eval_mg();
-            black_king_eval_mg = black_king_eval.eval_mg();
-            mg_eval += white_pawns_eval_mg - black_pawns_eval_mg;
-            mg_eval += white_knights_eval_mg - black_knights_eval_mg;
-            mg_eval += white_bishops_eval_mg - black_bishops_eval_mg;
-            mg_eval += white_rooks_eval_mg - black_rooks_eval_mg;
-            mg_eval += white_queen_eval_mg - black_queen_eval_mg;
-            mg_eval += white_king_eval_mg - black_king_eval_mg;
-        }
+        log(&format!(
+            "\nMG PSQT Sum: {} - {} -> {}\n",
+            psqt_w.0,
+            psqt_b.0,
+            psqt_w.0 - psqt_b.0
+        ));
+        log(&format!(
+            "EG PSQT Sum: {} - {} -> {}\n",
+            psqt_w.1,
+            psqt_b.1,
+            psqt_w.1 - psqt_b.1
+        ));
     }
-    //Do parallel evaluation
+    let (knights_w, knights_b) = (knights(true, g), knights(false, g));
+    #[cfg(feature = "display-eval")]
     {
-        if phase != 0.0 && phase != 128.0 {
-            let _e = white_passed_eval.eval_mg_eg();
-            white_passed_eval_mg = _e.0;
-            white_passed_eval_eg = _e.1;
-            let _e = black_passed_eval.eval_mg_eg();
-            black_passed_eval_mg = _e.0;
-            black_passed_eval_eg = _e.1;
-            let _e = white_piecewise_eval.eval_mg_eg();
-            white_piecewise_eval_mg = _e.0;
-            white_piecewise_eval_eg = _e.1;
-            let _e = black_piecewise_eval.eval_mg_eg();
-            black_piecewise_eval_mg = _e.0;
-            black_piecewise_eval_eg = _e.1;
-        } else if phase == 0.0 {
-            white_passed_eval_eg = white_passed_eval.eval_eg();
-            black_passed_eval_eg = black_passed_eval.eval_eg();
-            white_piecewise_eval_eg = white_piecewise_eval.eval_eg();
-            black_piecewise_eval_eg = black_piecewise_eval.eval_eg();
-        } else if phase == 128.0 {
-            white_passed_eval_mg = white_passed_eval.eval_mg();
-            black_passed_eval_mg = black_passed_eval.eval_mg();
-            white_piecewise_eval_mg = white_piecewise_eval.eval_mg();
-            black_piecewise_eval_mg = black_piecewise_eval.eval_mg();
-        }
-        mg_eval += white_passed_eval_mg - black_passed_eval_mg;
-        mg_eval += g.psqt_mg;
-        mg_eval += white_piecewise_eval_mg - black_piecewise_eval_mg;
-        eg_eval += white_passed_eval_eg - black_passed_eval_eg;
-        eg_eval += g.psqt_eg;
-        eg_eval += white_piecewise_eval_eg - black_piecewise_eval_eg;
+        log(&format!(
+            "\nMG Knight Sum: {} - {} -> {}\n",
+            knights_w.0,
+            knights_b.0,
+            knights_w.0 - knights_b.0
+        ));
+        log(&format!(
+            "EG Knight Sum: {} - {} -> {}\n",
+            knights_w.1,
+            knights_b.1,
+            knights_w.1 - knights_b.1
+        ));
     }
+    let (piecewise_w, piecewise_b) = (piecewise(true, g), piecewise(false, g));
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nMG Piecewise Sum: {} - {} -> {}\n",
+            piecewise_w.0,
+            piecewise_b.0,
+            piecewise_w.0 - piecewise_b.0
+        ));
+        log(&format!(
+            "EG Piecewise Sum: {} - {} -> {}\n",
+            piecewise_w.1,
+            piecewise_b.1,
+            piecewise_w.1 - piecewise_b.1
+        ));
+    }
+    let (king_w, king_b) = (king(true, g), king(false, g));
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nMG King Sum: {} - {} -> {}\n",
+            king_w.0,
+            king_b.0,
+            king_w.0 - king_b.0
+        ));
+        log(&format!(
+            "EG King Sum: {} - {} -> {}\n",
+            king_w.1,
+            king_b.1,
+            king_w.1 - king_b.1
+        ));
+    }
+    let (pawns_w, pawns_b) = (pawns(true, g), pawns(false, g));
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nMG Pawn Sum: {} - {} -> {}\n",
+            pawns_w.0,
+            pawns_b.0,
+            pawns_w.0 - pawns_b.0
+        ));
+        log(&format!(
+            "EG Pawn Sum: {} - {} -> {}\n",
+            pawns_w.1,
+            pawns_b.1,
+            pawns_w.1 - pawns_b.1
+        ));
+    }
+    let (pieces_w, pieces_b) = (piece_values(true, g), piece_values(false, g));
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nMG Piece value Sum: {} - {} -> {}\n",
+            pieces_w.0,
+            pieces_b.0,
+            pieces_w.0 - pieces_b.0
+        ));
+        log(&format!(
+            "EG Piece value Sum: {} - {} -> {}\n",
+            pieces_w.1,
+            pieces_b.1,
+            pieces_w.1 - pieces_b.1
+        ));
+    }
+    #[cfg(feature = "display-eval")]
+    {
+        let tempo_mg;
+        let tempo_eg;
+        if g.color_to_move == 0 {
+            tempo_mg = TEMPO_BONUS_MG;
+            tempo_eg = TEMPO_BONUS_EG;
+        } else {
+            tempo_mg = -TEMPO_BONUS_MG;
+            tempo_eg = -TEMPO_BONUS_EG;
+        }
+        log(&format!("\nTempo:({} , {})\n", tempo_mg, tempo_eg,));
+    }
+    let mut mg_eval = (psqt_w.0 + knights_w.0 + piecewise_w.0 + king_w.0 + pawns_w.0 + pieces_w.0)
+        - (psqt_b.0 + knights_b.0 + piecewise_b.0 + king_b.0 + pawns_b.0 + pieces_b.0);
+    let mut eg_eval = (psqt_w.1 + knights_w.1 + piecewise_w.1 + king_w.1 + pawns_w.1 + pieces_w.1)
+        - (psqt_b.1 + knights_b.1 + piecewise_b.1 + king_b.1 + pawns_b.1 + pieces_b.1);;
     if g.color_to_move == 0 {
         mg_eval += TEMPO_BONUS_MG;
         eg_eval += TEMPO_BONUS_EG;
@@ -286,80 +155,43 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
     }
     //Phasing is done the same way stockfish does it
     let res = ((mg_eval as f64 * phase + eg_eval as f64 * (128.0 - phase)) / 128.0) as i16;
-    if verbose {
-        let white_psqt_eval = psqt_eval(
-            w_pawns, w_knights, w_bishops, w_rooks, w_queens, w_king, true,
-        );
-        let black_psqt_eval = psqt_eval(
-            b_pawns, b_knights, b_bishops, b_rooks, b_queens, b_king, false,
-        );
-        let _e = white_psqt_eval.eval_mg_eg();
-        let white_psqt_eval_mg = _e.0;
-        let white_psqt_eval_eg = _e.1;
-        let _e = black_psqt_eval.eval_mg_eg();
-        let black_psqt_eval_mg = _e.0;
-        let black_psqt_eval_eg = _e.1;
-        make_log(
-            &white_pawns_eval,
-            white_pawns_eval_mg,
-            white_pawns_eval_eg,
-            &black_pawns_eval,
-            black_pawns_eval_mg,
-            black_pawns_eval_eg,
-            &white_passed_eval,
-            white_passed_eval_mg,
-            white_passed_eval_eg,
-            &black_passed_eval,
-            black_passed_eval_mg,
-            black_passed_eval_eg,
-            &white_knights_eval,
-            white_knights_eval_mg,
-            white_knights_eval_eg,
-            &black_knights_eval,
-            black_knights_eval_mg,
-            black_knights_eval_eg,
-            &white_bishops_eval,
-            white_bishops_eval_mg,
-            white_bishops_eval_eg,
-            &black_bishops_eval,
-            black_bishops_eval_mg,
-            black_bishops_eval_eg,
-            &white_rooks_eval,
-            white_rooks_eval_mg,
-            white_rooks_eval_eg,
-            &black_rooks_eval,
-            black_rooks_eval_mg,
-            black_rooks_eval_eg,
-            &white_queen_eval,
-            white_queen_eval_mg,
-            white_queen_eval_eg,
-            &black_queen_eval,
-            black_queen_eval_mg,
-            black_queen_eval_eg,
-            &white_king_eval,
-            white_king_eval_mg,
-            white_king_eval_eg,
-            &black_king_eval,
-            black_king_eval_mg,
-            black_king_eval_eg,
-            &white_psqt_eval,
-            white_psqt_eval_mg,
-            white_psqt_eval_eg,
-            &black_psqt_eval,
-            black_psqt_eval_mg,
-            black_psqt_eval_eg,
-            &white_piecewise_eval,
-            white_piecewise_eval_mg,
-            white_piecewise_eval_eg,
-            &black_piecewise_eval,
-            black_piecewise_eval_mg,
-            black_piecewise_eval_eg,
-            g.color_to_move,
-            phase,
-            mg_eval,
-            eg_eval,
-            res,
-        );
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nMG Sum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
+            psqt_w.0 - psqt_b.0,
+            knights_w.0 - knights_b.0,
+            piecewise_w.0 - piecewise_b.0,
+            king_w.0 - king_b.0,
+            pawns_w.0 - pawns_b.0,
+            pieces_w.0 - pieces_b.0,
+            if g.color_to_move == 0 {
+                TEMPO_BONUS_MG
+            } else {
+                -TEMPO_BONUS_MG
+            },
+            mg_eval
+        ));
+        log(&format!(
+            "\nEG Sum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
+            psqt_w.1 - psqt_b.1,
+            knights_w.1 - knights_b.1,
+            piecewise_w.1 - piecewise_b.1,
+            king_w.1 - king_b.1,
+            pawns_w.1 - pawns_b.1,
+            pieces_w.1 - pieces_b.1,
+            if g.color_to_move == 0 {
+                TEMPO_BONUS_EG
+            } else {
+                -TEMPO_BONUS_EG
+            },
+            eg_eval
+        ));
+        log(&format!("Phase: {}\n", phase));
+        log(&format!(
+            "\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}",
+            mg_eval, phase, eg_eval, phase, res,
+        ));
     }
     EvaluationResult {
         mg_eval,
@@ -367,6 +199,557 @@ pub fn eval_game_state(g: &GameState, verbose: bool) -> EvaluationResult {
         phase,
         final_eval: res,
     }
+}
+
+pub fn knights(white: bool, g: &GameState) -> (i16, i16) {
+    let (mut mg_res, mut eg_res) = (0i16, 0i16);
+    let side = if white { WHITE } else { BLACK };
+
+    let my_pawn_attacks = if white {
+        movegen::w_pawn_west_targets(g.pieces[PAWN][side])
+            | movegen::w_pawn_east_targets(g.pieces[PAWN][side])
+    } else {
+        movegen::b_pawn_west_targets(g.pieces[PAWN][side])
+            | movegen::b_pawn_east_targets(g.pieces[PAWN][side])
+    };
+
+    let supported_knights = g.pieces[KNIGHT][side] & my_pawn_attacks;
+    let supported_knights_amount = supported_knights.count_ones() as i16;
+    mg_res += KNIGHT_SUPPORTED_BY_PAWN_MG * supported_knights_amount;
+    eg_res += KNIGHT_SUPPORTED_BY_PAWN_EG * supported_knights_amount;
+
+    let (mut outpost_mg, mut outpost_eg, mut _outposts) = (0i16, 0i16, 0);
+    let mut supp = supported_knights;
+    while supp != 0u64 {
+        let mut idx = supp.trailing_zeros() as usize;
+        supp &= !bitboards::FILES[idx % 8];
+        let mut front_span = if white {
+            bitboards::w_front_span(1u64 << idx)
+        } else {
+            bitboards::b_front_span(1u64 << idx)
+        };
+        front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
+        if g.pieces[PAWN][1 - side] & front_span == 0u64 {
+            if !white {
+                idx = 63 - idx;
+            }
+            _outposts += 1;
+            outpost_mg += KNIGHT_OUTPOST_MG_TABLE[idx / 8][idx % 8];
+            outpost_eg += KNIGHT_OUTPOST_EG_TABLE[idx / 8][idx % 8];
+        }
+    }
+    mg_res += outpost_mg;
+    eg_res += outpost_eg;
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nKnights for {}:\n",
+            if white { "White" } else { "Black" }
+        ));
+        log(&format!(
+            "\tSupported by pawns: {} -> ({} , {})\n",
+            supported_knights_amount,
+            KNIGHT_SUPPORTED_BY_PAWN_MG * supported_knights_amount,
+            KNIGHT_SUPPORTED_BY_PAWN_EG * supported_knights_amount
+        ));
+        log(&format!(
+            "\tOutposts: {} -> ({} , {})\n",
+            _outposts, outpost_mg, outpost_eg
+        ));
+        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+    }
+
+    (mg_res, eg_res)
+}
+
+pub fn piecewise(white: bool, g: &GameState) -> (i16, i16) {
+    let side = if white { WHITE } else { BLACK };
+
+    let my_pieces = g.pieces[PAWN][side]
+        | g.pieces[KNIGHT][side]
+        | g.pieces[BISHOP][side]
+        | g.pieces[ROOK][side]
+        | g.pieces[QUEEN][side]
+        | g.pieces[KING][side];
+    let enemy_king_attackable = if white {
+        bitboards::KING_ZONE_BLACK[g.pieces[KING][1 - side].trailing_zeros() as usize]
+    } else {
+        bitboards::KING_ZONE_WHITE[g.pieces[KING][1 - side].trailing_zeros() as usize]
+    } & !if white {
+        movegen::b_pawn_west_targets(g.pieces[PAWN][1 - side])
+            | movegen::b_pawn_east_targets(g.pieces[PAWN][1 - side])
+    } else {
+        movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
+            | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
+    };
+    let all_pieces_without_enemy_king = my_pieces
+        | g.pieces[PAWN][1 - side]
+        | g.pieces[KNIGHT][1 - side]
+        | g.pieces[BISHOP][1 - side]
+        | g.pieces[ROOK][1 - side]
+        | g.pieces[QUEEN][1 - side];
+
+    //Knights
+    let mut knight_attackers: i16 = 0;
+    let mut knight_attacker_values: i16 = 0;
+    let mut knights = g.pieces[KNIGHT][side];
+    let (mut mk_mg, mut mk_eg) = (0i16, 0i16);
+    while knights != 0u64 {
+        let idx = knights.trailing_zeros() as usize;
+        let targets = knight_attack(idx) & !my_pieces;
+        let mobility = targets.count_ones() as usize;
+        mk_mg += KNIGHT_MOBILITY_BONUS_MG[mobility];
+        mk_eg += KNIGHT_MOBILITY_BONUS_EG[mobility];
+
+        let enemy_king_attacks = targets & enemy_king_attackable;
+        if enemy_king_attacks != 0u64 {
+            knight_attackers += 1;
+            knight_attacker_values += KNIGHT_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        }
+        knights ^= 1u64 << idx;
+    }
+    //Bishops
+    let mut bishop_attackers: i16 = 0;
+    let mut bishop_attacker_values: i16 = 0;
+    let mut bishops = g.pieces[BISHOP][side];
+    let (mut mb_mg, mut mb_eg, mut mb_diag_mg, mut mb_diag_eg) = (0i16, 0i16, 0i16, 0i16);
+    while bishops != 0u64 {
+        let idx = bishops.trailing_zeros() as usize;
+        let diagonally_adjacent_pawns =
+            (bitboards::DIAGONALLY_ADJACENT[idx] & g.pieces[PAWN][side]).count_ones() as usize;
+        mb_diag_mg += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[diagonally_adjacent_pawns];
+        mb_diag_eg += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[diagonally_adjacent_pawns];
+
+        let targets = bishop_attack(idx, all_pieces_without_enemy_king) & !my_pieces;
+        let mobility = targets.count_ones() as usize;
+        mb_mg += BISHOP_MOBILITY_BONUS_MG[mobility];
+        mb_eg += BISHOP_MOBILITY_BONUS_EG[mobility];
+
+        let enemy_king_attacks = targets & enemy_king_attackable;
+        if enemy_king_attacks != 0u64 {
+            bishop_attackers += 1;
+            bishop_attacker_values += BISHOP_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        }
+        bishops ^= 1u64 << idx;
+    }
+
+    //Rooks
+    let mut rook_attackers: i16 = 0;
+    let mut rook_attacker_values: i16 = 0;
+    let mut rooks = g.pieces[ROOK][side];
+    let (mut mr_mg, mut mr_eg, mut rooks_onopen, mut rooks_onseventh) = (0i16, 0i16, 0i16, 0i16);
+    while rooks != 0u64 {
+        let idx = rooks.trailing_zeros() as usize;
+        if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
+            rooks_onseventh += 1;
+        }
+        if bitboards::FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
+            rooks_onopen += 1;
+        }
+        let targets = rook_attack(idx, all_pieces_without_enemy_king) & !my_pieces;
+        let mobility = targets.count_ones() as usize;
+        mr_mg += ROOK_MOBILITY_BONUS_MG[mobility];
+        mr_eg += ROOK_MOBILITY_BONUS_EG[mobility];
+
+        let enemy_king_attacks = targets & enemy_king_attackable;
+        if enemy_king_attacks != 0u64 {
+            rook_attackers += 1;
+            rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        }
+        rooks ^= 1u64 << idx;
+    }
+
+    //Queens
+    let mut queen_attackers: i16 = 0;
+    let mut queen_attacker_values: i16 = 0;
+    let mut queens = g.pieces[QUEEN][side];
+    let (mut mq_mg, mut mq_eg) = (0i16, 0i16);
+    while queens != 0u64 {
+        let idx = queens.trailing_zeros() as usize;
+        let targets = (bishop_attack(idx, all_pieces_without_enemy_king)
+            | rook_attack(idx, all_pieces_without_enemy_king))
+            & !my_pieces;
+        let mobility = targets.count_ones() as usize;
+        mq_mg += QUEEN_MOBILITY_BONUS_MG[mobility];
+        mq_eg += QUEEN_MOBILITY_BONUS_EG[mobility];
+
+        let enemy_king_attacks = targets & enemy_king_attackable;
+        if enemy_king_attacks != 0u64 {
+            queen_attackers += 1;
+            queen_attacker_values += QUEEN_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        }
+        queens ^= 1u64 << idx;
+    }
+    let attack = ((SAFETY_TABLE[(knight_attacker_values
+        + bishop_attacker_values
+        + rook_attacker_values
+        + queen_attacker_values)
+        .min(99) as usize]
+        * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+            .min(7) as usize]) as f64
+        / 100.0) as i16;
+
+    let mg_res = mk_mg
+        + mb_mg
+        + mr_mg
+        + mq_mg
+        + mb_diag_mg
+        + rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_MG
+        + rooks_onseventh * ROOK_ON_SEVENTH_MG
+        + attack;
+    let eg_res = mk_eg
+        + mb_eg
+        + mr_eg
+        + mq_eg
+        + mb_diag_eg
+        + rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_EG
+        + rooks_onseventh * ROOK_ON_SEVENTH_EG
+        + attack;
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nPiecewise for {}:\n",
+            if white { "White" } else { "Black" }
+        ));
+        log(&format!("\tMobility Knight: ({} , {})\n", mk_mg, mk_eg));
+        log(&format!("\tMobility Bishop: ({} , {})\n", mb_mg, mb_eg));
+        log(&format!("\tMobility Rook  : ({} , {})\n", mr_mg, mr_eg));
+        log(&format!("\tMobility Queen : ({} , {})\n", mq_mg, mq_eg));
+        log(&format!(
+            "\tRooks on open  : {} -> ({} , {})\n",
+            rooks_onopen,
+            rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_MG,
+            rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_EG
+        ));
+        log(&format!(
+            "\tRooks on seventh: {} -> ({} , {})\n",
+            rooks_onseventh,
+            rooks_onseventh * ROOK_ON_SEVENTH_MG,
+            rooks_onseventh * ROOK_ON_SEVENTH_EG
+        ));
+        log(&format!(
+            "\tKnight Attackers/Value: ({} , {})\n",
+            knight_attackers, knight_attacker_values
+        ));
+        log(&format!(
+            "\tBishop Attackers/Value: ({} , {})\n",
+            bishop_attackers, bishop_attacker_values
+        ));
+        log(&format!(
+            "\tRook Attackers/Value: ({} , {})\n",
+            rook_attackers, rook_attacker_values
+        ));
+        log(&format!(
+            "\tQueen Attackers/Value: ({} , {})\n",
+            queen_attackers, queen_attacker_values
+        ));
+        log(&format!(
+            "\tSum Attackers/Value: ({} , {})\n",
+            knight_attackers + bishop_attackers + rook_attackers + queen_attackers,
+            knight_attacker_values
+                + bishop_attacker_values
+                + rook_attacker_values
+                + queen_attacker_values
+        ));
+        log(&format!(
+            "\tAttack value: {} * {} / 100.0 -> {}\n",
+            SAFETY_TABLE[(knight_attacker_values
+                + bishop_attacker_values
+                + rook_attacker_values
+                + queen_attacker_values)
+                .min(99) as usize],
+            ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+                .min(7) as usize],
+            attack
+        ));
+        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+    }
+    (mg_res, eg_res)
+}
+
+pub fn king(white: bool, g: &GameState) -> (i16, i16) {
+    let side = if white { WHITE } else { BLACK };
+    let mut pawn_shield = if white {
+        bitboards::SHIELDING_PAWNS_WHITE[g.pieces[KING][side].trailing_zeros() as usize]
+    } else {
+        bitboards::SHIELDING_PAWNS_BLACK[g.pieces[KING][side].trailing_zeros() as usize]
+    };
+    let mut king_front_span = if white {
+        bitboards::w_front_span(g.pieces[KING][side])
+    } else {
+        bitboards::b_front_span(g.pieces[KING][side])
+    };
+    king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
+
+    let mut shields_missing = 0;
+    let mut shields_on_open_missing = 0;
+    if g.full_moves >= 1 {
+        while pawn_shield != 0u64 {
+            let idx = pawn_shield.trailing_zeros() as usize;
+            if g.pieces[PAWN][side] & pawn_shield & bitboards::FILES[idx % 8] == 0u64 {
+                shields_missing += 1;
+                if g.pieces[PAWN][1 - side] & bitboards::FILES[idx % 8] & king_front_span == 0u64 {
+                    shields_on_open_missing += 1;
+                }
+            }
+            pawn_shield &= !bitboards::FILES[idx % 8];
+        }
+    }
+    let (mg_res, eg_res) = (
+        SHIELDING_PAWN_MISSING_MG[shields_missing]
+            + SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[shields_on_open_missing],
+        SHIELDING_PAWN_MISSING_EG[shields_missing]
+            + SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[shields_on_open_missing],
+    );
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nKing for {}:\n",
+            if white { "White" } else { "Black" }
+        ));
+        log(&format!(
+            "\tShield pawn missing: {} -> ({} , {})\n",
+            shields_missing,
+            SHIELDING_PAWN_MISSING_MG[shields_missing],
+            SHIELDING_PAWN_MISSING_EG[shields_missing]
+        ));
+        log(&format!(
+            "\tShield pawn on open file missing: {} -> ({} , {})\n",
+            shields_on_open_missing,
+            SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[shields_on_open_missing],
+            SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[shields_on_open_missing]
+        ));
+        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+    }
+    (mg_res, eg_res)
+}
+
+pub fn pawns(white: bool, g: &GameState) -> (i16, i16) {
+    let (mut mg_res, mut eg_res) = (0i16, 0i16);
+    let side = if white { WHITE } else { BLACK };
+
+    //Bitboards
+    let pawn_file_fill = bitboards::file_fill(g.pieces[PAWN][side]);
+    let front_span = if white {
+        bitboards::w_front_span(g.pieces[PAWN][side])
+    } else {
+        bitboards::b_front_span(g.pieces[PAWN][side])
+    };
+    let mut enemy_front_spans = if white {
+        bitboards::b_front_span(g.pieces[PAWN][1 - side])
+    } else {
+        bitboards::w_front_span(g.pieces[PAWN][1 - side])
+    };
+    enemy_front_spans |=
+        bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
+    let my_pawn_attacks = if white {
+        movegen::w_pawn_west_targets(g.pieces[PAWN][side])
+            | movegen::w_pawn_east_targets(g.pieces[PAWN][side])
+    } else {
+        movegen::b_pawn_west_targets(g.pieces[PAWN][side])
+            | movegen::b_pawn_east_targets(g.pieces[PAWN][side])
+    };
+    let enemy_pawn_attacks = if white {
+        movegen::b_pawn_west_targets(g.pieces[PAWN][1 - side])
+            | movegen::b_pawn_east_targets(g.pieces[PAWN][1 - side])
+    } else {
+        movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
+            | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
+    };
+    let is_attackable = bitboards::west_one(front_span) | bitboards::east_one(front_span);
+    let enemy_pieces = g.pieces[PAWN][1 - side]
+        | g.pieces[KNIGHT][1 - side]
+        | g.pieces[BISHOP][1 - side]
+        | g.pieces[ROOK][1 - side]
+        | g.pieces[QUEEN][1 - side]
+        | g.pieces[KING][1 - side];
+
+    let doubled_pawns = (g.pieces[PAWN][side] & front_span).count_ones() as i16;
+    let isolated_pawns = (g.pieces[PAWN][side]
+        & !bitboards::west_one(pawn_file_fill)
+        & !bitboards::east_one(pawn_file_fill))
+    .count_ones() as i16;
+    let backward_pawns = (if white {
+        g.pieces[PAWN][side] << 8
+    } else {
+        g.pieces[PAWN][side] >> 8
+    } & enemy_pawn_attacks
+        & !is_attackable)
+        .count_ones() as i16;
+    let supported_pawns = (g.pieces[PAWN][side] & my_pawn_attacks).count_ones() as i16;
+    let center_attack_pawns = (g.pieces[PAWN][side]
+        & if white {
+            bitboards::south_east_one(*bitboards::INNER_CENTER)
+                | bitboards::south_west_one(*bitboards::INNER_CENTER)
+        } else {
+            bitboards::north_east_one(*bitboards::INNER_CENTER)
+                | bitboards::north_west_one(*bitboards::INNER_CENTER)
+        })
+    .count_ones() as i16;
+
+    mg_res += doubled_pawns * PAWN_DOUBLED_VALUE_MG
+        + isolated_pawns * PAWN_ISOLATED_VALUE_MG
+        + backward_pawns * PAWN_BACKWARD_VALUE_MG
+        + supported_pawns * PAWN_SUPPORTED_VALUE_MG
+        + center_attack_pawns * PAWN_ATTACK_CENTER_MG;
+    eg_res += doubled_pawns * PAWN_DOUBLED_VALUE_EG
+        + isolated_pawns * PAWN_ISOLATED_VALUE_EG
+        + backward_pawns * PAWN_BACKWARD_VALUE_EG
+        + supported_pawns * PAWN_SUPPORTED_VALUE_EG
+        + center_attack_pawns * PAWN_ATTACK_CENTER_EG;
+    //Passers
+    let mut passed_pawns: u64 = g.pieces[PAWN][side]
+        & !if white {
+            bitboards::w_rear_span(g.pieces[PAWN][side])
+        } else {
+            bitboards::b_rear_span(g.pieces[PAWN][side])
+        }
+        & !enemy_front_spans;
+    let (mut passer_mg, mut passer_eg, mut _passer_normal, mut _passer_notblocked) =
+        (0i16, 0i16, 0, 0);
+    while passed_pawns != 0u64 {
+        let idx = passed_pawns.trailing_zeros() as usize;
+        //Passed and blocked
+        _passer_normal += 1;
+        passer_mg += PAWN_PASSED_VALUES_MG[if white { idx / 8 } else { 7 - idx / 8 }];
+        passer_eg += PAWN_PASSED_VALUES_EG[if white { idx / 8 } else { 7 - idx / 8 }];
+        if if white {
+            bitboards::w_front_span(1u64 << idx)
+        } else {
+            bitboards::b_front_span(1u64 << idx)
+        } & enemy_pieces
+            == 0u64
+        {
+            //Passed and not blocked
+            _passer_notblocked += 1;
+            passer_mg +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if white { idx / 8 } else { 7 - idx / 8 }];
+            passer_eg +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if white { idx / 8 } else { 7 - idx / 8 }];
+        }
+        passed_pawns ^= 1u64 << idx;
+    }
+    mg_res += passer_mg;
+    eg_res += passer_eg;
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nPawns for {}:\n",
+            if white { "White" } else { "Black" }
+        ));
+        log(&format!(
+            "\tDoubled: {} -> ({} , {})\n",
+            doubled_pawns,
+            PAWN_DOUBLED_VALUE_MG * doubled_pawns,
+            PAWN_DOUBLED_VALUE_EG * doubled_pawns
+        ));
+        log(&format!(
+            "\tIsolated: {} -> ({} , {})\n",
+            isolated_pawns,
+            PAWN_ISOLATED_VALUE_MG * isolated_pawns,
+            PAWN_ISOLATED_VALUE_EG * isolated_pawns
+        ));
+        log(&format!(
+            "\tBackward: {} -> ({} , {})\n",
+            backward_pawns,
+            PAWN_BACKWARD_VALUE_MG * backward_pawns,
+            PAWN_BACKWARD_VALUE_EG * backward_pawns
+        ));
+        log(&format!(
+            "\tSupported: {} -> ({} , {})\n",
+            supported_pawns,
+            PAWN_SUPPORTED_VALUE_MG * supported_pawns,
+            PAWN_SUPPORTED_VALUE_EG * supported_pawns
+        ));
+        log(&format!(
+            "\tAttack Center: {} -> ({} , {})\n",
+            center_attack_pawns,
+            PAWN_ATTACK_CENTER_MG * center_attack_pawns,
+            PAWN_ATTACK_CENTER_EG * center_attack_pawns
+        ));
+        log(&format!(
+            "\tPasser Blocked/Not Blocked: {} , {} -> MG/EG({} , {})\n",
+            _passer_normal, _passer_notblocked, passer_mg, passer_eg
+        ));
+        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+    }
+    (mg_res, eg_res)
+}
+
+pub fn piece_values(white: bool, g: &GameState) -> (i16, i16) {
+    let (mut mg_res, mut eg_res) = (0i16, 0i16);
+    let side = if white { WHITE } else { BLACK };
+
+    let my_pawns = g.pieces[PAWN][side].count_ones() as i16;
+    mg_res += PAWN_PIECE_VALUE_MG * my_pawns;
+    eg_res += PAWN_PIECE_VALUE_EG * my_pawns;
+
+    let pawns_on_board = (g.pieces[PAWN][WHITE] | g.pieces[PAWN][BLACK]).count_ones() as usize;
+    let my_knights = g.pieces[KNIGHT][side].count_ones() as i16;
+    mg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
+    eg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
+
+    let my_bishops = g.pieces[BISHOP][side].count_ones() as i16;
+    mg_res += BISHOP_PIECE_VALUE_MG * my_bishops;
+    eg_res += BISHOP_PIECE_VALUE_EG * my_bishops;
+    if my_bishops > 1 {
+        mg_res += BISHOP_PAIR_BONUS_MG;
+        eg_res += BISHOP_PAIR_BONUS_EG;
+    }
+
+    let my_rooks = g.pieces[ROOK][side].count_ones() as i16;
+    mg_res += ROOK_PIECE_VALUE_MG * my_rooks;
+    eg_res += ROOK_PIECE_VALUE_EG * my_rooks;
+
+    let my_queens = g.pieces[QUEEN][side].count_ones() as i16;
+    mg_res += QUEEN_PIECE_VALUE_MG * my_queens;
+    eg_res += QUEEN_PIECE_VALUE_EG * my_queens;
+
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nPiece values for {}\n",
+            if white { "White" } else { "Black" }
+        ));
+        log(&format!(
+            "\tPawns: {} -> ({} , {})\n",
+            my_pawns,
+            PAWN_PIECE_VALUE_MG * my_pawns,
+            PAWN_PIECE_VALUE_EG * my_pawns
+        ));
+        log(&format!(
+            "\tKnights: {} -> ({} , {})\n",
+            my_knights,
+            (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights,
+            (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights
+        ));
+        log(&format!(
+            "\tBishops: {} -> ({} , {})\n",
+            my_bishops,
+            BISHOP_PIECE_VALUE_MG * my_bishops,
+            BISHOP_PIECE_VALUE_EG * my_bishops
+        ));
+        if my_bishops > 1 {
+            log(&format!(
+                "\tBishop-Pair: {} -> ({} , {})\n",
+                1, BISHOP_PAIR_BONUS_MG, BISHOP_PAIR_BONUS_EG
+            ));
+        }
+        log(&format!(
+            "\tRooks: {} -> ({} , {})\n",
+            my_rooks,
+            ROOK_PIECE_VALUE_MG * my_rooks,
+            ROOK_PIECE_VALUE_EG * my_rooks
+        ));
+        log(&format!(
+            "\tQueens: {} -> ({} , {})\n",
+            my_queens,
+            QUEEN_PIECE_VALUE_MG * my_queens,
+            QUEEN_PIECE_VALUE_EG * my_queens
+        ));
+        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+    }
+    (mg_res, eg_res)
 }
 
 pub fn calculate_phase(
@@ -394,451 +777,24 @@ pub fn calculate_phase(
 
 pub fn piece_value(piece_type: &PieceType, phase: f64) -> i16 {
     if let PieceType::Pawn = piece_type {
-        return ((pawn_evaluation::PAWN_PIECE_VALUE_MG as f64 * phase
-            + pawn_evaluation::PAWN_PIECE_VALUE_EG as f64 * (128.0 - phase))
+        return ((PAWN_PIECE_VALUE_MG as f64 * phase + PAWN_PIECE_VALUE_EG as f64 * (128.0 - phase))
             / 128.0) as i16;
     } else if let PieceType::Knight = piece_type {
-        return ((knight_evaluation::KNIGHT_PIECE_VALUE_MG as f64 * phase
-            + knight_evaluation::KNIGHT_PIECE_VALUE_EG as f64 * (128.0 - phase))
+        return ((KNIGHT_PIECE_VALUE_MG as f64 * phase
+            + KNIGHT_PIECE_VALUE_EG as f64 * (128.0 - phase))
             / 128.0) as i16;
     } else if let PieceType::Bishop = piece_type {
-        return ((bishop_evaluation::BISHOP_PIECE_VALUE_MG as f64 * phase
-            + bishop_evaluation::BISHOP_PIECE_VALUE_EG as f64 * (128.0 - phase))
+        return ((BISHOP_PIECE_VALUE_MG as f64 * phase
+            + BISHOP_PIECE_VALUE_EG as f64 * (128.0 - phase))
             / 128.0) as i16;
     } else if let PieceType::Rook = piece_type {
-        return ((rook_evaluation::ROOK_PIECE_VALUE_MG as f64 * phase
-            + rook_evaluation::ROOK_PIECE_VALUE_EG as f64 * (128.0 - phase))
+        return ((ROOK_PIECE_VALUE_MG as f64 * phase + ROOK_PIECE_VALUE_EG as f64 * (128.0 - phase))
             / 128.0) as i16;
     } else if let PieceType::Queen = piece_type {
-        return ((queen_evaluation::QUEEN_PIECE_VALUE_MG as f64 * phase
-            + queen_evaluation::QUEEN_PIECE_VALUE_EG as f64 * (128.0 - phase))
+        return ((QUEEN_PIECE_VALUE_MG as f64 * phase
+            + QUEEN_PIECE_VALUE_EG as f64 * (128.0 - phase))
             / 128.0) as i16;
     } else {
         panic!("Invalid piece type!");
     }
-}
-
-pub fn make_log(
-    white_pawns_eval: &PawnEvaluation,
-    white_pawns_eval_mg: i16,
-    white_pawns_eval_eg: i16,
-    black_pawns_eval: &PawnEvaluation,
-    black_pawns_eval_mg: i16,
-    black_pawns_eval_eg: i16,
-    white_passed_eval: &PassedEvaluation,
-    white_passed_eval_mg: i16,
-    white_passed_eval_eg: i16,
-    black_passed_eval: &PassedEvaluation,
-    black_passed_eval_mg: i16,
-    black_passed_eval_eg: i16,
-    white_knights_eval: &KnightEvaluation,
-    white_knights_eval_mg: i16,
-    white_knights_eval_eg: i16,
-    black_knights_eval: &KnightEvaluation,
-    black_knights_eval_mg: i16,
-    black_knights_eval_eg: i16,
-    white_bishops_eval: &BishopEvaluation,
-    white_bishops_eval_mg: i16,
-    white_bishops_eval_eg: i16,
-    black_bishops_eval: &BishopEvaluation,
-    black_bishops_eval_mg: i16,
-    black_bishops_eval_eg: i16,
-    white_rooks_eval: &RookEvaluation,
-    white_rooks_eval_mg: i16,
-    white_rooks_eval_eg: i16,
-    black_rooks_eval: &RookEvaluation,
-    black_rooks_eval_mg: i16,
-    black_rooks_eval_eg: i16,
-    white_queen_eval: &QueenEvaluation,
-    white_queen_eval_mg: i16,
-    white_queen_eval_eg: i16,
-    black_queen_eval: &QueenEvaluation,
-    black_queen_eval_mg: i16,
-    black_queen_eval_eg: i16,
-    white_king_eval: &KingEvaluation,
-    white_king_eval_mg: i16,
-    white_king_eval_eg: i16,
-    black_king_eval: &KingEvaluation,
-    black_king_eval_mg: i16,
-    black_king_eval_eg: i16,
-    white_psqt_eval: &PSQT,
-    white_psqt_eval_mg: i16,
-    white_psqt_eval_eg: i16,
-    black_psqt_eval: &PSQT,
-    black_psqt_eval_mg: i16,
-    black_psqt_eval_eg: i16,
-    white_piecewise_eval: &PiecewiseEvaluation,
-    white_piecewise_eval_mg: i16,
-    white_piecewise_eval_eg: i16,
-    black_piecewise_eval: &PiecewiseEvaluation,
-    black_piecewise_eval_mg: i16,
-    black_piecewise_eval_eg: i16,
-    color_to_move: usize,
-    phase: f64,
-    mg_eval: i16,
-    eg_eval: i16,
-    res: i16,
-) {
-    let mut verbose_mg = 0;
-    let mut verbose_eg = 0;
-    //Pawns
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_pawns_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_pawns_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_pawns_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_pawns_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_pawns_eval_mg,
-                black_pawns_eval_mg,
-                verbose_mg + white_pawns_eval_mg - black_pawns_eval_mg
-            ));
-            verbose_mg += white_pawns_eval_mg - black_pawns_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_pawns_eval_eg,
-                black_pawns_eval_eg,
-                verbose_eg + white_pawns_eval_eg - black_pawns_eval_eg
-            ));
-            verbose_eg += white_pawns_eval_eg - black_pawns_eval_eg;
-        }
-    }
-    //Passed
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_passed_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_passed_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_passed_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_passed_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_passed_eval_mg,
-                black_passed_eval_mg,
-                verbose_mg + white_passed_eval_mg - black_passed_eval_mg
-            ));
-            verbose_mg += white_passed_eval_mg - black_passed_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_passed_eval_eg,
-                black_passed_eval_eg,
-                verbose_eg + white_passed_eval_eg - black_passed_eval_eg
-            ));
-            verbose_eg += white_passed_eval_eg - black_passed_eval_eg;
-        }
-    }
-    //Knights
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_knights_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_knights_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_knights_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_knights_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_knights_eval_mg,
-                black_knights_eval_mg,
-                verbose_mg + white_knights_eval_mg - black_knights_eval_mg
-            ));
-            verbose_mg += white_knights_eval_mg - black_knights_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_knights_eval_eg,
-                black_knights_eval_eg,
-                verbose_eg + white_knights_eval_eg - black_knights_eval_eg
-            ));
-            verbose_eg += white_knights_eval_eg - black_knights_eval_eg;
-        }
-    }
-    //Bishops
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_bishops_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_bishops_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_bishops_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_bishops_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_bishops_eval_mg,
-                black_bishops_eval_mg,
-                verbose_mg + white_bishops_eval_mg - black_bishops_eval_mg
-            ));
-            verbose_mg += white_bishops_eval_mg - black_bishops_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_bishops_eval_eg,
-                black_bishops_eval_eg,
-                verbose_eg + white_bishops_eval_eg - black_bishops_eval_eg
-            ));
-            verbose_eg += white_bishops_eval_eg - black_bishops_eval_eg;
-        }
-    }
-    //Rooks
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_rooks_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_rooks_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_rooks_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_rooks_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_rooks_eval_mg,
-                black_rooks_eval_mg,
-                verbose_mg + white_rooks_eval_mg - black_rooks_eval_mg
-            ));
-            verbose_mg += white_rooks_eval_mg - black_rooks_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_rooks_eval_eg,
-                black_rooks_eval_eg,
-                verbose_eg + white_rooks_eval_eg - black_rooks_eval_eg
-            ));
-            verbose_eg += white_rooks_eval_eg - black_rooks_eval_eg;
-        }
-    }
-    //Queen(s)
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_queen_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_queen_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_queen_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_queen_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_queen_eval_mg,
-                black_queen_eval_mg,
-                verbose_mg + white_queen_eval_mg - black_queen_eval_mg
-            ));
-            verbose_mg += white_queen_eval_mg - black_queen_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_queen_eval_eg,
-                black_queen_eval_eg,
-                verbose_eg + white_queen_eval_eg - black_queen_eval_eg
-            ));
-            verbose_eg += white_queen_eval_eg - black_queen_eval_eg;
-        }
-    }
-    //King safety
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_king_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_king_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_king_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_king_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_king_eval_mg,
-                black_king_eval_mg,
-                verbose_mg + white_king_eval_mg - black_king_eval_mg
-            ));
-            verbose_mg += white_king_eval_mg - black_king_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_king_eval_eg,
-                black_king_eval_eg,
-                verbose_eg + white_king_eval_eg - black_king_eval_eg
-            ));
-            verbose_eg += white_king_eval_eg - black_king_eval_eg;
-        }
-    }
-    //PSQT
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_psqt_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_psqt_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_psqt_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_psqt_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_psqt_eval_mg,
-                black_psqt_eval_mg,
-                verbose_mg + white_psqt_eval_mg - black_psqt_eval_mg
-            ));
-            verbose_mg += white_psqt_eval_mg - black_psqt_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_psqt_eval_eg,
-                black_psqt_eval_eg,
-                verbose_eg + white_psqt_eval_eg - black_psqt_eval_eg
-            ));
-            verbose_eg += white_psqt_eval_eg - black_psqt_eval_eg;
-        }
-    }
-    //Piecwise
-    {
-        log("White\n");
-        if phase != 0.0 {
-            log(&white_piecewise_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&white_piecewise_eval.display_eg());
-        }
-        log("Black\n");
-        if phase != 0.0 {
-            log(&black_piecewise_eval.display_mg());
-        }
-        if phase != 128.0 {
-            log(&black_piecewise_eval.display_eg());
-        }
-        if phase != 0.0 {
-            log(&format!(
-                "MGEval: {} + {} - {} = {}\n",
-                verbose_mg,
-                white_piecewise_eval_mg,
-                black_piecewise_eval_mg,
-                verbose_mg + white_piecewise_eval_mg - black_piecewise_eval_mg
-            ));
-            verbose_mg += white_piecewise_eval_mg - black_piecewise_eval_mg;
-        }
-        if phase != 128.0 {
-            log(&format!(
-                "EGEval: {} + {} - {} = {}\n",
-                verbose_eg,
-                white_piecewise_eval_eg,
-                black_piecewise_eval_eg,
-                verbose_eg + white_piecewise_eval_eg - black_piecewise_eval_eg
-            ));
-            verbose_eg += white_piecewise_eval_eg - black_piecewise_eval_eg;
-        }
-    }
-    if color_to_move == 0 {
-        log(&format!(
-            "Tempo White\nMGEval: {} + {} = {}\nEGEval: {} + {} = {}",
-            verbose_mg,
-            TEMPO_BONUS_MG,
-            verbose_mg + TEMPO_BONUS_MG,
-            verbose_eg,
-            TEMPO_BONUS_EG,
-            verbose_eg + TEMPO_BONUS_EG
-        ));
-    } else {
-        log(&format!(
-            "Tempo Black\nMGEval: {} - {} = {}\nEGEval: {} - {} = {}",
-            verbose_mg,
-            TEMPO_BONUS_MG,
-            verbose_mg - TEMPO_BONUS_MG,
-            verbose_eg,
-            TEMPO_BONUS_EG,
-            verbose_eg - TEMPO_BONUS_EG
-        ));
-    }
-    log(&format!("Phase: {}\n", phase));
-    log(&format!(
-        "=> ({} * {} + {}*(128-{}))/128={}\n",
-        mg_eval, phase, eg_eval, phase, res
-    ));
-    log(&format!("{}", res));
 }

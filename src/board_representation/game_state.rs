@@ -1,6 +1,15 @@
 use super::zobrist_hashing::ZOBRIST_KEYS;
 use std::fmt::{Debug, Display, Formatter, Result};
 
+pub const PAWN: usize = 0;
+pub const KNIGHT: usize = 1;
+pub const BISHOP: usize = 2;
+pub const ROOK: usize = 3;
+pub const QUEEN: usize = 4;
+pub const KING: usize = 5;
+pub const WHITE: usize = 0;
+pub const BLACK: usize = 1;
+
 #[derive(PartialEq)]
 pub enum GameResult {
     Ingame,
@@ -165,7 +174,6 @@ fn file_to_string(file: usize) -> &'static str {
         _ => panic!("invalid file"),
     }
 }
-
 pub struct GameState {
     // 0 = White
     // 1 = Black
@@ -406,7 +414,8 @@ impl GameState {
             castle_black_queenside,
             en_passant,
         );
-        let psqt = crate::evaluation::psqt_evaluation::psqt_slow(&pieces_arr);
+        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces_arr);
+        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces_arr);
         GameState {
             color_to_move,
             pieces: pieces_arr,
@@ -418,8 +427,8 @@ impl GameState {
             full_moves,
             en_passant,
             hash,
-            psqt_mg: psqt.0,
-            psqt_eg: psqt.1,
+            psqt_mg: p_w.0 - p_b.0,
+            psqt_eg: p_w.1 - p_b.1,
         }
     }
     pub fn to_fen(&self) -> String {
@@ -566,7 +575,8 @@ impl GameState {
             [0x8u64, 0x800000000000000u64],
             [0x10u64, 0x1000000000000000u64],
         ];
-        let psqt = crate::evaluation::psqt_evaluation::psqt_slow(&pieces);
+        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces);
+        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces);
         GameState {
             color_to_move,
             pieces,
@@ -586,8 +596,8 @@ impl GameState {
                 true,
                 0u64,
             ),
-            psqt_mg: psqt.0,
-            psqt_eg: psqt.1,
+            psqt_mg: p_w.0 - p_b.0,
+            psqt_eg: p_w.1 - p_b.1,
         }
     }
     pub fn calculate_zobrist_hash(

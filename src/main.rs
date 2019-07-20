@@ -23,8 +23,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use core::board_representation::game_state::GameState;
-    use core::evaluation::psqt_evaluation::{psqt_eval, psqt_slow};
-    use core::evaluation::ParallelEvaluation;
+    use core::evaluation::psqt_evaluation::psqt;
     use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
     use core::move_generation::makemove::make_move;
     use core::move_generation::movegen;
@@ -795,9 +794,10 @@ mod tests {
         let mut movelist = movegen::MoveList::new();
         for _i in 0..100000 {
             let mut g = GameState::standard();
-            let psqt = psqt_slow(&g.pieces);
-            assert_eq!(g.psqt_mg, psqt.0);
-            assert_eq!(g.psqt_eg, psqt.1);
+            let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces);
+            let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces);
+            assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
+            assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             for _j in 0..200 {
                 let agsi = movegen::generate_moves2(&g, false, &mut movelist, 0);
                 if !agsi.stm_haslegalmove {
@@ -809,33 +809,8 @@ mod tests {
                         .as_ref()
                         .unwrap(),
                 );
-                let psqt = psqt_slow(&g.pieces);
-                assert_eq!(g.psqt_mg, psqt.0);
-                assert_eq!(g.psqt_eg, psqt.1);
-                let white_psqt_eval = psqt_eval(
-                    g.pieces[0][0],
-                    g.pieces[1][0],
-                    g.pieces[2][0],
-                    g.pieces[3][0],
-                    g.pieces[4][0],
-                    g.pieces[5][0],
-                    true,
-                );
-                let black_psqt_eval = psqt_eval(
-                    g.pieces[0][1],
-                    g.pieces[1][1],
-                    g.pieces[2][1],
-                    g.pieces[3][1],
-                    g.pieces[4][1],
-                    g.pieces[5][1],
-                    false,
-                );
-                let _e = white_psqt_eval.eval_mg_eg();
-                let white_psqt_eval_mg = _e.0;
-                let white_psqt_eval_eg = _e.1;
-                let _e = black_psqt_eval.eval_mg_eg();
-                let black_psqt_eval_mg = _e.0;
-                let black_psqt_eval_eg = _e.1;
+                let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces);
+                let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces);
                 assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
                 assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             }

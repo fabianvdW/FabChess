@@ -77,7 +77,7 @@ pub fn parse_loop() {
             "static" => {
                 println!(
                     "cp {}",
-                    crate::evaluation::eval_game_state(&us.internal_state, true).final_eval
+                    crate::evaluation::eval_game_state(&us.internal_state).final_eval
                 );
             }
             _ => {
