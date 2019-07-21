@@ -38,3 +38,6 @@ path="src/benchmarking/benchmarks.rs"
 [[bin]]
 name="preparetuning"
 path="src/tuning/preparation.rs"
+[[bin]]
+name="tuning"
+path="src/tuning/tuning.rs"

@@ -1,4 +1,4 @@
-use crate::board_representation::game_state::{GameResult, GameState};
+use crate::board_representation::game_state::GameState;
 use std::fmt::{Display, Formatter, Result};
 use std::fs;
 pub enum FileFormatSupported {
@@ -7,7 +7,7 @@ pub enum FileFormatSupported {
 }
 pub struct LabelledGameState {
     pub game_state: GameState,
-    pub label: GameResult,
+    pub label: f64,
 }
 pub struct Statistics {
     pub games: usize,
@@ -42,9 +42,9 @@ pub fn save_positions(to_file: &str, positions: &Vec<LabelledGameState>) {
         res_str.push_str(&format!(
             "{} |{}\n",
             pos.game_state.to_fen(),
-            if let GameResult::WhiteWin = pos.label {
+            if pos.label == 1.0 {
                 "White"
-            } else if let GameResult::BlackWin = pos.label {
+            } else if pos.label == 0.0 {
                 "Black"
             } else {
                 "Draw"
@@ -73,22 +73,22 @@ pub fn load_positions(
                 }
                 let fen_split = line.split("|").collect::<Vec<&str>>();
                 let game_result = if fen_split[1].contains("Black") {
-                    GameResult::BlackWin
+                    0.0
                 } else if fen_split[1].contains("White") {
-                    GameResult::WhiteWin
+                    1.0
                 } else if fen_split[1].contains("Draw") {
-                    GameResult::Draw
+                    0.5
                 } else {
                     panic!(format!("Invalid split {}", fen_split[1]));
                 };
                 if is_newgame {
                     is_newgame = false;
                     stats.games += 1;
-                    if let GameResult::WhiteWin = game_result {
+                    if game_result == 1.0 {
                         stats.white_wins += 1;
-                    } else if let GameResult::BlackWin = game_result {
+                    } else if game_result == 0.0 {
                         stats.black_wins += 1;
-                    } else if let GameResult::Draw = game_result {
+                    } else if game_result == 0.5 {
                         stats.draws += 1;
                     }
                 }

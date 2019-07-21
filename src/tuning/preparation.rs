@@ -16,11 +16,11 @@ use core::tuning::loading::load_positions;
 use core::tuning::loading::{save_positions, FileFormatSupported, LabelledGameState, Statistics};
 use std::fs;
 
-//const FEN_DIR: &str = "C:/Users/Fabian/Desktop/FenCollection/Real";
-const FEN_DIR: &str = "C:/Users/Fabian/Desktop/FenCollection/Test";
+//const FEN_DIR: &str = "D:/FenCollection/Real";
+const FEN_DIR: &str = "D:/FenCollection/Test";
 fn main() {
     //2. Transform all FEN-Positions in Quiet positions
-    //3. Save all positions just like loaded, all positions after q-search, all positions after q-search without stripped
+    //3. Save all positions just like loaded, all positions after q-search, all positions after q-search without stripped(no positions with >10 or <-10 eval)
     let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8000000);
     let mut stats = Statistics::new();
     let paths = fs::read_dir(FEN_DIR).unwrap();
@@ -64,13 +64,7 @@ fn main() {
         );
         quiet_nonstripped.push(LabelledGameState {
             game_state: state.clone(),
-            label: if let GameResult::WhiteWin = position.label {
-                GameResult::WhiteWin
-            } else if let GameResult::BlackWin = position.label {
-                GameResult::BlackWin
-            } else {
-                GameResult::Draw
-            },
+            label: position.label,
         });
         if score.abs() < 1000 {
             quiet_stripped.push(LabelledGameState {
