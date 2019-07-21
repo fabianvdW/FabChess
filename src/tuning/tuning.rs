@@ -3,9 +3,15 @@ extern crate rand;
 
 use core::evaluation::eval_game_state;
 use core::tuning::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
+use parameters::Parameters;
 use rand::{seq::SliceRandom, thread_rng};
+pub mod parameters;
+
 pub const POSITION_FILE: &str = "D:/FenCollection/Real/all_positions_qsearch.txt";
+pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
+pub const MG: usize = 0;
+pub const EG: usize = 1;
 const BATCH_SIZE: usize = 8196;
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
@@ -32,6 +38,8 @@ pub fn main() {
     println!("Started Tuning!");
     minimize_evaluation_error_fork(&mut tuner);
     println!("Optimal K: {}", tuner.k);
+    let params = Parameters::default();
+    params.write_to_file(&format!("{}tune.txt", PARAM_FILE));
 }
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(labelledstates.len());
@@ -49,6 +57,7 @@ pub struct Tuner {
     pub k: f64,
     pub positions: Vec<TexelState>,
 }
+
 pub fn shuffle_positions(tuner: &mut Tuner) {
     tuner.positions.shuffle(&mut thread_rng());
 }
