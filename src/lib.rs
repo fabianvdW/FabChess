@@ -10,6 +10,7 @@ pub mod misc;
 pub mod move_generation;
 pub mod search;
 pub mod testing;
+pub mod tuning;
 pub mod uci;
 
 use self::board_representation::game_state::GameState;

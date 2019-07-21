@@ -25,7 +25,7 @@ pub enum TimeControl {
 impl TimeControl {
     pub fn time_over(&self, time_spent: u64, tc_information: &TimeControlInformation) -> bool {
         if let TimeControl::Incremental(mytime, myinc) = self {
-            if time_spent > mytime - MOVE_OVERHEAD {
+            if time_spent > mytime - 2 * MOVE_OVERHEAD {
                 return true;
             }
             let normal_time = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;

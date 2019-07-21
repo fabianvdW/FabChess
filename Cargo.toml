@@ -35,3 +35,6 @@ path="src/testing/referee.rs"
 [[bin]]
 name="benchmarking"
 path="src/benchmarking/benchmarks.rs"
+[[bin]]
+name="preparetuning"
+path="src/tuning/preparation.rs"
