@@ -2,38 +2,38 @@ use super::parameters::Parameters;
 use crate::board_representation::game_state::{BLACK, WHITE};
 use crate::evaluation::{EG, MG};
 pub struct Trace {
-    pub tempo_bonus: [isize; 2],
-    pub shielding_pawn_missing: [[isize; 4]; 2],
-    pub shielding_pawn_onopen_missing: [[isize; 4]; 2],
-    pub pawn_doubled: [isize; 2],
-    pub pawn_isolated: [isize; 2],
-    pub pawn_backward: [isize; 2],
-    pub pawn_supported: [isize; 2],
-    pub pawn_attack_center: [isize; 2],
-    pub pawn_passed: [[isize; 7]; 2],
-    pub pawn_passed_notblocked: [[isize; 7]; 2],
-    pub knight_supported: [isize; 2],
-    pub knight_outpost_table: [[[isize; 8]; 8]; 2],
-    pub rook_on_open: [isize; 2],
-    pub rook_on_seventh: [isize; 2],
-    pub pawns: [isize; 2],
-    pub knights: [isize; 2],
-    pub knight_value_with_pawns: usize,
-    pub bishops: [isize; 2],
-    pub bishop_bonus: [isize; 2],
-    pub rooks: [isize; 2],
-    pub queens: [isize; 2],
-    pub diagonally_adjacent_squares_withpawns: [[isize; 5]; 2],
-    pub knight_mobility: [[isize; 9]; 2],
-    pub bishop_mobility: [[isize; 14]; 2],
-    pub rook_mobility: [[isize; 15]; 2],
-    pub queen_mobility: [[isize; 28]; 2],
-    pub attackers: [usize; 2],
-    pub attacker_value: [usize; 2],
-    pub psqt_pawn: [[[isize; 8]; 8]; 2],
-    pub psqt_knight: [[[isize; 8]; 8]; 2],
-    pub psqt_bishop: [[[isize; 8]; 8]; 2],
-    pub psqt_king: [[[isize; 8]; 8]; 2],
+    pub tempo_bonus: [i8; 2],
+    pub shielding_pawn_missing: [[i8; 4]; 2],
+    pub shielding_pawn_onopen_missing: [[i8; 4]; 2],
+    pub pawn_doubled: [i8; 2],
+    pub pawn_isolated: [i8; 2],
+    pub pawn_backward: [i8; 2],
+    pub pawn_supported: [i8; 2],
+    pub pawn_attack_center: [i8; 2],
+    pub pawn_passed: [[i8; 7]; 2],
+    pub pawn_passed_notblocked: [[i8; 7]; 2],
+    pub knight_supported: [i8; 2],
+    pub knight_outpost_table: [[[i8; 8]; 8]; 2],
+    pub rook_on_open: [i8; 2],
+    pub rook_on_seventh: [i8; 2],
+    pub pawns: [i8; 2],
+    pub knights: [i8; 2],
+    pub knight_value_with_pawns: u8,
+    pub bishops: [i8; 2],
+    pub bishop_bonus: [i8; 2],
+    pub rooks: [i8; 2],
+    pub queens: [i8; 2],
+    pub diagonally_adjacent_squares_withpawns: [[i8; 5]; 2],
+    pub knight_mobility: [[i8; 9]; 2],
+    pub bishop_mobility: [[i8; 14]; 2],
+    pub rook_mobility: [[i8; 15]; 2],
+    pub queen_mobility: [[i8; 28]; 2],
+    pub attackers: [u8; 2],
+    pub attacker_value: [u16; 2],
+    pub psqt_pawn: [[[i8; 8]; 8]; 2],
+    pub psqt_knight: [[[i8; 8]; 8]; 2],
+    pub psqt_bishop: [[[i8; 8]; 8]; 2],
+    pub psqt_king: [[[i8; 8]; 8]; 2],
     pub phase: f64,
 }
 impl Trace {
@@ -135,10 +135,10 @@ impl Trace {
         res.1 += (self.pawns[WHITE] - self.pawns[BLACK]) as f64 * params.pawn_piece_value[EG];
         res.0 += (self.knights[WHITE] - self.knights[BLACK]) as f64
             * (params.knight_piece_value[MG]
-                + params.knight_value_with_pawns[self.knight_value_with_pawns]);
+                + params.knight_value_with_pawns[self.knight_value_with_pawns as usize]);
         res.1 += (self.knights[WHITE] - self.knights[BLACK]) as f64
             * (params.knight_piece_value[EG]
-                + params.knight_value_with_pawns[self.knight_value_with_pawns]);
+                + params.knight_value_with_pawns[self.knight_value_with_pawns as usize]);
         res.0 += (self.bishops[WHITE] - self.bishops[BLACK]) as f64 * params.bishop_piece_value[MG];
         res.1 += (self.bishops[WHITE] - self.bishops[BLACK]) as f64 * params.bishop_piece_value[EG];
         res.0 +=
@@ -181,15 +181,15 @@ impl Trace {
             res.1 += (self.queen_mobility[WHITE][i] - self.queen_mobility[BLACK][i]) as f64
                 * params.queen_mobility[EG][i];
         }
-        res.0 += (params.attack_weight[self.attackers[WHITE]]
-            * params.safety_table.safety_table[self.attacker_value[WHITE]]
-            - params.attack_weight[self.attackers[BLACK]]
-                * params.safety_table.safety_table[self.attacker_value[BLACK]])
+        res.0 += (params.attack_weight[self.attackers[WHITE] as usize]
+            * params.safety_table.safety_table[self.attacker_value[WHITE] as usize]
+            - params.attack_weight[self.attackers[BLACK] as usize]
+                * params.safety_table.safety_table[self.attacker_value[BLACK] as usize])
             / 100.0;
-        res.1 += (params.attack_weight[self.attackers[WHITE]]
-            * params.safety_table.safety_table[self.attacker_value[WHITE]]
-            - params.attack_weight[self.attackers[BLACK]]
-                * params.safety_table.safety_table[self.attacker_value[BLACK]])
+        res.1 += (params.attack_weight[self.attackers[WHITE] as usize]
+            * params.safety_table.safety_table[self.attacker_value[WHITE] as usize]
+            - params.attack_weight[self.attackers[BLACK] as usize]
+                * params.safety_table.safety_table[self.attacker_value[BLACK] as usize])
             / 100.0;
         (res.0 * self.phase + res.1 * (128.0 - self.phase)) / 128.0
     }

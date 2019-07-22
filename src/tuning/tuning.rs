@@ -4,6 +4,7 @@ extern crate rand;
 use core::evaluation::eval_game_state;
 use core::tuning::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
 use core::tuning::parameters::Parameters;
+use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
 pub const POSITION_FILE: &str = "D:/FenCollection/Real/all_positions_qsearch.txt";
@@ -39,19 +40,21 @@ pub fn main() {
     params.write_to_file(&format!("{}tune.txt", PARAM_FILE));
 }
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
-    let mut res: Vec<TexelState> = Vec::with_capacity(labelledstates.len());
+    let mut res: Vec<TexelState> = Vec::with_capacity(7881908);
     for state in labelledstates {
         let eval = eval_game_state(&state.game_state);
         res.push(TexelState {
-            lgs: state,
+            label: state.label,
             eval: eval.final_eval as f64,
+            trace: eval.trace,
         });
     }
     res
 }
 pub struct TexelState {
-    pub lgs: LabelledGameState,
+    pub label: f64,
     pub eval: f64,
+    pub trace: Trace,
 }
 pub struct Tuner {
     pub k: f64,
@@ -64,7 +67,7 @@ pub fn shuffle_positions(tuner: &mut Tuner) {
 pub fn average_evaluation_error(tuner: &Tuner) -> f64 {
     let mut res = 0.;
     for pos in &tuner.positions {
-        res += (pos.lgs.label - sigmoid(tuner.k, pos.eval)).powf(2.0);
+        res += (pos.label - sigmoid(tuner.k, pos.eval)).powf(2.0);
     }
     res / tuner.positions.len() as f64
 }
@@ -89,7 +92,7 @@ pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f64 {
             let mut dedk = 0.;
             for pos in &tuner.positions[from..to] {
                 let eval = pos.eval;
-                dedk += (pos.lgs.label - sigmoid(tuner.k, eval)) * dsigmoiddk(tuner.k, eval);
+                dedk += (pos.label - sigmoid(tuner.k, eval)) * dsigmoiddk(tuner.k, eval);
             }
             dedk *= -2.0 / (to - from) as f64;
             tuner.k += -lr * dedk;

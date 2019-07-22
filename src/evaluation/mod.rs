@@ -248,7 +248,7 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16
     eg_res += KNIGHT_SUPPORTED_BY_PAWN_EG * supported_knights_amount;
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.knight_supported[side] = supported_knights_amount as isize;
+        _eval.trace.knight_supported[side] = supported_knights_amount as i8;
     }
 
     let (mut outpost_mg, mut outpost_eg, mut _outposts) = (0i16, 0i16, 0);
@@ -410,8 +410,8 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
     }
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.rook_on_open[side] = rooks_onopen as isize;
-        _eval.trace.rook_on_seventh[side] = rooks_onseventh as isize;
+        _eval.trace.rook_on_open[side] = rooks_onopen as i8;
+        _eval.trace.rook_on_seventh[side] = rooks_onseventh as i8;
     }
     //Queens
     let mut queen_attackers: i16 = 0;
@@ -448,13 +448,12 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.attackers[side] =
-            (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7)
-                as usize;
+            (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
         _eval.trace.attacker_value[side] = (knight_attacker_values
             + bishop_attacker_values
             + rook_attacker_values
             + queen_attacker_values)
-            .min(99) as usize;
+            .min(99) as u16;
     }
     let mg_res = mk_mg
         + mb_mg
@@ -671,11 +670,11 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         + center_attack_pawns * PAWN_ATTACK_CENTER_EG;
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.pawn_doubled[side] = doubled_pawns as isize;
-        _eval.trace.pawn_isolated[side] = isolated_pawns as isize;
-        _eval.trace.pawn_backward[side] = backward_pawns as isize;
-        _eval.trace.pawn_supported[side] = supported_pawns as isize;
-        _eval.trace.pawn_attack_center[side] = center_attack_pawns as isize;
+        _eval.trace.pawn_doubled[side] = doubled_pawns as i8;
+        _eval.trace.pawn_isolated[side] = isolated_pawns as i8;
+        _eval.trace.pawn_backward[side] = backward_pawns as i8;
+        _eval.trace.pawn_supported[side] = supported_pawns as i8;
+        _eval.trace.pawn_attack_center[side] = center_attack_pawns as i8;
     }
     //Passers
     let mut passed_pawns: u64 = g.pieces[PAWN][side]
@@ -796,15 +795,15 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
 
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.pawns[side] = my_pawns as isize;
-        _eval.trace.knight_value_with_pawns = pawns_on_board;
-        _eval.trace.knights[side] = my_knights as isize;
-        _eval.trace.bishops[side] = my_bishops as isize;
+        _eval.trace.pawns[side] = my_pawns as i8;
+        _eval.trace.knight_value_with_pawns = pawns_on_board as u8;
+        _eval.trace.knights[side] = my_knights as i8;
+        _eval.trace.bishops[side] = my_bishops as i8;
         if my_bishops > 1 {
             _eval.trace.bishop_bonus[side] = 1;
         }
-        _eval.trace.rooks[side] = my_rooks as isize;
-        _eval.trace.queens[side] = my_queens as isize;
+        _eval.trace.rooks[side] = my_rooks as i8;
+        _eval.trace.queens[side] = my_queens as i8;
     }
     #[cfg(feature = "display-eval")]
     {
