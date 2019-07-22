@@ -234,9 +234,8 @@ impl Trace {
 #[cfg(test)]
 mod tests {
     use super::super::parameters::Parameters;
-    use super::Trace;
     use crate::board_representation::game_state::GameState;
-    use crate::evaluation::{eval_game_state, EvaluationResult};
+    use crate::evaluation::eval_game_state;
     #[test]
     #[ignore]
     pub fn traceeval() {
