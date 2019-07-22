@@ -3,15 +3,12 @@ extern crate rand;
 
 use core::evaluation::eval_game_state;
 use core::tuning::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
-use parameters::Parameters;
+use core::tuning::parameters::Parameters;
 use rand::{seq::SliceRandom, thread_rng};
-pub mod parameters;
 
 pub const POSITION_FILE: &str = "D:/FenCollection/Real/all_positions_qsearch.txt";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
-pub const MG: usize = 0;
-pub const EG: usize = 1;
 const BATCH_SIZE: usize = 8196;
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
@@ -44,8 +41,11 @@ pub fn main() {
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(labelledstates.len());
     for state in labelledstates {
-        let eval = eval_game_state(&state.game_state).final_eval as f64;
-        res.push(TexelState { lgs: state, eval });
+        let eval = eval_game_state(&state.game_state);
+        res.push(TexelState {
+            lgs: state,
+            eval: eval.final_eval as f64,
+        });
     }
     res
 }

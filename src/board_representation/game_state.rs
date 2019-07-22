@@ -414,8 +414,14 @@ impl GameState {
             castle_black_queenside,
             en_passant,
         );
-        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces_arr);
-        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces_arr);
+        let mut _eval = crate::evaluation::EvaluationResult {
+            phase: 0.,
+            final_eval: 0,
+            #[cfg(feature = "texel-tuning")]
+            trace: crate::tuning::trace::Trace::default(),
+        };
+        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces_arr, &mut _eval);
+        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces_arr, &mut _eval);
         GameState {
             color_to_move,
             pieces: pieces_arr,
@@ -575,8 +581,14 @@ impl GameState {
             [0x8u64, 0x800000000000000u64],
             [0x10u64, 0x1000000000000000u64],
         ];
-        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces);
-        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces);
+        let mut _eval = crate::evaluation::EvaluationResult {
+            phase: 0.,
+            final_eval: 0,
+            #[cfg(feature = "texel-tuning")]
+            trace: crate::tuning::trace::Trace::default(),
+        };
+        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces, &mut _eval);
+        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces, &mut _eval);
         GameState {
             color_to_move,
             pieces,

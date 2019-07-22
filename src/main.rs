@@ -792,10 +792,16 @@ mod tests {
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
         let mut movelist = movegen::MoveList::new();
+        let mut _eval = core::evaluation::EvaluationResult {
+            phase: 0.,
+            final_eval: 0,
+            #[cfg(feature = "texel-tuning")]
+            trace: core::tuning::trace::Trace::default(),
+        };
         for _i in 0..100000 {
             let mut g = GameState::standard();
-            let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces);
-            let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces);
+            let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces, &mut _eval);
+            let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces, &mut _eval);
             assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
             assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             for _j in 0..200 {
@@ -809,8 +815,8 @@ mod tests {
                         .as_ref()
                         .unwrap(),
                 );
-                let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces);
-                let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces);
+                let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces, &mut _eval);
+                let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces, &mut _eval);
                 assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
                 assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             }

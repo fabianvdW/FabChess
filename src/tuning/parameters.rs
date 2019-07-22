@@ -1,5 +1,5 @@
-use super::{EG, MG};
-use core::evaluation::params::*;
+use crate::evaluation::params::*;
+use crate::evaluation::{EG, MG};
 use std::fmt::{Debug, Formatter, Result};
 use std::fs;
 #[derive(Clone)]

@@ -52,7 +52,7 @@ mod tests {
         b.iter(|| {
             let mut sum = 0;
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
-                sum += eval_game_state(&states[i]).final_eval as usize;
+                sum += eval_game_state(&states[i]).final_eval as isize;
             }
             return sum;
         });

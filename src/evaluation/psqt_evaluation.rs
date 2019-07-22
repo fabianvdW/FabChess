@@ -1,11 +1,12 @@
 use super::params::*;
+use super::EvaluationResult;
 use crate::board_representation::game_state::{
     PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, WHITE,
 };
 #[cfg(feature = "display-eval")]
 use crate::logging::log;
 
-pub fn psqt(white: bool, pieces: &[[u64; 2]; 6]) -> (i16, i16) {
+pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> (i16, i16) {
     let (mut pawn_mg, mut pawn_eg) = (0i16, 0i16);
     let (mut knight_mg, mut knight_eg) = (0i16, 0i16);
     let (mut bishop_mg, mut bishop_eg) = (0i16, 0i16);
@@ -21,6 +22,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6]) -> (i16, i16) {
         }
         pawn_mg += PSQT_PAWN_MG[idx / 8][idx % 8];
         pawn_eg += PSQT_PAWN_EG[idx / 8][idx % 8];
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.psqt_pawn[side][idx / 8][idx % 8] += 1;
+        }
     }
 
     let mut knights = pieces[KNIGHT][side];
@@ -32,6 +37,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6]) -> (i16, i16) {
         }
         knight_mg += PSQT_KNIGHT_MG[idx / 8][idx % 8];
         knight_eg += PSQT_KNIGHT_EG[idx / 8][idx % 8];
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.psqt_knight[side][idx / 8][idx % 8] += 1;
+        }
     }
 
     let mut bishops = pieces[BISHOP][side];
@@ -43,6 +52,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6]) -> (i16, i16) {
         }
         bishop_mg += PSQT_BISHOP_MG[idx / 8][idx % 8];
         bishop_eg += PSQT_BISHOP_EG[idx / 8][idx % 8];
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.psqt_knight[side][idx / 8][idx % 8] += 1;
+        }
     }
 
     let mut king_idx = pieces[KING][side].trailing_zeros() as usize;
@@ -51,6 +64,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6]) -> (i16, i16) {
     }
     king_mg = PSQT_KING_MG[king_idx / 8][king_idx % 8];
     king_eg = PSQT_KING_EG[king_idx / 8][king_idx % 8];
+    #[cfg(feature = "texel-tuning")]
+    {
+        _eval.trace.psqt_king[side][king_idx / 8][king_idx % 8] += 1;
+    }
     let mg_sum = pawn_mg + knight_mg + bishop_mg + king_mg;
     let eg_sum = pawn_eg + knight_eg + bishop_eg + king_eg;
     #[cfg(feature = "display-eval")]
