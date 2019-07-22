@@ -54,7 +54,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         bishop_eg += PSQT_BISHOP_EG[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.psqt_knight[side][idx / 8][idx % 8] += 1;
+            _eval.trace.psqt_bishop[side][idx / 8][idx % 8] += 1;
         }
     }
 
