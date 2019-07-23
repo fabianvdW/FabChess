@@ -441,9 +441,9 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         + bishop_attacker_values
         + rook_attacker_values
         + queen_attacker_values)
-        .min(99) as usize]
+        .min(99) as usize] as isize
         * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-            .min(7) as usize]) as f64
+            .min(7) as usize] as isize) as f64
         / 100.0) as i16;
     #[cfg(feature = "texel-tuning")]
     {
