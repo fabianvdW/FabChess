@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter, Result};
 use std::fs;
 pub enum FileFormatSupported {
     OwnEncoding,
+    EPD,
     PGN,
 }
 pub struct LabelledGameState {
@@ -98,6 +99,29 @@ pub fn load_positions(
                     label: game_result,
                 });
             }
+        }
+        return;
+    } else if let FileFormatSupported::EPD = file_format {
+        let positions =
+            fs::read_to_string(from_file).expect("Unable to read benchmarking positions");
+        let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
+        for line in new_linesplit {
+            if !line.contains(";") {
+                break;
+            }
+            let split = line.split(" ").collect::<Vec<&str>>();
+            let fen = &format!("{} {} {} {}", split[0], split[1], split[2], split[3]);
+            let game_result = if line.contains("1-0") {
+                1.0
+            } else if line.contains("1/2-1/2") {
+                0.5
+            } else {
+                0.0
+            };
+            buf.push(LabelledGameState {
+                game_state: GameState::from_fen(fen),
+                label: game_result,
+            });
         }
         return;
     }

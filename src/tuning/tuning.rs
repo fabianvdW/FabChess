@@ -2,14 +2,17 @@ extern crate core;
 extern crate rand;
 
 use core::board_representation::game_state::{BLACK, WHITE};
+#[cfg(feature = "texel-tuning")]
 use core::evaluation::eval_game_state;
 use core::evaluation::{EG, MG};
+#[cfg(feature = "texel-tuning")]
 use core::tuning::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
 use core::tuning::parameters::Parameters;
 use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/FenCollection/Real/all_positions_qsearch.txt";
+//pub const POSITION_FILE: &str = "D:/FenCollection/Real/all_positions_qsearch.txt";
+pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
 const BATCH_SIZE: usize = 8196;
@@ -17,32 +20,42 @@ pub fn main() {
     if !cfg!(feature = "texel-tuning") {
         panic!("Feature texel-tuning has to be enabled");
     }
-    //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
-    let mut stats = Statistics::new();
-    let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8000000);
-    load_positions(
-        POSITION_FILE,
-        FileFormatSupported::OwnEncoding,
-        &mut positions,
-        &mut stats,
-    );
-    println!(
-        "Loaded file {} with {} positions!",
-        POSITION_FILE,
-        positions.len()
-    );
-    let mut tuner = Tuner {
-        k: 0.624,
-        positions: init_texel_states(positions),
-        params: Parameters::default(),
-    };
-    println!("Start tuning for k");
-    minimize_evaluation_error_fork(&mut tuner);
-    println!("Optimal K: {}", tuner.k);
-    texel_tuning(&mut tuner);
+    #[cfg(feature = "texel-tuning")]
+    {
+        //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
+        let mut stats = Statistics::new();
+        let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8000000);
+        load_positions(
+            POSITION_FILE,
+            if POSITION_FILE.ends_with(".txt") {
+                FileFormatSupported::OwnEncoding
+            } else if POSITION_FILE.ends_with("epd") {
+                FileFormatSupported::EPD
+            } else {
+                panic!("Invalid position file encoding!")
+            },
+            &mut positions,
+            &mut stats,
+        );
+        println!(
+            "Loaded file {} with {} positions!",
+            POSITION_FILE,
+            positions.len()
+        );
+        let mut tuner = Tuner {
+            k: 0.96,
+            positions: init_texel_states(positions),
+            params: Parameters::default(),
+        };
+        println!("Start tuning for k");
+        minimize_evaluation_error_fork(&mut tuner);
+        println!("Optimal K: {}", tuner.k);
+        texel_tuning(&mut tuner);
+    }
     //params.write_to_file(&format!("{}tune.txt", PARAM_FILE));
 }
 
+#[cfg(feature = "texel-tuning")]
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(7881908);
     for state in labelledstates {
@@ -268,7 +281,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = 10.0;
+    let mut lr = 23.0;
     loop {
         epoch += 1;
         shuffle_positions(tuner);
