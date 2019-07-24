@@ -48,7 +48,7 @@ pub fn main() {
             params: Parameters::default(),
         };
         println!("Start tuning for k");
-        minimize_evaluation_error_fork(&mut tuner);
+        //minimize_evaluation_error_fork(&mut tuner);
         println!("Optimal K: {}", tuner.k);
         texel_tuning(&mut tuner);
     }
@@ -281,7 +281,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = 23.0;
+    let mut lr = 200.0;
     loop {
         epoch += 1;
         shuffle_positions(tuner);
