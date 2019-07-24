@@ -25,7 +25,7 @@ pub enum TimeControl {
 impl TimeControl {
     pub fn time_over(&self, time_spent: u64, tc_information: &TimeControlInformation) -> bool {
         if let TimeControl::Incremental(mytime, myinc) = self {
-            if time_spent > mytime - 2 * MOVE_OVERHEAD {
+            if time_spent as isize > *mytime as isize - 2 * MOVE_OVERHEAD as isize {
                 return true;
             }
             let normal_time = (*mytime as f64 / 30.0) as u64 + myinc - MOVE_OVERHEAD;
@@ -43,7 +43,7 @@ impl TimeControl {
         } else if let TimeControl::Infinite = self {
             return false;
         } else if let TimeControl::Tournament(mytime, myinc, movestogo) = self {
-            if time_spent > mytime - MOVE_OVERHEAD {
+            if time_spent as isize > *mytime as isize - MOVE_OVERHEAD as isize {
                 return true;
             }
             let normal_time = (*mytime as f64 / *movestogo as f64) as u64 + myinc - MOVE_OVERHEAD;
