@@ -11,10 +11,9 @@ use core::tuning::parameters::Parameters;
 use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
-//pub const POSITION_FILE: &str = "D:/FenCollection/Real/all_positions_qsearch.txt";
-pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
+pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
+//pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
-//pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
 const BATCH_SIZE: usize = 8196;
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
@@ -48,7 +47,7 @@ pub fn main() {
             params: Parameters::default(),
         };
         println!("Start tuning for k");
-        //minimize_evaluation_error_fork(&mut tuner);
+        minimize_evaluation_error_fork(&mut tuner);
         println!("Optimal K: {}", tuner.k);
         texel_tuning(&mut tuner);
     }
@@ -281,7 +280,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = 200.0;
+    let mut lr = 10.0;
     loop {
         epoch += 1;
         shuffle_positions(tuner);
