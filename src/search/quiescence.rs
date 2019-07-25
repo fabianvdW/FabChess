@@ -6,8 +6,8 @@ use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
 use super::super::move_generation::movegen::{AdditionalGameStateInformation, MoveList};
 use super::alphabeta::{
-    check_end_condition, check_for_draw, clear_pv, get_next_gm, leaf_score, MAX_SEARCH_DEPTH,
-    STANDARD_SCORE,
+    check_end_condition, check_for_draw, clear_pv, get_next_gm, in_check, leaf_score,
+    MAX_SEARCH_DEPTH, STANDARD_SCORE,
 };
 use super::cache::CacheEntry;
 use super::search::{Search, SearchUtils};
@@ -34,6 +34,8 @@ pub fn q_search(
     if su.search.stop {
         return STANDARD_SCORE;
     }
+    let incheck = in_check(game_state);
+
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
         return eval_game_state(&game_state).final_eval * color;
@@ -46,17 +48,17 @@ pub fn q_search(
     let static_evaluation = eval_game_state(&game_state);
     //Stand-Pat pruning
     let stand_pat = static_evaluation.final_eval * color;
-    if stand_pat >= beta {
+    if !incheck && stand_pat >= beta {
         return stand_pat;
     }
-    if stand_pat > alpha {
+    if !incheck && stand_pat > alpha {
         alpha = stand_pat;
     }
 
     //Apply Big Delta Pruning
     let diff = alpha - stand_pat - DELTA_PRUNING;
     //Missing stats
-    if diff > 0 && best_move_value(game_state) < diff {
+    if !incheck && diff > 0 && best_move_value(game_state) < diff {
         return stand_pat;
     }
 
@@ -101,7 +103,6 @@ pub fn q_search(
     }
 
     let mut hash_move_counter = 0;
-    let mut incheck = false;
     let mut has_legal_move = false;
     {
         if has_ttmove {
@@ -109,7 +110,7 @@ pub fn q_search(
         }
     }
     su.history.push(game_state.hash, game_state.half_moves == 0);
-    let mut current_max_score = stand_pat;
+    let mut current_max_score = if incheck { STANDARD_SCORE } else { stand_pat };
     let mut has_pv = false;
 
     let mut index = 0;
@@ -129,8 +130,8 @@ pub fn q_search(
                 static_evaluation.phase,
                 stand_pat,
                 alpha,
+                incheck,
             );
-            incheck = agsi.stm_incheck;
             has_legal_move = agsi.stm_haslegalmove;
             available_captures_in_movelist = mvs;
             continue;
@@ -221,8 +222,9 @@ pub fn make_and_evaluate_moves_qsearch(
     phase: f64,
     stand_pat: i16,
     alpha: i16,
+    incheck: bool,
 ) -> (AdditionalGameStateInformation, usize) {
-    let agsi = movegen::generate_moves(&game_state, true, move_list, current_depth);
+    let agsi = movegen::generate_moves(&game_state, !incheck, move_list, current_depth);
     let (mut mv_index, mut capture_index) = (0, 0);
     while mv_index < move_list.counter[current_depth] {
         let mv: &GameMove = move_list.move_list[current_depth][mv_index]
@@ -232,19 +234,30 @@ pub fn make_and_evaluate_moves_qsearch(
             move_list.graded_moves[current_depth][capture_index] =
                 Some(GradedMove::new(mv_index, 100.0));
         } else {
-            if !passes_delta_pruning(mv, phase, stand_pat, alpha) {
+            if !incheck && !passes_delta_pruning(mv, phase, stand_pat, alpha) {
                 search.search_statistics.add_q_delta_cutoff();
                 mv_index += 1;
                 continue;
             }
-            let score = see(&game_state, mv, true, &mut search.see_buffer);
-            if score < 0 {
-                search.search_statistics.add_q_see_cutoff();
-                mv_index += 1;
-                continue;
+            if !incheck || incheck && capture_index > 0 && is_capture(mv) {
+                let score = see(&game_state, mv, true, &mut search.see_buffer);
+                if score < 0 {
+                    search.search_statistics.add_q_see_cutoff();
+                    mv_index += 1;
+                    continue;
+                }
+                move_list.graded_moves[current_depth][capture_index] =
+                    Some(GradedMove::new(mv_index, score as f64));
+            } else {
+                if !incheck {
+                    panic!("Not in check but also not capture");
+                }
+                let score = search.hh_score[mv.from][mv.to] as f64
+                    / search.bf_score[mv.from][mv.to] as f64
+                    / 1000.0;
+                move_list.graded_moves[current_depth][capture_index] =
+                    Some(GradedMove::new(mv_index, score));
             }
-            move_list.graded_moves[current_depth][capture_index] =
-                Some(GradedMove::new(mv_index, score as f64));
         }
         mv_index += 1;
         capture_index += 1;

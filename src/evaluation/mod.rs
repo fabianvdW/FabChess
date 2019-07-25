@@ -159,7 +159,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     {
         let tempo_mg;
         let tempo_eg;
-        if g.color_to_move == 0 {
+        if g.color_to_move == WHITE {
             tempo_mg = TEMPO_BONUS_MG;
             tempo_eg = TEMPO_BONUS_EG;
         } else {
