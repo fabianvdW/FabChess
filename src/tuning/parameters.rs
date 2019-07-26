@@ -506,74 +506,75 @@ impl Parameters {
         }
     }
 
-    pub fn apply_gradient(&mut self, gradient: &Parameters) {
+    pub fn apply_gradient(&mut self, gradient: &Parameters, norm: f64) {
         for i in 0..2 {
             for j in 0..4 {
-                self.shielding_pawn_missing[i][j] += gradient.shielding_pawn_missing[i][j];
+                self.shielding_pawn_missing[i][j] += gradient.shielding_pawn_missing[i][j] / norm;
                 self.shielding_pawn_onopen_missing[i][j] +=
-                    gradient.shielding_pawn_onopen_missing[i][j];
+                    gradient.shielding_pawn_onopen_missing[i][j] / norm;
             }
         }
         for i in 0..2 {
-            self.tempo_bonus[i] += gradient.tempo_bonus[i];
-            self.pawn_doubled[i] += gradient.pawn_doubled[i];
-            self.pawn_isolated[i] += gradient.pawn_isolated[i];
-            self.pawn_backward[i] += gradient.pawn_backward[i];
-            self.pawn_supported[i] += gradient.pawn_supported[i];
-            self.pawn_attack_center[i] += gradient.pawn_attack_center[i];
-            self.knight_supported[i] += gradient.knight_supported[i];
-            self.rook_on_open[i] += gradient.rook_on_open[i];
-            self.rook_on_seventh[i] += gradient.rook_on_seventh[i];
-            self.pawn_piece_value[i] += gradient.pawn_piece_value[i];
-            self.knight_piece_value[i] += gradient.knight_piece_value[i];
-            self.bishop_piece_value[i] += gradient.bishop_piece_value[i];
-            self.bishop_pair[i] += gradient.bishop_pair[i];
-            self.rook_piece_value[i] += gradient.rook_piece_value[i];
-            self.queen_piece_value[i] += gradient.queen_piece_value[i];
+            self.tempo_bonus[i] += gradient.tempo_bonus[i] / norm;
+            self.pawn_doubled[i] += gradient.pawn_doubled[i] / norm;
+            self.pawn_isolated[i] += gradient.pawn_isolated[i] / norm;
+            self.pawn_backward[i] += gradient.pawn_backward[i] / norm;
+            self.pawn_supported[i] += gradient.pawn_supported[i] / norm;
+            self.pawn_attack_center[i] += gradient.pawn_attack_center[i] / norm;
+            self.knight_supported[i] += gradient.knight_supported[i] / norm;
+            self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
+            self.rook_on_seventh[i] += gradient.rook_on_seventh[i] / norm;
+            self.pawn_piece_value[i] += gradient.pawn_piece_value[i] / norm;
+            self.knight_piece_value[i] += gradient.knight_piece_value[i] / norm;
+            self.bishop_piece_value[i] += gradient.bishop_piece_value[i] / norm;
+            self.bishop_pair[i] += gradient.bishop_pair[i] / norm;
+            self.rook_piece_value[i] += gradient.rook_piece_value[i] / norm;
+            self.queen_piece_value[i] += gradient.queen_piece_value[i] / norm;
         }
         for i in 0..2 {
             for j in 0..7 {
-                self.pawn_passed[i][j] += gradient.pawn_passed[i][j];
-                self.pawn_passed_notblocked[i][j] += gradient.pawn_passed_notblocked[i][j];
+                self.pawn_passed[i][j] += gradient.pawn_passed[i][j] / norm;
+                self.pawn_passed_notblocked[i][j] += gradient.pawn_passed_notblocked[i][j] / norm;
             }
         }
         for i in 0..2 {
             for j in 0..8 {
                 for k in 0..8 {
-                    self.knight_outpost_table[i][j][k] += gradient.knight_outpost_table[i][j][k];
-                    self.psqt_pawn[i][j][k] += gradient.psqt_pawn[i][j][k];
-                    self.psqt_knight[i][j][k] += gradient.psqt_knight[i][j][k];
-                    self.psqt_bishop[i][j][k] += gradient.psqt_bishop[i][j][k];
-                    self.psqt_king[i][j][k] += gradient.psqt_king[i][j][k];
+                    self.knight_outpost_table[i][j][k] +=
+                        gradient.knight_outpost_table[i][j][k] / norm;
+                    self.psqt_pawn[i][j][k] += gradient.psqt_pawn[i][j][k] / norm;
+                    self.psqt_knight[i][j][k] += gradient.psqt_knight[i][j][k] / norm;
+                    self.psqt_bishop[i][j][k] += gradient.psqt_bishop[i][j][k] / norm;
+                    self.psqt_king[i][j][k] += gradient.psqt_king[i][j][k] / norm;
                 }
             }
         }
         for i in 0..17 {
-            self.knight_value_with_pawns[i] += gradient.knight_value_with_pawns[i];
+            self.knight_value_with_pawns[i] += gradient.knight_value_with_pawns[i] / norm;
         }
         for i in 0..2 {
             for j in 0..5 {
                 self.diagonally_adjacent_squares_withpawns[i][j] +=
-                    gradient.diagonally_adjacent_squares_withpawns[i][j];
+                    gradient.diagonally_adjacent_squares_withpawns[i][j] / norm;
             }
             for j in 0..9 {
-                self.knight_mobility[i][j] += gradient.knight_mobility[i][j];
+                self.knight_mobility[i][j] += gradient.knight_mobility[i][j] / norm;
             }
             for j in 0..14 {
-                self.bishop_mobility[i][j] += gradient.bishop_mobility[i][j];
+                self.bishop_mobility[i][j] += gradient.bishop_mobility[i][j] / norm;
             }
             for j in 0..15 {
-                self.rook_mobility[i][j] += gradient.rook_mobility[i][j];
+                self.rook_mobility[i][j] += gradient.rook_mobility[i][j] / norm;
             }
             for j in 0..28 {
-                self.queen_mobility[i][j] += gradient.queen_mobility[i][j];
+                self.queen_mobility[i][j] += gradient.queen_mobility[i][j] / norm;
             }
         }
         for i in 0..8 {
-            self.attack_weight[i] += gradient.attack_weight[i];
+            self.attack_weight[i] += gradient.attack_weight[i] / norm;
         }
         for i in 0..100 {
-            self.safety_table.safety_table[i] += gradient.safety_table.safety_table[i];
+            self.safety_table.safety_table[i] += gradient.safety_table.safety_table[i] / norm;
         }
     }
 }

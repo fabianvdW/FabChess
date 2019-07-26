@@ -11,8 +11,8 @@ use core::tuning::parameters::Parameters;
 use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
-//pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
+//pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
+pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 const BATCH_SIZE: usize = 8196;
 pub fn main() {
@@ -47,7 +47,7 @@ pub fn main() {
             params: Parameters::default(),
         };
         println!("Start tuning for k");
-        minimize_evaluation_error_fork(&mut tuner);
+        //minimize_evaluation_error_fork(&mut tuner);
         println!("Optimal K: {}", tuner.k);
         texel_tuning(&mut tuner);
     }
@@ -85,7 +85,7 @@ pub fn update_evaluations(tuner: &mut Tuner) {
 pub fn shuffle_positions(tuner: &mut Tuner) {
     tuner.positions.shuffle(&mut thread_rng());
 }
-pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) -> Parameters {
+pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) -> (Parameters, f64) {
     let mut gradient = Parameters::zero();
     let multiplier: f64 = 2. * lr / (to - from) as f64;
     //let g = tuner.k * 10f64.ln() / 400.0;
@@ -94,7 +94,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         pos.eval = pos.trace.evaluate(&tuner.params);
         //Step 2. Calculate first half of gradient
         let s = sigmoid(tuner.k, pos.eval);
-        let start_of_gradient = multiplier * (pos.label - s) * s * (1. - s);
+        let start_of_gradient = (pos.label - s) * s * (1. - s);
         let devaldmg = pos.trace.phase / 128.0;
         let devaldeg = 1. - pos.trace.phase / 128.0;
         //Tempo-bonus
@@ -274,13 +274,74 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             start_of_gradient / 100.0
                 * tuner.params.attack_weight[pos.trace.attackers[BLACK] as usize];
     }
-    gradient
+    //Norm gradient
+    let mut norm: f64 = 0.;
+    for i in 0..2 {
+        norm += gradient.tempo_bonus[i].powf(2.);
+        for j in 0..4 {
+            norm += gradient.shielding_pawn_missing[i][j].powf(2.);
+            norm += gradient.shielding_pawn_onopen_missing[i][j].powf(2.);
+        }
+        norm += gradient.pawn_doubled[i].powf(2.);
+        norm += gradient.pawn_isolated[i].powf(2.);
+        norm += gradient.pawn_backward[i].powf(2.);
+        norm += gradient.pawn_supported[i].powf(2.);
+        norm += gradient.pawn_attack_center[i].powf(2.);
+        for j in 0..7 {
+            norm += gradient.pawn_passed[i][j].powf(2.);
+            norm += gradient.pawn_passed_notblocked[i][j].powf(2.);
+        }
+        norm += gradient.knight_supported[i].powf(2.);
+        for j in 0..8 {
+            for k in 0..8 {
+                norm += gradient.knight_outpost_table[i][j][k].powf(2.);
+                norm += gradient.psqt_pawn[i][j][k].powf(2.);
+                norm += gradient.psqt_knight[i][j][k].powf(2.);
+                norm += gradient.psqt_bishop[i][j][k].powf(2.);
+                norm += gradient.psqt_king[i][j][k].powf(2.);
+            }
+        }
+        norm += gradient.rook_on_open[i].powf(2.);
+        norm += gradient.rook_on_seventh[i].powf(2.);
+        norm += gradient.pawn_piece_value[i].powf(2.);
+        norm += gradient.knight_piece_value[i].powf(2.);
+        norm += gradient.bishop_piece_value[i].powf(2.);
+        norm += gradient.bishop_pair[i].powf(2.);
+        norm += gradient.rook_piece_value[i].powf(2.);
+        norm += gradient.queen_piece_value[i].powf(2.);
+        for j in 0..5 {
+            norm += gradient.diagonally_adjacent_squares_withpawns[i][j].powf(2.);
+        }
+        for j in 0..9 {
+            norm += gradient.knight_mobility[i][j].powf(2.);
+        }
+        for j in 0..14 {
+            norm += gradient.bishop_mobility[i][j].powf(2.);
+        }
+        for j in 0..15 {
+            norm += gradient.rook_mobility[i][j].powf(2.);
+        }
+        for j in 0..28 {
+            norm += gradient.queen_mobility[i][j].powf(2.);
+        }
+    }
+    for i in 0..17 {
+        norm += gradient.knight_value_with_pawns[i].powf(2.);
+    }
+    for i in 0..8 {
+        norm += gradient.attack_weight[i].powf(2.);
+    }
+    for i in 0..100 {
+        norm += gradient.safety_table.safety_table[i].powf(2.);
+    }
+    norm = norm.sqrt();
+    (gradient, norm / multiplier)
 }
 pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = 10.0;
+    let mut lr = 10000.0;
     loop {
         epoch += 1;
         shuffle_positions(tuner);
@@ -290,8 +351,8 @@ pub fn texel_tuning(tuner: &mut Tuner) {
             if to > tuner.positions.len() {
                 to = tuner.positions.len();
             }
-            let gradient = calculate_gradient(tuner, from, to, lr);
-            tuner.params.apply_gradient(&gradient);
+            let (gradient, norm) = calculate_gradient(tuner, from, to, lr);
+            tuner.params.apply_gradient(&gradient, norm);
         }
 
         update_evaluations(tuner);
