@@ -17,7 +17,7 @@ pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
     let stop = Arc::new(AtomicBool::new(false));
-    let mut cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
+    let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
     let mut movelist = movegen::MoveList::new();
     let saved_time = Arc::new(AtomicU64::new(0u64));
     let stdin = io::stdin();
@@ -38,8 +38,9 @@ pub fn parse_loop() {
             "setoption" => setoption(),
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                cache = Arc::new(RwLock::new(Cache::new()));
+                (*cache).write().unwrap().clear();
                 saved_time.store(0, Ordering::Relaxed);
+                println!("{}", after.duration_since(now).as_millis());
             }
             "isready" => isready(),
             "position" => {

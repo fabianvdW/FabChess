@@ -233,8 +233,11 @@ impl Trace {
 }
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "texel-tuning")]
     use super::super::parameters::Parameters;
+    #[cfg(feature = "texel-tuning")]
     use crate::board_representation::game_state::GameState;
+    #[cfg(feature = "texel-tuning")]
     use crate::evaluation::eval_game_state;
     #[test]
     #[ignore]
@@ -242,7 +245,9 @@ mod tests {
         if !cfg!(feature = "texel-tuning") {
             panic!("Feature texel-tuning has to be enabled");
         }
-        let positions: &str = "3r1r1k/pb2b3/1p1q3p/1Pnp1pp1/P7/1QN1PN2/5PPP/1R1R1BK1 w - - 0 21
+        #[cfg(feature = "texel-tuning")]
+        {
+            let positions: &str = "3r1r1k/pb2b3/1p1q3p/1Pnp1pp1/P7/1QN1PN2/5PPP/1R1R1BK1 w - - 0 21
 r1q1kr2/1bp1n1np/p7/1p3pp1/3N4/NP2R1P1/3PP1BP/R4QK1 w q - 2 21
 4r1k1/1pqnnp1p/p3b1p1/P3p3/8/1NPB4/2P3PP/R3QR1K w - - 0 21
 r1q1rbk1/pp1n2pp/2p1np2/5N1b/N3PP2/6PP/PPQB2B1/4RRK1 w - - 0 21
@@ -336,10 +341,9 @@ b1r1qrk1/p4ppp/1p1b4/3PN3/2p2B2/4Q3/PP3PPP/R2R2K1 w - - 2 21
 r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
 2rr2k1/1b3ppp/p3p3/1p6/1P1B1Pnq/P2BP3/1Q4PP/3R1RK1 w - - 7 21
 2rqk2r/1p1n1p2/p3p1p1/P2pP2p/1P1NbP2/2P1Q3/4B1PP/R2R2K1 w k - 1 21";
-        let params = Parameters::default();
-        let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
-        #[cfg(feature = "texel-tuning")]
-        {
+
+            let params = Parameters::default();
+            let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
             for line in new_linesplit {
                 let position = GameState::from_fen(line);
                 let evaluation = eval_game_state(&position);

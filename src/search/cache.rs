@@ -16,6 +16,11 @@ impl Cache {
             cache: vec![None; CACHE_ENTRYS],
         }
     }
+    pub fn clear(&mut self) {
+        for i in 0..self.cache.len() {
+            self.cache[i] = None;
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
