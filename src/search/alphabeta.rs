@@ -10,7 +10,7 @@ use super::quiescence::{is_capture, q_search, see};
 use super::search::Search;
 use super::search::SearchUtils;
 use super::GradedMove;
-use crate::evaluation::eval_game_state;
+use crate::evaluation::{calculate_phase_state, eval_game_state};
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -88,6 +88,7 @@ pub fn principal_variation_search(
 
     //Probe TT
     let mut static_evaluation = None;
+    let mut phase = None;
     {
         let ce = &su.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
@@ -133,7 +134,9 @@ pub fn principal_variation_search(
     //Static Null Move Pruning
     if !is_pv_node && !incheck && !is_likelystalemate && depth_left <= STATIC_NULL_MOVE_DEPTH {
         if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state).final_eval);
+            let eval_res = eval_game_state(&game_state);
+            static_evaluation = Some(eval_res.final_eval);
+            phase = Some(eval_res.phase);
         }
         if static_evaluation.unwrap() * color - STATIC_NULL_MOVE_MARGIN * depth_left >= beta {
             //add statistic TODO
@@ -142,34 +145,30 @@ pub fn principal_variation_search(
         }
     }
     //Null Move Forward Pruning
-    if !is_pv_node
-        && !incheck
-        && !is_likelystalemate
-        && (game_state.pieces[1][game_state.color_to_move]
-            | game_state.pieces[2][game_state.color_to_move]
-            | game_state.pieces[3][game_state.color_to_move]
-            | game_state.pieces[4][game_state.color_to_move])
-            != 0u64
-        && depth_left >= NULL_MOVE_PRUNING_DEPTH
-    {
-        if let None = static_evaluation {
-            static_evaluation = Some(eval_game_state(&game_state).final_eval);
+    if !is_pv_node && !incheck && !is_likelystalemate && depth_left >= NULL_MOVE_PRUNING_DEPTH {
+        if let None = phase {
+            phase = Some(calculate_phase_state(game_state));
         }
-        if static_evaluation.unwrap() * color >= beta {
-            let nextgs = make_nullmove(&game_state);
-            let rat = -principal_variation_search(
-                -beta,
-                -beta + 1,
-                (depth_left - 4 - depth_left / 6).max(0),
-                &nextgs,
-                -color,
-                current_depth + 1,
-                su,
-            );
-            if rat >= beta {
-                su.search.search_statistics.add_nm_pruning();
-                su.history.pop();
-                return rat;
+        if phase.unwrap() > 0. {
+            if let None = static_evaluation {
+                static_evaluation = Some(eval_game_state(&game_state).final_eval);
+            }
+            if static_evaluation.unwrap() * color >= beta {
+                let nextgs = make_nullmove(&game_state);
+                let rat = -principal_variation_search(
+                    -beta,
+                    -beta + 1,
+                    (depth_left - 4 - depth_left / 6).max(0),
+                    &nextgs,
+                    -color,
+                    current_depth + 1,
+                    su,
+                );
+                if rat >= beta {
+                    su.search.search_statistics.add_nm_pruning();
+                    su.history.pop();
+                    return rat;
+                }
             }
         }
     }

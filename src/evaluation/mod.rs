@@ -33,16 +33,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = calculate_phase(
-        g.pieces[QUEEN][WHITE],
-        g.pieces[QUEEN][BLACK],
-        g.pieces[KNIGHT][WHITE],
-        g.pieces[KNIGHT][BLACK],
-        g.pieces[BISHOP][WHITE],
-        g.pieces[BISHOP][BLACK],
-        g.pieces[ROOK][WHITE],
-        g.pieces[ROOK][BLACK],
-    );
+    let phase = calculate_phase_state(g);
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
@@ -852,6 +843,18 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     (mg_res, eg_res)
 }
 
+pub fn calculate_phase_state(g: &GameState) -> f64 {
+    calculate_phase(
+        g.pieces[QUEEN][WHITE],
+        g.pieces[QUEEN][BLACK],
+        g.pieces[KNIGHT][WHITE],
+        g.pieces[KNIGHT][BLACK],
+        g.pieces[BISHOP][WHITE],
+        g.pieces[BISHOP][BLACK],
+        g.pieces[ROOK][WHITE],
+        g.pieces[ROOK][BLACK],
+    )
+}
 pub fn calculate_phase(
     w_queens: u64,
     b_queens: u64,
