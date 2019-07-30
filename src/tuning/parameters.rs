@@ -70,6 +70,27 @@ pub fn array_to_string(array: &[f64]) -> String {
     res_str.push_str("]");
     res_str
 }
+
+pub fn apply_gradient_arr(to: &mut [f64], gradient_arr: &[f64], norm: f64) {
+    for i in 0..to.len() {
+        to[i] += gradient_arr[i] / norm;
+    }
+}
+
+pub fn apply_gradient_psqt(
+    to: &mut [[[f64; 8]; 8]; 2],
+    gradient_psqt: &[[[f64; 8]; 8]; 2],
+    norm: f64,
+) {
+    for i in 0..2 {
+        for j in 0..8 {
+            for k in 0..8 {
+                to[i][j][k] += gradient_psqt[i][j][k] / norm;
+            }
+        }
+    }
+}
+
 impl Parameters {
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, self.to_string().as_str()).expect("Unable to write file");
@@ -508,12 +529,18 @@ impl Parameters {
 
     pub fn apply_gradient(&mut self, gradient: &Parameters, norm: f64) {
         for i in 0..2 {
-            for j in 0..4 {
-                self.shielding_pawn_missing[i][j] += gradient.shielding_pawn_missing[i][j] / norm;
-                self.shielding_pawn_onopen_missing[i][j] +=
-                    gradient.shielding_pawn_onopen_missing[i][j] / norm;
-            }
+            apply_gradient_arr(
+                &mut self.shielding_pawn_missing[i],
+                &gradient.shielding_pawn_missing[i],
+                norm,
+            );
+            apply_gradient_arr(
+                &mut self.shielding_pawn_onopen_missing[i],
+                &gradient.shielding_pawn_onopen_missing[i],
+                norm,
+            );
         }
+
         for i in 0..2 {
             self.tempo_bonus[i] += gradient.tempo_bonus[i] / norm;
             self.pawn_doubled[i] += gradient.pawn_doubled[i] / norm;
@@ -532,49 +559,57 @@ impl Parameters {
             self.queen_piece_value[i] += gradient.queen_piece_value[i] / norm;
         }
         for i in 0..2 {
-            for j in 0..7 {
-                self.pawn_passed[i][j] += gradient.pawn_passed[i][j] / norm;
-                self.pawn_passed_notblocked[i][j] += gradient.pawn_passed_notblocked[i][j] / norm;
-            }
+            apply_gradient_arr(&mut self.pawn_passed[i], &gradient.pawn_passed[i], norm);
+            apply_gradient_arr(
+                &mut self.pawn_passed_notblocked[i],
+                &gradient.pawn_passed_notblocked[i],
+                norm,
+            );
         }
+        apply_gradient_psqt(
+            &mut self.knight_outpost_table,
+            &gradient.knight_outpost_table,
+            norm,
+        );
+        apply_gradient_psqt(&mut self.psqt_pawn, &gradient.psqt_pawn, norm);
+        apply_gradient_psqt(&mut self.psqt_knight, &gradient.psqt_knight, norm);
+        apply_gradient_psqt(&mut self.psqt_bishop, &gradient.psqt_bishop, norm);
+        apply_gradient_psqt(&mut self.psqt_king, &gradient.psqt_king, norm);
+
+        apply_gradient_arr(
+            &mut self.knight_value_with_pawns,
+            &gradient.knight_value_with_pawns,
+            norm,
+        );
+
         for i in 0..2 {
-            for j in 0..8 {
-                for k in 0..8 {
-                    self.knight_outpost_table[i][j][k] +=
-                        gradient.knight_outpost_table[i][j][k] / norm;
-                    self.psqt_pawn[i][j][k] += gradient.psqt_pawn[i][j][k] / norm;
-                    self.psqt_knight[i][j][k] += gradient.psqt_knight[i][j][k] / norm;
-                    self.psqt_bishop[i][j][k] += gradient.psqt_bishop[i][j][k] / norm;
-                    self.psqt_king[i][j][k] += gradient.psqt_king[i][j][k] / norm;
-                }
-            }
+            apply_gradient_arr(
+                &mut self.diagonally_adjacent_squares_withpawns[i],
+                &gradient.diagonally_adjacent_squares_withpawns[i],
+                norm,
+            );
+            apply_gradient_arr(
+                &mut self.knight_mobility[i],
+                &gradient.knight_mobility[i],
+                norm,
+            );
+            apply_gradient_arr(
+                &mut self.bishop_mobility[i],
+                &gradient.bishop_mobility[i],
+                norm,
+            );
+            apply_gradient_arr(&mut self.rook_mobility[i], &gradient.rook_mobility[i], norm);
+            apply_gradient_arr(
+                &mut self.queen_mobility[i],
+                &gradient.queen_mobility[i],
+                norm,
+            );
         }
-        for i in 0..17 {
-            self.knight_value_with_pawns[i] += gradient.knight_value_with_pawns[i] / norm;
-        }
-        for i in 0..2 {
-            for j in 0..5 {
-                self.diagonally_adjacent_squares_withpawns[i][j] +=
-                    gradient.diagonally_adjacent_squares_withpawns[i][j] / norm;
-            }
-            for j in 0..9 {
-                self.knight_mobility[i][j] += gradient.knight_mobility[i][j] / norm;
-            }
-            for j in 0..14 {
-                self.bishop_mobility[i][j] += gradient.bishop_mobility[i][j] / norm;
-            }
-            for j in 0..15 {
-                self.rook_mobility[i][j] += gradient.rook_mobility[i][j] / norm;
-            }
-            for j in 0..28 {
-                self.queen_mobility[i][j] += gradient.queen_mobility[i][j] / norm;
-            }
-        }
-        for i in 0..8 {
-            self.attack_weight[i] += gradient.attack_weight[i] / norm;
-        }
-        for i in 0..100 {
-            self.safety_table.safety_table[i] += gradient.safety_table.safety_table[i] / norm;
-        }
+        apply_gradient_arr(&mut self.attack_weight, &gradient.attack_weight, norm);
+        apply_gradient_arr(
+            &mut self.safety_table.safety_table,
+            &gradient.safety_table.safety_table,
+            norm,
+        );
     }
 }

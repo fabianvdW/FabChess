@@ -40,7 +40,6 @@ pub fn parse_loop() {
                 newgame(&mut us);
                 (*cache).write().unwrap().clear();
                 saved_time.store(0, Ordering::Relaxed);
-                //println!("{}", after.duration_since(now).as_millis());
             }
             "isready" => isready(),
             "position" => {

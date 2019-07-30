@@ -33,16 +33,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = calculate_phase(
-        g.pieces[QUEEN][WHITE],
-        g.pieces[QUEEN][BLACK],
-        g.pieces[KNIGHT][WHITE],
-        g.pieces[KNIGHT][BLACK],
-        g.pieces[BISHOP][WHITE],
-        g.pieces[BISHOP][BLACK],
-        g.pieces[ROOK][WHITE],
-        g.pieces[ROOK][BLACK],
-    );
+    let phase = calculate_phase_state(g);
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
@@ -479,6 +470,10 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         ));
         log(&format!("\tMobility Knight: ({} , {})\n", mk_mg, mk_eg));
         log(&format!("\tMobility Bishop: ({} , {})\n", mb_mg, mb_eg));
+        log(&format!(
+            "\tBishop Diagonally Adj: ({} , {})\n",
+            mb_diag_mg, mb_diag_eg
+        ));
         log(&format!("\tMobility Rook  : ({} , {})\n", mr_mg, mr_eg));
         log(&format!("\tMobility Queen : ({} , {})\n", mq_mg, mq_eg));
         log(&format!(
@@ -775,7 +770,7 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     let pawns_on_board = (g.pieces[PAWN][WHITE] | g.pieces[PAWN][BLACK]).count_ones() as usize;
     let my_knights = g.pieces[KNIGHT][side].count_ones() as i16;
     mg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
-    eg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
+    eg_res += (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
 
     let my_bishops = g.pieces[BISHOP][side].count_ones() as i16;
     mg_res += BISHOP_PIECE_VALUE_MG * my_bishops;
@@ -852,6 +847,18 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     (mg_res, eg_res)
 }
 
+pub fn calculate_phase_state(g: &GameState) -> f64 {
+    calculate_phase(
+        g.pieces[QUEEN][WHITE],
+        g.pieces[QUEEN][BLACK],
+        g.pieces[KNIGHT][WHITE],
+        g.pieces[KNIGHT][BLACK],
+        g.pieces[BISHOP][WHITE],
+        g.pieces[BISHOP][BLACK],
+        g.pieces[ROOK][WHITE],
+        g.pieces[ROOK][BLACK],
+    )
+}
 pub fn calculate_phase(
     w_queens: u64,
     b_queens: u64,
