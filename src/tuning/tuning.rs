@@ -85,6 +85,13 @@ pub fn update_evaluations(tuner: &mut Tuner) {
 pub fn shuffle_positions(tuner: &mut Tuner) {
     tuner.positions.shuffle(&mut thread_rng());
 }
+pub fn add_gradient(gradient: &mut [f64; 2], trace: &[i8; 2], start_of_gradient: f64, phase: f64) {
+    let devaldmg = phase / 128.0;
+    let devaldeg = 1. - phase / 128.0;
+    let x = (trace[WHITE] - trace[BLACK]) as f64;
+    gradient[MG] += start_of_gradient * devaldmg * x;
+    gradient[EG] += start_of_gradient * devaldeg * x;
+}
 pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) -> (Parameters, f64) {
     let mut gradient = Parameters::zero();
     let multiplier: f64 = 2. * lr / (to - from) as f64;
@@ -95,13 +102,17 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         //Step 2. Calculate first half of gradient
         let s = sigmoid(tuner.k, pos.eval);
         let start_of_gradient = (pos.label - s) * s * (1. - s);
+        let phase = pos.trace.phase;
         let devaldmg = pos.trace.phase / 128.0;
         let devaldeg = 1. - pos.trace.phase / 128.0;
         //Tempo-bonus
         {
-            let x = (pos.trace.tempo_bonus[WHITE] - pos.trace.tempo_bonus[BLACK]) as f64;
-            gradient.tempo_bonus[MG] += start_of_gradient * devaldmg * x;
-            gradient.tempo_bonus[EG] += start_of_gradient * devaldeg * x;
+            add_gradient(
+                &mut gradient.tempo_bonus,
+                &pos.trace.tempo_bonus,
+                start_of_gradient,
+                phase,
+            );
         }
         //Shielding pawns
         for i in 0..4 {
@@ -116,23 +127,36 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         }
         //Pawn bonuses
         {
-            let doubled = (pos.trace.pawn_doubled[WHITE] - pos.trace.pawn_doubled[BLACK]) as f64;
-            let isolated = (pos.trace.pawn_isolated[WHITE] - pos.trace.pawn_isolated[BLACK]) as f64;
-            let backward = (pos.trace.pawn_backward[WHITE] - pos.trace.pawn_backward[BLACK]) as f64;
-            let supported =
-                (pos.trace.pawn_supported[WHITE] - pos.trace.pawn_supported[BLACK]) as f64;
-            let attack_center =
-                (pos.trace.pawn_attack_center[WHITE] - pos.trace.pawn_attack_center[BLACK]) as f64;
-            gradient.pawn_doubled[MG] += start_of_gradient * devaldmg * doubled;
-            gradient.pawn_doubled[EG] += start_of_gradient * devaldeg * doubled;
-            gradient.pawn_isolated[MG] += start_of_gradient * devaldmg * isolated;
-            gradient.pawn_isolated[EG] += start_of_gradient * devaldeg * isolated;
-            gradient.pawn_backward[MG] += start_of_gradient * devaldmg * backward;
-            gradient.pawn_backward[EG] += start_of_gradient * devaldeg * backward;
-            gradient.pawn_supported[MG] += start_of_gradient * devaldmg * supported;
-            gradient.pawn_supported[EG] += start_of_gradient * devaldeg * supported;
-            gradient.pawn_attack_center[MG] += start_of_gradient * devaldmg * attack_center;
-            gradient.pawn_attack_center[EG] += start_of_gradient * devaldeg * attack_center;
+            add_gradient(
+                &mut gradient.pawn_doubled,
+                &pos.trace.pawn_doubled,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.pawn_isolated,
+                &pos.trace.pawn_isolated,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.pawn_backward,
+                &pos.trace.pawn_backward,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.pawn_supported,
+                &pos.trace.pawn_supported,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.pawn_attack_center,
+                &pos.trace.pawn_attack_center,
+                start_of_gradient,
+                phase,
+            );
         }
         //Passed pawns
         for i in 0..7 {
@@ -148,10 +172,12 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         }
         //Knight supported
         {
-            let x = (pos.trace.knight_supported[WHITE] - pos.trace.knight_supported[BLACK]) as f64;
-
-            gradient.knight_supported[MG] += start_of_gradient * devaldmg * x;
-            gradient.knight_supported[EG] += start_of_gradient * devaldeg * x;
+            add_gradient(
+                &mut gradient.knight_supported,
+                &pos.trace.knight_supported,
+                start_of_gradient,
+                phase,
+            );
         }
         //All PST
         for i in 0..8 {
@@ -187,45 +213,61 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
 
         //Rook
         {
-            let x = (pos.trace.rook_on_open[WHITE] - pos.trace.rook_on_open[BLACK]) as f64;
-            let y = (pos.trace.rook_on_seventh[WHITE] - pos.trace.rook_on_seventh[BLACK]) as f64;
-
-            gradient.rook_on_open[MG] += start_of_gradient * devaldmg * x;
-            gradient.rook_on_open[EG] += start_of_gradient * devaldeg * x;
-
-            gradient.rook_on_seventh[MG] += start_of_gradient * devaldmg * y;
-            gradient.rook_on_seventh[EG] += start_of_gradient * devaldeg * y;
+            add_gradient(
+                &mut gradient.rook_on_open,
+                &pos.trace.rook_on_open,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.rook_on_seventh,
+                &pos.trace.rook_on_seventh,
+                start_of_gradient,
+                phase,
+            );
         }
         //Piece values
         {
-            let pawns = (pos.trace.pawns[WHITE] - pos.trace.pawns[BLACK]) as f64;
+            add_gradient(
+                &mut gradient.pawn_piece_value,
+                &pos.trace.pawns,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.knight_piece_value,
+                &pos.trace.knights,
+                start_of_gradient,
+                phase,
+            );
             let knights = (pos.trace.knights[WHITE] - pos.trace.knights[BLACK]) as f64;
-            let bishops = (pos.trace.bishops[WHITE] - pos.trace.bishops[BLACK]) as f64;
-            let bishop_pairs =
-                (pos.trace.bishop_bonus[WHITE] - pos.trace.bishop_bonus[BLACK]) as f64;
-            let rooks = (pos.trace.rooks[WHITE] - pos.trace.rooks[BLACK]) as f64;
-            let queens = (pos.trace.queens[WHITE] - pos.trace.queens[BLACK]) as f64;
-
-            gradient.pawn_piece_value[MG] += start_of_gradient * devaldmg * pawns;
-            gradient.pawn_piece_value[EG] += start_of_gradient * devaldeg * pawns;
-
-            gradient.knight_piece_value[MG] += start_of_gradient * devaldmg * knights;
-            gradient.knight_piece_value[EG] += start_of_gradient * devaldeg * knights;
-
             gradient.knight_value_with_pawns[pos.trace.knight_value_with_pawns as usize] +=
                 start_of_gradient * knights;
 
-            gradient.bishop_piece_value[MG] += start_of_gradient * devaldmg * bishops;
-            gradient.bishop_piece_value[EG] += start_of_gradient * devaldeg * bishops;
-
-            gradient.bishop_pair[MG] += start_of_gradient * devaldmg * bishop_pairs;
-            gradient.bishop_pair[EG] += start_of_gradient * devaldeg * bishop_pairs;
-
-            gradient.rook_piece_value[MG] += start_of_gradient * devaldmg * rooks;
-            gradient.rook_piece_value[EG] += start_of_gradient * devaldeg * rooks;
-
-            gradient.queen_piece_value[MG] += start_of_gradient * devaldmg * queens;
-            gradient.queen_piece_value[EG] += start_of_gradient * devaldeg * queens;
+            add_gradient(
+                &mut gradient.bishop_piece_value,
+                &pos.trace.bishops,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.bishop_pair,
+                &pos.trace.bishop_bonus,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.rook_piece_value,
+                &pos.trace.rooks,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.queen_piece_value,
+                &pos.trace.queens,
+                start_of_gradient,
+                phase,
+            );
         }
         //Diagonally adjacent
         for i in 0..5 {

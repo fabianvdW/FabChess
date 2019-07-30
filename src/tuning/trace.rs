@@ -203,7 +203,6 @@ impl Trace {
         //Piece values
         let mut piecevalue_res = (0., 0.);
         evaluate_single(&mut piecevalue_res, &self.pawns, &params.pawn_piece_value);
-        println!("AP:{},{}", piecevalue_res.0, piecevalue_res.1);
         evaluate_single(
             &mut piecevalue_res,
             &self.knights,
@@ -214,7 +213,6 @@ impl Trace {
             &self.knights,
             &[params.knight_value_with_pawns[self.knight_value_with_pawns as usize]; 2],
         );
-        println!("AK:{},{}", piecevalue_res.0, piecevalue_res.1);
         evaluate_single(
             &mut piecevalue_res,
             &self.bishops,
