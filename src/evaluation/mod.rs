@@ -470,6 +470,10 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         ));
         log(&format!("\tMobility Knight: ({} , {})\n", mk_mg, mk_eg));
         log(&format!("\tMobility Bishop: ({} , {})\n", mb_mg, mb_eg));
+        log(&format!(
+            "\tBishop Diagonally Adj: ({} , {})\n",
+            mb_diag_mg, mb_diag_eg
+        ));
         log(&format!("\tMobility Rook  : ({} , {})\n", mr_mg, mr_eg));
         log(&format!("\tMobility Queen : ({} , {})\n", mq_mg, mq_eg));
         log(&format!(
@@ -766,7 +770,7 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     let pawns_on_board = (g.pieces[PAWN][WHITE] | g.pieces[PAWN][BLACK]).count_ones() as usize;
     let my_knights = g.pieces[KNIGHT][side].count_ones() as i16;
     mg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
-    eg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
+    eg_res += (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
 
     let my_bishops = g.pieces[BISHOP][side].count_ones() as i16;
     mg_res += BISHOP_PIECE_VALUE_MG * my_bishops;

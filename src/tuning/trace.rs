@@ -36,161 +36,224 @@ pub struct Trace {
     pub psqt_king: [[[i8; 8]; 8]; 2],
     pub phase: f64,
 }
+
+pub fn evaluate_psqt(
+    score: &mut (f64, f64),
+    trace_psqt: &[[[i8; 8]; 8]; 2],
+    param_psqt: &[[[f64; 8]; 8]; 2],
+) {
+    for i in 0..8 {
+        for j in 0..8 {
+            score.0 +=
+                (trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) as f64 * param_psqt[MG][i][j];
+            score.1 +=
+                (trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) as f64 * param_psqt[EG][i][j];
+        }
+    }
+}
+
+pub fn evaluate_single(score: &mut (f64, f64), trace: &[i8; 2], param: &[f64; 2]) {
+    score.0 += (trace[WHITE] - trace[BLACK]) as f64 * param[MG];
+    score.1 += (trace[WHITE] - trace[BLACK]) as f64 * param[EG];
+}
+pub fn evaluate_single2(
+    score: &mut (f64, f64),
+    trace_white: i8,
+    trace_black: i8,
+    param_mg: f64,
+    param_eg: f64,
+) {
+    score.0 += (trace_white - trace_black) as f64 * param_mg;
+    score.1 += (trace_white - trace_black) as f64 * param_eg;
+}
+
 impl Trace {
     pub fn evaluate(&self, params: &Parameters) -> f64 {
-        let mut res = (0., 0.);
-        res.0 +=
-            (self.tempo_bonus[WHITE] - self.tempo_bonus[BLACK]) as f64 * params.tempo_bonus[MG];
-        res.1 +=
-            (self.tempo_bonus[WHITE] - self.tempo_bonus[BLACK]) as f64 * params.tempo_bonus[EG];
+        //PSQT Evaluation
+        let mut psqt_res = (0., 0.);
+        evaluate_psqt(&mut psqt_res, &self.psqt_pawn, &params.psqt_pawn);
+        evaluate_psqt(&mut psqt_res, &self.psqt_knight, &params.psqt_knight);
+        evaluate_psqt(&mut psqt_res, &self.psqt_bishop, &params.psqt_bishop);
+        evaluate_psqt(&mut psqt_res, &self.psqt_king, &params.psqt_king);
 
-        for i in 0..4 {
-            res.0 += (self.shielding_pawn_missing[WHITE][i] - self.shielding_pawn_missing[BLACK][i])
-                as f64
-                * params.shielding_pawn_missing[MG][i];
-            res.1 += (self.shielding_pawn_missing[WHITE][i] - self.shielding_pawn_missing[BLACK][i])
-                as f64
-                * params.shielding_pawn_missing[EG][i];
-            res.0 += (self.shielding_pawn_onopen_missing[WHITE][i]
-                - self.shielding_pawn_onopen_missing[BLACK][i]) as f64
-                * params.shielding_pawn_onopen_missing[MG][i];
-            res.1 += (self.shielding_pawn_onopen_missing[WHITE][i]
-                - self.shielding_pawn_onopen_missing[BLACK][i]) as f64
-                * params.shielding_pawn_onopen_missing[EG][i];
-        }
+        //Knight evaluation
+        let mut knight_res = (0., 0.);
+        evaluate_single(
+            &mut knight_res,
+            &self.knight_supported,
+            &params.knight_supported,
+        );
+        evaluate_psqt(
+            &mut knight_res,
+            &self.knight_outpost_table,
+            &params.knight_outpost_table,
+        );
 
-        res.0 +=
-            (self.pawn_doubled[WHITE] - self.pawn_doubled[BLACK]) as f64 * params.pawn_doubled[MG];
-        res.1 +=
-            (self.pawn_doubled[WHITE] - self.pawn_doubled[BLACK]) as f64 * params.pawn_doubled[EG];
-        res.0 += (self.pawn_isolated[WHITE] - self.pawn_isolated[BLACK]) as f64
-            * params.pawn_isolated[MG];
-        res.1 += (self.pawn_isolated[WHITE] - self.pawn_isolated[BLACK]) as f64
-            * params.pawn_isolated[EG];
-        res.0 += (self.pawn_backward[WHITE] - self.pawn_backward[BLACK]) as f64
-            * params.pawn_backward[MG];
-        res.1 += (self.pawn_backward[WHITE] - self.pawn_backward[BLACK]) as f64
-            * params.pawn_backward[EG];
-        res.0 += (self.pawn_supported[WHITE] - self.pawn_supported[BLACK]) as f64
-            * params.pawn_supported[MG];
-        res.1 += (self.pawn_supported[WHITE] - self.pawn_supported[BLACK]) as f64
-            * params.pawn_supported[EG];
-        res.0 += (self.pawn_attack_center[WHITE] - self.pawn_attack_center[BLACK]) as f64
-            * params.pawn_attack_center[MG];
-        res.1 += (self.pawn_attack_center[WHITE] - self.pawn_attack_center[BLACK]) as f64
-            * params.pawn_attack_center[EG];
-
-        for i in 0..7 {
-            res.0 += (self.pawn_passed[WHITE][i] - self.pawn_passed[BLACK][i]) as f64
-                * params.pawn_passed[MG][i];
-            res.1 += (self.pawn_passed[WHITE][i] - self.pawn_passed[BLACK][i]) as f64
-                * params.pawn_passed[EG][i];
-            res.0 += (self.pawn_passed_notblocked[WHITE][i] - self.pawn_passed_notblocked[BLACK][i])
-                as f64
-                * params.pawn_passed_notblocked[MG][i];
-            res.1 += (self.pawn_passed_notblocked[WHITE][i] - self.pawn_passed_notblocked[BLACK][i])
-                as f64
-                * params.pawn_passed_notblocked[EG][i];
-        }
-
-        res.0 += (self.knight_supported[WHITE] - self.knight_supported[BLACK]) as f64
-            * params.knight_supported[MG];
-        res.1 += (self.knight_supported[WHITE] - self.knight_supported[BLACK]) as f64
-            * params.knight_supported[EG];
-        for i in 0..8 {
-            for j in 0..8 {
-                res.0 += (self.knight_outpost_table[WHITE][i][j]
-                    - self.knight_outpost_table[BLACK][i][j]) as f64
-                    * params.knight_outpost_table[MG][i][j];
-                res.1 += (self.knight_outpost_table[WHITE][i][j]
-                    - self.knight_outpost_table[BLACK][i][j]) as f64
-                    * params.knight_outpost_table[EG][i][j];
-                res.0 += (self.psqt_pawn[WHITE][i][j] - self.psqt_pawn[BLACK][i][j]) as f64
-                    * params.psqt_pawn[MG][i][j];
-                res.1 += (self.psqt_pawn[WHITE][i][j] - self.psqt_pawn[BLACK][i][j]) as f64
-                    * params.psqt_pawn[EG][i][j];
-                res.0 += (self.psqt_knight[WHITE][i][j] - self.psqt_knight[BLACK][i][j]) as f64
-                    * params.psqt_knight[MG][i][j];
-                res.1 += (self.psqt_knight[WHITE][i][j] - self.psqt_knight[BLACK][i][j]) as f64
-                    * params.psqt_knight[EG][i][j];
-                res.0 += (self.psqt_bishop[WHITE][i][j] - self.psqt_bishop[BLACK][i][j]) as f64
-                    * params.psqt_bishop[MG][i][j];
-                res.1 += (self.psqt_bishop[WHITE][i][j] - self.psqt_bishop[BLACK][i][j]) as f64
-                    * params.psqt_bishop[EG][i][j];
-                res.0 += (self.psqt_king[WHITE][i][j] - self.psqt_king[BLACK][i][j]) as f64
-                    * params.psqt_king[MG][i][j];
-                res.1 += (self.psqt_king[WHITE][i][j] - self.psqt_king[BLACK][i][j]) as f64
-                    * params.psqt_king[EG][i][j];
-            }
-        }
-        res.0 +=
-            (self.rook_on_open[WHITE] - self.rook_on_open[BLACK]) as f64 * params.rook_on_open[MG];
-        res.1 +=
-            (self.rook_on_open[WHITE] - self.rook_on_open[BLACK]) as f64 * params.rook_on_open[EG];
-        res.0 += (self.rook_on_seventh[WHITE] - self.rook_on_seventh[BLACK]) as f64
-            * params.rook_on_seventh[MG];
-        res.1 += (self.rook_on_seventh[WHITE] - self.rook_on_seventh[BLACK]) as f64
-            * params.rook_on_seventh[EG];
-        res.0 += (self.pawns[WHITE] - self.pawns[BLACK]) as f64 * params.pawn_piece_value[MG];
-        res.1 += (self.pawns[WHITE] - self.pawns[BLACK]) as f64 * params.pawn_piece_value[EG];
-        res.0 += (self.knights[WHITE] - self.knights[BLACK]) as f64
-            * (params.knight_piece_value[MG]
-                + params.knight_value_with_pawns[self.knight_value_with_pawns as usize]);
-        res.1 += (self.knights[WHITE] - self.knights[BLACK]) as f64
-            * (params.knight_piece_value[EG]
-                + params.knight_value_with_pawns[self.knight_value_with_pawns as usize]);
-        res.0 += (self.bishops[WHITE] - self.bishops[BLACK]) as f64 * params.bishop_piece_value[MG];
-        res.1 += (self.bishops[WHITE] - self.bishops[BLACK]) as f64 * params.bishop_piece_value[EG];
-        res.0 +=
-            (self.bishop_bonus[WHITE] - self.bishop_bonus[BLACK]) as f64 * params.bishop_pair[MG];
-        res.1 +=
-            (self.bishop_bonus[WHITE] - self.bishop_bonus[BLACK]) as f64 * params.bishop_pair[EG];
-        res.0 += (self.rooks[WHITE] - self.rooks[BLACK]) as f64 * params.rook_piece_value[MG];
-        res.1 += (self.rooks[WHITE] - self.rooks[BLACK]) as f64 * params.rook_piece_value[EG];
-        res.0 += (self.queens[WHITE] - self.queens[BLACK]) as f64 * params.queen_piece_value[MG];
-        res.1 += (self.queens[WHITE] - self.queens[BLACK]) as f64 * params.queen_piece_value[EG];
-        for i in 0..5 {
-            res.0 += (self.diagonally_adjacent_squares_withpawns[WHITE][i]
-                - self.diagonally_adjacent_squares_withpawns[BLACK][i]) as f64
-                * params.diagonally_adjacent_squares_withpawns[MG][i];
-            res.1 += (self.diagonally_adjacent_squares_withpawns[WHITE][i]
-                - self.diagonally_adjacent_squares_withpawns[BLACK][i]) as f64
-                * params.diagonally_adjacent_squares_withpawns[EG][i];
-        }
+        //Piecewise
+        let mut piecewise_res = (0., 0.);
         for i in 0..9 {
-            res.0 += (self.knight_mobility[WHITE][i] - self.knight_mobility[BLACK][i]) as f64
-                * params.knight_mobility[MG][i];
-            res.1 += (self.knight_mobility[WHITE][i] - self.knight_mobility[BLACK][i]) as f64
-                * params.knight_mobility[EG][i];
+            evaluate_single2(
+                &mut piecewise_res,
+                self.knight_mobility[WHITE][i],
+                self.knight_mobility[BLACK][i],
+                params.knight_mobility[MG][i],
+                params.knight_mobility[EG][i],
+            );
         }
         for i in 0..14 {
-            res.0 += (self.bishop_mobility[WHITE][i] - self.bishop_mobility[BLACK][i]) as f64
-                * params.bishop_mobility[MG][i];
-            res.1 += (self.bishop_mobility[WHITE][i] - self.bishop_mobility[BLACK][i]) as f64
-                * params.bishop_mobility[EG][i];
+            evaluate_single2(
+                &mut piecewise_res,
+                self.bishop_mobility[WHITE][i],
+                self.bishop_mobility[BLACK][i],
+                params.bishop_mobility[MG][i],
+                params.bishop_mobility[EG][i],
+            );
+        }
+        for i in 0..5 {
+            evaluate_single2(
+                &mut piecewise_res,
+                self.diagonally_adjacent_squares_withpawns[WHITE][i],
+                self.diagonally_adjacent_squares_withpawns[BLACK][i],
+                params.diagonally_adjacent_squares_withpawns[MG][i],
+                params.diagonally_adjacent_squares_withpawns[EG][i],
+            );
         }
         for i in 0..15 {
-            res.0 += (self.rook_mobility[WHITE][i] - self.rook_mobility[BLACK][i]) as f64
-                * params.rook_mobility[MG][i];
-            res.1 += (self.rook_mobility[WHITE][i] - self.rook_mobility[BLACK][i]) as f64
-                * params.rook_mobility[EG][i];
+            evaluate_single2(
+                &mut piecewise_res,
+                self.rook_mobility[WHITE][i],
+                self.rook_mobility[BLACK][i],
+                params.rook_mobility[MG][i],
+                params.rook_mobility[EG][i],
+            );
         }
         for i in 0..28 {
-            res.0 += (self.queen_mobility[WHITE][i] - self.queen_mobility[BLACK][i]) as f64
-                * params.queen_mobility[MG][i];
-            res.1 += (self.queen_mobility[WHITE][i] - self.queen_mobility[BLACK][i]) as f64
-                * params.queen_mobility[EG][i];
+            evaluate_single2(
+                &mut piecewise_res,
+                self.queen_mobility[WHITE][i],
+                self.queen_mobility[BLACK][i],
+                params.queen_mobility[MG][i],
+                params.queen_mobility[EG][i],
+            );
         }
-        res.0 += (params.attack_weight[self.attackers[WHITE] as usize]
+        evaluate_single(&mut piecewise_res, &self.rook_on_open, &params.rook_on_open);
+        evaluate_single(
+            &mut piecewise_res,
+            &self.rook_on_seventh,
+            &params.rook_on_seventh,
+        );
+        piecewise_res.0 += (params.attack_weight[self.attackers[WHITE] as usize]
             * params.safety_table.safety_table[self.attacker_value[WHITE] as usize]
             - params.attack_weight[self.attackers[BLACK] as usize]
                 * params.safety_table.safety_table[self.attacker_value[BLACK] as usize])
             / 100.0;
-        res.1 += (params.attack_weight[self.attackers[WHITE] as usize]
+        piecewise_res.1 += (params.attack_weight[self.attackers[WHITE] as usize]
             * params.safety_table.safety_table[self.attacker_value[WHITE] as usize]
             - params.attack_weight[self.attackers[BLACK] as usize]
                 * params.safety_table.safety_table[self.attacker_value[BLACK] as usize])
             / 100.0;
+
+        //King-Safety
+        let mut king_res = (0., 0.);
+        for i in 0..4 {
+            evaluate_single2(
+                &mut king_res,
+                self.shielding_pawn_missing[WHITE][i],
+                self.shielding_pawn_missing[BLACK][i],
+                params.shielding_pawn_missing[MG][i],
+                params.shielding_pawn_missing[EG][i],
+            );
+            evaluate_single2(
+                &mut king_res,
+                self.shielding_pawn_onopen_missing[WHITE][i],
+                self.shielding_pawn_onopen_missing[BLACK][i],
+                params.shielding_pawn_onopen_missing[MG][i],
+                params.shielding_pawn_onopen_missing[EG][i],
+            );
+        }
+
+        //Pawns
+        let mut pawn_res = (0., 0.);
+        evaluate_single(&mut pawn_res, &self.pawn_doubled, &params.pawn_doubled);
+        evaluate_single(&mut pawn_res, &self.pawn_isolated, &params.pawn_isolated);
+        evaluate_single(&mut pawn_res, &self.pawn_backward, &params.pawn_backward);
+        evaluate_single(&mut pawn_res, &self.pawn_supported, &params.pawn_supported);
+        evaluate_single(
+            &mut pawn_res,
+            &self.pawn_attack_center,
+            &params.pawn_attack_center,
+        );
+        for i in 0..7 {
+            evaluate_single2(
+                &mut pawn_res,
+                self.pawn_passed[WHITE][i],
+                self.pawn_passed[BLACK][i],
+                params.pawn_passed[MG][i],
+                params.pawn_passed[EG][i],
+            );
+            evaluate_single2(
+                &mut pawn_res,
+                self.pawn_passed_notblocked[WHITE][i],
+                self.pawn_passed_notblocked[BLACK][i],
+                params.pawn_passed_notblocked[MG][i],
+                params.pawn_passed_notblocked[EG][i],
+            );
+        }
+
+        //Piece values
+        let mut piecevalue_res = (0., 0.);
+        evaluate_single(&mut piecevalue_res, &self.pawns, &params.pawn_piece_value);
+        println!("AP:{},{}", piecevalue_res.0, piecevalue_res.1);
+        evaluate_single(
+            &mut piecevalue_res,
+            &self.knights,
+            &params.knight_piece_value,
+        );
+        evaluate_single(
+            &mut piecevalue_res,
+            &self.knights,
+            &[params.knight_value_with_pawns[self.knight_value_with_pawns as usize]; 2],
+        );
+        println!("AK:{},{}", piecevalue_res.0, piecevalue_res.1);
+        evaluate_single(
+            &mut piecevalue_res,
+            &self.bishops,
+            &params.bishop_piece_value,
+        );
+        evaluate_single(&mut piecevalue_res, &self.bishop_bonus, &params.bishop_pair);
+        evaluate_single(&mut piecevalue_res, &self.rooks, &params.rook_piece_value);
+        evaluate_single(&mut piecevalue_res, &self.queens, &params.queen_piece_value);
+
+        let mut tempo_bonus = (0., 0.);
+        evaluate_single(&mut tempo_bonus, &self.tempo_bonus, &params.tempo_bonus);
+
+        let res = (
+            psqt_res.0
+                + knight_res.0
+                + piecewise_res.0
+                + king_res.0
+                + pawn_res.0
+                + piecevalue_res.0
+                + tempo_bonus.0,
+            psqt_res.1
+                + knight_res.1
+                + piecewise_res.1
+                + king_res.1
+                + pawn_res.1
+                + piecevalue_res.1
+                + tempo_bonus.1,
+        );
+        #[cfg(feature = "display-eval")]
+        {
+            println!("PSQT: {},{}", psqt_res.0, psqt_res.1);
+            println!("KNIGHT:{},{}", knight_res.0, knight_res.1);
+            println!("PIECEWISE:{},{}", piecewise_res.0, piecewise_res.1);
+            println!("KING:{},{}", king_res.0, king_res.1);
+            println!("PAWNS:{},{}", pawn_res.0, pawn_res.1);
+            println!("PieceValue:{},{}", piecevalue_res.0, piecevalue_res.1);
+            println!("Tempo:{},{}", tempo_bonus.0, tempo_bonus.1);
+            println!("Res:{},{}", res.0, res.1);
+        }
         (res.0 * self.phase + res.1 * (128.0 - self.phase)) / 128.0
     }
     pub fn default() -> Self {
