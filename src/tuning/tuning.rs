@@ -14,7 +14,28 @@ use rand::{seq::SliceRandom, thread_rng};
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
 pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
-const BATCH_SIZE: usize = 8196;
+
+//Override for all others if true
+pub const TUNE_ALL: bool = true;
+
+pub const TUNE_TEMPO_BONUS: bool = false;
+pub const TUNE_SHIELDING_PAWNS: bool = false;
+pub const TUNE_PAWNS: bool = false;
+//Category passed pawns
+pub const TUNE_PASSED: bool = true;
+pub const TUNE_PASSED_PAWN: bool = true;
+pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
+
+pub const TUNE_KNIGHTS: bool = false;
+pub const TUNE_ROOKS: bool = false;
+
+pub const TUNE_PIECE_VALUES: bool = false;
+pub const TUNE_MOBILITY: bool = false;
+
+pub const TUNE_ATTACK: bool = false;
+pub const TUNE_PSQT: bool = false;
+
+const BATCH_SIZE: usize = 725000;
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
         panic!("Feature texel-tuning has to be enabled");
@@ -106,7 +127,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         let devaldmg = pos.trace.phase / 128.0;
         let devaldeg = 1. - pos.trace.phase / 128.0;
         //Tempo-bonus
-        {
+        if TUNE_TEMPO_BONUS || TUNE_ALL {
             add_gradient(
                 &mut gradient.tempo_bonus,
                 &pos.trace.tempo_bonus,
@@ -115,18 +136,21 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             );
         }
         //Shielding pawns
-        for i in 0..4 {
-            let x = (pos.trace.shielding_pawn_missing[WHITE][i]
-                - pos.trace.shielding_pawn_missing[BLACK][i]) as f64;
-            let y = (pos.trace.shielding_pawn_onopen_missing[WHITE][i]
-                - pos.trace.shielding_pawn_onopen_missing[BLACK][i]) as f64;
-            gradient.shielding_pawn_missing[MG][i] += start_of_gradient * devaldmg * x;
-            gradient.shielding_pawn_missing[EG][i] += start_of_gradient * devaldeg * x;
-            gradient.shielding_pawn_onopen_missing[MG][i] += start_of_gradient * devaldmg * y;
-            gradient.shielding_pawn_onopen_missing[EG][i] += start_of_gradient * devaldeg * y;
+        if TUNE_SHIELDING_PAWNS || TUNE_ALL {
+            for i in 0..4 {
+                let x = (pos.trace.shielding_pawn_missing[WHITE][i]
+                    - pos.trace.shielding_pawn_missing[BLACK][i]) as f64;
+                let y = (pos.trace.shielding_pawn_onopen_missing[WHITE][i]
+                    - pos.trace.shielding_pawn_onopen_missing[BLACK][i])
+                    as f64;
+                gradient.shielding_pawn_missing[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.shielding_pawn_missing[EG][i] += start_of_gradient * devaldeg * x;
+                gradient.shielding_pawn_onopen_missing[MG][i] += start_of_gradient * devaldmg * y;
+                gradient.shielding_pawn_onopen_missing[EG][i] += start_of_gradient * devaldeg * y;
+            }
         }
         //Pawn bonuses
-        {
+        if TUNE_PAWNS || TUNE_ALL {
             add_gradient(
                 &mut gradient.pawn_doubled,
                 &pos.trace.pawn_doubled,
@@ -159,19 +183,24 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             );
         }
         //Passed pawns
-        for i in 0..7 {
-            let x = (pos.trace.pawn_passed[WHITE][i] - pos.trace.pawn_passed[BLACK][i]) as f64;
-            let y = (pos.trace.pawn_passed_notblocked[WHITE][i]
-                - pos.trace.pawn_passed_notblocked[BLACK][i]) as f64;
+        if TUNE_PASSED || TUNE_ALL {
+            for i in 0..7 {
+                let x = (pos.trace.pawn_passed[WHITE][i] - pos.trace.pawn_passed[BLACK][i]) as f64;
+                let y = (pos.trace.pawn_passed_notblocked[WHITE][i]
+                    - pos.trace.pawn_passed_notblocked[BLACK][i]) as f64;
 
-            gradient.pawn_passed[MG][i] += start_of_gradient * devaldmg * x;
-            gradient.pawn_passed[EG][i] += start_of_gradient * devaldeg * x;
-
-            gradient.pawn_passed_notblocked[MG][i] += start_of_gradient * devaldmg * y;
-            gradient.pawn_passed_notblocked[EG][i] += start_of_gradient * devaldeg * y;
+                if TUNE_PASSED_PAWN || TUNE_ALL {
+                    gradient.pawn_passed[MG][i] += start_of_gradient * devaldmg * x;
+                    gradient.pawn_passed[EG][i] += start_of_gradient * devaldeg * x;
+                }
+                if TUNE_PASSED_PAWN_NOT_BLOCKED || TUNE_ALL {
+                    gradient.pawn_passed_notblocked[MG][i] += start_of_gradient * devaldmg * y;
+                    gradient.pawn_passed_notblocked[EG][i] += start_of_gradient * devaldeg * y;
+                }
+            }
         }
         //Knight supported
-        {
+        if TUNE_KNIGHTS || TUNE_ALL {
             add_gradient(
                 &mut gradient.knight_supported,
                 &pos.trace.knight_supported,
@@ -182,37 +211,44 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         //All PST
         for i in 0..8 {
             for j in 0..8 {
-                let outposts = (pos.trace.knight_outpost_table[WHITE][i][j]
-                    - pos.trace.knight_outpost_table[BLACK][i][j])
-                    as f64;
+                if TUNE_KNIGHTS || TUNE_ALL {
+                    let outposts = (pos.trace.knight_outpost_table[WHITE][i][j]
+                        - pos.trace.knight_outpost_table[BLACK][i][j])
+                        as f64;
 
-                gradient.knight_outpost_table[MG][i][j] += start_of_gradient * devaldmg * outposts;
-                gradient.knight_outpost_table[EG][i][j] += start_of_gradient * devaldeg * outposts;
+                    gradient.knight_outpost_table[MG][i][j] +=
+                        start_of_gradient * devaldmg * outposts;
+                    gradient.knight_outpost_table[EG][i][j] +=
+                        start_of_gradient * devaldeg * outposts;
+                }
+                if TUNE_PSQT || TUNE_ALL {
+                    let pawns = (pos.trace.psqt_pawn[WHITE][i][j]
+                        - pos.trace.psqt_pawn[BLACK][i][j]) as f64;
+                    gradient.psqt_pawn[MG][i][j] += start_of_gradient * devaldmg * pawns;
+                    gradient.psqt_pawn[EG][i][j] += start_of_gradient * devaldeg * pawns;
 
-                let pawns =
-                    (pos.trace.psqt_pawn[WHITE][i][j] - pos.trace.psqt_pawn[BLACK][i][j]) as f64;
-                gradient.psqt_pawn[MG][i][j] += start_of_gradient * devaldmg * pawns;
-                gradient.psqt_pawn[EG][i][j] += start_of_gradient * devaldeg * pawns;
+                    let knights = (pos.trace.psqt_knight[WHITE][i][j]
+                        - pos.trace.psqt_knight[BLACK][i][j])
+                        as f64;
+                    gradient.psqt_knight[MG][i][j] += start_of_gradient * devaldmg * knights;
+                    gradient.psqt_knight[EG][i][j] += start_of_gradient * devaldeg * knights;
 
-                let knights = (pos.trace.psqt_knight[WHITE][i][j]
-                    - pos.trace.psqt_knight[BLACK][i][j]) as f64;
-                gradient.psqt_knight[MG][i][j] += start_of_gradient * devaldmg * knights;
-                gradient.psqt_knight[EG][i][j] += start_of_gradient * devaldeg * knights;
+                    let bishops = (pos.trace.psqt_bishop[WHITE][i][j]
+                        - pos.trace.psqt_bishop[BLACK][i][j])
+                        as f64;
+                    gradient.psqt_bishop[MG][i][j] += start_of_gradient * devaldmg * bishops;
+                    gradient.psqt_bishop[EG][i][j] += start_of_gradient * devaldeg * bishops;
 
-                let bishops = (pos.trace.psqt_bishop[WHITE][i][j]
-                    - pos.trace.psqt_bishop[BLACK][i][j]) as f64;
-                gradient.psqt_bishop[MG][i][j] += start_of_gradient * devaldmg * bishops;
-                gradient.psqt_bishop[EG][i][j] += start_of_gradient * devaldeg * bishops;
-
-                let king =
-                    (pos.trace.psqt_king[WHITE][i][j] - pos.trace.psqt_king[BLACK][i][j]) as f64;
-                gradient.psqt_king[MG][i][j] += start_of_gradient * devaldmg * king;
-                gradient.psqt_king[EG][i][j] += start_of_gradient * devaldeg * king;
+                    let king = (pos.trace.psqt_king[WHITE][i][j] - pos.trace.psqt_king[BLACK][i][j])
+                        as f64;
+                    gradient.psqt_king[MG][i][j] += start_of_gradient * devaldmg * king;
+                    gradient.psqt_king[EG][i][j] += start_of_gradient * devaldeg * king;
+                }
             }
         }
 
         //Rook
-        {
+        if TUNE_ROOKS || TUNE_ALL {
             add_gradient(
                 &mut gradient.rook_on_open,
                 &pos.trace.rook_on_open,
@@ -227,7 +263,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             );
         }
         //Piece values
-        {
+        if TUNE_PIECE_VALUES || TUNE_ALL {
             add_gradient(
                 &mut gradient.pawn_piece_value,
                 &pos.trace.pawns,
@@ -270,51 +306,59 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             );
         }
         //Diagonally adjacent
-        for i in 0..5 {
-            let x = (pos.trace.diagonally_adjacent_squares_withpawns[WHITE][i]
-                - pos.trace.diagonally_adjacent_squares_withpawns[BLACK][i])
-                as f64;
-            gradient.diagonally_adjacent_squares_withpawns[MG][i] +=
-                start_of_gradient * devaldmg * x;
-            gradient.diagonally_adjacent_squares_withpawns[EG][i] +=
-                start_of_gradient * devaldeg * x;
+        if TUNE_PIECE_VALUES || TUNE_ALL {
+            for i in 0..5 {
+                let x = (pos.trace.diagonally_adjacent_squares_withpawns[WHITE][i]
+                    - pos.trace.diagonally_adjacent_squares_withpawns[BLACK][i])
+                    as f64;
+                gradient.diagonally_adjacent_squares_withpawns[MG][i] +=
+                    start_of_gradient * devaldmg * x;
+                gradient.diagonally_adjacent_squares_withpawns[EG][i] +=
+                    start_of_gradient * devaldeg * x;
+            }
         }
         //Mobility
-        for i in 0..9 {
-            let x =
-                (pos.trace.knight_mobility[WHITE][i] - pos.trace.knight_mobility[BLACK][i]) as f64;
-            gradient.knight_mobility[MG][i] += start_of_gradient * devaldmg * x;
-            gradient.knight_mobility[EG][i] += start_of_gradient * devaldeg * x;
+        if TUNE_MOBILITY || TUNE_ALL {
+            for i in 0..9 {
+                let x = (pos.trace.knight_mobility[WHITE][i] - pos.trace.knight_mobility[BLACK][i])
+                    as f64;
+                gradient.knight_mobility[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.knight_mobility[EG][i] += start_of_gradient * devaldeg * x;
+            }
+            for i in 0..14 {
+                let x = (pos.trace.bishop_mobility[WHITE][i] - pos.trace.bishop_mobility[BLACK][i])
+                    as f64;
+                gradient.bishop_mobility[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.bishop_mobility[EG][i] += start_of_gradient * devaldeg * x;
+            }
+            for i in 0..15 {
+                let x =
+                    (pos.trace.rook_mobility[WHITE][i] - pos.trace.rook_mobility[BLACK][i]) as f64;
+                gradient.rook_mobility[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.rook_mobility[EG][i] += start_of_gradient * devaldeg * x;
+            }
+            for i in 0..28 {
+                let x = (pos.trace.queen_mobility[WHITE][i] - pos.trace.queen_mobility[BLACK][i])
+                    as f64;
+                gradient.queen_mobility[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.queen_mobility[EG][i] += start_of_gradient * devaldeg * x;
+            }
         }
-        for i in 0..14 {
-            let x =
-                (pos.trace.bishop_mobility[WHITE][i] - pos.trace.bishop_mobility[BLACK][i]) as f64;
-            gradient.bishop_mobility[MG][i] += start_of_gradient * devaldmg * x;
-            gradient.bishop_mobility[EG][i] += start_of_gradient * devaldeg * x;
-        }
-        for i in 0..15 {
-            let x = (pos.trace.rook_mobility[WHITE][i] - pos.trace.rook_mobility[BLACK][i]) as f64;
-            gradient.rook_mobility[MG][i] += start_of_gradient * devaldmg * x;
-            gradient.rook_mobility[EG][i] += start_of_gradient * devaldeg * x;
-        }
-        for i in 0..28 {
-            let x =
-                (pos.trace.queen_mobility[WHITE][i] - pos.trace.queen_mobility[BLACK][i]) as f64;
-            gradient.queen_mobility[MG][i] += start_of_gradient * devaldmg * x;
-            gradient.queen_mobility[EG][i] += start_of_gradient * devaldeg * x;
-        }
-
         //Safety
-        gradient.attack_weight[pos.trace.attackers[WHITE] as usize] += start_of_gradient / 100.0
-            * tuner.params.safety_table.safety_table[pos.trace.attacker_value[WHITE] as usize];
-        gradient.safety_table.safety_table[pos.trace.attacker_value[WHITE] as usize] +=
-            start_of_gradient / 100.0
-                * tuner.params.attack_weight[pos.trace.attackers[WHITE] as usize];
-        gradient.attack_weight[pos.trace.attackers[BLACK] as usize] -= start_of_gradient / 100.0
-            * tuner.params.safety_table.safety_table[pos.trace.attacker_value[BLACK] as usize];
-        gradient.safety_table.safety_table[pos.trace.attacker_value[BLACK] as usize] +=
-            start_of_gradient / 100.0
-                * tuner.params.attack_weight[pos.trace.attackers[BLACK] as usize];
+        if TUNE_ATTACK || TUNE_ALL {
+            gradient.attack_weight[pos.trace.attackers[WHITE] as usize] += start_of_gradient
+                / 100.0
+                * tuner.params.safety_table.safety_table[pos.trace.attacker_value[WHITE] as usize];
+            gradient.safety_table.safety_table[pos.trace.attacker_value[WHITE] as usize] +=
+                start_of_gradient / 100.0
+                    * tuner.params.attack_weight[pos.trace.attackers[WHITE] as usize];
+            gradient.attack_weight[pos.trace.attackers[BLACK] as usize] -= start_of_gradient
+                / 100.0
+                * tuner.params.safety_table.safety_table[pos.trace.attacker_value[BLACK] as usize];
+            gradient.safety_table.safety_table[pos.trace.attacker_value[BLACK] as usize] +=
+                start_of_gradient / 100.0
+                    * tuner.params.attack_weight[pos.trace.attackers[BLACK] as usize];
+        }
     }
     //Norm gradient
     let mut norm: f64 = 0.;
@@ -383,7 +427,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = 10000.0;
+    let mut lr = 10000000.0;
     loop {
         epoch += 1;
         shuffle_positions(tuner);
