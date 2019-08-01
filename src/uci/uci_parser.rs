@@ -122,8 +122,11 @@ pub fn start_search(
         cache,
         saved_time,
     );
-    let bestmove =
-        CacheEntry::u16_to_mv(s.principal_variation[0].as_ref().unwrap().mv, &game_state);
+    let bestmove = if let Some(mv) = s.pv_table[0].pv[0] {
+        mv
+    } else {
+        CacheEntry::u16_to_mv(s.principal_variation[0].as_ref().unwrap().mv, &game_state)
+    };
     println!("bestmove {:?}", bestmove);
 }
 

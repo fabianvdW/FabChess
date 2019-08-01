@@ -281,7 +281,15 @@ pub fn principal_variation_search(
             }
         }
         moves_tried += 1;
-
+        if root && su.search.search_statistics.time_elapsed > 1000 {
+            println!(
+                "info depth {} currmove {:?} currmovenumber {}",
+                depth_left,
+                mv,
+                (index + 1)
+            );
+            //UCI-Reporting
+        }
         let isc = is_capture(&mv);
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
             true
@@ -366,11 +374,17 @@ pub fn principal_variation_search(
             }
         }
 
-        if following_score > current_max_score {
+        if following_score > current_max_score && !su.search.stop {
             su.search.pv_table[current_depth].pv[0] = Some(mv);
             current_max_score = following_score;
-
             concatenate_pv(current_depth, su.search);
+            if root && su.search.search_statistics.time_elapsed > 1000 {
+                println!(
+                    "info depth {} score cp {} lowerbound pv {}",
+                    depth_left, following_score, su.search.pv_table[0]
+                );
+                //UCI-Reporting
+            }
         }
         if following_score > alpha {
             alpha = following_score;
@@ -854,9 +868,10 @@ impl PrincipalVariation {
 impl Display for PrincipalVariation {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
-        res_str.push_str(&format!("PV of length {}\n", self.pv.len(),));
-        for mv in &self.pv {
-            res_str.push_str(&format!("{:?}\n", mv));
+        let mut index = 0;
+        while let Some(mv) = self.pv[index].as_ref() {
+            res_str.push_str(&format!("{:?} ", mv));
+            index += 1;
         }
         write!(formatter, "{}", res_str)
     }

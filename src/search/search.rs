@@ -131,7 +131,7 @@ impl Search {
                 );
             } else {
                 //Aspiration Window
-                let mut delta = 20;
+                let mut delta = 40;
                 let mut alpha = best_pv_score - delta;
                 let mut beta = best_pv_score + delta;
                 loop {
@@ -183,12 +183,6 @@ impl Search {
                 break;
             }
             //println!("{}", format!("Depth {} with nodes {} and pv: {}", d, stats.nodes_searched, pv));
-            let mut pv_str = String::new();
-            let mut index = 0;
-            while let Some(mv) = self.pv_table[0].pv[index].as_ref() {
-                pv_str.push_str(&format!("{:?} ", mv));
-                index += 1;
-            }
             let nps = self.search_statistics.getnps();
             println!(
                 "{}",
@@ -200,7 +194,7 @@ impl Search {
                     nps,
                     self.search_statistics.time_elapsed,
                     pv_score,
-                    pv_str
+                    self.pv_table[0]
                 )
             );
             //Compare old pv to new pv
