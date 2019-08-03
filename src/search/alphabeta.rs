@@ -379,9 +379,14 @@ pub fn principal_variation_search(
             current_max_score = following_score;
             concatenate_pv(current_depth, su.search);
             if root && su.search.search_statistics.time_elapsed > 1000 {
+                let nps = su.search.search_statistics.getnps();
                 println!(
-                    "info depth {} score cp {} lowerbound pv {}",
-                    depth_left, following_score, su.search.pv_table[0]
+                    "info depth {} nodes {} nps {} score cp {} lowerbound pv {}",
+                    depth_left,
+                    su.search.search_statistics.nodes_searched,
+                    nps,
+                    following_score,
+                    su.search.pv_table[0]
                 );
                 //UCI-Reporting
             }

@@ -282,7 +282,7 @@ pub fn play_game(
 
             //Get additional info about player1 e.g. how deep he saw, nps, and his evaluation
             {
-                let info = fetch_info(output.3);
+                let info = fetch_info(output.3.clone());
                 let has_score = match info.cp_score {
                     Some(_) => true,
                     _ => false,
@@ -339,6 +339,9 @@ pub fn play_game(
                 }
                 if let Some(nps) = info.nps {
                     average_nps_p1 += nps as f64;
+                } else {
+                    println!("Couldn't get info");
+                    println!("{}", output.3);
                 }
             }
         } else {
