@@ -339,9 +339,6 @@ pub fn play_game(
                 }
                 if let Some(nps) = info.nps {
                     average_nps_p1 += nps as f64;
-                } else {
-                    println!("Couldn't get info");
-                    println!("{}", output.3);
                 }
             }
         } else {

@@ -1,5 +1,5 @@
 {
-	"processors":1,
+	"processors":3,
 	"selfplaytests":true,
 	"games": 1000,
 	"engine1_path":"./target/release/fabchess.exe",

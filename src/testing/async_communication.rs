@@ -57,7 +57,7 @@ pub fn expect_output_and_listen_for_info(
         .inspect(move |line| {
             if line.starts_with("info") {
                 //println!("{}", line);
-                info_listener_moved.push(line);
+                info_listener_moved.push(&format!("{} ", line));
             }
         })
         .filter(move |lines| lines.starts_with(&starts_with[..]))

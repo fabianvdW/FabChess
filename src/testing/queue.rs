@@ -35,7 +35,8 @@ impl ThreadSafeString {
     }
 
     pub fn push(&self, str: &String) {
-        *self.string.lock().unwrap() = str.clone();
+        let mut data = self.string.lock().unwrap();
+        (*data).push_str(str);
     }
 
     pub fn get_inner(&self) -> String {
