@@ -8,7 +8,7 @@ use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
 use crate::board_representation::game_state::{GameState, WHITE};
-//use crate::logging::log;
+use crate::logging::log;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::MoveList;
@@ -246,17 +246,23 @@ impl Search {
             "\nFinished calculating game_state with plies: {}\n",
             game_state.full_moves
         ));
-        log(&format!("{}\n", self.tc));
+        log(&format!("{}\n", self.tc.to_string(&self.tc_information)));
         log(&format!(
             "Time elapsed: {}\n",
             self.search_statistics.time_elapsed
         ));
         log(&format!(
             "Time saved in this: {}\n",
-            self.tc.time_saved(self.search_statistics.time_elapsed),
+            self.tc.time_saved(
+                self.search_statistics.time_elapsed,
+                self.tc_information.time_saved
+            )
         ));*/
         let mut new_timesaved: i64 = self.tc_information.time_saved as i64
-            + self.tc.time_saved(self.search_statistics.time_elapsed);
+            + self.tc.time_saved(
+                self.search_statistics.time_elapsed,
+                self.tc_information.time_saved,
+            );
         new_timesaved = new_timesaved.max(0);
         saved_time.store(new_timesaved as u64, Ordering::Relaxed);
         /*log(&format!(
