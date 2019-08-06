@@ -8,7 +8,7 @@ use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
 use crate::board_representation::game_state::{GameState, WHITE};
-use crate::logging::log;
+//use crate::logging::log;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::MoveList;
