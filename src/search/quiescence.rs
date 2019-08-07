@@ -252,8 +252,8 @@ pub fn make_and_evaluate_moves_qsearch(
                 if !incheck {
                     panic!("Not in check but also not capture");
                 }
-                let score = search.hh_score[mv.from][mv.to] as f64
-                    / search.bf_score[mv.from][mv.to] as f64
+                let score = search.hh_score[game_state.color_to_move][mv.from][mv.to] as f64
+                    / search.bf_score[game_state.color_to_move][mv.from][mv.to] as f64
                     / 1000.0;
                 move_list.graded_moves[current_depth][capture_index] =
                     Some(GradedMove::new(mv_index, score));

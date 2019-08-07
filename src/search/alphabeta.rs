@@ -399,7 +399,8 @@ pub fn principal_variation_search(
                 .search_statistics
                 .add_normal_node_beta_cutoff(index);
             if !isc {
-                su.search.hh_score[mv.from][mv.to] += HH_INCREMENT;
+                su.search.hh_score[game_state.color_to_move][mv.from][mv.to] +=
+                    depth_left as usize * depth_left as usize;
                 //Replace killers
                 //Dont replace if already in table
                 if let Some(s) = su.search.killer_moves[current_depth][0] {
@@ -420,7 +421,8 @@ pub fn principal_variation_search(
             break;
         } else {
             if !isc {
-                su.search.bf_score[mv.from][mv.to] += BF_INCREMENT;
+                su.search.bf_score[game_state.color_to_move][mv.from][mv.to] +=
+                    depth_left as usize * depth_left as usize;
             }
         }
         index += 1;
@@ -490,8 +492,8 @@ pub fn make_and_evaluate_moves(
             }
         } else {
             //Assing history score
-            let score = search.hh_score[mv.from][mv.to] as f64
-                / search.bf_score[mv.from][mv.to] as f64
+            let score = search.hh_score[game_state.color_to_move][mv.from][mv.to] as f64
+                / search.bf_score[game_state.color_to_move][mv.from][mv.to] as f64
                 / 1000.0;
             move_list.graded_moves[current_depth][mv_index] =
                 Some(GradedMove::new(mv_index, score));
