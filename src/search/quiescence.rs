@@ -43,7 +43,7 @@ pub fn q_search(
 
     //check for draw
     if check_for_draw(game_state, su.history) {
-        return leaf_score(GameResult::Draw, color, depth_left);
+        return leaf_score(GameResult::Draw, color, current_depth as i16);
     }
     let static_evaluation = eval_game_state(&game_state);
     //Stand-Pat pruning
@@ -195,7 +195,7 @@ pub fn q_search(
     let game_status = check_end_condition(&game_state, has_legal_move, incheck);
     if game_status != GameResult::Ingame {
         clear_pv(current_depth, su.search);
-        return leaf_score(game_status, color, depth_left);
+        return leaf_score(game_status, color, current_depth as i16);
     }
     if has_pv {
         super::alphabeta::make_cache(

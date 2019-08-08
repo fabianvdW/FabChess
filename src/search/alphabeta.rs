@@ -18,8 +18,7 @@ use std::sync::Arc;
 
 pub const MATE_SCORE: i16 = 15000;
 pub const MATED_IN_MAX: i16 = -14000;
-pub const HH_INCREMENT: usize = 1;
-pub const BF_INCREMENT: usize = 1;
+
 pub const MAX_SEARCH_DEPTH: usize = 100;
 pub const STANDARD_SCORE: i16 = -32767;
 pub const FUTILITY_MARGIN: i16 = 90;
@@ -53,7 +52,7 @@ pub fn principal_variation_search(
     let root = current_depth == 0;
     //Check for draw
     if !root && check_for_draw(game_state, su.history) {
-        return leaf_score(GameResult::Draw, color, depth_left);
+        return leaf_score(GameResult::Draw, color, current_depth as i16);
     }
     let is_pv_node = beta - alpha > 1;
     let incheck = in_check(game_state);
@@ -237,6 +236,7 @@ pub fn principal_variation_search(
     let mut index: usize = 0;
     let mut moves_tried: usize = 0;
     let mut moves_from_movelist_tried: usize = 0;
+    let mut quiets_tried: usize = 0;
     while moves_tried < su.move_list.counter[current_depth] + hash_and_pv_move_counter
         || !has_generated_moves
     {
@@ -309,6 +309,11 @@ pub fn principal_variation_search(
                 continue;
             } else {
                 futil_pruning = false;
+            }
+        }
+        if depth_left <= 2 && !isc && !isp && !incheck && current_max_score > MATED_IN_MAX {
+            if su.search.history_score[game_state.color_to_move][mv.from][mv.to] < 0 {
+                continue;
             }
         }
         let mut following_score: i16;
@@ -401,6 +406,15 @@ pub fn principal_variation_search(
             if !isc {
                 su.search.hh_score[game_state.color_to_move][mv.from][mv.to] +=
                     depth_left as usize * depth_left as usize;
+                su.search.history_score[game_state.color_to_move][mv.from][mv.to] +=
+                    depth_left as isize * depth_left as isize;
+                decrement_history_quiets(
+                    su.search,
+                    current_depth,
+                    quiets_tried,
+                    depth_left as isize,
+                    game_state.color_to_move,
+                );
                 //Replace killers
                 //Dont replace if already in table
                 if let Some(s) = su.search.killer_moves[current_depth][0] {
@@ -421,6 +435,8 @@ pub fn principal_variation_search(
             break;
         } else {
             if !isc {
+                su.search.quiets_tried[current_depth][quiets_tried] = Some(mv);
+                quiets_tried += 1;
                 su.search.bf_score[game_state.color_to_move][mv.from][mv.to] +=
                     depth_left as usize * depth_left as usize;
             }
@@ -432,7 +448,7 @@ pub fn principal_variation_search(
     let game_status = check_end_condition(&game_state, moves_tried > 0, incheck);
     if game_status != GameResult::Ingame {
         clear_pv(current_depth, su.search);
-        return leaf_score(game_status, color, depth_left);
+        return leaf_score(game_status, color, current_depth as i16);
     }
 
     if alpha < beta {
@@ -455,6 +471,18 @@ pub fn principal_variation_search(
         );
     }
     return current_max_score;
+}
+pub fn decrement_history_quiets(
+    search: &mut Search,
+    current_depth: usize,
+    quiets_tried: usize,
+    depth_left: isize,
+    side_to_move: usize,
+) {
+    for i in 0..quiets_tried {
+        let mv = search.quiets_tried[current_depth][i].as_ref().unwrap();
+        search.history_score[side_to_move][mv.from][mv.to] -= depth_left * depth_left;
+    }
 }
 #[inline(always)]
 pub fn make_and_evaluate_moves(
@@ -803,13 +831,13 @@ pub fn make_cache(
 }
 
 #[inline(always)]
-pub fn leaf_score(game_status: GameResult, color: i16, depth_left: i16) -> i16 {
+pub fn leaf_score(game_status: GameResult, color: i16, current_depth: i16) -> i16 {
     if game_status == GameResult::Draw {
         return 0;
     } else if game_status == GameResult::WhiteWin {
-        return (MATE_SCORE + depth_left) * color;
+        return (MATE_SCORE - current_depth) * color;
     } else if game_status == GameResult::BlackWin {
-        return (MATE_SCORE + depth_left) * -color;
+        return (MATE_SCORE - current_depth) * -color;
     }
     panic!("Invalid Leaf");
 }
