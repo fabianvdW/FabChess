@@ -1,5 +1,6 @@
 use super::alphabeta::principal_variation_search;
 use super::alphabeta::PrincipalVariation;
+use super::alphabeta::MATED_IN_MAX;
 use super::alphabeta::MAX_SEARCH_DEPTH;
 use super::alphabeta::STANDARD_SCORE;
 use super::cache::{Cache, CacheEntry};
@@ -167,14 +168,14 @@ impl Search {
                         break;
                     }
                     if pv_score <= alpha {
-                        if alpha < -10000 {
+                        if alpha < -10000 || pv_score < MATED_IN_MAX {
                             alpha = -16000;
                         } else {
                             alpha -= delta;
                         }
                     }
                     if pv_score >= beta {
-                        if beta > 10000 {
+                        if beta > 10000 || pv_score > -MATED_IN_MAX {
                             beta = 16000;
                         } else {
                             beta += delta;

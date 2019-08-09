@@ -764,15 +764,22 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     let side = if white { WHITE } else { BLACK };
 
     let my_pawns = g.pieces[PAWN][side].count_ones() as i16;
+    let mut my_knights = g.pieces[KNIGHT][side].count_ones() as i16;
+    let mut my_bishops = g.pieces[BISHOP][side].count_ones() as i16;
+    let my_rooks = g.pieces[ROOK][side].count_ones() as i16;
+    let my_queens = g.pieces[QUEEN][side].count_ones() as i16;
+    if my_pawns + my_knights + my_bishops + my_rooks + my_queens == 1 {
+        my_knights = 0;
+        my_bishops = 0;
+    }
     mg_res += PAWN_PIECE_VALUE_MG * my_pawns;
     eg_res += PAWN_PIECE_VALUE_EG * my_pawns;
 
     let pawns_on_board = (g.pieces[PAWN][WHITE] | g.pieces[PAWN][BLACK]).count_ones() as usize;
-    let my_knights = g.pieces[KNIGHT][side].count_ones() as i16;
+
     mg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
     eg_res += (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
 
-    let my_bishops = g.pieces[BISHOP][side].count_ones() as i16;
     mg_res += BISHOP_PIECE_VALUE_MG * my_bishops;
     eg_res += BISHOP_PIECE_VALUE_EG * my_bishops;
     if my_bishops > 1 {
@@ -780,11 +787,9 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
         eg_res += BISHOP_PAIR_BONUS_EG;
     }
 
-    let my_rooks = g.pieces[ROOK][side].count_ones() as i16;
     mg_res += ROOK_PIECE_VALUE_MG * my_rooks;
     eg_res += ROOK_PIECE_VALUE_EG * my_rooks;
 
-    let my_queens = g.pieces[QUEEN][side].count_ones() as i16;
     mg_res += QUEEN_PIECE_VALUE_MG * my_queens;
     eg_res += QUEEN_PIECE_VALUE_EG * my_queens;
 
