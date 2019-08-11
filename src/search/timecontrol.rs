@@ -3,12 +3,14 @@ const MOVE_OVERHEAD: u64 = 25;
 pub struct TimeControlInformation {
     pub time_saved: u64,
     pub stable_pv: bool,
+    pub high_score_diff: bool,
 }
 impl TimeControlInformation {
     pub fn new(time_saved: u64) -> Self {
         TimeControlInformation {
             time_saved,
             stable_pv: false,
+            high_score_diff: false,
         }
     }
 }
@@ -37,8 +39,11 @@ impl TimeControl {
             if time_spent < time_aspired {
                 return false;
             }
-            if tc_information.stable_pv {
+            if tc_information.stable_pv && !tc_information.high_score_diff {
                 return true;
+            }
+            if tc_information.high_score_diff {
+                return time_spent as f64 > 0.85 * (normal_time + tc_information.time_saved) as f64;
             }
             //Non stable pv so we increase time
             return time_spent as f64 > 1.15 * (normal_time + tc_information.time_saved) as f64;

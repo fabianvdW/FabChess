@@ -83,6 +83,36 @@ impl Search {
         }
     }
 
+    pub fn replace_pv(&mut self, game_state: &GameState, depth: i16, pv_score: i16) {
+        let mut pv_stack = Vec::with_capacity(depth as usize);
+        let mut index = 0;
+        while let Some(pair) = self.pv_table[0].pv[index].as_ref() {
+            if index == 0 {
+                pv_stack.push(make_move(&game_state, &pair));
+            } else {
+                pv_stack.push(make_move(&pv_stack[index - 1], &pair));
+            }
+            index += 1;
+        }
+        index = 0;
+        while let Some(pair) = self.pv_table[0].pv[index].as_ref() {
+            let state = if index == 0 {
+                &game_state
+            } else {
+                &pv_stack[index - 1]
+            };
+            self.principal_variation[index] = Some(CacheEntry::new(
+                state,
+                depth - index as i16,
+                pv_score,
+                false,
+                false,
+                &pair,
+                None,
+            ));
+            index += 1;
+        }
+    }
     pub fn search(
         &mut self,
         depth: i16,
@@ -91,6 +121,7 @@ impl Search {
         stop_ref: Arc<AtomicBool>,
         cache_uc: Arc<RwLock<Cache>>,
         saved_time: Arc<AtomicU64>,
+        last_score: i16,
     ) -> i16 {
         let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
         let cache = &mut (*cache_uc).write().unwrap();
@@ -164,12 +195,22 @@ impl Search {
                     if self.stop {
                         break;
                     }
+                    /*if (pv_score - last_score).abs() > 150 && last_score.abs() < 600 {
+                        self.tc_information.high_score_diff = true;
+                    } else {
+                        self.tc_information.high_score_diff = false;
+                    }*/
+
                     if pv_score > alpha && pv_score < beta {
                         break;
                     }
+                    //Else put pv in principal_variation table
+                    self.replace_pv(&game_state, depth, pv_score);
+
                     if pv_score <= alpha {
                         if alpha < -10000 || pv_score < MATED_IN_MAX {
                             alpha = -16000;
+                            beta = 16000;
                         } else {
                             alpha -= delta;
                         }
@@ -177,6 +218,7 @@ impl Search {
                     if pv_score >= beta {
                         if beta > 10000 || pv_score > -MATED_IN_MAX {
                             beta = 16000;
+                            alpha = -16000;
                         } else {
                             beta += delta;
                         }
@@ -216,34 +258,7 @@ impl Search {
             }
             //println!("{}", self.search_statistics);
             //Set PV in table
-            let mut pv_stack = Vec::with_capacity(d as usize);
-            let mut index = 0;
-            while let Some(pair) = self.pv_table[0].pv[index].as_ref() {
-                if index == 0 {
-                    pv_stack.push(make_move(&game_state, &pair));
-                } else {
-                    pv_stack.push(make_move(&pv_stack[index - 1], &pair));
-                }
-                index += 1;
-            }
-            index = 0;
-            while let Some(pair) = self.pv_table[0].pv[index].as_ref() {
-                let state = if index == 0 {
-                    &game_state
-                } else {
-                    &pv_stack[index - 1]
-                };
-                self.principal_variation[index] = Some(CacheEntry::new(
-                    state,
-                    d - index as i16,
-                    pv_score,
-                    false,
-                    false,
-                    &pair,
-                    None,
-                ));
-                index += 1;
-            }
+            self.replace_pv(&game_state, depth, pv_score);
             best_pv_score = pv_score;
         }
         self.search_statistics.refresh_time_elapsed();

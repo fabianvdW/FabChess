@@ -7,7 +7,9 @@ use crate::search::cache::CacheEntry;
 use crate::search::search::Search;
 use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
-use std::sync::{atomic::AtomicBool, atomic::AtomicU64, atomic::Ordering, Arc, RwLock};
+use std::sync::{
+    atomic::AtomicBool, atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc, RwLock,
+};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -18,6 +20,7 @@ pub fn parse_loop() {
     let mut us = UCIEngine::standard();
     let stop = Arc::new(AtomicBool::new(false));
     let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
+    let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
     let mut movelist = movegen::MoveList::new();
     let saved_time = Arc::new(AtomicU64::new(0u64));
     let stdin = io::stdin();
@@ -40,6 +43,7 @@ pub fn parse_loop() {
                 newgame(&mut us);
                 (*cache).write().unwrap().clear();
                 saved_time.store(0, Ordering::Relaxed);
+                last_score.store(0, Ordering::Relaxed);
             }
             "isready" => isready(),
             "position" => {
@@ -56,10 +60,11 @@ pub fn parse_loop() {
                 let cl = Arc::clone(&stop);
                 let cc = Arc::clone(&cache);
                 let st = Arc::clone(&saved_time);
+                let ls = Arc::clone(&last_score);
                 thread::Builder::new()
                     .stack_size(2 * 1024 * 1024)
                     .spawn(move || {
-                        start_search(cl, new_state, new_history, tc, cc, depth, st);
+                        start_search(cl, new_state, new_history, tc, cc, depth, st, ls);
                     })
                     .expect("Couldn't start thread");
             }
@@ -109,19 +114,22 @@ pub fn start_search(
     cache: Arc<RwLock<Cache>>,
     depth: usize,
     saved_time: Arc<AtomicU64>,
+    last_score: Arc<AtomicI16>,
 ) {
     let mut s = Search::new(
         tc,
         TimeControlInformation::new(saved_time.load(Ordering::Relaxed)),
     );
-    s.search(
+    let score = s.search(
         depth as i16,
         game_state.clone(),
         history,
         stop,
         cache,
         saved_time,
+        last_score.load(Ordering::Relaxed),
     );
+    last_score.store(score, Ordering::Relaxed);
     let bestmove = if let Some(mv) = s.pv_table[0].pv[0] {
         mv
     } else {
