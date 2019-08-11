@@ -20,7 +20,7 @@ use core::tuning::loading::{save_positions, FileFormatSupported, LabelledGameSta
 use std::fs;
 
 //const FEN_DIR: &str = "D:/FenCollection/Real";
-const FEN_DIR: &str = "D:/FenCollection/Test";
+const FEN_DIR: &str = "D:/FenCollection/Lichess";
 fn main() {
     //2. Transform all FEN-Positions in Quiet positions
     //3. Save all positions just like loaded, all positions after q-search, all positions after q-search without stripped(no positions with >10 or <-10 eval)
@@ -30,17 +30,17 @@ fn main() {
     for path in paths {
         load_positions(
             &format!("{}", path.unwrap().path().display()),
-            FileFormatSupported::OwnEncoding,
+            FileFormatSupported::EPD,
             &mut positions,
             &mut stats,
         );
     }
     println!("{}", stats);
     println!("Positions: {}", positions.len());
-    save_positions(
+    /*save_positions(
         &format!("{}/all_positions_noqsearch.txt", FEN_DIR),
         &positions,
-    );
+    );*/
 
     let mut quiet_nonstripped: Vec<LabelledGameState> = Vec::with_capacity(positions.len());
     let mut quiet_stripped: Vec<LabelledGameState> = Vec::with_capacity(positions.len());
@@ -50,6 +50,11 @@ fn main() {
     let mut see_buffer = vec![0i16; MAX_SEARCH_DEPTH];
 
     for position in positions {
+        let mut other = position.game_state.clone();
+        other.color_to_move = 1 - other.color_to_move;
+        if in_check(&other) {
+            continue;
+        }
         let (score, state) = stripped_q_search(
             -16000,
             16000,
@@ -82,10 +87,10 @@ fn main() {
         &format!("{}/all_positions_qsearch.txt", FEN_DIR),
         &quiet_nonstripped,
     );
-    save_positions(
+    /*save_positions(
         &format!("{}/all_positions_qsearchstripped.txt", FEN_DIR),
         &quiet_stripped,
-    );
+    );*/
 }
 
 pub fn stripped_q_search(

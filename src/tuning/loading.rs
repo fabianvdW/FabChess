@@ -111,9 +111,9 @@ pub fn load_positions(
             }
             let split = line.split(" ").collect::<Vec<&str>>();
             let fen = &format!("{} {} {} {}", split[0], split[1], split[2], split[3]);
-            let game_result = if line.contains("1-0") {
+            let game_result = if line.contains("1-0") || line.contains("1.0") {
                 1.0
-            } else if line.contains("1/2-1/2") {
+            } else if line.contains("1/2-1/2") || line.contains("0.5") {
                 0.5
             } else {
                 0.0

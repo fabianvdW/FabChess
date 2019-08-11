@@ -13,7 +13,7 @@ use rand::{seq::SliceRandom, thread_rng};
 
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
 //pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
-pub const POSITION_FILE: &str = "D:/FenCollection/CCRL/CCRL-quiet-labeled.epd";
+pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 
 //Override for all others if true
@@ -36,7 +36,7 @@ pub const TUNE_MOBILITY: bool = false;
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_PSQT: bool = false;
 
-const BATCH_SIZE: usize = 761731;
+const BATCH_SIZE: usize = 2500000;
 //const BATCH_SIZE:usize=725000;
 //const BATCH_SIZE: usize = 50000;
 pub fn main() {
@@ -66,7 +66,7 @@ pub fn main() {
             positions.len()
         );
         let mut tuner = Tuner {
-            k: 0.96,
+            k: 1.0887,
             positions: init_texel_states(positions),
             params: Parameters::default(),
         };
@@ -478,7 +478,7 @@ pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f64 {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = 0.05;
+    let mut lr = 0.5;
     loop {
         epoch += 1;
         //Shuffle positions
