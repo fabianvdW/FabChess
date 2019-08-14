@@ -54,7 +54,7 @@ mod tests {
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
                 sum += eval_game_state(&states[i]).final_eval as isize;
             }
-            return sum;
+            sum;
         });
     }
 }

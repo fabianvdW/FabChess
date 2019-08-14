@@ -683,7 +683,7 @@ pub fn check_end_condition(
     (GameResult::Ingame, None)
 }
 
-pub fn get_occurences(history: &Vec<GameState>, state: &GameState) -> usize {
+pub fn get_occurences(history: &[GameState], state: &GameState) -> usize {
     let mut occ = 0;
     for other in history {
         if other.hash == state.hash {

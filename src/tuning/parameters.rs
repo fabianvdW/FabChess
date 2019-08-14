@@ -388,60 +388,60 @@ impl Parameters {
         }
         let mut knight_mobility: [[f64; 9]; 2] = [[0.; 9]; 2];
         for i in 0..9 {
-            knight_mobility[MG][i] = KNIGHT_MOBILITY_BONUS_MG[i] as f64;
-            knight_mobility[EG][i] = KNIGHT_MOBILITY_BONUS_EG[i] as f64;
+            knight_mobility[MG][i] = f64::from(KNIGHT_MOBILITY_BONUS_MG[i]);
+            knight_mobility[EG][i] = f64::from(KNIGHT_MOBILITY_BONUS_EG[i]);
         }
         let mut bishop_mobility: [[f64; 14]; 2] = [[0.; 14]; 2];
         for i in 0..14 {
-            bishop_mobility[MG][i] = BISHOP_MOBILITY_BONUS_MG[i] as f64;
-            bishop_mobility[EG][i] = BISHOP_MOBILITY_BONUS_EG[i] as f64;
+            bishop_mobility[MG][i] = f64::from(BISHOP_MOBILITY_BONUS_MG[i]);
+            bishop_mobility[EG][i] = f64::from(BISHOP_MOBILITY_BONUS_EG[i]);
         }
         let mut rook_mobility: [[f64; 15]; 2] = [[0.; 15]; 2];
         for i in 0..15 {
-            rook_mobility[MG][i] = ROOK_MOBILITY_BONUS_MG[i] as f64;
-            rook_mobility[EG][i] = ROOK_MOBILITY_BONUS_EG[i] as f64;
+            rook_mobility[MG][i] = f64::from(ROOK_MOBILITY_BONUS_MG[i]);
+            rook_mobility[EG][i] = f64::from(ROOK_MOBILITY_BONUS_EG[i]);
         }
         let mut queen_mobility: [[f64; 28]; 2] = [[0.; 28]; 2];
         for i in 0..28 {
-            queen_mobility[MG][i] = QUEEN_MOBILITY_BONUS_MG[i] as f64;
-            queen_mobility[EG][i] = QUEEN_MOBILITY_BONUS_EG[i] as f64;
+            queen_mobility[MG][i] = f64::from(QUEEN_MOBILITY_BONUS_MG[i]);
+            queen_mobility[EG][i] = f64::from(QUEEN_MOBILITY_BONUS_EG[i]);
         }
         let mut attack_weight: [f64; 8] = [0.; 8];
         for i in 0..8 {
-            attack_weight[i] = ATTACK_WEIGHT[i] as f64;
+            attack_weight[i] = f64::from(ATTACK_WEIGHT[i]);
         }
         let mut safety_table: SafetyTable = SafetyTable {
             safety_table: [0.; 100],
         };
         for i in 0..100 {
-            safety_table.safety_table[i] = SAFETY_TABLE[i] as f64;
+            safety_table.safety_table[i] = f64::from(SAFETY_TABLE[i]);
         }
         let mut psqt_pawn: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_pawn[MG][i][j] = PSQT_PAWN_MG[i][j] as f64;
-                psqt_pawn[EG][i][j] = PSQT_PAWN_EG[i][j] as f64;
+                psqt_pawn[MG][i][j] = f64::from(PSQT_PAWN_MG[i][j]);
+                psqt_pawn[EG][i][j] = f64::from(PSQT_PAWN_EG[i][j]);
             }
         }
         let mut psqt_knight: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_knight[MG][i][j] = PSQT_KNIGHT_MG[i][j] as f64;
-                psqt_knight[EG][i][j] = PSQT_KNIGHT_EG[i][j] as f64;
+                psqt_knight[MG][i][j] = f64::from(PSQT_KNIGHT_MG[i][j]);
+                psqt_knight[EG][i][j] = f64::from(PSQT_KNIGHT_EG[i][j]);
             }
         }
         let mut psqt_bishop: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_bishop[MG][i][j] = PSQT_BISHOP_MG[i][j] as f64;
-                psqt_bishop[EG][i][j] = PSQT_BISHOP_EG[i][j] as f64;
+                psqt_bishop[MG][i][j] = f64::from(PSQT_BISHOP_MG[i][j]);
+                psqt_bishop[EG][i][j] = f64::from(PSQT_BISHOP_EG[i][j]);
             }
         }
         let mut psqt_king: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_king[MG][i][j] = PSQT_KING_MG[i][j] as f64;
-                psqt_king[EG][i][j] = PSQT_KING_EG[i][j] as f64;
+                psqt_king[MG][i][j] = f64::from(PSQT_KING_MG[i][j]);
+                psqt_king[EG][i][j] = f64::from(PSQT_KING_EG[i][j]);
             }
         }
         Parameters {

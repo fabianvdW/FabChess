@@ -48,11 +48,11 @@ impl Display for SuitInfos {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
         res_str.push_str(&format!("movetime {}\n", self.move_time));
-        for i in 0..15 {
+        for (i, subsuit) in STS_SUB_SUITS.iter().enumerate() {
             if self.subsuit_positions[i] > 0 {
                 res_str.push_str(&format!(
                     "Subsuit {} : {}/{}   Points: {}/{}\n",
-                    STS_SUB_SUITS[i],
+                    subsuit,
                     self.subsuit_optimal_moves_found[i],
                     self.subsuit_positions[i],
                     self.subsuit_points[i],
@@ -134,7 +134,7 @@ fn suit_thread(
     move_time: u64,
 ) {
     let mut movelist = movegen::MoveList::new();
-    let mut child = Command::new(&format!("{}", p1))
+    let mut child = Command::new(p1.to_string())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -152,7 +152,7 @@ fn suit_thread(
         loop {
             line.clear();
             child_out.read_line(&mut line).unwrap();
-            let cmd: Vec<&str> = line.split(" ").collect();
+            let cmd: Vec<&str> = line.split(' ').collect();
             if cmd[0] == "bestmove" {
                 let bm = cmd[1].trim();
                 let (mv, _) = parse_move(&test.game_state, &bm.to_owned(), &mut movelist);
@@ -170,9 +170,9 @@ fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("Unable to read the file");
-    let split = contents.split("\n");
+    let split = contents.split('\n');
     for line in split {
-        let linevec = line.split(";").collect::<Vec<&str>>();
+        let linevec = line.split(';').collect::<Vec<&str>>();
         if linevec.len() == 1 {
             break;
         }
@@ -185,9 +185,9 @@ fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
                 let comment_line = otherlines.trim();
                 let comment_line = comment_line.replace("c0", "");
                 let comment_line = comment_line.replace("\"", "");
-                let comment_line = comment_line.split(",").collect::<Vec<&str>>();
+                let comment_line = comment_line.split(',').collect::<Vec<&str>>();
                 for optimal_move_desc in comment_line {
-                    let move_desc_split = optimal_move_desc.split("=").collect::<Vec<&str>>();
+                    let move_desc_split = optimal_move_desc.split('=').collect::<Vec<&str>>();
                     //println!("MoveDesc: {:?}", move_desc_split);
                     let (move_desc, _) =
                         parse_move(&state, &move_desc_split[0].trim().to_owned(), &mut movelist);

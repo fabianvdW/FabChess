@@ -97,7 +97,7 @@ mod tests {
             )
         );
         assert_eq!(
-            197281,
+            197_281,
             perft(
                 &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
                 4,
@@ -105,7 +105,7 @@ mod tests {
             )
         );
         assert_eq!(
-            4865609,
+            4_865_609,
             perft(
                 &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
                 5,
@@ -113,7 +113,7 @@ mod tests {
             )
         );
         assert_eq!(
-            119060324,
+            119_060_324,
             perft(
                 &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
                 6,
@@ -201,7 +201,7 @@ mod tests {
         );
 
         assert_eq!(
-            1134888,
+            1_134_888,
             perft(
                 &GameState::from_fen("3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1"),
                 6,
@@ -798,7 +798,7 @@ mod tests {
             #[cfg(feature = "texel-tuning")]
             trace: core::tuning::trace::Trace::default(),
         };
-        for _i in 0..100000 {
+        for _i in 0..100_000 {
             let mut g = GameState::standard();
             let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces, &mut _eval);
             let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces, &mut _eval);

@@ -53,8 +53,8 @@ pub fn evaluate_psqt(
 }
 
 pub fn evaluate_single(score: &mut (f64, f64), trace: &[i8; 2], param: &[f64; 2]) {
-    score.0 += (trace[WHITE] - trace[BLACK]) as f64 * param[MG];
-    score.1 += (trace[WHITE] - trace[BLACK]) as f64 * param[EG];
+    score.0 += f64::from(trace[WHITE] - trace[BLACK]) * param[MG];
+    score.1 += f64::from(trace[WHITE] - trace[BLACK]) * param[EG];
 }
 pub fn evaluate_single2(
     score: &mut (f64, f64),
@@ -63,8 +63,8 @@ pub fn evaluate_single2(
     param_mg: f64,
     param_eg: f64,
 ) {
-    score.0 += (trace_white - trace_black) as f64 * param_mg;
-    score.1 += (trace_white - trace_black) as f64 * param_eg;
+    score.0 += f64::from(trace_white - trace_black) * param_mg;
+    score.1 += f64::from(trace_white - trace_black) * param_eg;
 }
 
 impl Trace {

@@ -29,7 +29,7 @@ pub fn parse_loop() {
         line.clear();
         stdin.read_line(&mut line).ok().unwrap();
         let arg: Vec<&str> = line.split_whitespace().collect();
-        if arg.len() == 0 {
+        if arg.is_empty() {
             continue;
         }
         let cmd = arg[0];
@@ -180,11 +180,11 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
         };
         index += 2;
     }
-    if let None = movestogo {
+    if movestogo.is_none() {
         if engine.internal_state.color_to_move == 0 {
-            return (TimeControl::Incremental(wtime, winc), depth);
+            (TimeControl::Incremental(wtime, winc), depth)
         } else {
-            return (TimeControl::Incremental(btime, binc), depth);
+            (TimeControl::Incremental(btime, binc), depth)
         }
     } else if let Some(mvs) = movestogo {
         if mvs == 0 {
@@ -225,22 +225,20 @@ pub fn position(
     }
     let mut history: Vec<GameState> = vec![];
     history.push(engine.internal_state.clone());
-    if move_index < cmd.len() {
-        if cmd[move_index].to_lowercase() == "moves" {
+    if move_index < cmd.len() && cmd[move_index].to_lowercase() == "moves" {
+        move_index += 1;
+        while move_index < cmd.len() {
+            //Parse the move and make it
+            let mv = cmd[move_index];
+            let (from, to, promo) = GameMove::string_to_move(mv);
+            engine.internal_state =
+                scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
+            history.push(engine.internal_state.clone());
             move_index += 1;
-            while move_index < cmd.len() {
-                //Parse the move and make it
-                let mv = cmd[move_index];
-                let (from, to, promo) = GameMove::string_to_move(mv);
-                engine.internal_state =
-                    scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
-                history.push(engine.internal_state.clone());
-                move_index += 1;
-            }
         }
     }
     history.pop();
-    return history;
+    history
 }
 
 pub fn scout_and_make_draftmove(

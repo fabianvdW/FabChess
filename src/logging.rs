@@ -50,7 +50,8 @@ impl Logger {
     }
 
     pub fn log(&self, msg: &str, also_stdout: bool) {
-        self.file
+        let _ = self
+            .file
             .lock()
             .unwrap()
             .write(msg.as_bytes())

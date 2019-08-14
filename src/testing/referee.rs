@@ -123,7 +123,7 @@ fn main() {
     }
 }
 pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {
-    writer
+    let _ = writer
         .write(message.as_bytes())
         .expect("Unable to write to Buf!");
     writer.flush().expect("Unable to flush writer!");

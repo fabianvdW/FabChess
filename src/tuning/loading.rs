@@ -43,7 +43,7 @@ pub fn save_positions(to_file: &str, positions: &Vec<LabelledGameState>) {
         res_str.push_str(&format!(
             "{} |{}\n",
             pos.game_state.to_fen(),
-            if pos.label == 1.0 {
+            if pos.label - 1.0 < std::f64::EPSILON {
                 "White"
             } else if pos.label == 0.0 {
                 "Black"
@@ -85,11 +85,11 @@ pub fn load_positions(
                 if is_newgame {
                     is_newgame = false;
                     stats.games += 1;
-                    if game_result == 1.0 {
+                    if game_result - 1.0 < std::f64::EPSILON {
                         stats.white_wins += 1;
                     } else if game_result == 0.0 {
                         stats.black_wins += 1;
-                    } else if game_result == 0.5 {
+                    } else if game_result - 0.5 < std::f64::EPSILON {
                         stats.draws += 1;
                     }
                 }

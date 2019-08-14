@@ -76,10 +76,8 @@ pub fn parse_pgn_find_static_eval_mistakes() {
                 if eval.abs() > 100 {
                     log(&format!("{} (1/2-1/2)\n", &last_game_state.to_fen()));
                 }
-            } else if res == -1 {
-                if eval > 0 {
-                    log(&format!("{} (0-1)\n", &last_game_state.to_fen()));
-                }
+            } else if res == -1 && eval > 0 {
+                log(&format!("{} (0-1)\n", &last_game_state.to_fen()));
             }
         }
     }
@@ -108,19 +106,19 @@ impl Iterator for GameParser {
                     return Some((vec_res, vec_gs, -2));
                 }
                 //log(&format!("{}\n", game));
-                let moves = game.split(" ").collect::<Vec<&str>>();
+                let moves = game.split(' ').collect::<Vec<&str>>();
                 for idx in 0..moves.len() - 2 {
                     let mut move_str = moves[idx];
-                    if move_str.contains(".") {
-                        move_str = move_str.rsplit(".").collect::<Vec<&str>>()[0];
+                    if move_str.contains('.') {
+                        move_str = move_str.rsplit('.').collect::<Vec<&str>>()[0];
                     }
-                    if move_str.len() == 0 {
+                    if move_str.is_empty() {
                         continue;
                     }
                     //println!("{} || len: {}", move_str, move_str.len());
                     let parsed_move = parse_move(
                         &vec_gs[vec_gs.len() - 1],
-                        &mut String::from(move_str),
+                        &String::from(move_str),
                         &mut self.move_list,
                     );
                     vec_gs.push(parsed_move.1);
@@ -195,36 +193,36 @@ pub fn parse_move(
         }
     } else {
         let mut moving_piece_type = PieceType::Pawn;
-        if my_string.starts_with("N") {
+        if my_string.starts_with('N') {
             moving_piece_type = PieceType::Knight;
             my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with("B") {
+        } else if my_string.starts_with('B') {
             moving_piece_type = PieceType::Bishop;
             my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with("R") {
+        } else if my_string.starts_with('R') {
             moving_piece_type = PieceType::Rook;
             my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with("Q") {
+        } else if my_string.starts_with('Q') {
             moving_piece_type = PieceType::Queen;
             my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with("K") {
+        } else if my_string.starts_with('K') {
             moving_piece_type = PieceType::King;
             my_string = String::from(&my_string[1..]);
         }
         let mut is_promotion_move = false;
         let mut promotion_piece = PieceType::Queen;
-        if my_string.ends_with("Q") {
+        if my_string.ends_with('Q') {
             my_string = String::from(&my_string[..my_string.len() - 1]);
             is_promotion_move = true;
-        } else if my_string.ends_with("R") {
+        } else if my_string.ends_with('R') {
             my_string = String::from(&my_string[..my_string.len() - 1]);
             is_promotion_move = true;
             promotion_piece = PieceType::Rook;
-        } else if my_string.ends_with("B") {
+        } else if my_string.ends_with('B') {
             my_string = String::from(&my_string[..my_string.len() - 1]);
             is_promotion_move = true;
             promotion_piece = PieceType::Bishop;
-        } else if my_string.ends_with("N") {
+        } else if my_string.ends_with('N') {
             my_string = String::from(&my_string[..my_string.len() - 1]);
             is_promotion_move = true;
             promotion_piece = PieceType::Knight;
@@ -436,7 +434,7 @@ impl Iterator for PGNParser {
                 }
             }
         }
-        if res_str.len() != 0 {
+        if !res_str.is_empty() {
             Some(res_str)
         } else {
             None

@@ -84,7 +84,6 @@ pub fn principal_variation_search(
             }
         }
     }
-
     //Probe TT
     let mut static_evaluation = None;
     let mut phase = None;

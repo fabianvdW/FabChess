@@ -24,7 +24,7 @@ const FEN_DIR: &str = "D:/FenCollection/Lichess";
 fn main() {
     //2. Transform all FEN-Positions in Quiet positions
     //3. Save all positions just like loaded, all positions after q-search, all positions after q-search without stripped(no positions with >10 or <-10 eval)
-    let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8000000);
+    let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8_000_000);
     let mut stats = Statistics::new();
     let paths = fs::read_dir(FEN_DIR).unwrap();
     for path in paths {
@@ -171,7 +171,7 @@ pub fn stripped_q_search(
     if game_status != GameResult::Ingame {
         return (leaf_score(game_status, color, depth_left), game_state);
     }
-    if let None = current_best_state {
+    if current_best_state.is_none() {
         return (stand_pat, game_state);
     }
     (
@@ -204,14 +204,14 @@ pub fn make_moves(
                 mv_index += 1;
                 continue;
             }
-            if !incheck || incheck && capture_index > 0 && is_capture(mv) {
+            if capture_index > 0 && is_capture(mv) || !incheck {
                 let score = see(&game_state, mv, true, see_buffer);
                 if score < 0 {
                     mv_index += 1;
                     continue;
                 }
                 move_list.graded_moves[current_depth][capture_index] =
-                    Some(GradedMove::new(mv_index, score as f64));
+                    Some(GradedMove::new(mv_index, f64::from(score)));
             } else {
                 move_list.graded_moves[current_depth][capture_index] =
                     Some(GradedMove::new(mv_index, 0.));
