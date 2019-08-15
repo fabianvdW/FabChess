@@ -25,7 +25,7 @@ fn main() {
     //2. Transform all FEN-Positions in Quiet positions
     //3. Save all positions just like loaded, all positions after q-search, all positions after q-search without stripped(no positions with >10 or <-10 eval)
     let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8_000_000);
-    let mut stats = Statistics::new();
+    let mut stats = Statistics::default();
     let paths = fs::read_dir(FEN_DIR).unwrap();
     for path in paths {
         load_positions(

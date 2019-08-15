@@ -1379,10 +1379,9 @@ pub fn generate_moves(
         }
     }
     //----------------------------------------------------------------------
-    let agi = AdditionalGameStateInformation {
+    AdditionalGameStateInformation {
         stm_incheck,
         stm_haslegalmove,
         additional_bitboards: abb,
-    };
-    agi
+    }
 }

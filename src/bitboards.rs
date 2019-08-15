@@ -96,32 +96,30 @@ pub fn get_bishop_ray_slow(
     let bishop_file = bishop_square % 8;
     if diff > 0 {
         if diff % 9 == 0 {
-            return FILES_LESS_THAN[target_file]
+            FILES_LESS_THAN[target_file]
                 & FILES_GREATER_THAN[bishop_file]
                 & RANKS_LESS_THAN[target_rank]
                 & RANKS_GREATER_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
+                & bishop_attack_in_all_directions
         } else {
-            return FILES_GREATER_THAN[target_file]
+            FILES_GREATER_THAN[target_file]
                 & FILES_LESS_THAN[bishop_file]
                 & RANKS_LESS_THAN[target_rank]
                 & RANKS_GREATER_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
+                & bishop_attack_in_all_directions
         }
+    } else if diff % -9 == 0 {
+        FILES_GREATER_THAN[target_file]
+            & FILES_LESS_THAN[bishop_file]
+            & RANKS_GREATER_THAN[target_rank]
+            & RANKS_LESS_THAN[bishop_rank]
+            & bishop_attack_in_all_directions
     } else {
-        if diff % -9 == 0 {
-            return FILES_GREATER_THAN[target_file]
-                & FILES_LESS_THAN[bishop_file]
-                & RANKS_GREATER_THAN[target_rank]
-                & RANKS_LESS_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
-        } else {
-            return FILES_LESS_THAN[target_file]
-                & FILES_GREATER_THAN[bishop_file]
-                & RANKS_GREATER_THAN[target_rank]
-                & RANKS_LESS_THAN[bishop_rank]
-                & bishop_attack_in_all_directions;
-        }
+        FILES_LESS_THAN[target_file]
+            & FILES_GREATER_THAN[bishop_file]
+            & RANKS_GREATER_THAN[target_rank]
+            & RANKS_LESS_THAN[bishop_rank]
+            & bishop_attack_in_all_directions
     }
 }
 
@@ -150,38 +148,36 @@ pub fn get_rook_ray_slow(
     if diff > 0 {
         //Same vertical
         if target_rank == rook_rank {
-            return FILES_LESS_THAN[target_file]
+            FILES_LESS_THAN[target_file]
                 & FILES_GREATER_THAN[rook_file]
-                & rook_attacks_in_all_directions;
+                & rook_attacks_in_all_directions
         } else {
-            return RANKS_LESS_THAN[target_rank]
+            RANKS_LESS_THAN[target_rank]
                 & RANKS_GREATER_THAN[rook_rank]
-                & rook_attacks_in_all_directions;
+                & rook_attacks_in_all_directions
         }
+    } else if target_rank == rook_rank {
+        FILES_GREATER_THAN[target_file]
+            & FILES_LESS_THAN[rook_file]
+            & rook_attacks_in_all_directions
     } else {
-        if target_rank == rook_rank {
-            return FILES_GREATER_THAN[target_file]
-                & FILES_LESS_THAN[rook_file]
-                & rook_attacks_in_all_directions;
-        } else {
-            return RANKS_GREATER_THAN[target_rank]
-                & RANKS_LESS_THAN[rook_rank]
-                & rook_attacks_in_all_directions;
-        }
+        RANKS_GREATER_THAN[target_rank]
+            & RANKS_LESS_THAN[rook_rank]
+            & rook_attacks_in_all_directions
     }
 }
 
 pub fn initialize_freefield_rook_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for sq in 0..64 {
-        res[sq] = rook_attack(sq, 0u64);
+    for (sq, item) in res.iter_mut().enumerate() {
+        *item = rook_attack(sq, 0u64);
     }
     res
 }
 pub fn initialize_freefield_bishop_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for sq in 0..64 {
-        res[sq] = bishop_attack(sq, 0u64);
+    for (sq, item) in res.iter_mut().enumerate() {
+        *item = bishop_attack(sq, 0u64);
     }
     res
 }
@@ -196,7 +192,7 @@ pub fn initialize_files() -> [u64; 8] {
     let mut res = [0u64; 8];
     for file in 0..8 {
         if file == 0 {
-            res[0] = 1u64 << 0
+            res[0] = 1u64
                 | 1u64 << 8
                 | 1u64 << 16
                 | 1u64 << 24
@@ -225,7 +221,7 @@ pub fn initialize_ranks() -> [u64; 8] {
     let mut res = [0u64; 8];
     for rank in 0..8 {
         if rank == 0 {
-            res[0] = 1u64 << 0
+            res[0] = 1u64
                 | 1u64 << 1
                 | 1u64 << 2
                 | 1u64 << 3
@@ -243,8 +239,8 @@ pub fn initialize_ranks() -> [u64; 8] {
 
 pub fn initialize_squares() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for squares in 0..64 {
-        res[squares] = 1u64 << squares;
+    for (squares, item) in res.iter_mut().enumerate() {
+        *item = 1u64 << squares;
     }
     log("Finished Initializing Squares!");
     res
@@ -252,8 +248,8 @@ pub fn initialize_squares() -> [u64; 64] {
 
 pub fn initialize_not_squares() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for squares in 0..64 {
-        res[squares] = !(1u64 << squares);
+    for (squares, item) in res.iter_mut().enumerate() {
+        *item = !(1u64 << squares);
     }
     log("Finished Initializing NOT_Squares!");
     res
@@ -342,8 +338,8 @@ pub fn king_attack(mut king_board: u64) -> u64 {
 
 pub fn init_king_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for square in 0..64 {
-        res[square] = king_attack(1u64 << square);
+    for (square, item) in res.iter_mut().enumerate() {
+        *item = king_attack(1u64 << square);
     }
     log("Finished Initializing King Attacks!");
     res
@@ -364,8 +360,8 @@ pub fn knight_attack(knight: u64) -> u64 {
 
 pub fn init_knight_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for square in 0..64 {
-        res[square] = knight_attack(1u64 << square);
+    for (square, item) in res.iter_mut().enumerate() {
+        *item = knight_attack(1u64 << square);
     }
     log("Finished Initializing Knight Attacks!");
     res
@@ -373,9 +369,9 @@ pub fn init_knight_attacks() -> [u64; 64] {
 
 pub fn init_files_less_than() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for files in 0..8 {
+    for (files, item) in res.iter_mut().enumerate() {
         for files_less_than in 0..files {
-            res[files] |= FILES[files_less_than];
+            *item |= FILES[files_less_than];
         }
     }
     log("Finished Initializing FilesLessThan!");
@@ -384,9 +380,9 @@ pub fn init_files_less_than() -> [u64; 8] {
 
 pub fn init_ranks_less_than() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for ranks in 0..8 {
+    for (ranks, item) in res.iter_mut().enumerate() {
         for ranks_less_than in 0..ranks {
-            res[ranks] |= RANKS[ranks_less_than];
+            *item |= RANKS[ranks_less_than];
         }
     }
     log("Finished Initializing RanksLessThan!");
@@ -421,9 +417,9 @@ pub fn init_lower_half() -> u64 {
 
 pub fn init_diagonally_adjacent() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for sq in 0..64 {
+    for (sq, item) in res.iter_mut().enumerate() {
         let board = 1u64 << sq;
-        res[sq] = north_east_one(board)
+        *item = north_east_one(board)
             | north_west_one(board)
             | south_east_one(board)
             | south_west_one(board);
@@ -434,10 +430,10 @@ pub fn init_diagonally_adjacent() -> [u64; 64] {
 
 pub fn init_shielding_pawns_white() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for sq in 0..64 {
+    for (sq, item) in res.iter_mut().enumerate() {
         let king = 1u64 << sq;
         let shield = king << 8 | north_west_one(king) | north_east_one(king);
-        res[sq] = shield | shield << 8;
+        *item = shield | shield << 8;
     }
     for rank in 0..8 {
         res[8 * rank] = res[8 * rank + 1];
@@ -449,10 +445,10 @@ pub fn init_shielding_pawns_white() -> [u64; 64] {
 
 pub fn init_shielding_pawns_black() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for sq in 0..64 {
+    for (sq, item) in res.iter_mut().enumerate() {
         let king = 1u64 << sq;
         let shield = king >> 8 | south_west_one(king) | south_east_one(king);
-        res[sq] = shield | shield >> 8;
+        *item = shield | shield >> 8;
     }
     for rank in 0..8 {
         res[8 * rank] = res[8 * rank + 1];

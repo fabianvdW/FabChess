@@ -191,9 +191,9 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
             panic!("movestogo = 0");
         }
         if engine.internal_state.color_to_move == 0 {
-            return (TimeControl::Tournament(wtime, winc, mvs), depth);
+            (TimeControl::Tournament(wtime, winc, mvs), depth)
         } else {
-            return (TimeControl::Tournament(btime, binc, mvs), depth);
+            (TimeControl::Tournament(btime, binc, mvs), depth)
         }
     } else {
         panic!("Something went wrong in go!");

@@ -81,7 +81,7 @@ pub fn play_game(
     let player1_stderr = player1_process.stderr().take().unwrap();
     let player1_input = print_command(&mut runtime, player1_input, "uci\n".to_owned());
     let output = expect_output("uciok".to_owned(), 10000, player1_output, &mut runtime);
-    if let None = output.0 {
+    if output.0.is_none() {
         error_log.log(
             &format!("Player 1 didn't uciok in game {}!\n", task.id),
             true,
@@ -92,7 +92,7 @@ pub fn play_game(
     let player1_output = output.1.unwrap();
     let mut player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
     let output = expect_output("readyok".to_owned(), 10000, player1_output, &mut runtime);
-    if let None = output.0 {
+    if output.0.is_none() {
         error_log.log(
             &format!("Player 1 didn't readyok in game {}!\n", task.id),
             true,
@@ -118,7 +118,7 @@ pub fn play_game(
     let player2_stderr = player2_process.stderr().take().unwrap();
     let player2_input = print_command(&mut runtime, player2_input, "uci\n".to_owned());
     let output = expect_output("uciok".to_owned(), 10000, player2_output, &mut runtime);
-    if let None = output.0 {
+    if output.0.is_none() {
         error_log.log(
             &format!("Player 2 didn't uciok in game {}!\n", task.id),
             true,
@@ -129,7 +129,7 @@ pub fn play_game(
     let player2_output = output.1.unwrap();
     let mut player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
     let output = expect_output("readyok".to_owned(), 10000, player2_output, &mut runtime);
-    if let None = output.0 {
+    if output.0.is_none() {
         error_log.log(
             &format!("Player 2 didn't readyok in game {}!\n", task.id),
             true,
@@ -176,7 +176,7 @@ pub fn play_game(
         let mut position_string = String::new();
         position_string.push_str("position fen ");
         position_string.push_str(&opening_fen);
-        if move_history.len() > 0 {
+        if !move_history.is_empty() {
             position_string.push_str(" moves ");
             for mv in &move_history {
                 position_string.push_str(&format!("{:?} ", mv));
@@ -214,7 +214,7 @@ pub fn play_game(
             player1_input = print_command(&mut runtime, player1_input, position_string.clone());
             player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 200, player1_output, &mut runtime);
-            if let None = output.0 {
+            if output.0.is_none() {
                 error_log.log(
                     &format!(
                         "Player 1 didn't readyok after position description in game {}!\n",
@@ -237,7 +237,7 @@ pub fn play_game(
                 player1_output,
                 &mut runtime,
             );
-            if let None = output.0 {
+            if output.0.is_none() {
                 error_log.log(
                     &format!(
                         "Player 1 didn't send bestmove in time in game {}! He had {}ms left!\nPosition:\n{}",
@@ -262,7 +262,7 @@ pub fn play_game(
             if split_line[0] == "bestmove" {
                 let mv = GameMove::string_to_move(split_line[1]);
                 let found_move = find_move(mv.0, mv.1, mv.2, movelist);
-                if let None = found_move {
+                if found_move.is_none() {
                     error_log.log(
                         &format!("Player 1 sent illegal {} in game {}\n", line, task.id),
                         true,
@@ -346,7 +346,7 @@ pub fn play_game(
             player2_input = print_command(&mut runtime, player2_input, position_string.clone());
             player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
             let output = expect_output("readyok".to_owned(), 200, player2_output, &mut runtime);
-            if let None = output.0 {
+            if output.0.is_none() {
                 error_log.log(
                     &format!(
                         "Player 2 didn't readyok after position description in game {}!\n",
@@ -369,7 +369,7 @@ pub fn play_game(
                 player2_output,
                 &mut runtime,
             );
-            if let None = output.0 {
+            if output.0.is_none() {
                 error_log.log(
                     &format!(
                         "Player 2 didn't send bestmove in time in game {}! He had {}ms left!\n",
@@ -394,7 +394,7 @@ pub fn play_game(
             if split_line[0] == "bestmove" {
                 let mv = GameMove::string_to_move(split_line[1]);
                 let found_move = find_move(mv.0, mv.1, mv.2, movelist);
-                if let None = found_move {
+                if found_move.is_none() {
                     error_log.log(
                         &format!("Player 2 sent illegal {} in game {}\n", line, task.id),
                         true,
@@ -497,12 +497,10 @@ pub fn play_game(
                     } else {
                         status = GameResult::BlackWin;
                     }
+                } else if task.p1_is_white {
+                    status = GameResult::BlackWin;
                 } else {
-                    if task.p1_is_white {
-                        status = GameResult::BlackWin;
-                    } else {
-                        status = GameResult::WhiteWin;
-                    }
+                    status = GameResult::WhiteWin;
                 }
             }
         }
@@ -537,10 +535,10 @@ pub fn play_game(
             GameResult::WhiteWin => true,
             _ => false,
         },
-        nps_p1: average_nps_p1 / moves_p1 as f64,
-        nps_p2: average_nps_p2 / moves_p2 as f64,
-        depth_p1: average_depth_p1 / moves_p1 as f64,
-        depth_p2: average_depth_p2 / moves_p2 as f64,
+        nps_p1: average_nps_p1 / f64::from(moves_p1),
+        nps_p2: average_nps_p2 / f64::from(moves_p2),
+        depth_p1: average_depth_p1 / f64::from(moves_p1),
+        depth_p2: average_depth_p2 / f64::from(moves_p2),
         time_left_p1: player1_time as usize,
         time_left_p2: player2_time as usize,
     }
@@ -635,7 +633,7 @@ pub fn check_end_condition(
     game_state: &GameState,
     has_legal_moves: bool,
     in_check: bool,
-    history: &Vec<GameState>,
+    history: &[GameState],
 ) -> (GameResult, Option<EndConditionInformation>) {
     let enemy_win = if game_state.color_to_move == 0 {
         GameResult::BlackWin

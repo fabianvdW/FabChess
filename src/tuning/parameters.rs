@@ -309,10 +309,10 @@ impl Parameters {
             "pub const SAFETY_TABLE: [i16;100] = {};\n",
             array_to_string(&self.safety_table.safety_table)
         ));
-        res_str.push_str(&format!("pub const KNIGHT_ATTACK_WORTH: i16 = 2;\n"));
-        res_str.push_str(&format!("pub const BISHOP_ATTACK_WORTH: i16 = 2;\n"));
-        res_str.push_str(&format!("pub const ROOK_ATTACK_WORTH: i16 = 3;\n"));
-        res_str.push_str(&format!("pub const QUEEN_ATTACK_WORTH: i16 = 5;\n"));
+        res_str.push_str(&"pub const KNIGHT_ATTACK_WORTH: i16 = 2;\n".to_string());
+        res_str.push_str(&"pub const BISHOP_ATTACK_WORTH: i16 = 2;\n".to_string());
+        res_str.push_str(&"pub const ROOK_ATTACK_WORTH: i16 = 3;\n".to_string());
+        res_str.push_str(&"pub const QUEEN_ATTACK_WORTH: i16 = 5;\n".to_string());
         res_str.push_str(&format!(
             "pub const PSQT_PAWN_MG: [[i16;8];8] = {};\n",
             psqt_to_string(&self.psqt_pawn[MG])
@@ -350,41 +350,43 @@ impl Parameters {
     pub fn default() -> Self {
         let mut shielding_pawn_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
-            shielding_pawn_missing[MG][i] = SHIELDING_PAWN_MISSING_MG[i] as f64;
-            shielding_pawn_missing[EG][i] = SHIELDING_PAWN_MISSING_EG[i] as f64;
+            shielding_pawn_missing[MG][i] = f64::from(SHIELDING_PAWN_MISSING_MG[i]);
+            shielding_pawn_missing[EG][i] = f64::from(SHIELDING_PAWN_MISSING_EG[i]);
         }
         let mut shielding_pawn_onopen_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
-            shielding_pawn_onopen_missing[MG][i] = SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[i] as f64;
-            shielding_pawn_onopen_missing[EG][i] = SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[i] as f64;
+            shielding_pawn_onopen_missing[MG][i] =
+                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[i]);
+            shielding_pawn_onopen_missing[EG][i] =
+                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[i]);
         }
         let mut pawn_passed: [[f64; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed[MG][i] = PAWN_PASSED_VALUES_MG[i] as f64;
-            pawn_passed[EG][i] = PAWN_PASSED_VALUES_EG[i] as f64;
+            pawn_passed[MG][i] = f64::from(PAWN_PASSED_VALUES_MG[i]);
+            pawn_passed[EG][i] = f64::from(PAWN_PASSED_VALUES_EG[i]);
         }
         let mut pawn_passed_notblocked: [[f64; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_notblocked[MG][i] = PAWN_PASSED_NOT_BLOCKED_VALUES_MG[i] as f64;
-            pawn_passed_notblocked[EG][i] = PAWN_PASSED_NOT_BLOCKED_VALUES_EG[i] as f64;
+            pawn_passed_notblocked[MG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES_MG[i]);
+            pawn_passed_notblocked[EG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES_EG[i]);
         }
         let mut knight_outpost_table: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                knight_outpost_table[MG][i][j] = KNIGHT_OUTPOST_MG_TABLE[i][j] as f64;
-                knight_outpost_table[EG][i][j] = KNIGHT_OUTPOST_EG_TABLE[i][j] as f64;
+                knight_outpost_table[MG][i][j] = f64::from(KNIGHT_OUTPOST_MG_TABLE[i][j]);
+                knight_outpost_table[EG][i][j] = f64::from(KNIGHT_OUTPOST_EG_TABLE[i][j]);
             }
         }
         let mut knight_value_with_pawns: [f64; 17] = [0.; 17];
         for i in 0..17 {
-            knight_value_with_pawns[i] = KNIGHT_VALUE_WITH_PAWNS[i] as f64;
+            knight_value_with_pawns[i] = f64::from(KNIGHT_VALUE_WITH_PAWNS[i]);
         }
         let mut diagonally_adjacent_squares_withpawns: [[f64; 5]; 2] = [[0.; 5]; 2];
         for i in 0..5 {
             diagonally_adjacent_squares_withpawns[MG][i] =
-                DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[i] as f64;
+                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[i]);
             diagonally_adjacent_squares_withpawns[EG][i] =
-                DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[i] as f64;
+                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[i]);
         }
         let mut knight_mobility: [[f64; 9]; 2] = [[0.; 9]; 2];
         for i in 0..9 {
@@ -413,8 +415,8 @@ impl Parameters {
         let mut safety_table: SafetyTable = SafetyTable {
             safety_table: [0.; 100],
         };
-        for i in 0..100 {
-            safety_table.safety_table[i] = f64::from(SAFETY_TABLE[i]);
+        for (i, content) in safety_table.safety_table.iter_mut().enumerate() {
+            *content = f64::from(SAFETY_TABLE[i]);
         }
         let mut psqt_pawn: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
@@ -445,36 +447,66 @@ impl Parameters {
             }
         }
         Parameters {
-            tempo_bonus: [TEMPO_BONUS_MG as f64, TEMPO_BONUS_EG as f64],
+            tempo_bonus: [f64::from(TEMPO_BONUS_MG), f64::from(TEMPO_BONUS_EG)],
             shielding_pawn_missing,
             shielding_pawn_onopen_missing,
-            pawn_doubled: [PAWN_DOUBLED_VALUE_MG as f64, PAWN_DOUBLED_VALUE_EG as f64],
-            pawn_isolated: [PAWN_ISOLATED_VALUE_MG as f64, PAWN_ISOLATED_VALUE_EG as f64],
-            pawn_backward: [PAWN_BACKWARD_VALUE_MG as f64, PAWN_BACKWARD_VALUE_EG as f64],
-            pawn_supported: [
-                PAWN_SUPPORTED_VALUE_MG as f64,
-                PAWN_SUPPORTED_VALUE_EG as f64,
+            pawn_doubled: [
+                f64::from(PAWN_DOUBLED_VALUE_MG),
+                f64::from(PAWN_DOUBLED_VALUE_EG),
             ],
-            pawn_attack_center: [PAWN_ATTACK_CENTER_MG as f64, PAWN_ATTACK_CENTER_EG as f64],
+            pawn_isolated: [
+                f64::from(PAWN_ISOLATED_VALUE_MG),
+                f64::from(PAWN_ISOLATED_VALUE_EG),
+            ],
+            pawn_backward: [
+                f64::from(PAWN_BACKWARD_VALUE_MG),
+                f64::from(PAWN_BACKWARD_VALUE_EG),
+            ],
+            pawn_supported: [
+                f64::from(PAWN_SUPPORTED_VALUE_MG),
+                f64::from(PAWN_SUPPORTED_VALUE_EG),
+            ],
+            pawn_attack_center: [
+                f64::from(PAWN_ATTACK_CENTER_MG),
+                f64::from(PAWN_ATTACK_CENTER_EG),
+            ],
             pawn_passed,
             pawn_passed_notblocked,
             knight_supported: [
-                KNIGHT_SUPPORTED_BY_PAWN_MG as f64,
-                KNIGHT_SUPPORTED_BY_PAWN_EG as f64,
+                f64::from(KNIGHT_SUPPORTED_BY_PAWN_MG),
+                f64::from(KNIGHT_SUPPORTED_BY_PAWN_EG),
             ],
             knight_outpost_table,
             rook_on_open: [
-                ROOK_ON_OPEN_FILE_BONUS_MG as f64,
-                ROOK_ON_OPEN_FILE_BONUS_EG as f64,
+                f64::from(ROOK_ON_OPEN_FILE_BONUS_MG),
+                f64::from(ROOK_ON_OPEN_FILE_BONUS_EG),
             ],
-            rook_on_seventh: [ROOK_ON_SEVENTH_MG as f64, ROOK_ON_SEVENTH_EG as f64],
-            pawn_piece_value: [PAWN_PIECE_VALUE_MG as f64, PAWN_PIECE_VALUE_EG as f64],
-            knight_piece_value: [KNIGHT_PIECE_VALUE_MG as f64, KNIGHT_PIECE_VALUE_EG as f64],
+            rook_on_seventh: [f64::from(ROOK_ON_SEVENTH_MG), f64::from(ROOK_ON_SEVENTH_EG)],
+            pawn_piece_value: [
+                f64::from(PAWN_PIECE_VALUE_MG),
+                f64::from(PAWN_PIECE_VALUE_EG),
+            ],
+            knight_piece_value: [
+                f64::from(KNIGHT_PIECE_VALUE_MG),
+                f64::from(KNIGHT_PIECE_VALUE_EG),
+            ],
             knight_value_with_pawns,
-            bishop_piece_value: [BISHOP_PIECE_VALUE_MG as f64, BISHOP_PIECE_VALUE_EG as f64],
-            bishop_pair: [BISHOP_PAIR_BONUS_MG as f64, BISHOP_PAIR_BONUS_EG as f64],
-            rook_piece_value: [ROOK_PIECE_VALUE_MG as f64, ROOK_PIECE_VALUE_EG as f64],
-            queen_piece_value: [QUEEN_PIECE_VALUE_MG as f64, QUEEN_PIECE_VALUE_EG as f64],
+            bishop_piece_value: [
+                f64::from(BISHOP_PIECE_VALUE_MG),
+                f64::from(BISHOP_PIECE_VALUE_EG),
+            ],
+            bishop_pair: [
+                f64::from(BISHOP_PAIR_BONUS_MG),
+                f64::from(BISHOP_PAIR_BONUS_EG),
+            ],
+            rook_piece_value: [
+                f64::from(ROOK_PIECE_VALUE_MG),
+                f64::from(ROOK_PIECE_VALUE_EG),
+            ],
+            queen_piece_value: [
+                f64::from(QUEEN_PIECE_VALUE_MG),
+                f64::from(QUEEN_PIECE_VALUE_EG),
+            ],
             diagonally_adjacent_squares_withpawns,
             knight_mobility,
             bishop_mobility,

@@ -104,13 +104,10 @@ pub fn start_self_play(
                 p2_disqs += 1;
             }
             //Calculate statistics
-            let mut elo_gain_p1 = 0.0;
-            let mut elo_plus_p1 = 0.0;
-            //let mut elo_minus_p1 = 0.0;
-            if p1_wins != 0 && p2_wins != 0 || draws != 0 {
+            let (elo_gain_p1, elo_plus_p1) = if p1_wins != 0 && p2_wins != 0 || draws != 0 {
                 //Derived from 1. E_A= 1/(1+10^(-DeltaElo/400)) and 2. |X/N-p|<=1.96*sqrt(N*p*(1-p))/n
-                let n: f64 = (p1_wins + p2_wins + draws) as f64;
-                let x_a: f64 = p1_wins as f64 + draws as f64 / 2.0;
+                let n: f64 = f64::from(p1_wins + p2_wins + draws);
+                let x_a: f64 = f64::from(p1_wins) + f64::from(draws) / 2.0;
                 let p_a: f64 = x_a / n;
                 let k: f64 = (1.96 * 1.96 + 2.0 * x_a) / (-1.0 * 1.96 * 1.96 - n);
                 let q = -1.0 * x_a * x_a / (n * (-1.96 * 1.96 - n));
@@ -122,10 +119,12 @@ pub fn start_self_play(
                 println!("P_A: {}", p_a);
                 println!("P_A_Upper: {}", p_a_upper);
                 println!("P_A_Lower: {}", p_a_lower);*/
-                elo_gain_p1 = get_elo_gain(p_a);
-                elo_plus_p1 = get_elo_gain(p_a_upper) - elo_gain_p1;
-                //elo_minus_p1 = elo_gain_p1 - get_elo_gain(p_a_lower);
-            }
+                let curr = get_elo_gain(p_a);
+                (curr, get_elo_gain(p_a_upper) - curr)
+            //elo_minus_p1 = elo_gain_p1 - get_elo_gain(p_a_lower);
+            } else {
+                (0.0, 0.0)
+            };
             println!("-------------------------------------------------");
             println!("Player   Wins   Draws   Losses   Elo   +/-   Disq.");
             println!(
@@ -139,7 +138,7 @@ pub fn start_self_play(
             println!("-------------------------------------------------");
 
             //Write all fens of game to string
-            if result.fen_history.len() > 0 {
+            if !result.fen_history.is_empty() {
                 let mut game_string = String::new();
                 game_string.push_str("New Game:\n");
                 for fen in result.fen_history {
@@ -166,7 +165,7 @@ pub fn start_self_play(
 }
 
 pub fn get_elo_gain(p_a: f64) -> f64 {
-    return -1.0 * (1.0 / p_a - 1.0).ln() * 400.0 / (10.0 as f64).ln();
+    -1.0 * (1.0 / p_a - 1.0).ln() * 400.0 / (10.0 as f64).ln()
 }
 
 pub fn start_self_play_thread(

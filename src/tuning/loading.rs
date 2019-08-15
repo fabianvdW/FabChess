@@ -16,8 +16,8 @@ pub struct Statistics {
     pub black_wins: usize,
     pub draws: usize,
 }
-impl Statistics {
-    pub fn new() -> Self {
+impl Default for Statistics {
+    fn default() -> Self {
         Statistics {
             games: 0,
             white_wins: 0,
@@ -26,6 +26,7 @@ impl Statistics {
         }
     }
 }
+
 impl Display for Statistics {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
@@ -37,7 +38,7 @@ impl Display for Statistics {
     }
 }
 
-pub fn save_positions(to_file: &str, positions: &Vec<LabelledGameState>) {
+pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
     let mut res_str = String::new();
     for pos in positions {
         res_str.push_str(&format!(
@@ -63,16 +64,16 @@ pub fn load_positions(
     if let FileFormatSupported::OwnEncoding = file_format {
         let positions =
             fs::read_to_string(from_file).expect("Unable to read benchmarking positions");
-        let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
+        let new_linesplit = positions.split('\n').collect::<Vec<&str>>();
         let mut is_newgame = false;
         for line in new_linesplit {
             if line.contains("New Game") {
                 is_newgame = true;
             } else {
-                if !line.contains("|") {
+                if !line.contains('|') {
                     break;
                 }
-                let fen_split = line.split("|").collect::<Vec<&str>>();
+                let fen_split = line.split('|').collect::<Vec<&str>>();
                 let game_result = if fen_split[1].contains("Black") {
                     0.0
                 } else if fen_split[1].contains("White") {
@@ -104,12 +105,12 @@ pub fn load_positions(
     } else if let FileFormatSupported::EPD = file_format {
         let positions =
             fs::read_to_string(from_file).expect("Unable to read benchmarking positions");
-        let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
+        let new_linesplit = positions.split('\n').collect::<Vec<&str>>();
         for line in new_linesplit {
-            if !line.contains(";") {
+            if !line.contains(';') {
                 break;
             }
-            let split = line.split(" ").collect::<Vec<&str>>();
+            let split = line.split(' ').collect::<Vec<&str>>();
             let fen = &format!("{} {} {} {}", split[0], split[1], split[2], split[3]);
             let game_result = if line.contains("1-0") || line.contains("1.0") {
                 1.0

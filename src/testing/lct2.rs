@@ -19,7 +19,7 @@ pub fn start_lct2_thread(
     points: Arc<AtomicUsize>,
     thread_name: &str,
 ) {
-    let mut child = Command::new(&format!("{}", p1))
+    let mut child = Command::new(&p1.to_string())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -47,7 +47,7 @@ pub fn start_lct2_thread(
         loop {
             line.clear();
             child_out.read_line(&mut line).unwrap();
-            let cmd: Vec<&str> = line.split(" ").collect();
+            let cmd: Vec<&str> = line.split(' ').collect();
             if cmd[0] == "bestmove" {
                 bm = cmd[1].trim();
                 break;
@@ -74,10 +74,9 @@ pub fn start_lct2_thread(
                     }
                     index += 1;
                 }
-                if index < cmd.len() {
-                    if cmd[index + 1].trim() == &format!("{:?}", test.optimal_move) {
-                        write_to_buf(&mut child_in, "stop\n");
-                    }
+                if index < cmd.len() && *cmd[index + 1].trim() == format!("{:?}", test.optimal_move)
+                {
+                    write_to_buf(&mut child_in, "stop\n");
                 }
             }
         }
@@ -94,7 +93,7 @@ pub fn start_lct2_thread(
         println!("Bestmove is actually: {:?}", test.optimal_move);
         println!("Best move found after {} seconds", dur as f64 / 1000.0);
         println!("Best move found was {}", bm);
-        if bm == &format!("{:?}", test.optimal_move) {
+        if *bm == format!("{:?}", test.optimal_move) {
             let award = award_points(dur);
             let newpoints = points.load(Ordering::SeqCst) + award;
             (*points).store(newpoints, Ordering::SeqCst);
@@ -138,11 +137,11 @@ fn award_points(dur: u128) -> usize {
         return 25;
     } else if dur <= 89000 {
         return 20;
-    } else if dur <= 209000 {
+    } else if dur <= 209_000 {
         return 15;
-    } else if dur <= 389000 {
+    } else if dur <= 389_000 {
         return 10;
-    } else if dur <= 601000 {
+    } else if dur <= 601_000 {
         return 5;
     }
     0usize
@@ -155,14 +154,14 @@ fn load_lct2suit(path_to_lct2: &str) -> Vec<Lct2Test> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("Unable to read the file");
-    let split = contents.split("\n");
+    let split = contents.split('\n');
     for line in split {
         let linevec = line.split("bm").collect::<Vec<&str>>();
         if linevec.len() == 1 {
             break;
         }
         let state = GameState::from_fen(linevec[0].trim_end());
-        let mv = linevec[1].trim().split(" ").collect::<Vec<&str>>()[0].replace(";", "");
+        let mv = linevec[1].trim().split(' ').collect::<Vec<&str>>()[0].replace(";", "");
         let (optimal_move, _) = parse_move(&state, &mv.to_string(), &mut movelist);
         res.push(Lct2Test {
             game_state: state,

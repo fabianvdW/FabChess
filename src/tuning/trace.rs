@@ -45,14 +45,14 @@ pub fn evaluate_psqt(
     for i in 0..8 {
         for j in 0..8 {
             score.0 +=
-                (trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) as f64 * param_psqt[MG][i][j];
+                f64::from(trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) * param_psqt[MG][i][j];
             score.1 +=
-                (trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) as f64 * param_psqt[EG][i][j];
+                f64::from(trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) * param_psqt[EG][i][j];
         }
     }
 }
 
-pub fn evaluate_single(score: &mut (f64, f64), trace: &[i8; 2], param: &[f64; 2]) {
+pub fn evaluate_single(score: &mut (f64, f64), trace: [i8; 2], param: &[f64; 2]) {
     score.0 += f64::from(trace[WHITE] - trace[BLACK]) * param[MG];
     score.1 += f64::from(trace[WHITE] - trace[BLACK]) * param[EG];
 }
@@ -80,7 +80,7 @@ impl Trace {
         let mut knight_res = (0., 0.);
         evaluate_single(
             &mut knight_res,
-            &self.knight_supported,
+            self.knight_supported,
             &params.knight_supported,
         );
         evaluate_psqt(
@@ -136,10 +136,10 @@ impl Trace {
                 params.queen_mobility[EG][i],
             );
         }
-        evaluate_single(&mut piecewise_res, &self.rook_on_open, &params.rook_on_open);
+        evaluate_single(&mut piecewise_res, self.rook_on_open, &params.rook_on_open);
         evaluate_single(
             &mut piecewise_res,
-            &self.rook_on_seventh,
+            self.rook_on_seventh,
             &params.rook_on_seventh,
         );
         piecewise_res.0 += (params.attack_weight[self.attackers[WHITE] as usize]
@@ -174,13 +174,13 @@ impl Trace {
 
         //Pawns
         let mut pawn_res = (0., 0.);
-        evaluate_single(&mut pawn_res, &self.pawn_doubled, &params.pawn_doubled);
-        evaluate_single(&mut pawn_res, &self.pawn_isolated, &params.pawn_isolated);
-        evaluate_single(&mut pawn_res, &self.pawn_backward, &params.pawn_backward);
-        evaluate_single(&mut pawn_res, &self.pawn_supported, &params.pawn_supported);
+        evaluate_single(&mut pawn_res, self.pawn_doubled, &params.pawn_doubled);
+        evaluate_single(&mut pawn_res, self.pawn_isolated, &params.pawn_isolated);
+        evaluate_single(&mut pawn_res, self.pawn_backward, &params.pawn_backward);
+        evaluate_single(&mut pawn_res, self.pawn_supported, &params.pawn_supported);
         evaluate_single(
             &mut pawn_res,
-            &self.pawn_attack_center,
+            self.pawn_attack_center,
             &params.pawn_attack_center,
         );
         for i in 0..7 {
@@ -202,28 +202,28 @@ impl Trace {
 
         //Piece values
         let mut piecevalue_res = (0., 0.);
-        evaluate_single(&mut piecevalue_res, &self.pawns, &params.pawn_piece_value);
+        evaluate_single(&mut piecevalue_res, self.pawns, &params.pawn_piece_value);
         evaluate_single(
             &mut piecevalue_res,
-            &self.knights,
+            self.knights,
             &params.knight_piece_value,
         );
         evaluate_single(
             &mut piecevalue_res,
-            &self.knights,
+            self.knights,
             &[params.knight_value_with_pawns[self.knight_value_with_pawns as usize]; 2],
         );
         evaluate_single(
             &mut piecevalue_res,
-            &self.bishops,
+            self.bishops,
             &params.bishop_piece_value,
         );
-        evaluate_single(&mut piecevalue_res, &self.bishop_bonus, &params.bishop_pair);
-        evaluate_single(&mut piecevalue_res, &self.rooks, &params.rook_piece_value);
-        evaluate_single(&mut piecevalue_res, &self.queens, &params.queen_piece_value);
+        evaluate_single(&mut piecevalue_res, self.bishop_bonus, &params.bishop_pair);
+        evaluate_single(&mut piecevalue_res, self.rooks, &params.rook_piece_value);
+        evaluate_single(&mut piecevalue_res, self.queens, &params.queen_piece_value);
 
         let mut tempo_bonus = (0., 0.);
-        evaluate_single(&mut tempo_bonus, &self.tempo_bonus, &params.tempo_bonus);
+        evaluate_single(&mut tempo_bonus, self.tempo_bonus, &params.tempo_bonus);
 
         let res = (
             psqt_res.0
