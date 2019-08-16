@@ -289,6 +289,6 @@ impl Search {
             "New total time saved: {}\n",
             saved_time.load(Ordering::Relaxed)
         ));*/
-        return best_pv_score;
+        best_pv_score
     }
 }

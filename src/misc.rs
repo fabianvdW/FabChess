@@ -101,26 +101,23 @@ impl Iterator for GameParser {
             None => None,
             Some(res) => {
                 let game = res.replace("\r", "").replace("\n", " ");
-                if game.contains("--") || game.contains("*") || game.contains("..") {
+                if game.contains("--") || game.contains('*') || game.contains("..") {
                     //Invalid state
                     return Some((vec_res, vec_gs, -2));
                 }
                 //log(&format!("{}\n", game));
                 let moves = game.split(' ').collect::<Vec<&str>>();
-                for idx in 0..moves.len() - 2 {
-                    let mut move_str = moves[idx];
+                for move_str in moves.iter().take(moves.len() - 2) {
+                    let mut move_str = (*move_str).to_string();
                     if move_str.contains('.') {
-                        move_str = move_str.rsplit('.').collect::<Vec<&str>>()[0];
+                        move_str = move_str.rsplit('.').collect::<Vec<&str>>()[0].to_string();
                     }
                     if move_str.is_empty() {
                         continue;
                     }
                     //println!("{} || len: {}", move_str, move_str.len());
-                    let parsed_move = parse_move(
-                        &vec_gs[vec_gs.len() - 1],
-                        &String::from(move_str),
-                        &mut self.move_list,
-                    );
+                    let parsed_move =
+                        parse_move(&vec_gs[vec_gs.len() - 1], &move_str, &mut self.move_list);
                     vec_gs.push(parsed_move.1);
                     vec_res.push(parsed_move.0);
                     if self.is_opening && vec_res.len() == self.opening_load_untilply {
@@ -155,7 +152,7 @@ pub fn parse_move(
         .replace("=", "")
         .replace("x", "");
     movegen::generate_moves(&g, false, movelist, depth);
-    if my_string.contains("-") {
+    if my_string.contains('-') {
         //Castle
         //Kingside
         if my_string.len() == 3 {
@@ -168,7 +165,7 @@ pub fn parse_move(
             while index < movelist.counter[depth] {
                 let mv = movelist.move_list[depth][index].as_ref().unwrap();
                 if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == 2 {
-                    let res = mv.clone();
+                    let res = *mv;
                     let state = make_move(&g, &res);
                     return (res, state);
                 }
@@ -184,7 +181,7 @@ pub fn parse_move(
             while index < movelist.counter[depth] {
                 let mv = movelist.move_list[depth][index].as_ref().unwrap();
                 if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == -2 {
-                    let res = mv.clone();
+                    let res = *mv;
                     let state = make_move(&g, &res);
                     return (res, state);
                 }
@@ -241,7 +238,7 @@ pub fn parse_move(
                                 _ => None,
                             } == Some(&promotion_piece)
                     {
-                        let res = mv.clone();
+                        let res = *mv;
                         let state = make_move(&g, &res);
                         return (res, state);
                     }
@@ -268,7 +265,7 @@ pub fn parse_move(
                                     _ => None,
                                 } == Some(&promotion_piece)
                         {
-                            let res = mv.clone();
+                            let res = *mv;
                             let state = make_move(&g, &res);
                             return (res, state);
                         }
@@ -291,7 +288,7 @@ pub fn parse_move(
                                     _ => None,
                                 } == Some(&promotion_piece)
                         {
-                            let res = mv.clone();
+                            let res = *mv;
                             let state = make_move(&g, &res);
                             return (res, state);
                         }
@@ -315,7 +312,7 @@ pub fn parse_move(
                             _ => false,
                         })
                 {
-                    let res = mv.clone();
+                    let res = *mv;
                     let state = make_move(&g, &res);
                     return (res, state);
                 }
@@ -402,13 +399,13 @@ impl Iterator for PGNParser {
             Err(_e) => false,
             Ok(_e) => true,
         } {
-            if line.contains("1.") && !line.contains("[") {
+            if line.contains("1.") && !line.contains('[') {
                 loop {
                     res_str.push_str(&line);
                     if res_str.contains("1-0")
                         || res_str.contains("0-1")
                         || res_str.contains("1/2-1/2")
-                        || res_str.contains("*")
+                        || res_str.contains('*')
                     {
                         break;
                     }

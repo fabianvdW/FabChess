@@ -412,9 +412,9 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
 #[inline(always)]
 pub fn capture_value(mv: &GameMove) -> i16 {
     match &mv.move_type {
-        GameMoveType::Capture(c) => piece_value(&c),
+        GameMoveType::Capture(c) => piece_value(*c),
         GameMoveType::Promotion(_, b) => match b {
-            Some(c) => piece_value(&c),
+            Some(c) => piece_value(*c),
             _ => panic!("Promotion but no capture"),
         },
         _ => panic!("No capture"),
@@ -422,7 +422,7 @@ pub fn capture_value(mv: &GameMove) -> i16 {
 }
 
 #[inline(always)]
-pub fn piece_value(piece_type: &PieceType) -> i16 {
+pub fn piece_value(piece_type: PieceType) -> i16 {
     match piece_type {
         PieceType::Pawn => PIECE_VALUES[PAWN],
         PieceType::Knight => PIECE_VALUES[KNIGHT],

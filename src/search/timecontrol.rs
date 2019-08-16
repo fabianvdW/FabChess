@@ -80,12 +80,12 @@ impl TimeControl {
         if let TimeControl::Incremental(mytime, myinc) = self {
             let normal_timecontrol =
                 ((*mytime as f64 - saved as f64) / 30.0) as u64 + myinc - MOVE_OVERHEAD;
-            return normal_timecontrol as i64 - time_spent as i64;
+            normal_timecontrol as i64 - time_spent as i64
         } else if let TimeControl::Tournament(mytime, myinc, movestogo) = self {
             let normal_timecontrol = ((*mytime as f64 - saved as f64) / *movestogo as f64) as u64
                 + myinc
                 - MOVE_OVERHEAD;
-            return normal_timecontrol as i64 - time_spent as i64;
+            normal_timecontrol as i64 - time_spent as i64
         } else {
             0
         }

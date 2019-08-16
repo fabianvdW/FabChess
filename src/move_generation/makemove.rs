@@ -91,25 +91,17 @@ pub fn castle_hash(
     ncbq: bool,
     mut hash: u64,
 ) -> u64 {
-    if ocwk {
-        if !ncwk {
-            hash ^= ZOBRIST_KEYS.castle_w_kingside;
-        }
+    if ocwk && !ncwk {
+        hash ^= ZOBRIST_KEYS.castle_w_kingside;
     }
-    if ocwq {
-        if !ncwq {
-            hash ^= ZOBRIST_KEYS.castle_w_queenside;
-        }
+    if ocwq && !ncwq {
+        hash ^= ZOBRIST_KEYS.castle_w_queenside;
     }
-    if ocbk {
-        if !ncbk {
-            hash ^= ZOBRIST_KEYS.castle_b_kingside;
-        }
+    if ocbk && !ncbk {
+        hash ^= ZOBRIST_KEYS.castle_b_kingside;
     }
-    if ocbq {
-        if !ncbq {
-            hash ^= ZOBRIST_KEYS.castle_b_queenside;
-        }
+    if ocbq && !ncbq {
+        hash ^= ZOBRIST_KEYS.castle_b_queenside;
     }
     hash
 }
@@ -118,7 +110,7 @@ pub fn castle_hash(
 pub fn delete_piece_hash(
     delete_square: usize,
     delete_color: usize,
-    captured_piece: &PieceType,
+    captured_piece: PieceType,
     mut hash: u64,
 ) -> u64 {
     if delete_color == WHITE {
@@ -160,7 +152,7 @@ pub fn move_piece(pieces: &mut [[u64; 2]; 6], mv: &GameMove, move_color: usize) 
 #[inline(always)]
 pub fn delete_piece(
     pieces: &mut [[u64; 2]; 6],
-    captured_piece: &PieceType,
+    captured_piece: PieceType,
     delete_square: usize,
     delete_color: usize,
 ) {
@@ -184,30 +176,23 @@ pub fn check_castle_flags(
     match mv.piece_type {
         PieceType::King => (false, false),
         PieceType::Rook => {
-            let mut new_ck = ck;
-            if ck {
-                if color_to_move == WHITE {
-                    if pieces[ROOK][WHITE] & bitboards::SQUARES[7] == 0 {
-                        new_ck = false;
-                    }
-                } else {
-                    if pieces[ROOK][BLACK] & bitboards::SQUARES[63] == 0 {
-                        new_ck = false;
-                    }
-                }
-            }
-            let mut new_cq = cq;
-            if cq {
-                if color_to_move == WHITE {
-                    if pieces[ROOK][WHITE] & bitboards::SQUARES[0] == 0 {
-                        new_cq = false;
-                    }
-                } else {
-                    if pieces[ROOK][BLACK] & bitboards::SQUARES[56] == 0 {
-                        new_cq = false;
-                    }
-                }
-            }
+            let new_ck = if ck
+                && (color_to_move == WHITE && pieces[ROOK][WHITE] & bitboards::SQUARES[7] == 0
+                    || color_to_move == BLACK && pieces[ROOK][BLACK] & bitboards::SQUARES[63] == 0)
+            {
+                false
+            } else {
+                ck
+            };
+
+            let new_cq = if cq
+                && (color_to_move == WHITE && pieces[ROOK][WHITE] & bitboards::SQUARES[0] == 0
+                    || color_to_move == BLACK && pieces[ROOK][BLACK] & bitboards::SQUARES[56] == 0)
+            {
+                false
+            } else {
+                cq
+            };
             (new_ck, new_cq)
         }
         _ => (ck, cq),
@@ -330,7 +315,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Delete destination-piece from enemy pieces
-    delete_piece(&mut pieces, &captured_piece, mv.to, color_to_move);
+    delete_piece(&mut pieces, *captured_piece, mv.to, color_to_move);
 
     let (mut castle_white_kingside, mut castle_white_queenside) = if g.color_to_move == WHITE {
         check_castle_flags(
@@ -389,7 +374,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
         castle_black_queenside,
         hash,
     );
-    hash = delete_piece_hash(mv.to, color_to_move, &captured_piece, hash);
+    hash = delete_piece_hash(mv.to, color_to_move, *captured_piece, hash);
     let psqt = psqt_incremental_move_piece(
         mv.piece_type,
         mv.from,
@@ -423,7 +408,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
 
 pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
     let color_to_move = 1 - g.color_to_move;
-    let mut pieces = g.pieces.clone();
+    let mut pieces = g.pieces;
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Delete enemy pawn
@@ -432,7 +417,7 @@ pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
     } else {
         mv.to + 8
     };
-    delete_piece(&mut pieces, &PieceType::Pawn, delete_square, color_to_move);
+    delete_piece(&mut pieces, PieceType::Pawn, delete_square, color_to_move);
 
     let castle_white_kingside = g.castle_white_kingside;
     let castle_white_queenside = g.castle_white_queenside;
@@ -457,7 +442,7 @@ pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
         castle_black_queenside,
         hash,
     );
-    hash = delete_piece_hash(delete_square, color_to_move, &PieceType::Pawn, hash);
+    hash = delete_piece_hash(delete_square, color_to_move, PieceType::Pawn, hash);
     let psqt = psqt_incremental_move_piece(
         mv.piece_type,
         mv.from,
@@ -644,8 +629,8 @@ pub fn make_promotion_move(
     //Delete enemy piece if any on there
     match captured_piece {
         Some(piece) => {
-            delete_piece(&mut pieces, &piece, mv.to, color_to_move);
-            hash = delete_piece_hash(mv.to, color_to_move, &piece, hash);
+            delete_piece(&mut pieces, *piece, mv.to, color_to_move);
+            hash = delete_piece_hash(mv.to, color_to_move, *piece, hash);
         }
         None => {}
     }
