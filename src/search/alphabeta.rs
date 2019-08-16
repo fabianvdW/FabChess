@@ -10,7 +10,7 @@ use super::quiescence::{is_capture, q_search, see};
 use super::search::Search;
 use super::search::SearchUtils;
 use super::GradedMove;
-use crate::evaluation::{calculate_phase_state, eval_game_state};
+use crate::evaluation::{calculate_phase, eval_game_state};
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -145,7 +145,7 @@ pub fn principal_variation_search(
     //Null Move Forward Pruning
     if !is_pv_node && !incheck && !is_likelystalemate && depth_left >= NULL_MOVE_PRUNING_DEPTH {
         if let None = phase {
-            phase = Some(calculate_phase_state(game_state));
+            phase = Some(calculate_phase(game_state));
         }
         if phase.unwrap() > 0. {
             if let None = static_evaluation {

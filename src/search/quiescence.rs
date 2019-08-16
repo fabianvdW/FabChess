@@ -311,7 +311,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: i16, alph
         GameMoveType::EnPassant => &PieceType::Pawn,
         _ => panic!("No capture!"),
     };
-    eval + evaluation::piece_value(&captured_piece, phase) + DELTA_PRUNING >= alpha
+    eval + evaluation::piece_value(*captured_piece, phase) + DELTA_PRUNING >= alpha
 }
 
 #[inline(always)]

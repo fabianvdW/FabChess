@@ -22,9 +22,8 @@ pub fn log(s: &str) {
         print!("{}", s);
     } else {
         let x = LOG.lock().unwrap().write(s.as_bytes());
-        match x {
-            Err(why) => panic!("Something went wrong, {}", why.description()),
-            Ok(_) => {}
+        if let Err(why) = x {
+            panic!("Something went wrong, {}", why.description())
         };
     }
 }

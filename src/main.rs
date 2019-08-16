@@ -14,7 +14,7 @@ fn main() {
     log(&format!(
         "Initialization Time: {}ms\n",
         new_now.duration_since(now).as_secs() * 1000
-            + new_now.duration_since(now).subsec_millis() as u64
+            + u64::from(new_now.duration_since(now).subsec_millis())
     ));
 
     core::uci::uci_parser::parse_loop();
@@ -72,686 +72,104 @@ mod tests {
     #[test]
     fn perft_test() {
         let mut movelist = movegen::MoveList::new();
-        assert_eq!(
-            20,
-            perft(
-                &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            400,
-            perft(
-                &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            8902,
-            perft(
-                &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            197_281,
-            perft(
-                &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            4_865_609,
-            perft(
-                &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-                5,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            119_060_324,
-            perft(
-                &GameState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
+
+        #[rustfmt::skip]
+        let cases = [
+        (20,1,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+        (400,2,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+        (8902,3,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+        (197_281,4,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+        (4_865_609,5,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+        (119_060_324,6,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
         //https://gist.github.com/peterellisjones/8c46c28141c162d1d8a0f0badbc9cff9
-        assert_eq!(
-            8,
-            perft(
-                &GameState::from_fen("r6r/1b2k1bq/8/8/7B/8/8/R3K2R b QK - 3 2"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            8,
-            perft(
-                &GameState::from_fen("8/8/8/2k5/2pP4/8/B7/4K3 b - d3 5 3"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            19,
-            perft(
-                &GameState::from_fen("r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w QqKk - 2 2"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            5,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b QqKk - 3 2"
-                ),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            44,
-            perft(
-                &GameState::from_fen(
-                    "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b QK - 3 2"
-                ),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            39,
-            perft(
-                &GameState::from_fen("rnb2k1r/pp1Pbppp/2p5/q7/2B5/8/PPPQNnPP/RNB1K2R w QK - 3 9"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            9,
-            perft(
-                &GameState::from_fen("2r5/3pk3/8/2P5/8/2K5/8/8 w - - 5 4"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            62379,
-            perft(
-                &GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            89890,
-            perft(
-                &GameState::from_fen(
-                    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-                ),
-                3,
-                &mut movelist
-            )
-        );
-
-        assert_eq!(
-            1_134_888,
-            perft(
-                &GameState::from_fen("3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1015133,
-            perft(
-                &GameState::from_fen("8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-
-        assert_eq!(
-            1440467,
-            perft(
-                &GameState::from_fen("8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            661072,
-            perft(
-                &GameState::from_fen("5k2/8/8/8/8/8/8/4K2R w K - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            803711,
-            perft(
-                &GameState::from_fen("3k4/8/8/8/8/8/8/R3K3 w Q - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1274206,
-            perft(
-                &GameState::from_fen("r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1720476,
-            perft(
-                &GameState::from_fen("r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            3821001,
-            perft(
-                &GameState::from_fen("2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1004658,
-            perft(
-                &GameState::from_fen("8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1"),
-                5,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            217342,
-            perft(
-                &GameState::from_fen("4k3/1P6/8/8/8/8/K7/8 w - - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            92683,
-            perft(
-                &GameState::from_fen("8/P1k5/K7/8/8/8/8/8 w - - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            2217,
-            perft(
-                &GameState::from_fen("K1k5/8/P7/8/8/8/8/8 w - - 0 1"),
-                6,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            567584,
-            perft(
-                &GameState::from_fen("8/k1P5/8/1K6/8/8/8/8 w - - 0 1"),
-                7,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            23527,
-            perft(
-                &GameState::from_fen("8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            48,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
-                ),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            2039,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
-                ),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            97862,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
-                ),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            4085603,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
-                ),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            14,
-            perft(
-                &GameState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            191,
-            perft(
-                &GameState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            2812,
-            perft(
-                &GameState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            43238,
-            perft(
-                &GameState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            674624,
-            perft(
-                &GameState::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
-                5,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            6,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
-                ),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            264,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
-                ),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            9467,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
-                ),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            422333,
-            perft(
-                &GameState::from_fen(
-                    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
-                ),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            6,
-            perft(
-                &GameState::from_fen(
-                    "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"
-                ),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            264,
-            perft(
-                &GameState::from_fen(
-                    "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"
-                ),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            9467,
-            perft(
-                &GameState::from_fen(
-                    "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"
-                ),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            422333,
-            perft(
-                &GameState::from_fen(
-                    "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"
-                ),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            44,
-            perft(
-                &GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1486,
-            perft(
-                &GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            62379,
-            perft(
-                &GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            2103487,
-            perft(
-                &GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            46,
-            perft(
-                &GameState::from_fen(
-                    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-                ),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            2079,
-            perft(
-                &GameState::from_fen(
-                    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-                ),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            89890,
-            perft(
-                &GameState::from_fen(
-                    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-                ),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            3894594,
-            perft(
-                &GameState::from_fen(
-                    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-                ),
-                4,
-                &mut movelist
-            )
-        );
+        (8,1,"r6r/1b2k1bq/8/8/7B/8/8/R3K2R b QK - 3 2"),
+        (8,1,"8/8/8/2k5/2pP4/8/B7/4K3 b - d3 5 3"),
+        (19,1,"r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w QqKk - 2 2"),
+        (5,1,"r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b QqKk - 3 2"),
+        (44,1,"2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b QK - 3 2"),
+        (39,1,"rnb2k1r/pp1Pbppp/2p5/q7/2B5/8/PPPQNnPP/RNB1K2R w QK - 3 9"),
+        (9,1,"2r5/3pk3/8/2P5/8/2K5/8/8 w - - 5 4"),
+        (62379,3,"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
+        (89890,3,"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"),
+        (1_134_888,6,"3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1"),
+        (1_015_133,6,"8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1"),
+        (1_440_467,6,"8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1"),
+        (661_072,6,"5k2/8/8/8/8/8/8/4K2R w K - 0 1"),
+        (803_711,6,"3k4/8/8/8/8/8/8/R3K3 w Q - 0 1"),
+        (1_274_206,4,"r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1"),
+        (1_720_476,4,"r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1"),
+        (3_821_001,6,"2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1"),
+        (1_004_658,5,"8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1"),
+        (217_342,6,"4k3/1P6/8/8/8/8/K7/8 w - - 0 1"),
+        (92683,6,"8/P1k5/K7/8/8/8/8/8 w - - 0 1"),
+        (2217,6,"K1k5/8/P7/8/8/8/8/8 w - - 0 1"),
+        (567_584,7,"8/k1P5/8/1K6/8/8/8/8 w - - 0 1"),
+        (23527,4,"8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1"),
+        (48,1,"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"),
+        (2039,2,"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"),
+        (97862,3,"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"),
+        (4_085_603,4,"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"),
+        (14,1,"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
+        (191,2,"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
+        (2812,3,"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
+        (43238,4,"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
+        (674_624,5,"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"),
+        (6,1,"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"),
+        (264,2,"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"),
+        (9467,3,"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"),
+        (422_333,4,"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"),
+        (6,1,"r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"),
+        (264,2,"r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"),
+        (9467,3,"r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"),
+        (422_333,4,"r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"),
+        (44,1,"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
+        (1486,2,"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
+        (62379,3,"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
+        (2_103_487,4,"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
+        (46,1,"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"),
+        (2079,2,"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"),
+        (89890,3,"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"),
+        (3_894_594,4,"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"),
         //Hall of Fame Bugs!
         //63%9==63%7
-        assert_eq!(
-            4,
-            perft(
-                &GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            198,
-            perft(
-                &GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            7605,
-            perft(
-                &GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            346440,
-            perft(
-                &GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            14660480,
-            perft(
-                &GameState::from_fen("4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
-                5,
-                &mut movelist
-            )
-        );
+        (4,1,"4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
+        (198,2,"4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
+        (7605,3,"4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
+        (346_440,4,"4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
+        (14_660_480,5,"4rb1k/1p2qb2/1pp4p/8/2P1BR2/5N2/5r1P/Q5RK b - - 3 34"),
         //Pawn promotion capture when pinned
-        assert_eq!(
-            26,
-            perft(
-                &GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            613,
-            perft(
-                &GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            14277,
-            perft(
-                &GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            345436,
-            perft(
-                &GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            7804316,
-            perft(
-                &GameState::from_fen("6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
-                5,
-                &mut movelist
-            )
-        );
+        (26,1,"6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
+        (613,2,"6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
+        (14277,3,"6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
+        (345_436,4,"6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
+        (7_804_316,5,"6R1/2p2r2/2PP4/2b5/2B3p1/6k1/5p2/4BK2 b - - 0 1"),
         //Pawn en passant capture when pinned
         //Capture is possible when 1) on capture mask and 2) on ray or capturing the pinning piece
-        assert_eq!(
-            48,
-            perft(
-                &GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1221,
-            perft(
-                &GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            54983,
-            perft(
-                &GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            1520218,
-            perft(
-                &GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            67336445,
-            perft(
-                &GameState::from_fen("3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
-                5,
-                &mut movelist
-            )
-        );
+        (48,1,"3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
+        (1221,2,"3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
+        (54983,3,"3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
+        (1_520_218,4,"3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
+        (67_336_445,5,"3r4/6k1/pN1q2p1/Pp6/1PPpp3/4brPP/1Q2R1RK/8 b - c3 0 1"),
         //A case that passed all others before + the pgn test, because of its absurdity.
-        assert_eq!(
-            30,
-            perft(
-                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            885,
-            perft(
-                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            21360,
-            perft(
-                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            601693,
-            perft(
-                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            16183274,
-            perft(
-                &GameState::from_fen("NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
-                5,
-                &mut movelist
-            )
-        );
+        (30,1,"NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+        (885,2,"NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+        (21360,3,"NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+        (601_693,4,"NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
+        (16_183_274,5,"NQbk2nr/1p1pp1bp/6p1/q3Pp2/3K4/8/PB4PP/R4B1R w - f6 0 24"),
         //Missed that special en passant case for queens(got it for rooks earlier)
-        assert_eq!(
-            29,
-            perft(
-                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
-                1,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            865,
-            perft(
-                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
-                2,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            22609,
-            perft(
-                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
-                3,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            685012,
-            perft(
-                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
-                4,
-                &mut movelist
-            )
-        );
-        assert_eq!(
-            17252119,
-            perft(
-                &GameState::from_fen("8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
-                5,
-                &mut movelist
-            )
-        );
+        (29,1,"8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+        (865,2,"8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+        (22609,3,"8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+        (685_012,4,"8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+        (17_252_119,5,"8/4q3/6R1/4b3/4QpPk/5P2/8/6K1 b - g3 0 79"),
+        ];
+
+        for case in cases.iter() {
+            assert_eq!(
+                case.0,
+                perft(&GameState::from_fen(case.2), case.1, &mut movelist)
+            );
+        }
     }
 
     #[test]

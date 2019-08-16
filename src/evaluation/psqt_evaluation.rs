@@ -87,7 +87,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
 
 #[inline(always)]
 pub fn psqt_incremental_move_piece(
-    piece: &PieceType,
+    piece: PieceType,
     mut from_square: usize,
     mut to_square: usize,
     is_black: bool,
@@ -130,7 +130,7 @@ pub fn psqt_incremental_move_piece(
 
 #[inline(always)]
 pub fn psqt_incremental_delete_piece(
-    piece: &PieceType,
+    piece: PieceType,
     mut from_square: usize,
     is_black: bool,
     psqt_mg: i16,
@@ -163,7 +163,7 @@ pub fn psqt_incremental_delete_piece(
 
 #[inline(always)]
 pub fn psqt_incremental_add_piece(
-    piece: &PieceType,
+    piece: PieceType,
     mut from_square: usize,
     is_black: bool,
     psqt_mg: i16,

@@ -36,7 +36,7 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
 pub fn perft(g: &GameState, depth: usize, movelist: &mut movegen::MoveList) -> u64 {
     if depth == 1 {
         let _ = movegen::generate_moves(&g, false, movelist, depth);
-        return movelist.counter[depth] as u64;
+        movelist.counter[depth] as u64
     } else {
         if depth == 0 {
             return 1;

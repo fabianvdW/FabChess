@@ -33,24 +33,20 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = calculate_phase_state(g);
+    let phase = calculate_phase(g);
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
     }
-    let psqt_mg;
-    let psqt_eg;
-    if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
+    let (psqt_mg, psqt_eg) = if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
         let (psqt_w, psqt_b) = (
             psqt(true, &g.pieces, &mut result),
             psqt(false, &g.pieces, &mut result),
         );
-        psqt_mg = psqt_w.0 - psqt_b.0;
-        psqt_eg = psqt_w.1 - psqt_b.1;
+        (psqt_w.0 - psqt_b.0, psqt_w.1 - psqt_b.1)
     } else {
-        psqt_mg = g.psqt_mg;
-        psqt_eg = g.psqt_eg;
-    }
+        (g.psqt_mg, g.psqt_eg)
+    };
 
     #[cfg(feature = "display-eval")]
     {
@@ -177,7 +173,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         result.trace.tempo_bonus[g.color_to_move] = 1;
     }
     //Phasing is done the same way stockfish does it
-    let res = ((mg_eval as f64 * phase + eg_eval as f64 * (128.0 - phase)) / 128.0) as i16;
+    let res = ((f64::from(mg_eval) * phase + f64::from(eg_eval) * (128.0 - phase)) / 128.0) as i16;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -852,8 +848,8 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     (mg_res, eg_res)
 }
 
-pub fn calculate_phase_state(g: &GameState) -> f64 {
-    calculate_phase(
+pub fn calculate_phase(g: &GameState) -> f64 {
+    let (w_queens, b_queens, w_knights, b_knights, w_bishops, b_bishops, w_rooks, b_rooks) = (
         g.pieces[QUEEN][WHITE],
         g.pieces[QUEEN][BLACK],
         g.pieces[KNIGHT][WHITE],
@@ -862,18 +858,7 @@ pub fn calculate_phase_state(g: &GameState) -> f64 {
         g.pieces[BISHOP][BLACK],
         g.pieces[ROOK][WHITE],
         g.pieces[ROOK][BLACK],
-    )
-}
-pub fn calculate_phase(
-    w_queens: u64,
-    b_queens: u64,
-    w_knights: u64,
-    b_knights: u64,
-    w_bishops: u64,
-    b_bishops: u64,
-    w_rooks: u64,
-    b_rooks: u64,
-) -> f64 {
+    );
     let mut npm = (w_queens | b_queens).count_ones() as i16 * 1500
         + (w_bishops | b_bishops).count_ones() as i16 * 510
         + (w_rooks | b_rooks).count_ones() as i16 * 650
@@ -884,28 +869,30 @@ pub fn calculate_phase(
     if npm > MG_LIMIT {
         npm = MG_LIMIT;
     }
-    (npm - EG_LIMIT) as f64 * 128.0 / ((MG_LIMIT - EG_LIMIT) as f64)
+    f64::from(npm - EG_LIMIT) * 128.0 / f64::from(MG_LIMIT - EG_LIMIT)
 }
 
-pub fn piece_value(piece_type: &PieceType, phase: f64) -> i16 {
+pub fn piece_value(piece_type: PieceType, phase: f64) -> i16 {
     if let PieceType::Pawn = piece_type {
-        return ((PAWN_PIECE_VALUE_MG as f64 * phase + PAWN_PIECE_VALUE_EG as f64 * (128.0 - phase))
-            / 128.0) as i16;
+        ((f64::from(PAWN_PIECE_VALUE_MG) * phase
+            + f64::from(PAWN_PIECE_VALUE_EG) * (128.0 - phase))
+            / 128.0) as i16
     } else if let PieceType::Knight = piece_type {
-        return ((KNIGHT_PIECE_VALUE_MG as f64 * phase
-            + KNIGHT_PIECE_VALUE_EG as f64 * (128.0 - phase))
-            / 128.0) as i16;
+        ((f64::from(KNIGHT_PIECE_VALUE_MG) * phase
+            + f64::from(KNIGHT_PIECE_VALUE_EG) * (128.0 - phase))
+            / 128.0) as i16
     } else if let PieceType::Bishop = piece_type {
-        return ((BISHOP_PIECE_VALUE_MG as f64 * phase
-            + BISHOP_PIECE_VALUE_EG as f64 * (128.0 - phase))
-            / 128.0) as i16;
+        ((f64::from(BISHOP_PIECE_VALUE_MG) * phase
+            + f64::from(BISHOP_PIECE_VALUE_EG) * (128.0 - phase))
+            / 128.0) as i16
     } else if let PieceType::Rook = piece_type {
-        return ((ROOK_PIECE_VALUE_MG as f64 * phase + ROOK_PIECE_VALUE_EG as f64 * (128.0 - phase))
-            / 128.0) as i16;
+        ((f64::from(ROOK_PIECE_VALUE_MG) * phase
+            + f64::from(ROOK_PIECE_VALUE_EG) * (128.0 - phase))
+            / 128.0) as i16
     } else if let PieceType::Queen = piece_type {
-        return ((QUEEN_PIECE_VALUE_MG as f64 * phase
-            + QUEEN_PIECE_VALUE_EG as f64 * (128.0 - phase))
-            / 128.0) as i16;
+        ((f64::from(QUEEN_PIECE_VALUE_MG) * phase
+            + f64::from(QUEEN_PIECE_VALUE_EG) * (128.0 - phase))
+            / 128.0) as i16
     } else {
         panic!("Invalid piece type!");
     }

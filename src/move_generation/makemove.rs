@@ -301,7 +301,7 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
         hash,
     );
     let psqt = psqt_incremental_move_piece(
-        &mv.piece_type,
+        mv.piece_type,
         mv.from,
         mv.to,
         g.color_to_move == BLACK,
@@ -391,7 +391,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
     );
     hash = delete_piece_hash(mv.to, color_to_move, &captured_piece, hash);
     let psqt = psqt_incremental_move_piece(
-        &mv.piece_type,
+        mv.piece_type,
         mv.from,
         mv.to,
         g.color_to_move == BLACK,
@@ -399,7 +399,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
         g.psqt_eg,
     );
     let psqt = psqt_incremental_delete_piece(
-        &captured_piece,
+        *captured_piece,
         mv.to,
         g.color_to_move != BLACK,
         psqt.0,
@@ -459,7 +459,7 @@ pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
     );
     hash = delete_piece_hash(delete_square, color_to_move, &PieceType::Pawn, hash);
     let psqt = psqt_incremental_move_piece(
-        &mv.piece_type,
+        mv.piece_type,
         mv.from,
         mv.to,
         g.color_to_move == BLACK,
@@ -467,7 +467,7 @@ pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
         g.psqt_eg,
     );
     let psqt = psqt_incremental_delete_piece(
-        &PieceType::Pawn,
+        PieceType::Pawn,
         delete_square,
         g.color_to_move != BLACK,
         psqt.0,
@@ -549,7 +549,7 @@ pub fn make_castle_move(g: &GameState, mv: &GameMove) -> GameState {
         hash,
     );
     let psqt = psqt_incremental_move_piece(
-        &mv.piece_type,
+        mv.piece_type,
         mv.from,
         mv.to,
         g.color_to_move == BLACK,
@@ -557,7 +557,7 @@ pub fn make_castle_move(g: &GameState, mv: &GameMove) -> GameState {
         g.psqt_eg,
     );
     let psqt = psqt_incremental_move_piece(
-        &PieceType::Rook,
+        PieceType::Rook,
         if mv.to == 58 {
             56
         } else if mv.to == 2 {
@@ -699,24 +699,25 @@ pub fn make_promotion_move(
         hash,
     );
     let psqt = psqt_incremental_delete_piece(
-        &mv.piece_type,
+        mv.piece_type,
         mv.from,
         g.color_to_move == BLACK,
         g.psqt_mg,
         g.psqt_eg,
     );
     let mut psqt = psqt_incremental_add_piece(
-        &(match mv.move_type {
+        match mv.move_type {
             GameMoveType::Promotion(typ, _) => typ,
             _ => panic!("Invalid move type in make move promotion"),
-        }),
+        },
         mv.to,
         g.color_to_move == BLACK,
         psqt.0,
         psqt.1,
     );
     if let Some(piece) = captured_piece {
-        psqt = psqt_incremental_delete_piece(piece, mv.to, g.color_to_move != BLACK, psqt.0, psqt.1)
+        psqt =
+            psqt_incremental_delete_piece(*piece, mv.to, g.color_to_move != BLACK, psqt.0, psqt.1)
     }
     GameState {
         color_to_move,

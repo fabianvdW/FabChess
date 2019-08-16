@@ -17,16 +17,16 @@ pub fn init_at_program_start() {
 
 pub fn rand_array_64() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for i in 0..64 {
-        res[i] = rand_u64();
+    for item in res.iter_mut() {
+        *item = rand_u64();
     }
     res
 }
 
 pub fn rand_array_8() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for i in 0..8 {
-        res[i] = rand_u64();
+    for item in res.iter_mut() {
+        *item = rand_u64();
     }
     res
 }
