@@ -34,7 +34,7 @@ impl ThreadSafeString {
         }
     }
 
-    pub fn push(&self, str: &String) {
+    pub fn push(&self, str: &str) {
         let mut data = self.string.lock().unwrap();
         (*data).push_str(str);
     }

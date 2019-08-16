@@ -37,24 +37,24 @@ pub enum PieceType {
     Queen,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub struct GameMove {
     pub from: usize,
     pub to: usize,
     pub move_type: GameMoveType,
     pub piece_type: PieceType,
 }
-
-impl GameMove {
-    pub fn clone(&self) -> GameMove {
+impl Clone for GameMove {
+    fn clone(&self) -> Self {
         GameMove {
             from: self.from,
             to: self.to,
-            move_type: self.move_type.clone(),
-            piece_type: self.piece_type.clone(),
+            move_type: self.move_type,
+            piece_type: self.piece_type,
         }
     }
-
+}
+impl GameMove {
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
         let from_file = match chars.nth(0) {
@@ -105,15 +105,14 @@ impl Debug for GameMove {
             file_to_string(self.to % 8),
             self.to / 8 + 1
         ));
-        match &self.move_type {
-            GameMoveType::Promotion(s, _) => match s {
+        if let GameMoveType::Promotion(s, _) = &self.move_type {
+            match s {
                 PieceType::Queen => res_str.push_str("q"),
                 PieceType::Rook => res_str.push_str("r"),
                 PieceType::Bishop => res_str.push_str("b"),
                 PieceType::Knight => res_str.push_str("n"),
                 _ => panic!("Invalid promotion piece type!"),
-            },
-            _ => {}
+            }
         };
         write!(formatter, "{}", res_str)
     }
@@ -209,20 +208,19 @@ pub struct GameState {
 
 impl GameState {
     pub fn from_fen(fen: &str) -> GameState {
-        let vec: Vec<&str> = fen.split(" ").collect();
+        let vec: Vec<&str> = fen.split(' ').collect();
         if vec.len() < 4 {
             panic!("Invalid FEN");
         }
         //Parse through FEN
         //Pieces
-        let pieces: Vec<&str> = vec[0].split("/").collect();
+        let pieces: Vec<&str> = vec[0].split('/').collect();
         if pieces.len() != 8 {
             panic!("Invalid FEN");
         }
         //Iterate over all 8 ranks
         let mut pieces_arr: [[u64; 2]; 6] = [[0u64; 2]; 6];
-        for rank in 0..8 {
-            let rank_str = pieces[rank];
+        for (rank, rank_str) in pieces.iter().enumerate().take(8) {
             let mut file: usize = 0;
             let mut rank_str_idx: usize = 0;
             while file < 8 {
@@ -320,14 +318,13 @@ impl GameState {
         };
 
         //Castling-Abilities
-        let castle_white_kingside = vec[2].contains("K");
-        let castle_white_queenside = vec[2].contains("Q");
-        let castle_black_kingside = vec[2].contains("k");
-        let castle_black_queenside = vec[2].contains("q");
+        let castle_white_kingside = vec[2].contains('K');
+        let castle_white_queenside = vec[2].contains('Q');
+        let castle_black_kingside = vec[2].contains('k');
+        let castle_black_queenside = vec[2].contains('q');
 
         //En passant target square
-        let mut en_passant: u64 = 0u64;
-        if vec[3] != "-" {
+        let en_passant: u64 = if vec[3] != "-" {
             let mut idx: usize = 0usize;
             let file = vec[3].chars().nth(0);
             let rank = vec[3].chars().nth(1);
@@ -395,16 +392,16 @@ impl GameState {
                     panic!("Invalid FEN!");
                 }
             }
-            en_passant = 1u64 << idx;
-        }
-        let mut half_moves = 0;
-        let mut full_moves = 1;
-        if vec.len() > 4 {
-            //Half move clock
-            half_moves = vec[4].parse().unwrap();
+            1u64 << idx
+        } else {
+            0u64
+        };
 
-            full_moves = vec[5].parse().unwrap();
-        }
+        let (half_moves, full_moves) = if vec.len() > 4 {
+            (vec[4].parse().unwrap(), vec[5].parse().unwrap())
+        } else {
+            (0, 1)
+        };
         let hash = GameState::calculate_zobrist_hash(
             color_to_move,
             pieces_arr,
@@ -437,6 +434,36 @@ impl GameState {
             psqt_eg: p_w.1 - p_b.1,
         }
     }
+    pub fn get_piece_on(&self, shift: i32) -> &str {
+        if (self.pieces[PAWN][WHITE] >> shift) & 1u64 != 0u64 {
+            "P"
+        } else if (self.pieces[KNIGHT][WHITE] >> shift) & 1u64 != 0u64 {
+            "N"
+        } else if (self.pieces[BISHOP][WHITE] >> shift) & 1u64 != 0u64 {
+            "B"
+        } else if (self.pieces[ROOK][WHITE] >> shift) & 1u64 != 0u64 {
+            "R"
+        } else if (self.pieces[QUEEN][WHITE] >> shift) & 1u64 != 0u64 {
+            "Q"
+        } else if (self.pieces[KING][WHITE] >> shift) & 1u64 != 0u64 {
+            "K"
+        } else if (self.pieces[PAWN][BLACK] >> shift) & 1u64 != 0u64 {
+            "p"
+        } else if (self.pieces[KNIGHT][BLACK] >> shift) & 1u64 != 0u64 {
+            "n"
+        } else if (self.pieces[BISHOP][BLACK] >> shift) & 1u64 != 0u64 {
+            "b"
+        } else if (self.pieces[ROOK][BLACK] >> shift) & 1u64 != 0u64 {
+            "r"
+        } else if (self.pieces[QUEEN][BLACK] >> shift) & 1u64 != 0u64 {
+            "q"
+        } else if (self.pieces[KING][BLACK] >> shift) & 1u64 != 0u64 {
+            "k"
+        } else {
+            " "
+        }
+    }
+
     pub fn to_fen(&self) -> String {
         let mut res_str = String::new();
         for rank in 0..8 {
@@ -448,78 +475,14 @@ impl GameState {
                 let shift = big_endian_rank * 8 + file;
                 file += 1;
                 files_skipped += 1;
-                if (self.pieces[PAWN][WHITE] >> shift) & 1u64 != 0u64 {
+                let piece_on = self.get_piece_on(shift);
+
+                if piece_on != " " {
                     if files_skipped != 1 {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
-                    res_str.push_str("P");
-                } else if (self.pieces[KNIGHT][WHITE] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("N");
-                } else if (self.pieces[BISHOP][WHITE] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("B");
-                } else if (self.pieces[ROOK][WHITE] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("R");
-                } else if (self.pieces[QUEEN][WHITE] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("Q");
-                } else if (self.pieces[KING][WHITE] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("K");
-                } else if (self.pieces[PAWN][BLACK] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("p");
-                } else if (self.pieces[KNIGHT][BLACK] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("n");
-                } else if (self.pieces[BISHOP][BLACK] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("b");
-                } else if (self.pieces[ROOK][BLACK] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("r");
-                } else if (self.pieces[QUEEN][BLACK] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("q");
-                } else if (self.pieces[KING][BLACK] >> shift) & 1u64 != 0u64 {
-                    if files_skipped != 1 {
-                        res_str.push_str(&format!("{}", files_skipped - 1));
-                    }
-                    files_skipped = 0;
-                    res_str.push_str("k");
+                    res_str.push_str(piece_on);
                 }
             }
             if files_skipped != 0 {
@@ -571,15 +534,16 @@ impl GameState {
         res_str.push_str(&format!("{}", self.full_moves));
         res_str
     }
+
     pub fn standard() -> GameState {
         let color_to_move = 0usize;
         let pieces = [
-            [0xff00u64, 0xff000000000000u64],
-            [0x42u64, 0x4200000000000000u64],
-            [0x24u64, 0x2400000000000000u64],
-            [0x81u64, 0x8100000000000000u64],
-            [0x8u64, 0x800000000000000u64],
-            [0x10u64, 0x1000000000000000u64],
+            [0xff00u64, 0x00ff_0000_0000_0000u64],
+            [0x42u64, 0x4200_0000_0000_0000u64],
+            [0x24u64, 0x2400_0000_0000_0000u64],
+            [0x81u64, 0x8100_0000_0000_0000u64],
+            [0x8u64, 0x0800_0000_0000_0000u64],
+            [0x10u64, 0x1000_0000_0000_0000u64],
         ];
         let mut _eval = crate::evaluation::EvaluationResult {
             phase: 0.,
@@ -721,7 +685,7 @@ impl Clone for GameState {
     fn clone(&self) -> Self {
         GameState {
             color_to_move: self.color_to_move,
-            pieces: self.pieces.clone(),
+            pieces: self.pieces,
             castle_white_kingside: self.castle_white_kingside,
             castle_white_queenside: self.castle_white_queenside,
             castle_black_kingside: self.castle_black_kingside,
