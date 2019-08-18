@@ -205,7 +205,7 @@ impl Search {
                         break;
                     }
                     //Else put pv in principal_variation table
-                    self.replace_pv(&game_state, depth, pv_score);
+                    //self.replace_pv(&game_state, depth, pv_score);
 
                     if pv_score <= alpha {
                         if alpha < -10000 || pv_score < MATED_IN_MAX {
