@@ -93,29 +93,26 @@ pub fn principal_variation_search(
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
                 su.search.search_statistics.add_cache_hit_ns();
-                if ce.depth >= depth_left as i8 {
-                    if beta - alpha == 1 {
-                        if !ce.alpha && !ce.beta {
-                            su.search.search_statistics.add_cache_hit_replace_ns();
+                if ce.depth >= depth_left as i8 && beta - alpha == 1 {
+                    if !ce.alpha && !ce.beta {
+                        su.search.search_statistics.add_cache_hit_replace_ns();
+                        su.search.pv_table[current_depth].pv[0] =
+                            Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                        return ce.score;
+                    } else {
+                        if ce.beta {
+                            if ce.score > alpha {
+                                alpha = ce.score;
+                            }
+                        } else if ce.alpha && ce.score < beta {
+                            beta = ce.score;
+                        }
+
+                        if alpha >= beta {
+                            su.search.search_statistics.add_cache_hit_aj_replace_ns();
                             su.search.pv_table[current_depth].pv[0] =
                                 Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
                             return ce.score;
-                        } else {
-                            if ce.beta {
-                                if ce.score > alpha {
-                                    alpha = ce.score;
-                                }
-                            } else if ce.alpha {
-                                if ce.score < beta {
-                                    beta = ce.score;
-                                }
-                            }
-                            if alpha >= beta {
-                                su.search.search_statistics.add_cache_hit_aj_replace_ns();
-                                su.search.pv_table[current_depth].pv[0] =
-                                    Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                                return ce.score;
-                            }
                         }
                     }
                 }
@@ -131,7 +128,7 @@ pub fn principal_variation_search(
 
     //Static Null Move Pruning
     if !is_pv_node && !incheck && !is_likelystalemate && depth_left <= STATIC_NULL_MOVE_DEPTH {
-        if let None = static_evaluation {
+        if static_evaluation.is_none() {
             let eval_res = eval_game_state(&game_state);
             static_evaluation = Some(eval_res.final_eval);
             phase = Some(eval_res.phase);
@@ -144,11 +141,11 @@ pub fn principal_variation_search(
     }
     //Null Move Forward Pruning
     if !is_pv_node && !incheck && !is_likelystalemate && depth_left >= NULL_MOVE_PRUNING_DEPTH {
-        if let None = phase {
+        if phase.is_none() {
             phase = Some(calculate_phase(game_state));
         }
         if phase.unwrap() > 0. {
-            if let None = static_evaluation {
+            if static_evaluation.is_none() {
                 static_evaluation = Some(eval_game_state(&game_state).final_eval);
             }
             if static_evaluation.unwrap() * color >= beta {
@@ -190,11 +187,7 @@ pub fn principal_variation_search(
             return STANDARD_SCORE;
         }
         tt_move = su.search.pv_table[current_depth].pv[0];
-        has_ttmove = if let Some(_) = tt_move.as_ref() {
-            true
-        } else {
-            false
-        };
+        has_ttmove = tt_move.is_some();
         has_generated_moves = true;
     }
 
@@ -202,7 +195,7 @@ pub fn principal_variation_search(
     let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck;
     let mut futil_margin = 0;
     if futil_pruning {
-        if let None = static_evaluation {
+        if static_evaluation.is_none() {
             static_evaluation = Some(eval_game_state(&game_state).final_eval);
         }
         futil_margin = static_evaluation.unwrap() * color + depth_left * FUTILITY_MARGIN;

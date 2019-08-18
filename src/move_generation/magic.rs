@@ -2,12 +2,12 @@ use super::super::bitboards::{FILES, NOT_SQUARES, RANKS};
 use crate::logging::log;
 use rand::Rng;
 
-static mut ROOK_BITS: [usize; 64] = [
+static ROOK_BITS: [usize; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11,
     11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11,
     11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11, 12,
 ];
-static mut BISHOP_BITS: [usize; 64] = [
+static BISHOP_BITS: [usize; 64] = [
     6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5,
     5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 6,
 ];
@@ -173,10 +173,7 @@ pub fn init_magics() {
 pub fn init_magics_rooks() -> Vec<Magic> {
     let mut res: Vec<Magic> = Vec::with_capacity(64);
     for square in 0..64 {
-        let shift;
-        unsafe {
-            shift = ROOK_BITS[square];
-        }
+        let shift = ROOK_BITS[square];
         let occupancy_mask = occupancy_mask_rooks(square);
         if occupancy_mask.count_ones() as usize != shift {
             panic!("Not good!");
@@ -244,10 +241,7 @@ pub fn rook_attacks_slow(square: usize, blocks: u64) -> u64 {
 pub fn init_magics_bishops() -> Vec<Magic> {
     let mut res: Vec<Magic> = Vec::with_capacity(64);
     for square in 0..64 {
-        let shift;
-        unsafe {
-            shift = BISHOP_BITS[square];
-        }
+        let shift = BISHOP_BITS[square];
 
         let occupancy_mask = occupancy_mask_bishops(square);
         if occupancy_mask.count_ones() as usize != shift {
@@ -333,14 +327,14 @@ pub fn transform(blockers: u64, magic: u64, n_bits: usize) -> usize {
 }
 
 pub fn generate_magic(
-    blockers_by_index: &Vec<u64>,
-    attack_table: &Vec<u64>,
+    blockers_by_index: &[u64],
+    attack_table: &[u64],
     n_bits: usize,
     occ_mask: u64,
 ) -> u64 {
-    for _iterations in 0..100000000 {
+    for _iterations in 0..100_000_000 {
         let random_magic = random_u64_fewbits();
-        if ((occ_mask.wrapping_mul(random_magic)) & 0xFF00000000000000u64) < 6 {
+        if ((occ_mask.wrapping_mul(random_magic)) & 0xFF00_0000_0000_0000u64) < 6 {
             continue;
         }
         if is_valid_magic(random_magic, n_bits, blockers_by_index, attack_table) {
@@ -353,8 +347,8 @@ pub fn generate_magic(
 pub fn is_valid_magic(
     magic: u64,
     n_bits: usize,
-    blockers_by_index: &Vec<u64>,
-    attack_table: &Vec<u64>,
+    blockers_by_index: &[u64],
+    attack_table: &[u64],
 ) -> bool {
     let mut used = Vec::with_capacity(1 << n_bits);
     for _i in 0..(1 << n_bits) {
@@ -393,10 +387,7 @@ pub fn blockers_to_bitboard(block_index: usize, n_bits: usize, mut mask: u64) ->
 
 #[allow(dead_code)]
 pub fn is_valid_magic_square_rook(magic: u64, square: usize) -> bool {
-    let shift;
-    unsafe {
-        shift = ROOK_BITS[square];
-    }
+    let shift = ROOK_BITS[square];
     let occupancy_mask = occupancy_mask_rooks(square);
     let mut blockers_by_index: Vec<u64> = Vec::with_capacity(1 << shift);
     let mut attack_table: Vec<u64> = Vec::with_capacity(1 << shift);
@@ -411,34 +402,28 @@ pub fn is_valid_magic_square_rook(magic: u64, square: usize) -> bool {
 
 #[allow(dead_code)]
 pub fn generate_all_magic_nums_rook() {
-    for square in 0..64 {
-        let shift;
-        unsafe {
-            shift = ROOK_BITS[square];
-        }
+    for (square, shift) in ROOK_BITS.iter().enumerate() {
         let occupancy_mask = occupancy_mask_rooks(square);
-        if occupancy_mask.count_ones() as usize != shift {
+        if occupancy_mask.count_ones() as usize != *shift {
             panic!("Not good!");
         }
-        let mut blockers_by_index: Vec<u64> = Vec::with_capacity(1 << shift);
-        let mut attack_table: Vec<u64> = Vec::with_capacity(1 << shift);
+        let mut blockers_by_index: Vec<u64> = Vec::with_capacity(1 << *shift);
+        let mut attack_table: Vec<u64> = Vec::with_capacity(1 << *shift);
         //Initialize lookup table
-        for i in 0..(1 << shift) {
+        for i in 0..(1 << *shift) {
             //i is index of lookup table
-            blockers_by_index.push(blockers_to_bitboard(i, shift, occupancy_mask));
+            blockers_by_index.push(blockers_to_bitboard(i, *shift, occupancy_mask));
             attack_table.push(rook_attacks_slow(square, blockers_by_index[i]));
         }
-        let magic_num = generate_magic(&blockers_by_index, &attack_table, shift, occupancy_mask);
+        let magic_num = generate_magic(&blockers_by_index, &attack_table, *shift, occupancy_mask);
         print!("0x{:x}u64,", magic_num);
     }
 }
 
 #[allow(dead_code)]
 pub fn is_valid_magic_square_bishop(magic: u64, square: usize) -> bool {
-    let shift;
-    unsafe {
-        shift = BISHOP_BITS[square];
-    }
+    let shift = BISHOP_BITS[square];
+
     let occupancy_mask = occupancy_mask_bishops(square);
     let mut blockers_by_index: Vec<u64> = Vec::with_capacity(1 << shift);
     let mut attack_table: Vec<u64> = Vec::with_capacity(1 << shift);
@@ -453,24 +438,20 @@ pub fn is_valid_magic_square_bishop(magic: u64, square: usize) -> bool {
 
 #[allow(dead_code)]
 pub fn generate_all_magic_nums_bishop() {
-    for square in 0..64 {
-        let shift;
-        unsafe {
-            shift = BISHOP_BITS[square];
-        }
+    for (square, shift) in BISHOP_BITS.iter().enumerate() {
         let occupancy_mask = occupancy_mask_bishops(square);
-        if occupancy_mask.count_ones() as usize != shift {
+        if occupancy_mask.count_ones() as usize != *shift {
             panic!("Not good!");
         }
-        let mut blockers_by_index: Vec<u64> = Vec::with_capacity(1 << shift);
-        let mut attack_table: Vec<u64> = Vec::with_capacity(1 << shift);
+        let mut blockers_by_index: Vec<u64> = Vec::with_capacity(1 << *shift);
+        let mut attack_table: Vec<u64> = Vec::with_capacity(1 << *shift);
         //Initialize lookup table
-        for i in 0..(1 << shift) {
+        for i in 0..(1 << *shift) {
             //i is index of lookup table
-            blockers_by_index.push(blockers_to_bitboard(i, shift, occupancy_mask));
+            blockers_by_index.push(blockers_to_bitboard(i, *shift, occupancy_mask));
             attack_table.push(bishop_attacks_slow(square, blockers_by_index[i]));
         }
-        let magic_num = generate_magic(&blockers_by_index, &attack_table, shift, occupancy_mask);
+        let magic_num = generate_magic(&blockers_by_index, &attack_table, *shift, occupancy_mask);
         print!("0x{:x}u64,", magic_num);
     }
 }

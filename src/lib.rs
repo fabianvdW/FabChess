@@ -19,7 +19,7 @@ use self::move_generation::movegen;
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let mut count = 0u64;
-    let mut movelist = movegen::MoveList::new();
+    let mut movelist = movegen::MoveList::default();
     let _ = movegen::generate_moves(&g, false, &mut movelist, depth);
     let mut index = 0;
     while index < movelist.counter[depth] {

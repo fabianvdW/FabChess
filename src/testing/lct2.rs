@@ -148,7 +148,7 @@ fn award_points(dur: u128) -> usize {
 }
 
 fn load_lct2suit(path_to_lct2: &str) -> Vec<Lct2Test> {
-    let mut movelist = movegen::MoveList::new();
+    let mut movelist = movegen::MoveList::default();
     let mut res = Vec::with_capacity(30);
     let mut file: File = File::open(path_to_lct2).expect("Unable to open file");
     let mut contents = String::new();

@@ -138,7 +138,7 @@ impl Search {
         }
 
         self.search_statistics = SearchStatistics::new();
-        let mut move_list = movegen::MoveList::new();
+        let mut move_list = movegen::MoveList::default();
         let mut best_pv_score = STANDARD_SCORE;
 
         for d in 1..(depth + 1) {

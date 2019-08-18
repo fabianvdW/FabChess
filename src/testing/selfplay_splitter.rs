@@ -177,7 +177,7 @@ pub fn start_self_play_thread(
     tcp2: &TimeControl,
     error_log: Arc<Logger>,
 ) {
-    let mut movelist = movegen::MoveList::new();
+    let mut movelist = movegen::MoveList::default();
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
         let res = play_game(

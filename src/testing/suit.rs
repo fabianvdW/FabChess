@@ -133,7 +133,7 @@ fn suit_thread(
     resultqueue: Arc<ThreadSafeQueue<TestSuitResult>>,
     move_time: u64,
 ) {
-    let mut movelist = movegen::MoveList::new();
+    let mut movelist = movegen::MoveList::default();
     let mut child = Command::new(p1.to_string())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -164,7 +164,7 @@ fn suit_thread(
     write_to_buf(&mut child_in, "quit\n");
 }
 fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
-    let mut movelist = movegen::MoveList::new();
+    let mut movelist = movegen::MoveList::default();
     let mut res = Vec::with_capacity(30);
     let mut file: File = File::open(path_to_suit).expect("Unable to open file");
     let mut contents = String::new();

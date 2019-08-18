@@ -100,7 +100,7 @@ pub fn xray_rook_attacks(
     my_pieces: u64,
     rook_square: usize,
 ) -> u64 {
-    return rook_attacks ^ rook_attack(rook_square, occupied_squares ^ (my_pieces & rook_attacks));
+    rook_attacks ^ rook_attack(rook_square, occupied_squares ^ (my_pieces & rook_attacks))
 }
 #[inline(always)]
 pub fn xray_bishop_attacks(
@@ -109,11 +109,11 @@ pub fn xray_bishop_attacks(
     my_pieces: u64,
     bishop_square: usize,
 ) -> u64 {
-    return bishop_attacks
+    bishop_attacks
         ^ bishop_attack(
             bishop_square,
             occupied_squares ^ (my_pieces & bishop_attacks),
-        );
+        )
 }
 #[inline(always)]
 pub fn get_rook_ray(king_square: usize, rook_square: usize) -> u64 {
@@ -359,7 +359,7 @@ pub fn add_pin_moves_to_movelist(
             legal_moves,
             pinned_piece_position,
             pin_quiet_targets,
-            moving_piece_type.clone(),
+            moving_piece_type,
             GameMoveType::Quiet,
             depth,
         );
@@ -369,7 +369,7 @@ pub fn add_pin_moves_to_movelist(
             legal_moves,
             pinned_piece_position,
             pinner_position,
-            moving_piece_type.clone(),
+            moving_piece_type,
             GameMoveType::Capture(if enemy_pinner & enemy_queens != 0u64 {
                 PieceType::Queen
             } else {
@@ -533,7 +533,7 @@ pub fn add_normal_moves_to_movelist(
                     legal_moves,
                     piece_index,
                     capture_index,
-                    piece_type.clone(),
+                    piece_type,
                     GameMoveType::Capture(find_captured_piece_type(
                         capture_index,
                         enemy_pawns,
@@ -555,14 +555,14 @@ pub fn add_normal_moves_to_movelist(
                         legal_moves,
                         piece_index,
                         quiets,
-                        piece_type.clone(),
+                        piece_type,
                         GameMoveType::Quiet,
                         depth,
                     );
                 }
             }
         }
-        index = index + 1;
+        index += 1;
         piece_board ^= piece;
     }
     stm_haslegalmove
@@ -577,10 +577,10 @@ pub fn add_promotion_move_to_movelist(
 ) {
     let new_types = if let GameMoveType::Capture(x) = move_type {
         (
-            GameMoveType::Promotion(PieceType::Queen, Some(x.clone())),
-            GameMoveType::Promotion(PieceType::Rook, Some(x.clone())),
-            GameMoveType::Promotion(PieceType::Bishop, Some(x.clone())),
-            GameMoveType::Promotion(PieceType::Knight, Some(x.clone())),
+            GameMoveType::Promotion(PieceType::Queen, Some(x)),
+            GameMoveType::Promotion(PieceType::Rook, Some(x)),
+            GameMoveType::Promotion(PieceType::Bishop, Some(x)),
+            GameMoveType::Promotion(PieceType::Knight, Some(x)),
         )
     } else {
         (
@@ -638,8 +638,8 @@ pub fn add_moves_to_movelist(
             legal_moves,
             from_square,
             target_square,
-            piece_type.clone(),
-            move_type.clone(),
+            piece_type,
+            move_type,
             depth,
         );
         target_board ^= 1u64 << target_square;
@@ -658,8 +658,8 @@ pub fn add_move_to_movelist(
         GameMove {
             from: from_square,
             to: to_square,
-            move_type: move_type,
-            piece_type: piece_type,
+            move_type,
+            piece_type,
         },
         depth,
     );
@@ -670,8 +670,8 @@ pub struct MoveList {
     //pub graded_moves: Vec<Vec<Option<GradedMove>>>,
     pub counter: [usize; 100],
 }
-impl MoveList {
-    pub fn new() -> Self {
+impl Default for MoveList {
+    fn default() -> Self {
         MoveList {
             move_list: unsafe { std::mem::uninitialized() },
             graded_moves: unsafe { std::mem::uninitialized() },
@@ -681,6 +681,9 @@ impl MoveList {
             counter: [0; 100],
         }
     }
+}
+
+impl MoveList {
     pub fn add_move(&mut self, mv: GameMove, depth: usize) {
         self.move_list[depth][self.counter[depth]] = Some(mv);
         self.counter[depth] += 1;
@@ -759,8 +762,8 @@ pub fn generate_moves(
     let checkers = abb.all_checkers.count_ones() as usize;
     let stm_incheck = checkers > 0;
 
-    let mut capture_mask = 0xFFFFFFFFFFFFFFFFu64;
-    let mut push_mask = 0xFFFFFFFFFFFFFFFFu64;
+    let mut capture_mask = 0xFFFF_FFFF_FFFF_FFFFu64;
+    let mut push_mask = 0xFFFF_FFFF_FFFF_FFFFu64;
     if checkers > 1 {
         //Double check, only safe king moves are legal
         return AdditionalGameStateInformation {
@@ -1297,83 +1300,79 @@ pub fn generate_moves(
     //7. Castling
     if (!only_captures || !stm_haslegalmove) && checkers == 0 {
         if stm_color_iswhite {
-            if g.castle_white_kingside {
-                if (abb.all_pieces | abb.stm_unsafe_squares)
+            if g.castle_white_kingside
+                && (abb.all_pieces | abb.stm_unsafe_squares)
                     & (bitboards::SQUARES[5] | bitboards::SQUARES[6])
                     == 0u64
-                {
-                    stm_haslegalmove = true;
-                    if !only_captures {
-                        movelist.add_move(
-                            GameMove {
-                                from: stm_king_index,
-                                to: 6usize,
-                                move_type: GameMoveType::Castle,
-                                piece_type: PieceType::King,
-                            },
-                            depth,
-                        );
-                    }
+            {
+                stm_haslegalmove = true;
+                if !only_captures {
+                    movelist.add_move(
+                        GameMove {
+                            from: stm_king_index,
+                            to: 6usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        },
+                        depth,
+                    );
                 }
             }
-            if g.castle_white_queenside {
-                if ((abb.all_pieces | abb.stm_unsafe_squares)
+            if g.castle_white_queenside
+                && ((abb.all_pieces | abb.stm_unsafe_squares)
                     & (bitboards::SQUARES[2] | bitboards::SQUARES[3])
                     | abb.all_pieces & bitboards::SQUARES[1])
                     == 0u64
-                {
-                    stm_haslegalmove = true;
-                    if !only_captures {
-                        movelist.add_move(
-                            GameMove {
-                                from: stm_king_index,
-                                to: 2usize,
-                                move_type: GameMoveType::Castle,
-                                piece_type: PieceType::King,
-                            },
-                            depth,
-                        );
-                    }
+            {
+                stm_haslegalmove = true;
+                if !only_captures {
+                    movelist.add_move(
+                        GameMove {
+                            from: stm_king_index,
+                            to: 2usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        },
+                        depth,
+                    );
                 }
             }
         } else {
-            if g.castle_black_kingside {
-                if (abb.all_pieces | abb.stm_unsafe_squares)
+            if g.castle_black_kingside
+                && (abb.all_pieces | abb.stm_unsafe_squares)
                     & (bitboards::SQUARES[61] | bitboards::SQUARES[62])
                     == 0u64
-                {
-                    stm_haslegalmove = true;
-                    if !only_captures {
-                        movelist.add_move(
-                            GameMove {
-                                from: stm_king_index,
-                                to: 62usize,
-                                move_type: GameMoveType::Castle,
-                                piece_type: PieceType::King,
-                            },
-                            depth,
-                        );
-                    }
+            {
+                stm_haslegalmove = true;
+                if !only_captures {
+                    movelist.add_move(
+                        GameMove {
+                            from: stm_king_index,
+                            to: 62usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        },
+                        depth,
+                    );
                 }
             }
-            if g.castle_black_queenside {
-                if ((abb.all_pieces | abb.stm_unsafe_squares)
+            if g.castle_black_queenside
+                && ((abb.all_pieces | abb.stm_unsafe_squares)
                     & (bitboards::SQUARES[58] | bitboards::SQUARES[59])
                     | abb.all_pieces & bitboards::SQUARES[57])
                     == 0u64
-                {
-                    stm_haslegalmove = true;
-                    if !only_captures {
-                        movelist.add_move(
-                            GameMove {
-                                from: stm_king_index,
-                                to: 58usize,
-                                move_type: GameMoveType::Castle,
-                                piece_type: PieceType::King,
-                            },
-                            depth,
-                        );
-                    }
+            {
+                stm_haslegalmove = true;
+                if !only_captures {
+                    movelist.add_move(
+                        GameMove {
+                            from: stm_king_index,
+                            to: 58usize,
+                            move_type: GameMoveType::Castle,
+                            piece_type: PieceType::King,
+                        },
+                        depth,
+                    );
                 }
             }
         }

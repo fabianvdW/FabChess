@@ -11,11 +11,11 @@ use crate::evaluation::psqt_evaluation::{
 pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
     match &mv.move_type {
         GameMoveType::Quiet => make_quiet_move(&g, &mv),
-        GameMoveType::Capture(piece) => make_capture_move(&g, &mv, &piece),
+        GameMoveType::Capture(piece) => make_capture_move(&g, &mv, *piece),
         GameMoveType::EnPassant => make_enpassant_move(&g, &mv),
         GameMoveType::Castle => make_castle_move(&g, &mv),
         GameMoveType::Promotion(_promoting_to, capturing) => {
-            make_promotion_move(&g, &mv, &capturing)
+            make_promotion_move(&g, &mv, *capturing)
         }
     }
 }
@@ -81,26 +81,23 @@ pub fn enpassant_hash(old_en_passant: u64, new_en_passant: u64, mut hash: u64) -
 
 #[inline(always)]
 pub fn castle_hash(
-    ocwk: bool,
-    ocwq: bool,
-    ocbk: bool,
-    ocbq: bool,
+    g: &GameState,
     ncwk: bool,
     ncwq: bool,
     ncbk: bool,
     ncbq: bool,
     mut hash: u64,
 ) -> u64 {
-    if ocwk && !ncwk {
+    if g.castle_white_kingside && !ncwk {
         hash ^= ZOBRIST_KEYS.castle_w_kingside;
     }
-    if ocwq && !ncwq {
+    if g.castle_white_queenside && !ncwq {
         hash ^= ZOBRIST_KEYS.castle_w_queenside;
     }
-    if ocbk && !ncbk {
+    if g.castle_black_kingside && !ncbk {
         hash ^= ZOBRIST_KEYS.castle_b_kingside;
     }
-    if ocbq && !ncbq {
+    if g.castle_black_queenside && !ncbq {
         hash ^= ZOBRIST_KEYS.castle_b_queenside;
     }
     hash
@@ -201,7 +198,7 @@ pub fn check_castle_flags(
 
 pub fn make_nullmove(g: &GameState) -> GameState {
     let color_to_move = 1 - g.color_to_move;
-    let pieces = g.pieces.clone();
+    let pieces = g.pieces;
     let en_passant = 0u64;
     let half_moves = g.half_moves + 1;
     let full_moves = g.full_moves + g.color_to_move;
@@ -225,7 +222,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
 
 pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     let color_to_move = 1 - g.color_to_move;
-    let mut pieces = g.pieces.clone();
+    let mut pieces = g.pieces;
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Check new castle rights
@@ -257,17 +254,14 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     let mut half_moves = g.half_moves + 1;
 
     //Reset half moves if it's a pawn move and also check if it's a double pawn move, if so, set en passant flag
-    match mv.piece_type {
-        PieceType::Pawn => {
-            half_moves = 0;
-            if g.color_to_move == WHITE && mv.to - mv.from == 16 {
-                en_passant = bitboards::SQUARES[mv.to - 8];
-            } else if g.color_to_move == BLACK && mv.from - mv.to == 16 {
-                en_passant = bitboards::SQUARES[mv.to + 8];
-            }
+    if let PieceType::Pawn = mv.piece_type {
+        half_moves = 0;
+        if g.color_to_move == WHITE && mv.to - mv.from == 16 {
+            en_passant = bitboards::SQUARES[mv.to - 8];
+        } else if g.color_to_move == BLACK && mv.from - mv.to == 16 {
+            en_passant = bitboards::SQUARES[mv.to + 8];
         }
-        _ => {}
-    };
+    }
 
     //If black was to move, increase full moves by one
     let full_moves = g.full_moves + g.color_to_move;
@@ -275,10 +269,7 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     hash = move_piece_hash(g.color_to_move, &mv, hash);
     hash = enpassant_hash(g.en_passant, en_passant, hash);
     hash = castle_hash(
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
+        g,
         castle_white_kingside,
         castle_white_queenside,
         castle_black_kingside,
@@ -309,13 +300,13 @@ pub fn make_quiet_move(g: &GameState, mv: &GameMove) -> GameState {
     }
 }
 
-pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceType) -> GameState {
+pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: PieceType) -> GameState {
     let color_to_move = 1 - g.color_to_move;
-    let mut pieces = g.pieces.clone();
+    let mut pieces = g.pieces;
     //Make the move
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Delete destination-piece from enemy pieces
-    delete_piece(&mut pieces, *captured_piece, mv.to, color_to_move);
+    delete_piece(&mut pieces, captured_piece, mv.to, color_to_move);
 
     let (mut castle_white_kingside, mut castle_white_queenside) = if g.color_to_move == WHITE {
         check_castle_flags(
@@ -364,17 +355,14 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
     hash = move_piece_hash(g.color_to_move, &mv, hash);
     hash = enpassant_hash(g.en_passant, en_passant, hash);
     hash = castle_hash(
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
+        g,
         castle_white_kingside,
         castle_white_queenside,
         castle_black_kingside,
         castle_black_queenside,
         hash,
     );
-    hash = delete_piece_hash(mv.to, color_to_move, *captured_piece, hash);
+    hash = delete_piece_hash(mv.to, color_to_move, captured_piece, hash);
     let psqt = psqt_incremental_move_piece(
         mv.piece_type,
         mv.from,
@@ -384,7 +372,7 @@ pub fn make_capture_move(g: &GameState, mv: &GameMove, captured_piece: &PieceTyp
         g.psqt_eg,
     );
     let psqt = psqt_incremental_delete_piece(
-        *captured_piece,
+        captured_piece,
         mv.to,
         g.color_to_move != BLACK,
         psqt.0,
@@ -432,10 +420,7 @@ pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
     hash = move_piece_hash(g.color_to_move, &mv, hash);
     hash = enpassant_hash(g.en_passant, en_passant, hash);
     hash = castle_hash(
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
+        g,
         castle_white_kingside,
         castle_white_queenside,
         castle_black_kingside,
@@ -476,7 +461,7 @@ pub fn make_enpassant_move(g: &GameState, mv: &GameMove) -> GameState {
 
 pub fn make_castle_move(g: &GameState, mv: &GameMove) -> GameState {
     let color_to_move = 1 - g.color_to_move;
-    let mut pieces = g.pieces.clone();
+    let mut pieces = g.pieces;
     //Move the king
     move_piece(&mut pieces, &mv, g.color_to_move);
 
@@ -523,10 +508,7 @@ pub fn make_castle_move(g: &GameState, mv: &GameMove) -> GameState {
     hash = move_piece_hash(g.color_to_move, &mv, hash);
     hash = enpassant_hash(g.en_passant, en_passant, hash);
     hash = castle_hash(
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
+        g,
         castle_white_kingside,
         castle_white_queenside,
         castle_black_kingside,
@@ -584,10 +566,10 @@ pub fn make_castle_move(g: &GameState, mv: &GameMove) -> GameState {
 pub fn make_promotion_move(
     g: &GameState,
     mv: &GameMove,
-    captured_piece: &Option<PieceType>,
+    captured_piece: Option<PieceType>,
 ) -> GameState {
     let color_to_move = 1 - g.color_to_move;
-    let mut pieces = g.pieces.clone();
+    let mut pieces = g.pieces;
     let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
     hash ^= if g.color_to_move == WHITE {
         ZOBRIST_KEYS.w_pawns
@@ -627,12 +609,9 @@ pub fn make_promotion_move(
     }[mv.to];
     move_piece(&mut pieces, &mv, g.color_to_move);
     //Delete enemy piece if any on there
-    match captured_piece {
-        Some(piece) => {
-            delete_piece(&mut pieces, *piece, mv.to, color_to_move);
-            hash = delete_piece_hash(mv.to, color_to_move, *piece, hash);
-        }
-        None => {}
+    if let Some(piece) = captured_piece {
+        delete_piece(&mut pieces, piece, mv.to, color_to_move);
+        hash = delete_piece_hash(mv.to, color_to_move, piece, hash);
     }
     //Delete my pawn
     pieces[PAWN][g.color_to_move] ^= bitboards::SQUARES[mv.to];
@@ -673,10 +652,7 @@ pub fn make_promotion_move(
     let full_moves = g.full_moves + g.color_to_move;
     hash = enpassant_hash(g.en_passant, en_passant, hash);
     hash = castle_hash(
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
+        g,
         castle_white_kingside,
         castle_white_queenside,
         castle_black_kingside,
@@ -701,8 +677,7 @@ pub fn make_promotion_move(
         psqt.1,
     );
     if let Some(piece) = captured_piece {
-        psqt =
-            psqt_incremental_delete_piece(*piece, mv.to, g.color_to_move != BLACK, psqt.0, psqt.1)
+        psqt = psqt_incremental_delete_piece(piece, mv.to, g.color_to_move != BLACK, psqt.0, psqt.1)
     }
     GameState {
         color_to_move,

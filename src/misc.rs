@@ -62,7 +62,7 @@ pub fn parse_pgn_find_static_eval_mistakes() {
             pgn_parser: PGNParser { reader },
             is_opening: false,
             opening_load_untilply: 0usize,
-            move_list: movegen::MoveList::new(),
+            move_list: movegen::MoveList::default(),
         };
         for _game in parser.into_iter() {
             let last_game_state = &_game.1[_game.1.len() - 1];
@@ -256,11 +256,11 @@ impl MoveSpecification {
 
 pub fn parse_move(
     g: &GameState,
-    move_str: &String,
+    move_str: &str,
     movelist: &mut movegen::MoveList,
 ) -> (GameMove, GameState) {
     let depth = 0;
-    let mut my_string = move_str.clone();
+    let mut my_string = move_str.to_string();
     my_string = my_string
         .replace("#", "")
         .replace("+", "")

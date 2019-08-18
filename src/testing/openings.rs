@@ -13,8 +13,8 @@ pub struct PlayTask {
 }
 
 pub fn load_db_until(db: &str, until: usize) -> Vec<GameState> {
-    let movelist = movegen::MoveList::new();
-    let mut res: Vec<GameState> = Vec::with_capacity(100000);
+    let movelist = movegen::MoveList::default();
+    let mut res: Vec<GameState> = Vec::with_capacity(100_000);
     let res_file = File::open(db).expect("Unable to open opening database");
     let reader = BufReader::new(res_file);
     let parser = GameParser {

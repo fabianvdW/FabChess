@@ -3,8 +3,8 @@ use crate::board_representation::game_state::{
 };
 
 //2^20 Entrys
-pub const CACHE_MASK: usize = 0x7FFFFF;
-pub const CACHE_ENTRYS: usize = 8 * 1048576;
+pub const CACHE_MASK: usize = 0x007F_FFFF;
+pub const CACHE_ENTRYS: usize = 8 * 1_048_576;
 
 pub struct Cache {
     pub cache: Vec<Option<CacheEntry>>,
@@ -102,20 +102,20 @@ impl CacheEntry {
             PieceType::King
         };
         if typ == 1 {
-            return GameMove {
+            GameMove {
                 from,
                 to,
                 piece_type,
                 move_type: GameMoveType::Quiet,
-            };
+            }
         } else if typ == 2 {
             debug_assert_eq!(piece_type, PieceType::King);
-            return GameMove {
+            GameMove {
                 from,
                 to,
                 piece_type,
                 move_type: GameMoveType::Castle,
-            };
+            }
         } else {
             if typ == 8 {
                 return GameMove {
@@ -139,7 +139,7 @@ impl CacheEntry {
                 PieceType::King
             };
             if typ == 3 {
-                return GameMove {
+                GameMove {
                     from,
                     to,
                     piece_type,
@@ -151,9 +151,9 @@ impl CacheEntry {
                             None
                         },
                     ),
-                };
+                }
             } else if typ == 4 {
-                return GameMove {
+                GameMove {
                     from,
                     to,
                     piece_type,
@@ -165,9 +165,9 @@ impl CacheEntry {
                             None
                         },
                     ),
-                };
+                }
             } else if typ == 5 {
-                return GameMove {
+                GameMove {
                     from,
                     to,
                     piece_type,
@@ -179,9 +179,9 @@ impl CacheEntry {
                             None
                         },
                     ),
-                };
+                }
             } else if typ == 6 {
-                return GameMove {
+                GameMove {
                     from,
                     to,
                     piece_type,
@@ -193,14 +193,14 @@ impl CacheEntry {
                             None
                         },
                     ),
-                };
+                }
             } else {
-                return GameMove {
+                GameMove {
                     from,
                     to,
                     piece_type,
                     move_type: GameMoveType::Capture(captured_piece_type),
-                };
+                }
             }
         }
     }

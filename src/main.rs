@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn perft_test() {
-        let mut movelist = movegen::MoveList::new();
+        let mut movelist = movegen::MoveList::default();
 
         #[rustfmt::skip]
         let cases = [
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn zobrist_hash_test() {
         //Tests incremental update of hash
-        let mut movelist = movegen::MoveList::new();
+        let mut movelist = movegen::MoveList::default();
         let mut rng = rand::thread_rng();
         for _i in 0..10000 {
             let mut g = GameState::standard();
@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
-        let mut movelist = movegen::MoveList::new();
+        let mut movelist = movegen::MoveList::default();
         let mut _eval = core::evaluation::EvaluationResult {
             phase: 0.,
             final_eval: 0,
@@ -255,7 +255,7 @@ mod tests {
                 pgn_parser: PGNParser { reader },
                 is_opening: false,
                 opening_load_untilply: 0usize,
-                move_list: movegen::MoveList::new(),
+                move_list: movegen::MoveList::default(),
             };
             for _game in parser.into_iter() {
                 //println!("{}", game.1);

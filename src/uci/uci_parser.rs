@@ -21,7 +21,7 @@ pub fn parse_loop() {
     let stop = Arc::new(AtomicBool::new(false));
     let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
     let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
-    let mut movelist = movegen::MoveList::new();
+    let mut movelist = movegen::MoveList::default();
     let saved_time = Arc::new(AtomicU64::new(0u64));
     let stdin = io::stdin();
     let mut line = String::new();

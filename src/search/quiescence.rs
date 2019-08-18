@@ -247,7 +247,7 @@ pub fn make_and_evaluate_moves_qsearch(
                     continue;
                 }
                 move_list.graded_moves[current_depth][capture_index] =
-                    Some(GradedMove::new(mv_index, score as f64));
+                    Some(GradedMove::new(mv_index, f64::from(score)));
             } else {
                 if !incheck {
                     panic!("Not in check but also not capture");
