@@ -223,7 +223,7 @@ impl Search {
                             beta += delta;
                         }
                     }
-                    delta = (delta as f64 * 1.5) as i16;
+                    delta = (f64::from(delta) * 1.5) as i16;
                 }
             }
             if self.stop {

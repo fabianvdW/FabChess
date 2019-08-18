@@ -139,6 +139,121 @@ impl Iterator for GameParser {
     }
 }
 
+pub fn find_castle(
+    movelist: &movegen::MoveList,
+    depth: usize,
+    g: &GameState,
+    king_side: bool,
+) -> Result<(GameMove, GameState), ()> {
+    let mut index = 0;
+    while index < movelist.counter[depth] {
+        let mv = movelist.move_list[depth][index].as_ref().unwrap();
+        if mv.move_type == GameMoveType::Castle
+            && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 }
+        {
+            let state = make_move(g, mv);
+            return Ok((*mv, state));
+        }
+        index += 1;
+    }
+    Err(())
+}
+
+pub fn find_move(
+    movelist: &movegen::MoveList,
+    depth: usize,
+    g: &GameState,
+    ms: MoveSpecification,
+) -> Result<(GameMove, GameState), ()> {
+    let mut index = 0;
+    while index < movelist.counter[depth] {
+        let mv = movelist.move_list[depth][index].as_ref().unwrap();
+        if ms.matches(mv) {
+            let state = make_move(g, mv);
+            return Ok((*mv, state));
+        }
+        index += 1;
+    }
+    Err(())
+}
+
+pub fn get_piece_type(my_string: &mut String) -> PieceType {
+    let mut moving_piece_type = PieceType::Pawn;
+    if my_string.starts_with('N') {
+        moving_piece_type = PieceType::Knight;
+        *my_string = String::from(&my_string[1..]);
+    } else if my_string.starts_with('B') {
+        moving_piece_type = PieceType::Bishop;
+        *my_string = String::from(&my_string[1..]);
+    } else if my_string.starts_with('R') {
+        moving_piece_type = PieceType::Rook;
+        *my_string = String::from(&my_string[1..]);
+    } else if my_string.starts_with('Q') {
+        moving_piece_type = PieceType::Queen;
+        *my_string = String::from(&my_string[1..]);
+    } else if my_string.starts_with('K') {
+        moving_piece_type = PieceType::King;
+        *my_string = String::from(&my_string[1..]);
+    }
+    moving_piece_type
+}
+
+pub fn is_promotion(my_string: &mut String) -> Option<PieceType> {
+    let mut promotion_piece = None;
+    if my_string.ends_with('Q') {
+        promotion_piece = Some(PieceType::Queen)
+    } else if my_string.ends_with('R') {
+        promotion_piece = Some(PieceType::Rook);
+    } else if my_string.ends_with('B') {
+        promotion_piece = Some(PieceType::Bishop);
+    } else if my_string.ends_with('N') {
+        promotion_piece = Some(PieceType::Knight);
+    }
+    if promotion_piece.is_some() {
+        *my_string = String::from(&my_string[..my_string.len() - 1]);
+    }
+    promotion_piece
+}
+
+pub struct MoveSpecification {
+    target_square: usize,
+    from_square: Option<usize>,
+    from_file: Option<usize>,
+    from_rank: Option<usize>,
+    moving_piece_type: PieceType,
+    promotion_piece: Option<PieceType>,
+}
+
+impl MoveSpecification {
+    pub fn new(
+        target_square: usize,
+        moving_piece_type: PieceType,
+        promotion_piece: Option<PieceType>,
+    ) -> Self {
+        MoveSpecification {
+            target_square,
+            from_square: None,
+            from_file: None,
+            from_rank: None,
+            moving_piece_type,
+            promotion_piece,
+        }
+    }
+
+    pub fn matches(&self, mv: &GameMove) -> bool {
+        mv.to == self.target_square
+            && (self.from_square.is_none() || self.from_square.unwrap() == mv.from)
+            && (self.from_file.is_none() || self.from_file.unwrap() == mv.from % 8)
+            && (self.from_rank.is_none() || self.from_rank.unwrap() == mv.from / 8)
+            && mv.piece_type == self.moving_piece_type
+            && (self.promotion_piece
+                == match mv.move_type {
+                    GameMoveType::Promotion(piece, _) => Some(piece),
+                    _ => None,
+                })
+    }
+}
+
 pub fn parse_move(
     g: &GameState,
     move_str: &String,
@@ -161,15 +276,8 @@ pub fn parse_move(
             } else {
                 assert_eq!(true, g.castle_black_kingside);
             }
-            let mut index = 0;
-            while index < movelist.counter[depth] {
-                let mv = movelist.move_list[depth][index].as_ref().unwrap();
-                if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == 2 {
-                    let res = *mv;
-                    let state = make_move(&g, &res);
-                    return (res, state);
-                }
-                index += 1;
+            if let Ok(res) = find_castle(movelist, depth, g, true) {
+                return res;
             }
         } else {
             if g.color_to_move == WHITE {
@@ -177,154 +285,37 @@ pub fn parse_move(
             } else {
                 assert_eq!(true, g.castle_black_queenside);
             }
-            let mut index = 0;
-            while index < movelist.counter[depth] {
-                let mv = movelist.move_list[depth][index].as_ref().unwrap();
-                if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == -2 {
-                    let res = *mv;
-                    let state = make_move(&g, &res);
-                    return (res, state);
-                }
-                index += 1;
+            if let Ok(res) = find_castle(movelist, depth, g, false) {
+                return res;
             }
         }
     } else {
-        let mut moving_piece_type = PieceType::Pawn;
-        if my_string.starts_with('N') {
-            moving_piece_type = PieceType::Knight;
-            my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with('B') {
-            moving_piece_type = PieceType::Bishop;
-            my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with('R') {
-            moving_piece_type = PieceType::Rook;
-            my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with('Q') {
-            moving_piece_type = PieceType::Queen;
-            my_string = String::from(&my_string[1..]);
-        } else if my_string.starts_with('K') {
-            moving_piece_type = PieceType::King;
-            my_string = String::from(&my_string[1..]);
-        }
-        let mut is_promotion_move = false;
-        let mut promotion_piece = PieceType::Queen;
-        if my_string.ends_with('Q') {
-            my_string = String::from(&my_string[..my_string.len() - 1]);
-            is_promotion_move = true;
-        } else if my_string.ends_with('R') {
-            my_string = String::from(&my_string[..my_string.len() - 1]);
-            is_promotion_move = true;
-            promotion_piece = PieceType::Rook;
-        } else if my_string.ends_with('B') {
-            my_string = String::from(&my_string[..my_string.len() - 1]);
-            is_promotion_move = true;
-            promotion_piece = PieceType::Bishop;
-        } else if my_string.ends_with('N') {
-            my_string = String::from(&my_string[..my_string.len() - 1]);
-            is_promotion_move = true;
-            promotion_piece = PieceType::Knight;
-        }
-        if my_string.len() == 2 {
-            let target_square =
-                8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
-            let mut index = 0;
-            while index < movelist.counter[depth] {
-                let mv = movelist.move_list[depth][index].as_ref().unwrap();
-                if mv.to == target_square && mv.piece_type == moving_piece_type {
-                    if !is_promotion_move
-                        || is_promotion_move
-                            && match &mv.move_type {
-                                GameMoveType::Promotion(piece, _) => Some(piece),
-                                _ => None,
-                            } == Some(&promotion_piece)
-                    {
-                        let res = *mv;
-                        let state = make_move(&g, &res);
-                        return (res, state);
-                    }
-                }
-                index += 1;
-            }
-        } else if my_string.len() == 3 {
-            let target_square =
-                8 * match_rank(my_string.chars().nth(2)) + match_file(my_string.chars().nth(1));
+        let moving_piece_type = get_piece_type(&mut my_string);
+        let promotion_piece = is_promotion(&mut my_string);
+        let target_square = 8 * match_rank(my_string.chars().nth(my_string.len() - 1))
+            + match_file(my_string.chars().nth(my_string.len() - 2));
+        let mut ms = MoveSpecification::new(target_square, moving_piece_type, promotion_piece);
+
+        if my_string.len() == 3 {
             let first = my_string.chars().nth(0);
             if is_file(first) {
-                let file = match_file(first);
-                let mut index = 0;
-                while index < movelist.counter[depth] {
-                    let mv = movelist.move_list[depth][index].as_ref().unwrap();
-                    if mv.to == target_square
-                        && mv.piece_type == moving_piece_type
-                        && mv.from % 8 == file
-                    {
-                        if !is_promotion_move
-                            || is_promotion_move
-                                && match &mv.move_type {
-                                    GameMoveType::Promotion(piece, _) => Some(piece),
-                                    _ => None,
-                                } == Some(&promotion_piece)
-                        {
-                            let res = *mv;
-                            let state = make_move(&g, &res);
-                            return (res, state);
-                        }
-                    }
-                    index += 1;
-                }
+                ms.from_file = Some(match_file(first));
             } else {
-                let rank = match_rank(first);
-                let mut index = 0;
-                while index < movelist.counter[depth] {
-                    let mv = movelist.move_list[depth][index].as_ref().unwrap();
-                    if mv.to == target_square
-                        && mv.piece_type == moving_piece_type
-                        && mv.from / 8 == rank
-                    {
-                        if !is_promotion_move
-                            || is_promotion_move
-                                && match &mv.move_type {
-                                    GameMoveType::Promotion(piece, _) => Some(piece),
-                                    _ => None,
-                                } == Some(&promotion_piece)
-                        {
-                            let res = *mv;
-                            let state = make_move(&g, &res);
-                            return (res, state);
-                        }
-                    }
-                    index += 1;
-                }
+                ms.from_rank = Some(match_rank(first));
             }
         } else if my_string.len() == 4 {
-            let target_square =
-                8 * match_rank(my_string.chars().nth(3)) + match_file(my_string.chars().nth(2));
-            let from_square =
-                8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0));
-            let mut index = 0;
-            while index < movelist.counter[depth] {
-                let mv = movelist.move_list[depth][index].as_ref().unwrap();
-                if mv.to == target_square
-                    && mv.from == from_square
-                    && (!is_promotion_move
-                        || match &mv.move_type {
-                            GameMoveType::Promotion(piece, _) => *piece == promotion_piece,
-                            _ => false,
-                        })
-                {
-                    let res = *mv;
-                    let state = make_move(&g, &res);
-                    return (res, state);
-                }
-                index += 1;
-            }
-        } else if my_string.len() == 5 {
+            ms.from_square = Some(
+                8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0)),
+            );
+        }
+        if let Ok(res) = find_move(movelist, depth, g, ms) {
+            return res;
         }
     }
     println!("{}", move_str);
     println!("{}", my_string);
     println!("{}", g);
-    //println!("{:?}", available_moves);
+
     let mut index = 0;
     while index < movelist.counter[depth] {
         println!("{:?}", movelist.move_list[depth][index].as_ref().unwrap());
