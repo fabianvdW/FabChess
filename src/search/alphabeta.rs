@@ -70,15 +70,11 @@ pub fn principal_variation_search(
     }
 
     let mut pv_table_move: Option<GameMove> = None;
-    let mut has_pvmove = false;
-    let mut tt_move: Option<GameMove> = None;
-    let mut has_ttmove = false;
 
     //PV-Table lookup
     {
         if let Some(ce) = su.search.principal_variation[current_depth] {
             if ce.hash == game_state.hash {
-                has_pvmove = true;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 pv_table_move = Some(mv);
             }
@@ -87,11 +83,14 @@ pub fn principal_variation_search(
     //Probe TT
     let mut static_evaluation = None;
     let mut phase = None;
+    let mut tt_entry = None;
+    let mut tt_move: Option<GameMove> = None;
     {
         let ce = &su.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
+                tt_entry = Some(ce);
                 su.search.search_statistics.add_cache_hit_ns();
                 if ce.depth >= depth_left as i8 && beta - alpha == 1 {
                     if !ce.alpha && !ce.beta {
@@ -119,52 +118,68 @@ pub fn principal_variation_search(
                 static_evaluation = ce.static_evaluation;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 tt_move = Some(mv);
-                has_ttmove = true;
             }
         }
     }
-
     su.history.push(game_state.hash, game_state.half_moves == 0);
 
-    //Static Null Move Pruning
-    if !is_pv_node && !incheck && !is_likelystalemate && depth_left <= STATIC_NULL_MOVE_DEPTH {
-        if static_evaluation.is_none() {
-            let eval_res = eval_game_state(&game_state);
-            static_evaluation = Some(eval_res.final_eval);
-            phase = Some(eval_res.phase);
-        }
-        if static_evaluation.unwrap() * color - STATIC_NULL_MOVE_MARGIN * depth_left >= beta {
-            //add statistic TODO
-            su.history.pop();
-            return static_evaluation.unwrap() * color - STATIC_NULL_MOVE_DEPTH * depth_left;
+    //Make static eval
+    let prunable = !is_pv_node && !incheck && !is_likelystalemate;
+    if static_evaluation.is_none()
+        && (prunable
+            && (depth_left <= STATIC_NULL_MOVE_DEPTH || depth_left >= NULL_MOVE_PRUNING_DEPTH)
+            || !incheck && depth_left <= FUTILITY_DEPTH)
+    {
+        let eval_res = eval_game_state(&game_state);
+        static_evaluation = Some(eval_res.final_eval);
+        phase = Some(eval_res.phase);
+    } else if static_evaluation.is_some() && prunable && depth_left >= NULL_MOVE_PRUNING_DEPTH {
+        phase = Some(calculate_phase(game_state));
+    }
+    //Replace static eval by tt score if available
+    if false && static_evaluation.is_some() && tt_entry.is_some() {
+        let content = tt_entry.as_ref().expect("TT entry impossible");
+        let score = static_evaluation.expect("Static eval impossible") * color;
+        if !content.alpha && !content.beta
+            || content.alpha && content.score < score
+            || content.beta && content.score > score
+        {
+            static_evaluation = Some(content.score * color);
         }
     }
+    //Static Null Move Pruning
+    if prunable
+        && depth_left <= STATIC_NULL_MOVE_DEPTH
+        && static_evaluation.expect("Static null move") * color
+            - STATIC_NULL_MOVE_MARGIN * depth_left
+            >= beta
+    {
+        //add statistic TODO
+        su.history.pop();
+        return static_evaluation.expect("Static null move 2") * color
+            - STATIC_NULL_MOVE_DEPTH * depth_left;
+    }
+
     //Null Move Forward Pruning
-    if !is_pv_node && !incheck && !is_likelystalemate && depth_left >= NULL_MOVE_PRUNING_DEPTH {
-        if phase.is_none() {
-            phase = Some(calculate_phase(game_state));
-        }
-        if phase.unwrap() > 0. {
-            if static_evaluation.is_none() {
-                static_evaluation = Some(eval_game_state(&game_state).final_eval);
-            }
-            if static_evaluation.unwrap() * color >= beta {
-                let nextgs = make_nullmove(&game_state);
-                let rat = -principal_variation_search(
-                    -beta,
-                    -beta + 1,
-                    (depth_left - 4 - depth_left / 6).max(0),
-                    &nextgs,
-                    -color,
-                    current_depth + 1,
-                    su,
-                );
-                if rat >= beta {
-                    su.search.search_statistics.add_nm_pruning();
-                    su.history.pop();
-                    return rat;
-                }
-            }
+    if prunable
+        && depth_left >= NULL_MOVE_PRUNING_DEPTH
+        && phase.expect("Null move phase") > 0.
+        && static_evaluation.expect("null move static") * color >= beta
+    {
+        let nextgs = make_nullmove(&game_state);
+        let rat = -principal_variation_search(
+            -beta,
+            -beta + 1,
+            (depth_left - 4 - depth_left / 6).max(0),
+            &nextgs,
+            -color,
+            current_depth + 1,
+            su,
+        );
+        if rat >= beta {
+            su.search.search_statistics.add_nm_pruning();
+            su.history.pop();
+            return rat;
         }
     }
 
@@ -172,8 +187,8 @@ pub fn principal_variation_search(
     let mut has_generated_moves = if is_pv_node
         && !incheck
         && !is_likelystalemate
-        && !has_pvmove
-        && !has_ttmove
+        && pv_table_move.is_none()
+        && tt_move.is_none()
         && depth_left > 6
     {
         su.history.pop();
@@ -191,7 +206,6 @@ pub fn principal_variation_search(
             return STANDARD_SCORE;
         }
         tt_move = su.search.pv_table[current_depth].pv[0];
-        has_ttmove = tt_move.is_some();
         true
     } else {
         false
@@ -200,10 +214,7 @@ pub fn principal_variation_search(
     //Prepare Futility Pruning
     let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck;
     let futil_margin = if futil_pruning {
-        if static_evaluation.is_none() {
-            static_evaluation = Some(eval_game_state(&game_state).final_eval);
-        }
-        static_evaluation.unwrap() * color + depth_left * FUTILITY_MARGIN
+        static_evaluation.expect("Futil pruning") * color + depth_left * FUTILITY_MARGIN
     } else {
         0
     };
@@ -212,12 +223,12 @@ pub fn principal_variation_search(
     }
     let mut hash_and_pv_move_counter = 0;
     {
-        if has_pvmove {
+        if pv_table_move.is_some() {
             hash_and_pv_move_counter += 1;
         }
-        if has_ttmove && !has_pvmove {
+        if tt_move.is_some() && pv_table_move.is_none() {
             hash_and_pv_move_counter += 1;
-        } else if has_ttmove {
+        } else if tt_move.is_some() {
             //Make sure that tt_move != pv_table_move
             if *tt_move
                 .as_ref()
@@ -323,7 +334,7 @@ pub fn principal_variation_search(
         let mut following_score: i16;
         let mut reduction = 0;
         if depth_left > 2
-            && !has_pvmove
+            && pv_table_move.is_none()
             && !incheck
             && !isc
             && index >= 2
@@ -339,7 +350,7 @@ pub fn principal_variation_search(
                 reduction = depth_left - 2
             }
         }
-        if depth_left <= 2 || !has_pvmove || index == 0 {
+        if depth_left <= 2 || pv_table_move.is_none() || index == 0 {
             following_score = -principal_variation_search(
                 -beta,
                 -alpha,
