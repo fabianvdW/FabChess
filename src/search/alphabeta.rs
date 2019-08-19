@@ -7,8 +7,8 @@ use super::super::GameState;
 use super::cache::{Cache, CacheEntry};
 use super::history::History;
 use super::quiescence::{is_capture, q_search, see};
-use super::search::Search;
-use super::search::SearchUtils;
+use super::searcher::Search;
+use super::searcher::SearchUtils;
 use super::GradedMove;
 use crate::evaluation::{calculate_phase, eval_game_state};
 use crate::move_generation::makemove::{make_move, make_nullmove};
@@ -169,8 +169,12 @@ pub fn principal_variation_search(
     }
 
     //Internal Iterative Deepening
-    let mut has_generated_moves = false;
-    if is_pv_node && !incheck && !is_likelystalemate && !has_pvmove && !has_ttmove && depth_left > 6
+    let mut has_generated_moves = if is_pv_node
+        && !incheck
+        && !is_likelystalemate
+        && !has_pvmove
+        && !has_ttmove
+        && depth_left > 6
     {
         su.history.pop();
         principal_variation_search(
@@ -188,18 +192,21 @@ pub fn principal_variation_search(
         }
         tt_move = su.search.pv_table[current_depth].pv[0];
         has_ttmove = tt_move.is_some();
-        has_generated_moves = true;
-    }
+        true
+    } else {
+        false
+    };
 
     //Prepare Futility Pruning
     let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck;
-    let mut futil_margin = 0;
-    if futil_pruning {
+    let futil_margin = if futil_pruning {
         if static_evaluation.is_none() {
             static_evaluation = Some(eval_game_state(&game_state).final_eval);
         }
-        futil_margin = static_evaluation.unwrap() * color + depth_left * FUTILITY_MARGIN;
-    }
+        static_evaluation.unwrap() * color + depth_left * FUTILITY_MARGIN
+    } else {
+        0
+    };
     if !has_generated_moves {
         su.move_list.counter[current_depth] = 0;
     }
@@ -303,11 +310,16 @@ pub fn principal_variation_search(
                 futil_pruning = false;
             }
         }
-        if depth_left <= 2 && !isc && !isp && !incheck && current_max_score > MATED_IN_MAX {
-            if su.search.history_score[game_state.color_to_move][mv.from][mv.to] < 0 {
-                continue;
-            }
+        if depth_left <= 2
+            && !isc
+            && !isp
+            && !incheck
+            && current_max_score > MATED_IN_MAX
+            && su.search.history_score[game_state.color_to_move][mv.from][mv.to] < 0
+        {
+            continue;
         }
+
         let mut following_score: i16;
         let mut reduction = 0;
         if depth_left > 2
@@ -319,9 +331,9 @@ pub fn principal_variation_search(
             && !in_check(&next_state)
         {
             //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
-            reduction = (((depth_left - 1) as f64).sqrt() + ((index - 1) as f64).sqrt()) as i16;
+            reduction = (f64::from(depth_left - 1).sqrt() + ((index - 1) as f64).sqrt()) as i16;
             if is_pv_node {
-                reduction = (reduction as f64 * 0.66) as i16;
+                reduction = (f64::from(reduction) * 0.66) as i16;
             }
             if reduction > depth_left - 2 {
                 reduction = depth_left - 2
@@ -425,14 +437,13 @@ pub fn principal_variation_search(
                 su.search.killer_moves[current_depth][0] = Some(mv);
             }
             break;
-        } else {
-            if !isc {
-                su.search.quiets_tried[current_depth][quiets_tried] = Some(mv);
-                quiets_tried += 1;
-                su.search.bf_score[game_state.color_to_move][mv.from][mv.to] +=
-                    depth_left as usize * depth_left as usize;
-            }
+        } else if !isc {
+            su.search.quiets_tried[current_depth][quiets_tried] = Some(mv);
+            quiets_tried += 1;
+            su.search.bf_score[game_state.color_to_move][mv.from][mv.to] +=
+                depth_left as usize * depth_left as usize;
         }
+
         index += 1;
     }
 
@@ -462,7 +473,7 @@ pub fn principal_variation_search(
             static_evaluation,
         );
     }
-    return current_max_score;
+    current_max_score
 }
 pub fn decrement_history_quiets(
     search: &mut Search,
@@ -503,7 +514,7 @@ pub fn make_and_evaluate_moves(
                 move_list.graded_moves[current_depth][mv_index] =
                     Some(GradedMove::new(mv_index, 9999.0));
             } else {
-                let mut sval = see(&game_state, &mv, true, &mut search.see_buffer) as f64;
+                let mut sval = f64::from(see(&game_state, &mv, true, &mut search.see_buffer));
                 if sval >= 0.0 {
                     sval += 10000.0;
                 }
@@ -629,7 +640,7 @@ pub fn clear_pv(at_depth: usize, search: &mut Search) {
 pub fn concatenate_pv(at_depth: usize, search: &mut Search) {
     let mut index = 0;
     while let Some(mv) = search.pv_table[at_depth + 1].pv[index].as_ref() {
-        search.pv_table[at_depth].pv[index + 1] = Some(mv.clone());
+        search.pv_table[at_depth].pv[index + 1] = Some(*mv);
         index += 1;
     }
     while let Some(_) = search.pv_table[at_depth].pv[index + 1].as_ref() {
@@ -654,14 +665,13 @@ pub fn in_check(game_state: &GameState) -> bool {
         {
             return true;
         }
-    } else {
-        if (movegen::b_pawn_west_targets(my_king) | movegen::b_pawn_east_targets(my_king))
-            & game_state.pieces[PAWN][WHITE]
-            != 0u64
-        {
-            return true;
-        }
+    } else if (movegen::b_pawn_west_targets(my_king) | movegen::b_pawn_east_targets(my_king))
+        & game_state.pieces[PAWN][WHITE]
+        != 0u64
+    {
+        return true;
     }
+
     let all_pieces = game_state.pieces[PAWN][game_state.color_to_move]
         | game_state.pieces[KNIGHT][game_state.color_to_move]
         | game_state.pieces[BISHOP][game_state.color_to_move]
@@ -748,11 +758,11 @@ pub fn find_move(mv: &GameMove, mv_list: &MoveList, current_depth: usize, contai
         mv_index += 1;
     }
     if mv_index < mv_list.counter[current_depth] {
-        return mv_index;
+        mv_index
     } else if contains {
         panic!("Type 2 error");
     } else {
-        return mv_index;
+        mv_index
     }
 }
 
@@ -774,8 +784,8 @@ pub fn make_cache(
     let index = game_state.hash as usize & super::cache::CACHE_MASK;
 
     let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
-    let new_entry_val = depth_left as f64 * if beta_node || alpha_node { 0.7 } else { 1.0 };
-    if let None = ce {
+    let new_entry_val = f64::from(depth_left) * if beta_node || alpha_node { 0.7 } else { 1.0 };
+    if ce.is_none() {
         let new_entry = CacheEntry::new(
             &game_state,
             depth_left,
@@ -795,15 +805,16 @@ pub fn make_cache(
             _ => panic!("Invalid if let!"),
         };
         //Make replacement scheme better
-        let mut old_entry_val = old_entry.depth as f64
-            * if old_entry.beta || old_entry.alpha {
-                0.7
-            } else {
-                1.0
-            };
-        if old_entry.plies_played < root_plies_played as u16 {
-            old_entry_val = -1.0;
-        }
+        let old_entry_val = if old_entry.plies_played < root_plies_played as u16 {
+            -1.0
+        } else {
+            f64::from(old_entry.depth)
+                * if old_entry.beta || old_entry.alpha {
+                    0.7
+                } else {
+                    1.0
+                }
+        };
         if old_entry_val <= new_entry_val {
             let new_entry = CacheEntry::new(
                 &game_state,
@@ -844,14 +855,12 @@ pub fn check_for_draw(game_state: &GameState, history: &History) -> bool {
         | game_state.pieces[ROOK][BLACK]
         | game_state.pieces[QUEEN][BLACK]
         == 0u64
+        && (game_state.pieces[KNIGHT][WHITE] | game_state.pieces[BISHOP][WHITE]).count_ones() <= 1
+        && (game_state.pieces[KNIGHT][BLACK] | game_state.pieces[BISHOP][BLACK]).count_ones() <= 1
     {
-        if (game_state.pieces[KNIGHT][WHITE] | game_state.pieces[BISHOP][WHITE]).count_ones() <= 1
-            && (game_state.pieces[KNIGHT][BLACK] | game_state.pieces[BISHOP][BLACK]).count_ones()
-                <= 1
-        {
-            return true;
-        }
+        return true;
     }
+
     if game_state.half_moves >= 100 {
         return true;
     }

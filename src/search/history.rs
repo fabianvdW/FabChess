@@ -5,15 +5,16 @@ pub struct History {
     pub is_unique: Vec<bool>,
     pub pointer: usize,
 }
-impl History {
-    pub fn new() -> Self {
+impl Default for History {
+    fn default() -> Self {
         History {
             hist: vec![0u64; MAX_SEARCH_DEPTH + 100],
             is_unique: vec![false; MAX_SEARCH_DEPTH + 100],
             pointer: 0,
         }
     }
-
+}
+impl History {
     pub fn push(&mut self, hash: u64, is_unique: bool) {
         self.hist[self.pointer] = hash;
         self.is_unique[self.pointer] = is_unique;

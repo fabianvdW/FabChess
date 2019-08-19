@@ -1,4 +1,5 @@
 use crate::selfplay::{play_game, EndConditionInformation};
+use crate::Config;
 use core::board_representation::game_state::GameState;
 use core::logging::Logger;
 use core::move_generation::movegen;
@@ -11,19 +12,18 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-pub fn start_self_play(
-    p1: &str,
-    p2: &str,
-    processors: usize,
-    games: usize,
-    opening_db: Vec<String>,
-    opening_load_until: usize,
-    tcp1: TimeControl,
-    tcp2: TimeControl,
-) {
+pub fn start_self_play(config: Config) {
+    let tcp1 = TimeControl::Incremental(
+        config.timecontrol_engine1_time,
+        config.timecontrol_engine1_inc,
+    );
+    let tcp2 = TimeControl::Incremental(
+        config.timecontrol_engine2_time,
+        config.timecontrol_engine2_inc,
+    );
     let mut db: Vec<GameState> = vec![];
-    for database in opening_db {
-        db.append(&mut load_db_until(&database, opening_load_until));
+    for database in config.opening_databases {
+        db.append(&mut load_db_until(&database, config.opening_load_untilply));
     }
     println!(
         "{}",
@@ -32,18 +32,19 @@ pub fn start_self_play(
             db.len()
         )
     );
-    let queue: Arc<ThreadSafeQueue<PlayTask>> = Arc::new(load_openings_into_queue(games / 2, db));
+    let queue: Arc<ThreadSafeQueue<PlayTask>> =
+        Arc::new(load_openings_into_queue(config.games / 2, db));
     println!("Games prepared! Starting...");
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
     let error_log = Arc::new(Logger::new("referee_error_log.txt", false));
     let fen_log = Logger::new("fens.txt", true);
-    let mut childs = Vec::with_capacity(processors);
-    for _ in 0..processors {
+    let mut childs = Vec::with_capacity(config.processors);
+    for _ in 0..config.processors {
         let queue_clone = queue.clone();
         let res_clone = result_queue.clone();
-        let p1_clone = String::from_str(p1).unwrap();
-        let p2_clone = String::from_str(p2).unwrap();
+        let p1_clone = String::from_str(&config.engine1_path).unwrap();
+        let p2_clone = String::from_str(&config.engine2_path).unwrap();
         let tcp1_clone = tcp1.clone();
         let tcp2_clone = tcp2.clone();
         let log_clone = error_log.clone();
@@ -65,7 +66,7 @@ pub fn start_self_play(
     let mut draws = 0;
     let mut p1_disqs = 0;
     let mut p2_disqs = 0;
-    while results_collected < (games / 2) * 2 {
+    while results_collected < (config.games / 2) * 2 {
         thread::sleep(Duration::from_millis(50));
         if let Some(result) = result_queue.pop() {
             results_collected += 1;
@@ -210,4 +211,24 @@ pub struct TaskResult {
     pub nps_p2: f64,
     pub depth_p2: f64,
     pub time_left_p2: usize,
+}
+impl TaskResult {
+    pub fn disq(p1: bool, id: usize) -> Self {
+        TaskResult {
+            p1_won: false,
+            draw: false,
+            p1_disq: p1,
+            p2_disq: !p1,
+            endcondition: None,
+            task_id: id,
+            fen_history: vec![],
+            white_win: false,
+            nps_p1: 0.0,
+            nps_p2: 0.0,
+            depth_p1: 0.0,
+            depth_p2: 0.0,
+            time_left_p1: 0,
+            time_left_p2: 0,
+        }
+    }
 }

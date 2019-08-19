@@ -10,12 +10,14 @@ pub struct Cache {
     pub cache: Vec<Option<CacheEntry>>,
 }
 
-impl Cache {
-    pub fn new() -> Cache {
+impl Default for Cache {
+    fn default() -> Self {
         Cache {
             cache: vec![None; CACHE_ENTRYS],
         }
     }
+}
+impl Cache {
     pub fn clear(&mut self) {
         for i in 0..self.cache.len() {
             self.cache[i] = None;

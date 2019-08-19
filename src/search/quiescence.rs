@@ -10,7 +10,7 @@ use super::alphabeta::{
     MAX_SEARCH_DEPTH, STANDARD_SCORE,
 };
 use super::cache::CacheEntry;
-use super::search::{Search, SearchUtils};
+use super::searcher::{Search, SearchUtils};
 use super::GradedMove;
 use crate::bitboards;
 use crate::move_generation::makemove::make_move;
@@ -82,10 +82,8 @@ pub fn q_search(
                             if ce.score > alpha {
                                 alpha = ce.score;
                             }
-                        } else {
-                            if ce.score < beta {
-                                beta = ce.score;
-                            }
+                        } else if ce.score < beta {
+                            beta = ce.score;
                         }
                         if alpha >= beta {
                             su.search.search_statistics.add_cache_hit_aj_replace_qs();
@@ -150,15 +148,14 @@ pub fn q_search(
         //Make sure that our move is not the same as tt move if we have any
         if index >= hash_move_counter {
             moves_from_movelist_tried += 1;
-            if hash_move_counter > 0 {
-                if *tt_move
+            if hash_move_counter > 0
+                && *tt_move
                     .as_ref()
                     .expect("Couldn't unwrap hash move counter in move check")
                     == capture_move
-                {
-                    index += 1;
-                    continue;
-                }
+            {
+                index += 1;
+                continue;
             }
         }
         let next_g = make_move(&game_state, &capture_move);
@@ -187,10 +184,8 @@ pub fn q_search(
         index += 1;
     }
     su.history.pop();
-    if current_max_score < beta {
-        if index > 0 {
-            su.search.search_statistics.add_q_beta_noncutoff();
-        }
+    if current_max_score < beta && index > 0 {
+        su.search.search_statistics.add_q_beta_noncutoff();
     }
     let game_status = check_end_condition(&game_state, has_legal_move, incheck);
     if game_status != GameResult::Ingame {
@@ -239,7 +234,7 @@ pub fn make_and_evaluate_moves_qsearch(
                 mv_index += 1;
                 continue;
             }
-            if !incheck || incheck && capture_index > 0 && is_capture(mv) {
+            if capture_index > 0 && is_capture(mv) || !incheck {
                 let score = see(&game_state, mv, true, &mut search.see_buffer);
                 if score < 0 {
                     search.search_statistics.add_q_see_cutoff();

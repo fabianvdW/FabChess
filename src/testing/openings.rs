@@ -37,7 +37,7 @@ pub fn load_openings_into_queue(n: usize, mut db: Vec<GameState>) -> ThreadSafeQ
     let mut res: Vec<PlayTask> = Vec::with_capacity(n);
     for i in 0..n {
         loop {
-            if db.len() == 0 {
+            if db.is_empty() {
                 panic!("There are not enough different openings in database! Use bigger database or load until higher ply!");
             }
             let index: usize = rng.gen_range(0, db.len());
@@ -60,7 +60,7 @@ pub fn load_openings_into_queue(n: usize, mut db: Vec<GameState>) -> ThreadSafeQ
     ThreadSafeQueue::new(res)
 }
 
-pub fn contains(queue: &Vec<PlayTask>, state: &GameState) -> bool {
+pub fn contains(queue: &[PlayTask], state: &GameState) -> bool {
     for other in queue {
         if other.opening.hash == state.hash {
             return true;

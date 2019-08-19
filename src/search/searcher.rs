@@ -70,7 +70,7 @@ impl Search {
         Search {
             principal_variation: [None; MAX_SEARCH_DEPTH],
             pv_table,
-            search_statistics: SearchStatistics::new(),
+            search_statistics: SearchStatistics::default(),
             killer_moves: [[None; 2]; MAX_SEARCH_DEPTH],
             quiets_tried: [[None; 128]; MAX_SEARCH_DEPTH],
             hh_score: [[[0; 64]; 64]; 2],
@@ -121,11 +121,11 @@ impl Search {
         stop_ref: Arc<AtomicBool>,
         cache_uc: Arc<RwLock<Cache>>,
         saved_time: Arc<AtomicU64>,
-        last_score: i16,
+        _last_score: i16,
     ) -> i16 {
         let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
         let cache = &mut (*cache_uc).write().unwrap();
-        let mut hist: History = History::new();
+        let mut hist: History = History::default();
         let mut relevant_hashes: Vec<u64> = Vec::with_capacity(100);
         for gs in history.iter().rev() {
             relevant_hashes.push(gs.hash);
@@ -137,11 +137,11 @@ impl Search {
             hist.push(*hashes, false);
         }
 
-        self.search_statistics = SearchStatistics::new();
+        self.search_statistics = SearchStatistics::default();
         let mut move_list = movegen::MoveList::default();
         let mut best_pv_score = STANDARD_SCORE;
 
-        for d in 1..(depth + 1) {
+        for d in 1..=depth {
             let mut pv_score;
             if d == 1 {
                 let mut searchutils = SearchUtils::new(

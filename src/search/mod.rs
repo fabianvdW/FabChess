@@ -5,7 +5,7 @@ pub mod alphabeta;
 pub mod cache;
 pub mod history;
 pub mod quiescence;
-pub mod search;
+pub mod searcher;
 pub mod statistics;
 pub mod timecontrol;
 

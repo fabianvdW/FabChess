@@ -27,38 +27,8 @@ pub fn play_game(
     error_log: Arc<Logger>,
     movelist: &mut movegen::MoveList,
 ) -> TaskResult {
-    let player1_disq = TaskResult {
-        p1_won: false,
-        draw: false,
-        p1_disq: true,
-        p2_disq: false,
-        endcondition: None,
-        task_id: task.id,
-        fen_history: vec![],
-        white_win: false,
-        nps_p1: 0.0,
-        nps_p2: 0.0,
-        depth_p1: 0.0,
-        depth_p2: 0.0,
-        time_left_p1: 0,
-        time_left_p2: 0,
-    };
-    let player2_disq = TaskResult {
-        p1_won: false,
-        draw: false,
-        p1_disq: false,
-        p2_disq: true,
-        endcondition: None,
-        task_id: task.id,
-        fen_history: vec![],
-        white_win: false,
-        nps_p1: 0.0,
-        nps_p2: 0.0,
-        depth_p1: 0.0,
-        depth_p2: 0.0,
-        time_left_p1: 0,
-        time_left_p2: 0,
-    };
+    let player1_disq = TaskResult::disq(true, task.id);
+    let player2_disq = TaskResult::disq(false, task.id);
     //-------------------------------------------------------------
     //Set tokio runtime up
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
@@ -283,10 +253,7 @@ pub fn play_game(
             //Get additional info about player1 e.g. how deep he saw, nps, and his evaluation
             {
                 let info = fetch_info(output.3.clone());
-                let has_score = match info.cp_score {
-                    Some(_) => true,
-                    _ => false,
-                };
+                let has_score = info.cp_score.is_some();
                 if info.negative_mate_found | info.positive_mate_found {
                     draw_adjudication = 0;
                     if info.negative_mate_found {
@@ -415,10 +382,7 @@ pub fn play_game(
             //Get additional info about player2 e.g. how deep he saw, nps, and his evaluation
             {
                 let info = fetch_info(output.3);
-                let has_score = match info.cp_score {
-                    Some(_) => true,
-                    _ => false,
-                };
+                let has_score = info.cp_score.is_some();
                 if info.negative_mate_found | info.positive_mate_found {
                     draw_adjudication = 0;
                     if info.negative_mate_found {
@@ -513,16 +477,10 @@ pub fn play_game(
     print_command(&mut runtime, player1_input, "quit\n".to_owned());
     print_command(&mut runtime, player2_input, "quit\n".to_owned());
     thread::sleep(Duration::from_millis(20));
-    let draw = match status {
-        GameResult::Draw => true,
-        _ => false,
-    };
-    let p1_win = match status {
-        GameResult::Draw => false,
-        GameResult::WhiteWin => task.p1_is_white,
-        GameResult::BlackWin => !task.p1_is_white,
-        _ => panic!("invalid status"),
-    };
+    let draw = status == GameResult::Draw;
+    let p1_win = status == GameResult::WhiteWin && task.p1_is_white
+        || status == GameResult::BlackWin && !task.p1_is_white;
+
     TaskResult {
         p1_won: p1_win,
         draw,
@@ -531,10 +489,7 @@ pub fn play_game(
         endcondition,
         task_id: task.id,
         fen_history,
-        white_win: match status {
-            GameResult::WhiteWin => true,
-            _ => false,
-        },
+        white_win: status == GameResult::WhiteWin,
         nps_p1: average_nps_p1 / f64::from(moves_p1),
         nps_p2: average_nps_p2 / f64::from(moves_p2),
         depth_p1: average_depth_p1 / f64::from(moves_p1),

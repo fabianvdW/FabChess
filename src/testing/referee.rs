@@ -5,7 +5,6 @@ extern crate tokio;
 extern crate tokio_io;
 extern crate tokio_process;
 
-use core::search::timecontrol::TimeControl;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -38,18 +37,18 @@ pub const STS_SUB_SUITS: [&str; 15] = [
 ];
 
 #[derive(Serialize, Deserialize)]
-struct Config {
-    processors: usize,
+pub struct Config {
+    pub processors: usize,
     selfplaytests: bool,
-    games: usize,
-    engine1_path: String,
-    engine2_path: String,
-    opening_databases: Vec<String>,
-    opening_load_untilply: usize,
-    timecontrol_engine1_time: u64,
-    timecontrol_engine1_inc: u64,
-    timecontrol_engine2_time: u64,
-    timecontrol_engine2_inc: u64,
+    pub games: usize,
+    pub engine1_path: String,
+    pub engine2_path: String,
+    pub opening_databases: Vec<String>,
+    pub opening_load_untilply: usize,
+    pub timecontrol_engine1_time: u64,
+    pub timecontrol_engine1_inc: u64,
+    pub timecontrol_engine2_time: u64,
+    pub timecontrol_engine2_inc: u64,
     testsuitetests: bool,
     suite_path: String,
     suite_movetime: u64,
@@ -95,22 +94,7 @@ fn main() {
     let config_content = fs::read_to_string(config_path).expect("Unable to read config file!");
     let config: Config = serde_json::from_str(&config_content).unwrap();
     if config.selfplaytests {
-        selfplay_splitter::start_self_play(
-            &config.engine1_path,
-            &config.engine2_path,
-            config.processors,
-            config.games,
-            config.opening_databases,
-            config.opening_load_untilply,
-            TimeControl::Incremental(
-                config.timecontrol_engine1_time,
-                config.timecontrol_engine1_inc,
-            ),
-            TimeControl::Incremental(
-                config.timecontrol_engine2_time,
-                config.timecontrol_engine2_inc,
-            ),
-        );
+        selfplay_splitter::start_self_play(config);
     } else if config.lct2tests {
         lct2::lct2(&config.engine1_path, config.processors, &config.lct2_path);
     } else if config.testsuitetests {

@@ -505,7 +505,6 @@ pub fn add_normal_moves_to_movelist(
     stm_color_iswhite: bool,
 ) -> bool {
     let mut stm_haslegalmove = false;
-    let mut index = 0;
     while piece_board != 0u64 {
         let piece_index = if stm_color_iswhite {
             63 - piece_board.leading_zeros() as usize
@@ -562,7 +561,6 @@ pub fn add_normal_moves_to_movelist(
                 }
             }
         }
-        index += 1;
         piece_board ^= piece;
     }
     stm_haslegalmove

@@ -50,7 +50,7 @@ pub fn expect_output_and_listen_for_info(
     usize,
     String,
 ) {
-    let info_listener = Arc::new(ThreadSafeString::new());
+    let info_listener = Arc::new(ThreadSafeString::default());
     let info_listener_moved = info_listener.clone();
     let lines_codec = tokio::codec::LinesCodec::new();
     let line_fut = tokio::codec::FramedRead::new(output, lines_codec)

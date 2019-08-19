@@ -45,7 +45,7 @@ fn main() {
     let mut quiet_nonstripped: Vec<LabelledGameState> = Vec::with_capacity(positions.len());
     let mut quiet_stripped: Vec<LabelledGameState> = Vec::with_capacity(positions.len());
 
-    let mut history = History::new();
+    let mut history = History::default();
     let mut move_list = MoveList::default();
     let mut see_buffer = vec![0i16; MAX_SEARCH_DEPTH];
 

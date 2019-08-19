@@ -4,7 +4,7 @@ use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::Cache;
 use crate::search::cache::CacheEntry;
-use crate::search::search::Search;
+use crate::search::searcher::Search;
 use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
 use std::sync::{
@@ -19,7 +19,7 @@ pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
     let stop = Arc::new(AtomicBool::new(false));
-    let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::new()));
+    let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::default()));
     let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
     let mut movelist = movegen::MoveList::default();
     let saved_time = Arc::new(AtomicU64::new(0u64));

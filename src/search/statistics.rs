@@ -26,8 +26,8 @@ pub struct SearchStatistics {
     pub nm_pruned: u64,
 }
 
-impl SearchStatistics {
-    pub fn new() -> SearchStatistics {
+impl Default for SearchStatistics {
+    fn default() -> Self {
         SearchStatistics {
             depth: 0,
             seldepth: 0,
@@ -53,6 +53,9 @@ impl SearchStatistics {
             nm_pruned: 0,
         }
     }
+}
+
+impl SearchStatistics {
     #[inline(always)]
     pub fn refresh_time_elapsed(&mut self) {
         let now = Instant::now();
