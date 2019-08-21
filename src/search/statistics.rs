@@ -24,6 +24,12 @@ pub struct SearchStatistics {
     pub cache_hit_replaces_qs: u64,
     pub cache_hit_aj_replaces_qs: u64,
     pub nm_pruned: u64,
+    pub snm_pruned: u64,
+    pub static_eval_nodes: u64,
+    pub cache_replace_eval: u64,
+    pub iid_nodes: u64,
+    pub futil_nodes: u64,
+    pub history_pruned: u64,
 }
 
 impl Default for SearchStatistics {
@@ -51,6 +57,12 @@ impl Default for SearchStatistics {
             cache_hit_replaces_qs: 0,
             cache_hit_aj_replaces_qs: 0,
             nm_pruned: 0,
+            snm_pruned: 0,
+            static_eval_nodes: 0,
+            cache_replace_eval: 0,
+            iid_nodes: 0,
+            futil_nodes: 0,
+            history_pruned: 0,
         }
     }
 }
@@ -71,12 +83,36 @@ impl SearchStatistics {
         }
     }
     #[inline(always)]
+    pub fn add_history_pruned(&mut self) {
+        self.history_pruned += 1;
+    }
+    #[inline(always)]
     pub fn add_q_node(&mut self, seldepth: usize) {
         self.nodes_searched += 1;
         self.q_nodes_searched += 1;
         if seldepth > self.seldepth {
             self.seldepth = seldepth;
         }
+    }
+    #[inline(always)]
+    pub fn add_cache_hit_replace_eval(&mut self) {
+        self.cache_replace_eval += 1;
+    }
+    #[inline(always)]
+    pub fn add_futil_pruning(&mut self) {
+        self.futil_nodes += 1;
+    }
+    #[inline(always)]
+    pub fn add_iid_node(&mut self) {
+        self.iid_nodes += 1;
+    }
+    #[inline(always)]
+    pub fn add_static_eval_node(&mut self) {
+        self.static_eval_nodes += 1;
+    }
+    #[inline(always)]
+    pub fn add_static_null_move_node(&mut self) {
+        self.snm_pruned += 1;
     }
     #[inline(always)]
     pub fn add_q_root(&mut self) {
@@ -198,9 +234,39 @@ impl Display for SearchStatistics {
             (self.cache_hit_aj_replaces_ns as f64 / self.cache_hit_ns as f64 * 100.0)
         ));
         res_str.push_str(&format!(
+            "Normal-Search Cache-Hit-Replace-Eval: {} ({}%)\n",
+            self.cache_replace_eval,
+            (self.cache_replace_eval as f64 / self.cache_hit_ns as f64 * 100.0)
+        ));
+        res_str.push_str(&format!(
+            "Normal-Search IID Nodes : {} ({}%)\n",
+            self.iid_nodes,
+            (self.iid_nodes as f64 / self.normal_nodes_searched as f64 * 100.0)
+        ));
+        res_str.push_str(&format!(
+            "Normal-Search Static Eval Nodes : {} ({}%)\n",
+            self.static_eval_nodes,
+            (self.static_eval_nodes as f64 / self.normal_nodes_searched as f64 * 100.0)
+        ));
+        res_str.push_str(&format!(
             "Normal-Search NullMove-Pruned : {} ({}%)\n",
             self.nm_pruned,
             (self.nm_pruned as f64 / self.normal_nodes_searched as f64 * 100.0)
+        ));
+        res_str.push_str(&format!(
+            "Normal-Search Staticnullmove-Pruned : {} ({}%)\n",
+            self.snm_pruned,
+            (self.snm_pruned as f64 / self.normal_nodes_searched as f64 * 100.0)
+        ));
+        res_str.push_str(&format!(
+            "Normal-Search Futil-Pruned : {} ({}%)\n",
+            self.futil_nodes,
+            (self.futil_nodes as f64 / self.normal_nodes_searched as f64 * 100.0)
+        ));
+        res_str.push_str(&format!(
+            "Normal-Search History-Pruned : {} ({}%)\n",
+            self.history_pruned,
+            (self.history_pruned as f64 / self.normal_nodes_searched as f64 * 100.0)
         ));
 
         res_str.push_str("\n");

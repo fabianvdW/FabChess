@@ -244,6 +244,8 @@ impl Search {
                     self.pv_table[0]
                 )
             );
+            //println!("{}", self.search_statistics);
+
             //Compare old pv to new pv
             if let Some(ce) = self.principal_variation[0].as_ref() {
                 let old_mv: GameMove = CacheEntry::u16_to_mv(ce.mv, &game_state);

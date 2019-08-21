@@ -133,11 +133,16 @@ pub fn principal_variation_search(
         let eval_res = eval_game_state(&game_state);
         static_evaluation = Some(eval_res.final_eval);
         phase = Some(eval_res.phase);
+        su.search.search_statistics.add_static_eval_node();
     } else if static_evaluation.is_some() && prunable && depth_left >= NULL_MOVE_PRUNING_DEPTH {
         phase = Some(calculate_phase(game_state));
     }
     //Replace static eval by tt score if available
-    if false && static_evaluation.is_some() && tt_entry.is_some() {
+    /*if false
+        && static_evaluation.is_some()
+        && tt_entry.is_some()
+        && tt_entry.as_ref().unwrap().depth > 0
+    {
         let content = tt_entry.as_ref().expect("TT entry impossible");
         let score = static_evaluation.expect("Static eval impossible") * color;
         if !content.alpha && !content.beta
@@ -145,8 +150,9 @@ pub fn principal_variation_search(
             || content.beta && content.score > score
         {
             static_evaluation = Some(content.score * color);
+            su.search.search_statistics.add_cache_hit_replace_eval();
         }
-    }
+    }*/
     //Static Null Move Pruning
     if prunable
         && depth_left <= STATIC_NULL_MOVE_DEPTH
@@ -154,8 +160,8 @@ pub fn principal_variation_search(
             - STATIC_NULL_MOVE_MARGIN * depth_left
             >= beta
     {
-        //add statistic TODO
         su.history.pop();
+        su.search.search_statistics.add_static_null_move_node();
         return static_evaluation.expect("Static null move 2") * color
             - STATIC_NULL_MOVE_DEPTH * depth_left;
     }
@@ -202,6 +208,7 @@ pub fn principal_variation_search(
             su,
         );
         su.history.push(game_state.hash, game_state.half_moves == 0);
+        su.search.search_statistics.add_iid_node();
         if su.search.stop {
             return STANDARD_SCORE;
         }
@@ -316,6 +323,7 @@ pub fn principal_variation_search(
             && !in_check(&next_state)
         {
             if futil_margin <= alpha {
+                su.search.search_statistics.add_futil_pruning();
                 continue;
             } else {
                 futil_pruning = false;
@@ -328,6 +336,7 @@ pub fn principal_variation_search(
             && current_max_score > MATED_IN_MAX
             && su.search.history_score[game_state.color_to_move][mv.from][mv.to] < 0
         {
+            su.search.search_statistics.add_history_pruned();
             continue;
         }
 
