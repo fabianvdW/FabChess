@@ -380,7 +380,7 @@ pub fn principal_variation_search(
         {
             depth_left += 1;
         }*/
-        if depth_left <= 2 || pv_table_move.is_none() || index == 0 {
+        if depth_left <= 2 || !is_pv_node || index == 0 {
             following_score = -principal_variation_search(
                 -beta,
                 -alpha,
@@ -405,7 +405,7 @@ pub fn principal_variation_search(
             following_score = -principal_variation_search(
                 -alpha - 1,
                 -alpha,
-                depth_left - 1,
+                depth_left - 1 - reduction,
                 &next_state,
                 -color,
                 current_depth + 1,
