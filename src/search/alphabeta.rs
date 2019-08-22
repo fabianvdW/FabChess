@@ -231,7 +231,7 @@ pub fn principal_variation_search(
     };
 
     //Prepare Futility Pruning
-    let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck;
+    let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck && !root;
     let futil_margin = if futil_pruning {
         static_evaluation.expect("Futil pruning") * color + depth_left * FUTILITY_MARGIN
     } else {
@@ -341,7 +341,8 @@ pub fn principal_variation_search(
                 futil_pruning = false;
             }
         }
-        if depth_left <= 2
+        if !root
+            && depth_left <= 2
             && !isc
             && !isp
             && !incheck
@@ -354,14 +355,7 @@ pub fn principal_variation_search(
 
         let mut following_score: i16;
         let mut reduction = 0;
-        if depth_left > 2
-            && pv_table_move.is_none()
-            && !incheck
-            && !isc
-            && index >= 2
-            && !isp
-            && !in_check(&next_state)
-        {
+        if depth_left > 2 && !incheck && !isc && index >= 2 && !isp && !in_check(&next_state) {
             //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
             reduction = (f64::from(depth_left - 1).sqrt() + ((index - 1) as f64).sqrt()) as i16;
             if is_pv_node {
