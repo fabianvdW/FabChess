@@ -669,11 +669,12 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
     }
     //Passers
     let mut passed_pawns: u64 = g.pieces[PAWN][side]
-        & !if white {
+
+        /*& !if white {
             bitboards::w_rear_span(g.pieces[PAWN][side])
         } else {
             bitboards::b_rear_span(g.pieces[PAWN][side])
-        }
+        }*/
         & !enemy_front_spans;
     let (mut passer_mg, mut passer_eg, mut _passer_normal, mut _passer_notblocked) =
         (0i16, 0i16, 0, 0);

@@ -1,5 +1,6 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+    GameMove, GameMoveType, GameResult, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK,
+    WHITE,
 };
 use super::super::movegen;
 use super::super::movegen::MoveList;
@@ -10,6 +11,7 @@ use super::quiescence::{is_capture, q_search, see};
 use super::searcher::Search;
 use super::searcher::SearchUtils;
 use super::GradedMove;
+use crate::bitboards;
 use crate::evaluation::{calculate_phase, eval_game_state};
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
@@ -69,6 +71,16 @@ pub fn principal_variation_search(
         return q_search(alpha, beta, &game_state, color, 0, current_depth, su);
     }
 
+    //Mate distance pruning
+    if !root {
+        //My score can at maximum be mate with this move
+        beta = beta.min(MATE_SCORE - (current_depth as i16 + 1));
+        //My score is atleast mate in this move
+        alpha = alpha.max(-(MATE_SCORE - current_depth as i16));
+        if alpha >= beta {
+            return alpha;
+        }
+    }
     let mut pv_table_move: Option<GameMove> = None;
 
     //PV-Table lookup
@@ -83,14 +95,14 @@ pub fn principal_variation_search(
     //Probe TT
     let mut static_evaluation = None;
     let mut phase = None;
-    let mut tt_entry = None;
+    //let mut tt_entry = None;
     let mut tt_move: Option<GameMove> = None;
     {
         let ce = &su.cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
         if let Some(s) = ce {
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
-                tt_entry = Some(ce);
+                //tt_entry = Some(ce);
                 su.search.search_statistics.add_cache_hit_ns();
                 if ce.depth >= depth_left as i8 && beta - alpha == 1 {
                     if !ce.alpha && !ce.beta {
@@ -109,8 +121,8 @@ pub fn principal_variation_search(
 
                         if alpha >= beta {
                             su.search.search_statistics.add_cache_hit_aj_replace_ns();
-                            su.search.pv_table[current_depth].pv[0] =
-                                Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                            let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
+                            su.search.pv_table[current_depth].pv[0] = Some(mv);
                             return ce.score;
                         }
                     }
@@ -359,6 +371,15 @@ pub fn principal_variation_search(
                 reduction = depth_left - 2
             }
         }
+        //Passer extension
+        /*if !isc
+            && !isp
+            && !incheck
+            && mv.piece_type == PieceType::Pawn
+            && is_passer(game_state, &mv)
+        {
+            depth_left += 1;
+        }*/
         if depth_left <= 2 || pv_table_move.is_none() || index == 0 {
             following_score = -principal_variation_search(
                 -beta,
@@ -494,6 +515,19 @@ pub fn principal_variation_search(
         );
     }
     current_max_score
+}
+
+pub fn is_passer(g: &GameState, mv: &GameMove) -> bool {
+    let pawn_board = 1u64 << mv.to;
+    let enemy_pawns = g.pieces[PAWN][1 - g.color_to_move] & !pawn_board;
+    let mut enemy_front_span = if g.color_to_move == WHITE {
+        bitboards::b_front_span(enemy_pawns)
+    } else {
+        bitboards::w_front_span(enemy_pawns)
+    };
+    enemy_front_span |=
+        bitboards::west_one(enemy_front_span) | bitboards::east_one(enemy_front_span);
+    (pawn_board & !enemy_front_span).count_ones() > 0
 }
 pub fn decrement_history_quiets(
     search: &mut Search,
