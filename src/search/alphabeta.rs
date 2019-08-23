@@ -146,7 +146,10 @@ pub fn principal_variation_search(
         static_evaluation = Some(eval_res.final_eval);
         phase = Some(eval_res.phase);
         su.search.search_statistics.add_static_eval_node();
-    } else if static_evaluation.is_some() && prunable && depth_left >= NULL_MOVE_PRUNING_DEPTH {
+    } else if static_evaluation.is_some()
+        //Null move pruning
+        && (prunable && depth_left >= NULL_MOVE_PRUNING_DEPTH)
+    {
         phase = Some(calculate_phase(game_state));
     }
     //Replace static eval by tt score if available
@@ -355,15 +358,25 @@ pub fn principal_variation_search(
 
         let mut following_score: i16;
         let mut reduction = 0;
-        if depth_left > 2 && !incheck && !isc && index >= 2 && !isp && !in_check(&next_state) {
+        if depth_left > 2
+            && !incheck
+            && !isc
+            && index >= 2
+            && (!root || index >= 5)
+            && !isp
+            && !in_check(&next_state)
+        {
             //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
             reduction = (f64::from(depth_left - 1).sqrt() + ((index - 1) as f64).sqrt()) as i16;
             if is_pv_node {
                 reduction = (f64::from(reduction) * 0.66) as i16;
             }
-            if reduction > depth_left - 2 {
+            if reduction > depth_left - 2
+                && su.search.history_score[game_state.color_to_move][mv.from][mv.to] > 0
+            {
                 reduction = depth_left - 2
             }
+            reduction = reduction.min(depth_left - 1);
         }
         //Passer extension
         /*if !isc
