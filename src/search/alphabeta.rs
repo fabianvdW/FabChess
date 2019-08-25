@@ -358,18 +358,14 @@ pub fn principal_variation_search(
 
         let mut following_score: i16;
         let mut reduction = 0;
-        if depth_left > 2
-            && !incheck
-            && !isc
-            && index >= 2
-            && (!root || index >= 5)
-            && !isp
-            && !in_check(&next_state)
-        {
+        if depth_left > 2 && !incheck && !isc && index >= 2 && (!root || index >= 5) && !isp {
             //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
             reduction = (f64::from(depth_left - 1).sqrt() + ((index - 1) as f64).sqrt()) as i16;
             if is_pv_node {
                 reduction = (f64::from(reduction) * 0.66) as i16;
+            }
+            if in_check(&next_state) {
+                reduction -= 1;
             }
             if reduction > depth_left - 2
                 && su.search.history_score[game_state.color_to_move][mv.from][mv.to] > 0
@@ -377,6 +373,7 @@ pub fn principal_variation_search(
                 reduction = depth_left - 2
             }
             reduction = reduction.min(depth_left - 1);
+            reduction = reduction.max(0);
         }
         //Passer extension
         /*if !isc
