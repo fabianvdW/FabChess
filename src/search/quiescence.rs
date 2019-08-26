@@ -142,8 +142,9 @@ pub fn q_search(
                 current_depth,
                 moves_from_movelist_tried,
                 available_captures_in_movelist,
-            )]
-            .expect("Could not get next gm")
+            )
+            .0]
+                .expect("Could not get next gm")
         };
         //Make sure that our move is not the same as tt move if we have any
         if index >= hash_move_counter {

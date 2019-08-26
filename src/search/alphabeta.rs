@@ -1,6 +1,5 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK,
-    WHITE,
+    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 use super::super::movegen;
 use super::super::movegen::MoveList;
@@ -277,6 +276,7 @@ pub fn principal_variation_search(
             make_and_evaluate_moves(game_state, su.search, current_depth, su.move_list);
             continue;
         }
+        let mut move_score = 0.;
         let mv: GameMove = if moves_tried < hash_and_pv_move_counter {
             if moves_tried == 0 {
                 if let Some(pvmv) = pv_table_move {
@@ -288,13 +288,14 @@ pub fn principal_variation_search(
                 tt_move.expect("Moves tried >0 and no tt move")
             }
         } else {
-            su.move_list.move_list[current_depth][get_next_gm(
+            let r = get_next_gm(
                 su.move_list,
                 current_depth,
                 moves_from_movelist_tried,
                 su.move_list.counter[current_depth],
-            )]
-            .unwrap()
+            );
+            move_score = r.1;
+            su.move_list.move_list[current_depth][r.0].unwrap()
         };
         //Make sure that our move is not the same as tt or pv move, if we have any
         if moves_tried >= hash_and_pv_move_counter {
@@ -358,9 +359,18 @@ pub fn principal_variation_search(
 
         let mut following_score: i16;
         let mut reduction = 0;
-        if depth_left > 2 && !incheck && !isc && index >= 2 && (!root || index >= 5) && !isp {
+        if depth_left > 2
+            && !incheck
+            && (!isc || move_score < 0.)
+            && index >= 2
+            && (!root || index >= 5)
+            && !isp
+        {
             //FRUITED RELOADED REDUCTION! NEXT THREE LINES ARE COPIED:
             reduction = (f64::from(depth_left - 1).sqrt() + ((index - 1) as f64).sqrt()) as i16;
+            if isc {
+                reduction /= 2;
+            }
             if is_pv_node {
                 reduction = (f64::from(reduction) * 0.66) as i16;
             }
@@ -777,7 +787,7 @@ pub fn get_next_gm(
     current_depth: usize,
     mv_index: usize,
     max_moves: usize,
-) -> usize {
+) -> (usize, f64) {
     if mv_list.counter[current_depth] == 0 {
         panic!("List has to be longer than 1")
     } else {
@@ -799,9 +809,13 @@ pub fn get_next_gm(
             .as_ref()
             .unwrap()
             .mv_index;
+        let score = mv_list.graded_moves[current_depth][index]
+            .as_ref()
+            .unwrap()
+            .score;
         mv_list.graded_moves[current_depth][index] =
             mv_list.graded_moves[current_depth][mv_index].clone();
-        result
+        (result, score)
     }
 }
 

@@ -142,8 +142,8 @@ pub fn stripped_q_search(
     let mut index = 0;
     while index < max_index {
         let capture_move: GameMove = move_list.move_list[current_depth]
-            [get_next_gm(move_list, current_depth, index, max_index)]
-        .expect("Could not get next gm");
+            [get_next_gm(move_list, current_depth, index, max_index).0]
+            .expect("Could not get next gm");
         let next_g = make_move(&game_state, &capture_move);
         let (score, other_state) = stripped_q_search(
             -beta,
