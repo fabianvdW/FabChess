@@ -640,14 +640,17 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         .count_ones() as i16;
     let mut supported_pawns = g.pieces[PAWN][side] & my_pawn_attacks;
     while supported_pawns != 0u64 {
-        let index = supported_pawns.trailing_zeros() as usize;
+        let mut index = supported_pawns.trailing_zeros() as usize;
+        supported_pawns ^= 1u64 << index;
+        if !white {
+            index = 63 - index;
+        }
         mg_res += PAWN_SUPPORTED_VALUE_MG[index / 8][index % 8];
         eg_res += PAWN_SUPPORTED_VALUE_EG[index / 8][index % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.pawn_supported[side][index / 8][index % 8] += 1;
         }
-        supported_pawns ^= 1u64 << index
     }
 
     let center_attack_pawns = (g.pieces[PAWN][side]
