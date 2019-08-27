@@ -10,8 +10,26 @@ pub const PAWN_ISOLATED_VALUE_MG: i16 = -18;
 pub const PAWN_ISOLATED_VALUE_EG: i16 = -12;
 pub const PAWN_BACKWARD_VALUE_MG: i16 = -16;
 pub const PAWN_BACKWARD_VALUE_EG: i16 = -13;
-pub const PAWN_SUPPORTED_VALUE_MG: i16 = 15;
-pub const PAWN_SUPPORTED_VALUE_EG: i16 = 15;
+pub const PAWN_SUPPORTED_VALUE_MG: [[i16; 8]; 8] = [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [-1, 0, 0, 1, 0, 1, 0, 1],
+    [11, 8, 14, 18, 21, 13, 7, 8],
+    [6, 17, 15, 31, 25, 15, 14, 6],
+    [10, 18, 17, 23, 24, 17, 17, 10],
+    [15, 20, 20, 25, 25, 20, 20, 15],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+];
+pub const PAWN_SUPPORTED_VALUE_EG: [[i16; 8]; 8] = [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [-1, 0, 0, 1, 0, 1, 0, 1],
+    [11, 8, 14, 18, 21, 13, 7, 8],
+    [6, 17, 15, 31, 25, 15, 14, 6],
+    [10, 18, 17, 23, 24, 17, 17, 10],
+    [15, 20, 20, 25, 25, 20, 20, 15],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+];
 pub const PAWN_ATTACK_CENTER_MG: i16 = -5;
 pub const PAWN_ATTACK_CENTER_EG: i16 = -10;
 pub const PAWN_PASSED_VALUES_MG: [i16; 7] = [0, -4, -21, -8, 21, 69, 93];

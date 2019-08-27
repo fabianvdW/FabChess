@@ -638,7 +638,18 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
     } & enemy_pawn_attacks
         & !is_attackable)
         .count_ones() as i16;
-    let supported_pawns = (g.pieces[PAWN][side] & my_pawn_attacks).count_ones() as i16;
+    let mut supported_pawns = g.pieces[PAWN][side] & my_pawn_attacks;
+    while supported_pawns != 0u64 {
+        let index = supported_pawns.trailing_zeros() as usize;
+        mg_res += PAWN_SUPPORTED_VALUE_MG[index / 8][index % 8];
+        eg_res += PAWN_SUPPORTED_VALUE_EG[index / 8][index % 8];
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.pawn_supported[side][index / 8][index % 8] += 1;
+        }
+        supported_pawns ^= 1u64 << index
+    }
+
     let center_attack_pawns = (g.pieces[PAWN][side]
         & if white {
             bitboards::south_east_one(*bitboards::INNER_CENTER)
@@ -652,19 +663,16 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
     mg_res += doubled_pawns * PAWN_DOUBLED_VALUE_MG
         + isolated_pawns * PAWN_ISOLATED_VALUE_MG
         + backward_pawns * PAWN_BACKWARD_VALUE_MG
-        + supported_pawns * PAWN_SUPPORTED_VALUE_MG
         + center_attack_pawns * PAWN_ATTACK_CENTER_MG;
     eg_res += doubled_pawns * PAWN_DOUBLED_VALUE_EG
         + isolated_pawns * PAWN_ISOLATED_VALUE_EG
         + backward_pawns * PAWN_BACKWARD_VALUE_EG
-        + supported_pawns * PAWN_SUPPORTED_VALUE_EG
         + center_attack_pawns * PAWN_ATTACK_CENTER_EG;
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.pawn_doubled[side] = doubled_pawns as i8;
         _eval.trace.pawn_isolated[side] = isolated_pawns as i8;
         _eval.trace.pawn_backward[side] = backward_pawns as i8;
-        _eval.trace.pawn_supported[side] = supported_pawns as i8;
         _eval.trace.pawn_attack_center[side] = center_attack_pawns as i8;
     }
     //Passers

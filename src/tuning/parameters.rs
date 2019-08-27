@@ -23,7 +23,7 @@ pub struct Parameters {
     pub pawn_doubled: [f64; 2],
     pub pawn_isolated: [f64; 2],
     pub pawn_backward: [f64; 2],
-    pub pawn_supported: [f64; 2],
+    pub pawn_supported: [[[f64; 8]; 8]; 2],
     pub pawn_attack_center: [f64; 2],
     pub pawn_passed: [[f64; 7]; 2],
     pub pawn_passed_notblocked: [[f64; 7]; 2],
@@ -146,12 +146,12 @@ impl Parameters {
             self.pawn_backward[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_SUPPORTED_VALUE_MG: i16 = {};\n",
-            self.pawn_supported[MG].round() as isize
+            "pub const PAWN_SUPPORTED_VALUE_MG: [[i16;8];8] = {};\n",
+            psqt_to_string(&self.pawn_supported[MG])
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_SUPPORTED_VALUE_EG: i16 = {};\n",
-            self.pawn_supported[EG].round() as isize
+            "pub const PAWN_SUPPORTED_VALUE_EG: [[i16;8];8] = {};\n",
+            psqt_to_string(&self.pawn_supported[EG])
         ));
         res_str.push_str(&format!(
             "pub const PAWN_ATTACK_CENTER_MG: i16 = {};\n",
@@ -446,6 +446,13 @@ impl Parameters {
                 psqt_king[EG][i][j] = f64::from(PSQT_KING_EG[i][j]);
             }
         }
+        let mut psqt_pawn_supported: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
+        for i in 0..8 {
+            for j in 0..8 {
+                psqt_pawn_supported[MG][i][j] = f64::from(PAWN_SUPPORTED_VALUE_MG[i][j]);
+                psqt_pawn_supported[EG][i][j] = f64::from(PAWN_SUPPORTED_VALUE_EG[i][j]);
+            }
+        }
         Parameters {
             tempo_bonus: [f64::from(TEMPO_BONUS_MG), f64::from(TEMPO_BONUS_EG)],
             shielding_pawn_missing,
@@ -462,10 +469,7 @@ impl Parameters {
                 f64::from(PAWN_BACKWARD_VALUE_MG),
                 f64::from(PAWN_BACKWARD_VALUE_EG),
             ],
-            pawn_supported: [
-                f64::from(PAWN_SUPPORTED_VALUE_MG),
-                f64::from(PAWN_SUPPORTED_VALUE_EG),
-            ],
+            pawn_supported: psqt_pawn_supported,
             pawn_attack_center: [
                 f64::from(PAWN_ATTACK_CENTER_MG),
                 f64::from(PAWN_ATTACK_CENTER_EG),
@@ -528,7 +532,7 @@ impl Parameters {
             pawn_doubled: [0.; 2],
             pawn_isolated: [0.; 2],
             pawn_backward: [0.; 2],
-            pawn_supported: [0.; 2],
+            pawn_supported: [[[0.; 8]; 8]; 2],
             pawn_attack_center: [0.; 2],
             pawn_passed: [[0.; 7]; 2],
             pawn_passed_notblocked: [[0.; 7]; 2],
@@ -578,7 +582,6 @@ impl Parameters {
             self.pawn_doubled[i] += gradient.pawn_doubled[i] / norm;
             self.pawn_isolated[i] += gradient.pawn_isolated[i] / norm;
             self.pawn_backward[i] += gradient.pawn_backward[i] / norm;
-            self.pawn_supported[i] += gradient.pawn_supported[i] / norm;
             self.pawn_attack_center[i] += gradient.pawn_attack_center[i] / norm;
             self.knight_supported[i] += gradient.knight_supported[i] / norm;
             self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
@@ -598,6 +601,7 @@ impl Parameters {
                 norm,
             );
         }
+        apply_gradient_psqt(&mut self.pawn_supported, &gradient.pawn_supported, norm);
         apply_gradient_psqt(
             &mut self.knight_outpost_table,
             &gradient.knight_outpost_table,

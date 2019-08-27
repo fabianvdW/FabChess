@@ -12,8 +12,8 @@ use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
-pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
-//pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
+//pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
+pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 
 //Override for all others if true
@@ -46,7 +46,7 @@ pub fn main() {
     #[cfg(feature = "texel-tuning")]
     {
         //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
-        let mut stats = Statistics::new();
+        let mut stats = Statistics::default();
         let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8000000);
         load_positions(
             POSITION_FILE,
@@ -66,7 +66,7 @@ pub fn main() {
             positions.len()
         );
         let mut tuner = Tuner {
-            k: 1.02,
+            k: 1.1155,
             positions: init_texel_states(positions),
             params: Parameters::default(),
         };
@@ -176,12 +176,6 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                 phase,
             );
             add_gradient(
-                &mut gradient.pawn_supported,
-                pos.trace.pawn_supported,
-                start_of_gradient,
-                phase,
-            );
-            add_gradient(
                 &mut gradient.pawn_attack_center,
                 pos.trace.pawn_attack_center,
                 start_of_gradient,
@@ -220,6 +214,14 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         //All PST
         for i in 0..8 {
             for j in 0..8 {
+                if TUNE_PAWNS || TUNE_ALL {
+                    let supported = f64::from(
+                        pos.trace.pawn_supported[WHITE][i][j]
+                            - pos.trace.pawn_supported[BLACK][i][j],
+                    );
+                    gradient.pawn_supported[MG][i][j] += start_of_gradient * devaldmg * supported;
+                    gradient.pawn_supported[EG][i][j] += start_of_gradient * devaldeg * supported;
+                }
                 if TUNE_KNIGHTS || TUNE_ALL {
                     let outposts = f64::from(
                         pos.trace.knight_outpost_table[WHITE][i][j]
@@ -388,7 +390,6 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         norm += gradient.pawn_doubled[i].powf(2.);
         norm += gradient.pawn_isolated[i].powf(2.);
         norm += gradient.pawn_backward[i].powf(2.);
-        norm += gradient.pawn_supported[i].powf(2.);
         norm += gradient.pawn_attack_center[i].powf(2.);
         for j in 0..7 {
             norm += gradient.pawn_passed[i][j].powf(2.);
@@ -397,6 +398,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         norm += gradient.knight_supported[i].powf(2.);
         for j in 0..8 {
             for k in 0..8 {
+                norm += gradient.pawn_supported[i][j][k].powf(2.);
                 norm += gradient.knight_outpost_table[i][j][k].powf(2.);
                 norm += gradient.psqt_pawn[i][j][k].powf(2.);
                 norm += gradient.psqt_knight[i][j][k].powf(2.);

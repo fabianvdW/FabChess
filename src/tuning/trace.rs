@@ -8,7 +8,7 @@ pub struct Trace {
     pub pawn_doubled: [i8; 2],
     pub pawn_isolated: [i8; 2],
     pub pawn_backward: [i8; 2],
-    pub pawn_supported: [i8; 2],
+    pub pawn_supported: [[[i8; 8]; 8]; 2],
     pub pawn_attack_center: [i8; 2],
     pub pawn_passed: [[i8; 7]; 2],
     pub pawn_passed_notblocked: [[i8; 7]; 2],
@@ -177,7 +177,7 @@ impl Trace {
         evaluate_single(&mut pawn_res, self.pawn_doubled, &params.pawn_doubled);
         evaluate_single(&mut pawn_res, self.pawn_isolated, &params.pawn_isolated);
         evaluate_single(&mut pawn_res, self.pawn_backward, &params.pawn_backward);
-        evaluate_single(&mut pawn_res, self.pawn_supported, &params.pawn_supported);
+        evaluate_psqt(&mut pawn_res, &self.pawn_supported, &params.pawn_supported);
         evaluate_single(
             &mut pawn_res,
             self.pawn_attack_center,
@@ -262,7 +262,7 @@ impl Trace {
             pawn_doubled: [0; 2],
             pawn_isolated: [0; 2],
             pawn_backward: [0; 2],
-            pawn_supported: [0; 2],
+            pawn_supported: [[[0; 8]; 8]; 2],
             pawn_attack_center: [0; 2],
             pawn_passed: [[0; 7]; 2],
             pawn_passed_notblocked: [[0; 7]; 2],
