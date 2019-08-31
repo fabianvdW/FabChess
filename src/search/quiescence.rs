@@ -45,21 +45,31 @@ pub fn q_search(
     if check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, current_depth as i16);
     }
-    let static_evaluation = eval_game_state(&game_state);
-    //Stand-Pat pruning
-    let stand_pat = static_evaluation.final_eval * color;
-    if !incheck && stand_pat >= beta {
-        return stand_pat;
-    }
-    if !incheck && stand_pat > alpha {
-        alpha = stand_pat;
-    }
+    let (phase, stand_pat) = if !incheck {
+        let static_evaluation = eval_game_state(&game_state);
 
-    //Apply Big Delta Pruning
-    let diff = alpha - stand_pat - DELTA_PRUNING;
-    //Missing stats
-    if !incheck && diff > 0 && best_move_value(game_state) < diff {
-        return stand_pat;
+        (
+            Some(static_evaluation.phase),
+            Some(static_evaluation.final_eval * color),
+        )
+    } else {
+        (None, None)
+    };
+    if !incheck {
+        //Stand pat
+        let stand_pat = *stand_pat.as_ref().unwrap();
+        if stand_pat >= beta {
+            return stand_pat;
+        }
+        if stand_pat > alpha {
+            alpha = stand_pat;
+        }
+        //Delta pruning
+        let diff = alpha - stand_pat - DELTA_PRUNING;
+        //Missing stats
+        if diff > 0 && best_move_value(game_state) < diff {
+            return stand_pat;
+        }
     }
 
     let mut tt_move: Option<GameMove> = None;
@@ -100,15 +110,15 @@ pub fn q_search(
         }
     }
 
-    let mut hash_move_counter = 0;
+    let hash_move_counter = if has_ttmove { 1 } else { 0 };
     let mut has_legal_move = false;
-    {
-        if has_ttmove {
-            hash_move_counter += 1;
-        }
-    }
+
     su.history.push(game_state.hash, game_state.half_moves == 0);
-    let mut current_max_score = if incheck { STANDARD_SCORE } else { stand_pat };
+    let mut current_max_score = if incheck {
+        STANDARD_SCORE
+    } else {
+        *stand_pat.as_ref().unwrap()
+    };
     let mut has_pv = false;
 
     let mut index = 0;
@@ -125,7 +135,7 @@ pub fn q_search(
                 su.search,
                 current_depth,
                 su.move_list,
-                static_evaluation.phase,
+                phase,
                 stand_pat,
                 alpha,
                 incheck,
@@ -203,7 +213,11 @@ pub fn q_search(
             beta,
             0,
             su.root_pliesplayed,
-            Some(static_evaluation.final_eval),
+            if incheck {
+                None
+            } else {
+                Some(*stand_pat.as_ref().unwrap() * color)
+            },
         );
     }
     current_max_score
@@ -215,8 +229,8 @@ pub fn make_and_evaluate_moves_qsearch(
     search: &mut Search,
     current_depth: usize,
     move_list: &mut MoveList,
-    phase: f64,
-    stand_pat: i16,
+    phase: Option<f64>,
+    stand_pat: Option<i16>,
     alpha: i16,
     incheck: bool,
 ) -> (AdditionalGameStateInformation, usize) {
@@ -230,7 +244,14 @@ pub fn make_and_evaluate_moves_qsearch(
             move_list.graded_moves[current_depth][capture_index] =
                 Some(GradedMove::new(mv_index, 100.0));
         } else {
-            if !incheck && !passes_delta_pruning(mv, phase, stand_pat, alpha) {
+            if !incheck
+                && !passes_delta_pruning(
+                    mv,
+                    *phase.as_ref().unwrap(),
+                    *stand_pat.as_ref().unwrap(),
+                    alpha,
+                )
+            {
                 search.search_statistics.add_q_delta_cutoff();
                 mv_index += 1;
                 continue;
