@@ -57,10 +57,9 @@ pub fn principal_variation_search(
     }
     let is_pv_node = beta - alpha > 1;
     let incheck = in_check(game_state);
-    let is_likelystalemate = !incheck && is_likelystalemate(game_state);
 
-    //Check Extensions and extend if you would drop into q search but estimate a stalemate
-    if incheck && !root || depth_left == 0 && is_likelystalemate {
+    //Check Extensions
+    if incheck && !root {
         depth_left += 1;
     }
 
@@ -135,7 +134,7 @@ pub fn principal_variation_search(
     su.history.push(game_state.hash, game_state.half_moves == 0);
 
     //Make static eval
-    let prunable = !is_pv_node && !incheck && !is_likelystalemate;
+    let prunable = !is_pv_node && !incheck;
     if static_evaluation.is_none()
         && (prunable
             && (depth_left <= STATIC_NULL_MOVE_DEPTH || depth_left >= NULL_MOVE_PRUNING_DEPTH)
@@ -204,33 +203,29 @@ pub fn principal_variation_search(
     }
 
     //Internal Iterative Deepening
-    let mut has_generated_moves = if is_pv_node
-        && !incheck
-        && !is_likelystalemate
-        && pv_table_move.is_none()
-        && tt_move.is_none()
-        && depth_left > 6
-    {
-        su.history.pop();
-        principal_variation_search(
-            alpha,
-            beta,
-            depth_left - 2,
-            &game_state,
-            color,
-            current_depth,
-            su,
-        );
-        su.history.push(game_state.hash, game_state.half_moves == 0);
-        su.search.search_statistics.add_iid_node();
-        if su.search.stop {
-            return STANDARD_SCORE;
-        }
-        tt_move = su.search.pv_table[current_depth].pv[0];
-        true
-    } else {
-        false
-    };
+    let mut has_generated_moves =
+        if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && depth_left > 6
+        {
+            su.history.pop();
+            principal_variation_search(
+                alpha,
+                beta,
+                depth_left - 2,
+                &game_state,
+                color,
+                current_depth,
+                su,
+            );
+            su.history.push(game_state.hash, game_state.half_moves == 0);
+            su.search.search_statistics.add_iid_node();
+            if su.search.stop {
+                return STANDARD_SCORE;
+            }
+            tt_move = su.search.pv_table[current_depth].pv[0];
+            true
+        } else {
+            false
+        };
 
     //Prepare Futility Pruning
     let mut futil_pruning = depth_left <= FUTILITY_DEPTH && !incheck && !root;
@@ -622,79 +617,7 @@ pub fn make_and_evaluate_moves(
         }
     }
 }
-#[inline(always)]
-pub fn is_likelystalemate(game_state: &GameState) -> bool {
-    if (game_state.pieces[BISHOP][WHITE]
-        | game_state.pieces[BISHOP][BLACK]
-        | game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[QUEEN][BLACK])
-        != 0u64
-    {
-        return false;
-    }
-    //Else calculate all legal moves
-    let my_pieces = game_state.pieces[PAWN][game_state.color_to_move]
-        | game_state.pieces[KNIGHT][game_state.color_to_move]
-        | game_state.pieces[BISHOP][game_state.color_to_move]
-        | game_state.pieces[ROOK][game_state.color_to_move]
-        | game_state.pieces[QUEEN][game_state.color_to_move]
-        | game_state.pieces[KING][game_state.color_to_move];
-    let enemy_pieces = game_state.pieces[PAWN][1 - game_state.color_to_move]
-        | game_state.pieces[KNIGHT][1 - game_state.color_to_move]
-        | game_state.pieces[BISHOP][1 - game_state.color_to_move]
-        | game_state.pieces[ROOK][1 - game_state.color_to_move]
-        | game_state.pieces[QUEEN][1 - game_state.color_to_move]
-        | game_state.pieces[KING][1 - game_state.color_to_move];
-    let mut my_knights = game_state.pieces[KNIGHT][game_state.color_to_move];
-    while my_knights != 0u64 {
-        let idx = my_knights.trailing_zeros() as usize;
-        if movegen::knight_attack(idx) & !my_pieces != 0u64 {
-            return false;
-        }
-        my_knights ^= 1u64 << idx;
-    }
-    if movegen::king_attack(
-        game_state.pieces[KING][game_state.color_to_move].trailing_zeros() as usize,
-    ) & !my_pieces
-        != 0u64
-    {
-        return false;
-    }
-    if game_state.color_to_move == WHITE {
-        if movegen::w_pawn_west_targets(game_state.pieces[PAWN][WHITE])
-            | movegen::w_pawn_east_targets(game_state.pieces[PAWN][WHITE])
-                & (game_state.en_passant | enemy_pieces)
-            != 0u64
-        {
-            return false;
-        }
-        if movegen::w_single_push_pawn_targets(
-            game_state.pieces[PAWN][WHITE],
-            !my_pieces & !enemy_pieces,
-        ) != 0u64
-        {
-            return false;
-        }
-    } else {
-        if movegen::b_pawn_west_targets(game_state.pieces[PAWN][BLACK])
-            | movegen::b_pawn_east_targets(game_state.pieces[PAWN][BLACK])
-                & (game_state.en_passant | enemy_pieces)
-            != 0u64
-        {
-            return false;
-        }
-        if movegen::b_single_push_pawn_targets(
-            game_state.pieces[PAWN][BLACK],
-            !my_pieces & !enemy_pieces,
-        ) != 0u64
-        {
-            return false;
-        }
-    }
-    true
-}
+
 #[inline(always)]
 pub fn clear_pv(at_depth: usize, search: &mut Search) {
     let mut index = 0;
@@ -739,18 +662,8 @@ pub fn in_check(game_state: &GameState) -> bool {
     {
         return true;
     }
-
-    let all_pieces = game_state.pieces[PAWN][game_state.color_to_move]
-        | game_state.pieces[KNIGHT][game_state.color_to_move]
-        | game_state.pieces[BISHOP][game_state.color_to_move]
-        | game_state.pieces[ROOK][game_state.color_to_move]
-        | game_state.pieces[QUEEN][game_state.color_to_move]
-        | game_state.pieces[PAWN][1 - game_state.color_to_move]
-        | game_state.pieces[KNIGHT][1 - game_state.color_to_move]
-        | game_state.pieces[BISHOP][1 - game_state.color_to_move]
-        | game_state.pieces[ROOK][1 - game_state.color_to_move]
-        | game_state.pieces[QUEEN][1 - game_state.color_to_move]
-        | game_state.pieces[KING][1 - game_state.color_to_move];
+    let all_pieces = game_state.get_pieces_from_side_without_king(game_state.color_to_move)
+        | game_state.get_pieces_from_side(1 - game_state.color_to_move);
     if movegen::bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
         & (game_state.pieces[BISHOP][1 - game_state.color_to_move]
             | game_state.pieces[QUEEN][1 - game_state.color_to_move])

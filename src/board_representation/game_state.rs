@@ -680,6 +680,25 @@ impl GameState {
         }
         hash
     }
+
+    #[inline(always)]
+    pub fn get_pieces_from_side(&self, side: usize) -> u64 {
+        self.get_pieces_from_side_without_king(side) | self.pieces[KING][side]
+    }
+
+    #[inline(always)]
+    pub fn get_pieces_from_side_without_king(&self, side: usize) -> u64 {
+        self.pieces[PAWN][side]
+            | self.pieces[KNIGHT][side]
+            | self.pieces[BISHOP][side]
+            | self.pieces[ROOK][side]
+            | self.pieces[QUEEN][side]
+    }
+
+    #[inline(always)]
+    pub fn get_all_pieces(&self) -> u64 {
+        self.get_pieces_from_side(WHITE) | self.get_pieces_from_side(BLACK)
+    }
 }
 impl Clone for GameState {
     fn clone(&self) -> Self {

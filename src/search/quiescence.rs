@@ -342,7 +342,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool, gain: &mut Vec<i1
         | game_state.pieces[QUEEN][WHITE]
         | game_state.pieces[QUEEN][BLACK];
     let mut from_set = 1u64 << mv.from;
-    let mut occ = get_occupied_board(&game_state);
+    let mut occ = game_state.get_all_pieces();
     let mut attadef = attacks_to(&game_state, mv.to, occ);
     gain[0] = capture_value(&mv);
     let mut color_to_move = game_state.color_to_move;
@@ -448,22 +448,6 @@ pub fn piece_value(piece_type: PieceType) -> i16 {
         PieceType::Queen => PIECE_VALUES[QUEEN],
         PieceType::King => PIECE_VALUES[KING],
     }
-}
-
-#[inline(always)]
-pub fn get_occupied_board(game_state: &GameState) -> u64 {
-    game_state.pieces[PAWN][WHITE]
-        | game_state.pieces[KNIGHT][WHITE]
-        | game_state.pieces[BISHOP][WHITE]
-        | game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[KING][WHITE]
-        | game_state.pieces[PAWN][BLACK]
-        | game_state.pieces[KNIGHT][BLACK]
-        | game_state.pieces[BISHOP][BLACK]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][BLACK]
-        | game_state.pieces[KING][BLACK]
 }
 
 #[inline(always)]

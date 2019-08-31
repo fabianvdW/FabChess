@@ -10,6 +10,7 @@ pub struct Trace {
     pub pawn_backward: [i8; 2],
     pub pawn_supported: [[[i8; 8]; 8]; 2],
     pub pawn_attack_center: [i8; 2],
+    pub pawn_mobility: [i8; 2],
     pub pawn_passed: [[i8; 7]; 2],
     pub pawn_passed_notblocked: [[i8; 7]; 2],
     pub knight_supported: [i8; 2],
@@ -183,6 +184,7 @@ impl Trace {
             self.pawn_attack_center,
             &params.pawn_attack_center,
         );
+        evaluate_single(&mut pawn_res, self.pawn_mobility, &params.pawn_mobility);
         for i in 0..7 {
             evaluate_single2(
                 &mut pawn_res,
@@ -264,6 +266,7 @@ impl Trace {
             pawn_backward: [0; 2],
             pawn_supported: [[[0; 8]; 8]; 2],
             pawn_attack_center: [0; 2],
+            pawn_mobility: [0; 2],
             pawn_passed: [[0; 7]; 2],
             pawn_passed_notblocked: [[0; 7]; 2],
             knight_supported: [0; 2],

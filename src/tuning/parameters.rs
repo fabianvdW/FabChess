@@ -25,6 +25,7 @@ pub struct Parameters {
     pub pawn_backward: [f64; 2],
     pub pawn_supported: [[[f64; 8]; 8]; 2],
     pub pawn_attack_center: [f64; 2],
+    pub pawn_mobility: [f64; 2],
     pub pawn_passed: [[f64; 7]; 2],
     pub pawn_passed_notblocked: [[f64; 7]; 2],
     pub knight_supported: [f64; 2],
@@ -160,6 +161,14 @@ impl Parameters {
         res_str.push_str(&format!(
             "pub const PAWN_ATTACK_CENTER_EG: i16 = {};\n",
             self.pawn_attack_center[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const PAWN_MOBILITY_MG: i16 = {};\n",
+            self.pawn_mobility[MG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const PAWN_MOBILITY_EG: i16 = {};\n",
+            self.pawn_mobility[EG].round() as isize
         ));
         res_str.push_str(&format!(
             "pub const PAWN_PASSED_VALUES_MG: [i16;7] = {};\n",
@@ -474,6 +483,7 @@ impl Parameters {
                 f64::from(PAWN_ATTACK_CENTER_MG),
                 f64::from(PAWN_ATTACK_CENTER_EG),
             ],
+            pawn_mobility: [f64::from(PAWN_MOBILITY_MG), f64::from(PAWN_MOBILITY_EG)],
             pawn_passed,
             pawn_passed_notblocked,
             knight_supported: [
@@ -534,6 +544,7 @@ impl Parameters {
             pawn_backward: [0.; 2],
             pawn_supported: [[[0.; 8]; 8]; 2],
             pawn_attack_center: [0.; 2],
+            pawn_mobility: [0.; 2],
             pawn_passed: [[0.; 7]; 2],
             pawn_passed_notblocked: [[0.; 7]; 2],
             knight_supported: [0.; 2],
@@ -583,6 +594,7 @@ impl Parameters {
             self.pawn_isolated[i] += gradient.pawn_isolated[i] / norm;
             self.pawn_backward[i] += gradient.pawn_backward[i] / norm;
             self.pawn_attack_center[i] += gradient.pawn_attack_center[i] / norm;
+            self.pawn_mobility[i] += gradient.pawn_mobility[i] / norm;
             self.knight_supported[i] += gradient.knight_supported[i] / norm;
             self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
             self.rook_on_seventh[i] += gradient.rook_on_seventh[i] / norm;

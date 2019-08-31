@@ -289,12 +289,7 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16
 pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
     let side = if white { WHITE } else { BLACK };
 
-    let my_pieces = g.pieces[PAWN][side]
-        | g.pieces[KNIGHT][side]
-        | g.pieces[BISHOP][side]
-        | g.pieces[ROOK][side]
-        | g.pieces[QUEEN][side]
-        | g.pieces[KING][side];
+    let my_pieces = g.get_pieces_from_side(side);
     let enemy_king_attackable = if white {
         bitboards::KING_ZONE_BLACK[g.pieces[KING][1 - side].trailing_zeros() as usize]
     } else {
@@ -306,12 +301,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
             | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
     };
-    let all_pieces_without_enemy_king = my_pieces
-        | g.pieces[PAWN][1 - side]
-        | g.pieces[KNIGHT][1 - side]
-        | g.pieces[BISHOP][1 - side]
-        | g.pieces[ROOK][1 - side]
-        | g.pieces[QUEEN][1 - side];
+    let all_pieces_without_enemy_king = my_pieces | g.get_pieces_from_side_without_king(1 - side);
 
     //Knights
     let mut knight_attackers: i16 = 0;
@@ -589,7 +579,7 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i
 pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
     let (mut mg_res, mut eg_res) = (0i16, 0i16);
     let side = if white { WHITE } else { BLACK };
-
+    let empty = !g.get_all_pieces();
     //Bitboards
     let pawn_file_fill = bitboards::file_fill(g.pieces[PAWN][side]);
     let front_span = if white {
@@ -604,13 +594,18 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
     };
     enemy_front_spans |=
         bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
-    let my_pawn_attacks = if white {
-        movegen::w_pawn_west_targets(g.pieces[PAWN][side])
-            | movegen::w_pawn_east_targets(g.pieces[PAWN][side])
+    let (my_west_attacks, my_east_attacks) = if white {
+        (
+            movegen::w_pawn_west_targets(g.pieces[PAWN][side]),
+            movegen::w_pawn_east_targets(g.pieces[PAWN][side]),
+        )
     } else {
-        movegen::b_pawn_west_targets(g.pieces[PAWN][side])
-            | movegen::b_pawn_east_targets(g.pieces[PAWN][side])
+        (
+            movegen::b_pawn_west_targets(g.pieces[PAWN][side]),
+            movegen::b_pawn_east_targets(g.pieces[PAWN][side]),
+        )
     };
+    let my_pawn_attacks = my_west_attacks | my_east_attacks;
     let enemy_pawn_attacks = if white {
         movegen::b_pawn_west_targets(g.pieces[PAWN][1 - side])
             | movegen::b_pawn_east_targets(g.pieces[PAWN][1 - side])
@@ -618,13 +613,19 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
             | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
     };
+    let (my_pawn_pushes, my_pawn_double_pushes) = if white {
+        (
+            movegen::w_single_push_pawn_targets(g.pieces[PAWN][side], empty),
+            movegen::w_double_push_pawn_targets(g.pieces[PAWN][side], empty),
+        )
+    } else {
+        (
+            movegen::b_single_push_pawn_targets(g.pieces[PAWN][side], empty),
+            movegen::b_double_push_pawn_targets(g.pieces[PAWN][side], empty),
+        )
+    };
     let is_attackable = bitboards::west_one(front_span) | bitboards::east_one(front_span);
-    let enemy_pieces = g.pieces[PAWN][1 - side]
-        | g.pieces[KNIGHT][1 - side]
-        | g.pieces[BISHOP][1 - side]
-        | g.pieces[ROOK][1 - side]
-        | g.pieces[QUEEN][1 - side]
-        | g.pieces[KING][1 - side];
+    let enemy_pieces = g.get_pieces_from_side(1 - side);
 
     let doubled_pawns = (g.pieces[PAWN][side] & front_span).count_ones() as i16;
     let isolated_pawns = (g.pieces[PAWN][side]
@@ -639,20 +640,24 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         & !is_attackable)
         .count_ones() as i16;
     let mut supported_pawns = g.pieces[PAWN][side] & my_pawn_attacks;
+    let _supported_amt = supported_pawns.count_ones() as usize;
+    let mut mg_supp = 0;
+    let mut eg_supp = 0;
     while supported_pawns != 0u64 {
         let mut index = supported_pawns.trailing_zeros() as usize;
         supported_pawns ^= 1u64 << index;
         if !white {
             index = 63 - index;
         }
-        mg_res += PAWN_SUPPORTED_VALUE_MG[index / 8][index % 8];
-        eg_res += PAWN_SUPPORTED_VALUE_EG[index / 8][index % 8];
+        mg_supp += PAWN_SUPPORTED_VALUE_MG[index / 8][index % 8];
+        eg_supp += PAWN_SUPPORTED_VALUE_EG[index / 8][index % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.pawn_supported[side][index / 8][index % 8] += 1;
         }
     }
-
+    mg_res += mg_supp;
+    eg_res += eg_supp;
     let center_attack_pawns = (g.pieces[PAWN][side]
         & if white {
             bitboards::south_east_one(*bitboards::INNER_CENTER)
@@ -662,21 +667,27 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
                 | bitboards::north_west_one(*bitboards::INNER_CENTER)
         })
     .count_ones() as i16;
-
+    let pawn_mobility = (my_west_attacks.count_ones()
+        + my_east_attacks.count_ones()
+        + my_pawn_pushes.count_ones()
+        + my_pawn_double_pushes.count_ones()) as i16;
     mg_res += doubled_pawns * PAWN_DOUBLED_VALUE_MG
         + isolated_pawns * PAWN_ISOLATED_VALUE_MG
         + backward_pawns * PAWN_BACKWARD_VALUE_MG
-        + center_attack_pawns * PAWN_ATTACK_CENTER_MG;
+        + center_attack_pawns * PAWN_ATTACK_CENTER_MG
+        + pawn_mobility * PAWN_MOBILITY_MG;
     eg_res += doubled_pawns * PAWN_DOUBLED_VALUE_EG
         + isolated_pawns * PAWN_ISOLATED_VALUE_EG
         + backward_pawns * PAWN_BACKWARD_VALUE_EG
-        + center_attack_pawns * PAWN_ATTACK_CENTER_EG;
+        + center_attack_pawns * PAWN_ATTACK_CENTER_EG
+        + pawn_mobility * PAWN_MOBILITY_EG;
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.pawn_doubled[side] = doubled_pawns as i8;
         _eval.trace.pawn_isolated[side] = isolated_pawns as i8;
         _eval.trace.pawn_backward[side] = backward_pawns as i8;
         _eval.trace.pawn_attack_center[side] = center_attack_pawns as i8;
+        _eval.trace.pawn_mobility[side] = pawn_mobility as i8;
     }
     //Passers
     let mut passed_pawns: u64 = g.pieces[PAWN][side]
@@ -748,15 +759,19 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         ));
         log(&format!(
             "\tSupported: {} -> ({} , {})\n",
-            supported_pawns,
-            PAWN_SUPPORTED_VALUE_MG * supported_pawns,
-            PAWN_SUPPORTED_VALUE_EG * supported_pawns
+            _supported_amt, mg_supp, eg_supp
         ));
         log(&format!(
             "\tAttack Center: {} -> ({} , {})\n",
             center_attack_pawns,
             PAWN_ATTACK_CENTER_MG * center_attack_pawns,
             PAWN_ATTACK_CENTER_EG * center_attack_pawns
+        ));
+        log(&format!(
+            "\tMobility: {} -> ({} , {})\n",
+            pawn_mobility,
+            PAWN_MOBILITY_MG * pawn_mobility,
+            PAWN_MOBILITY_EG * pawn_mobility
         ));
         log(&format!(
             "\tPasser Blocked/Not Blocked: {} , {} -> MG/EG({} , {})\n",

@@ -116,6 +116,7 @@ pub fn add_gradient(gradient: &mut [f64; 2], trace: [i8; 2], start_of_gradient: 
     gradient[MG] += start_of_gradient * devaldmg * x;
     gradient[EG] += start_of_gradient * devaldeg * x;
 }
+
 pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) -> (Parameters, f64) {
     let mut gradient = Parameters::zero();
     let multiplier: f64 = 2. * lr / (to - from) as f64;
@@ -178,6 +179,12 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             add_gradient(
                 &mut gradient.pawn_attack_center,
                 pos.trace.pawn_attack_center,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.pawn_mobility,
+                pos.trace.pawn_mobility,
                 start_of_gradient,
                 phase,
             );
@@ -391,6 +398,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         norm += gradient.pawn_isolated[i].powf(2.);
         norm += gradient.pawn_backward[i].powf(2.);
         norm += gradient.pawn_attack_center[i].powf(2.);
+        norm += gradient.pawn_mobility[i].powf(2.);
         for j in 0..7 {
             norm += gradient.pawn_passed[i][j].powf(2.);
             norm += gradient.pawn_passed_notblocked[i][j].powf(2.);
