@@ -191,6 +191,18 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         }
         //Passed pawns
         if TUNE_PASSED || TUNE_ALL {
+            add_gradient(
+                &mut gradient.rook_behind_support_passer,
+                pos.trace.rook_behind_support_passer,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.rook_behind_enemy_passer,
+                pos.trace.rook_behind_enemy_passer,
+                start_of_gradient,
+                phase,
+            );
             for i in 0..7 {
                 let x =
                     f64::from(pos.trace.pawn_passed[WHITE][i] - pos.trace.pawn_passed[BLACK][i]);
@@ -403,6 +415,8 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             norm += gradient.pawn_passed[i][j].powf(2.);
             norm += gradient.pawn_passed_notblocked[i][j].powf(2.);
         }
+        norm += gradient.rook_behind_support_passer[i].powf(2.);
+        norm += gradient.rook_behind_enemy_passer[i].powf(2.);
         norm += gradient.knight_supported[i].powf(2.);
         for j in 0..8 {
             for k in 0..8 {

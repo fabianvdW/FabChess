@@ -28,6 +28,8 @@ pub struct Parameters {
     pub pawn_mobility: [f64; 2],
     pub pawn_passed: [[f64; 7]; 2],
     pub pawn_passed_notblocked: [[f64; 7]; 2],
+    pub rook_behind_support_passer: [f64; 2],
+    pub rook_behind_enemy_passer: [f64; 2],
     pub knight_supported: [f64; 2],
     pub knight_outpost_table: [[[f64; 8]; 8]; 2],
     pub rook_on_open: [f64; 2],
@@ -185,6 +187,22 @@ impl Parameters {
         res_str.push_str(&format!(
             "pub const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16;7] = {};\n",
             array_to_string(&self.pawn_passed_notblocked[EG])
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_BEHIND_SUPPORT_PASSER_MG: i16 = {};\n",
+            self.rook_behind_support_passer[MG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_BEHIND_SUPPORT_PASSER_EG: i16 = {};\n",
+            self.rook_behind_support_passer[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_BEHIND_ENEMY_PASSER_MG: i16 = {};\n",
+            self.rook_behind_enemy_passer[MG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_BEHIND_ENEMY_PASSER_EG: i16 = {};\n",
+            self.rook_behind_enemy_passer[EG].round() as isize
         ));
         res_str.push_str(&format!(
             "pub const KNIGHT_SUPPORTED_BY_PAWN_MG: i16 = {};\n",
@@ -486,6 +504,14 @@ impl Parameters {
             pawn_mobility: [f64::from(PAWN_MOBILITY_MG), f64::from(PAWN_MOBILITY_EG)],
             pawn_passed,
             pawn_passed_notblocked,
+            rook_behind_support_passer: [
+                f64::from(ROOK_BEHIND_SUPPORT_PASSER_MG),
+                f64::from(ROOK_BEHIND_SUPPORT_PASSER_EG),
+            ],
+            rook_behind_enemy_passer: [
+                f64::from(ROOK_BEHIND_ENEMY_PASSER_MG),
+                f64::from(ROOK_BEHIND_ENEMY_PASSER_EG),
+            ],
             knight_supported: [
                 f64::from(KNIGHT_SUPPORTED_BY_PAWN_MG),
                 f64::from(KNIGHT_SUPPORTED_BY_PAWN_EG),
@@ -547,6 +573,8 @@ impl Parameters {
             pawn_mobility: [0.; 2],
             pawn_passed: [[0.; 7]; 2],
             pawn_passed_notblocked: [[0.; 7]; 2],
+            rook_behind_support_passer: [0.; 2],
+            rook_behind_enemy_passer: [0.; 2],
             knight_supported: [0.; 2],
             knight_outpost_table: [[[0.; 8]; 8]; 2],
             rook_on_open: [0.; 2],
@@ -595,6 +623,8 @@ impl Parameters {
             self.pawn_backward[i] += gradient.pawn_backward[i] / norm;
             self.pawn_attack_center[i] += gradient.pawn_attack_center[i] / norm;
             self.pawn_mobility[i] += gradient.pawn_mobility[i] / norm;
+            self.rook_behind_support_passer[i] += gradient.rook_behind_support_passer[i] / norm;
+            self.rook_behind_enemy_passer[i] += gradient.rook_behind_enemy_passer[i] / norm;
             self.knight_supported[i] += gradient.knight_supported[i] / norm;
             self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
             self.rook_on_seventh[i] += gradient.rook_on_seventh[i] / norm;

@@ -700,6 +700,25 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         & !enemy_front_spans;
     let (mut passer_mg, mut passer_eg, mut _passer_normal, mut _passer_notblocked) =
         (0i16, 0i16, 0, 0);
+    let behind_passers = if white {
+        bitboards::b_front_span(passed_pawns)
+    } else {
+        bitboards::w_front_span(passed_pawns)
+    };
+    let rooks_support_passer =
+        (behind_passers & (g.pieces[ROOK][side] | g.pieces[QUEEN][side])).count_ones() as i16;
+    let enemy_rooks_attack_passer = (behind_passers
+        & (g.pieces[ROOK][1 - side] | g.pieces[QUEEN][1 - side]))
+        .count_ones() as i16;
+    mg_res += rooks_support_passer * ROOK_BEHIND_SUPPORT_PASSER_MG
+        + enemy_rooks_attack_passer * ROOK_BEHIND_ENEMY_PASSER_MG;
+    eg_res += rooks_support_passer * ROOK_BEHIND_SUPPORT_PASSER_EG
+        + enemy_rooks_attack_passer * ROOK_BEHIND_ENEMY_PASSER_EG;
+    #[cfg(feature = "texel-tuning")]
+    {
+        _eval.trace.rook_behind_support_passer[side] = rooks_support_passer as i8;
+        _eval.trace.rook_behind_enemy_passer[side] = enemy_rooks_attack_passer as i8;
+    }
     while passed_pawns != 0u64 {
         let idx = passed_pawns.trailing_zeros() as usize;
         //Passed and blocked
@@ -776,6 +795,18 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         log(&format!(
             "\tPasser Blocked/Not Blocked: {} , {} -> MG/EG({} , {})\n",
             _passer_normal, _passer_notblocked, passer_mg, passer_eg
+        ));
+        log(&format!(
+            "\tRook behind passer: {} -> ({} , {})\n",
+            rooks_support_passer,
+            ROOK_BEHIND_SUPPORT_PASSER_MG * rooks_support_passer,
+            ROOK_BEHIND_SUPPORT_PASSER_EG * rooks_support_passer
+        ));
+        log(&format!(
+            "\tEnemy Rook behind passer: {} -> ({} , {})\n",
+            enemy_rooks_attack_passer,
+            ROOK_BEHIND_ENEMY_PASSER_MG * enemy_rooks_attack_passer,
+            ROOK_BEHIND_ENEMY_PASSER_EG * enemy_rooks_attack_passer
         ));
         log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
     }

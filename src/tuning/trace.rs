@@ -13,6 +13,8 @@ pub struct Trace {
     pub pawn_mobility: [i8; 2],
     pub pawn_passed: [[i8; 7]; 2],
     pub pawn_passed_notblocked: [[i8; 7]; 2],
+    pub rook_behind_support_passer: [i8; 2],
+    pub rook_behind_enemy_passer: [i8; 2],
     pub knight_supported: [i8; 2],
     pub knight_outpost_table: [[[i8; 8]; 8]; 2],
     pub rook_on_open: [i8; 2],
@@ -201,6 +203,16 @@ impl Trace {
                 params.pawn_passed_notblocked[EG][i],
             );
         }
+        evaluate_single(
+            &mut pawn_res,
+            self.rook_behind_support_passer,
+            &params.rook_behind_support_passer,
+        );
+        evaluate_single(
+            &mut pawn_res,
+            self.rook_behind_enemy_passer,
+            &params.rook_behind_enemy_passer,
+        );
 
         //Piece values
         let mut piecevalue_res = (0., 0.);
@@ -269,6 +281,8 @@ impl Trace {
             pawn_mobility: [0; 2],
             pawn_passed: [[0; 7]; 2],
             pawn_passed_notblocked: [[0; 7]; 2],
+            rook_behind_support_passer: [0; 2],
+            rook_behind_enemy_passer: [0; 2],
             knight_supported: [0; 2],
             knight_outpost_table: [[[0; 8]; 8]; 2],
             rook_on_open: [0; 2],
