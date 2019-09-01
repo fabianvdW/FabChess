@@ -286,9 +286,16 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16
     (mg_res, eg_res)
 }
 
-pub fn defended_squares(white: bool, g: &GameState) -> u64 {
+pub fn defended_by_minors(white: bool, g: &GameState) -> u64 {
     let mut def = 0u64;
     let side = if white { WHITE } else { BLACK };
+    def |= if white {
+        movegen::w_pawn_west_targets(g.pieces[PAWN][side])
+            | movegen::w_pawn_east_targets(g.pieces[PAWN][side])
+    } else {
+        movegen::b_pawn_west_targets(g.pieces[PAWN][side])
+            | movegen::b_pawn_east_targets(g.pieces[PAWN][side])
+    };
     let all_pieces = g.get_all_pieces();
     let mut knights = g.pieces[KNIGHT][side];
     while knights != 0u64 {
@@ -302,25 +309,47 @@ pub fn defended_squares(white: bool, g: &GameState) -> u64 {
         def |= bishop_attack(index, all_pieces);
         bishops ^= 1u64 << index
     }
+
     def
 }
+
+pub fn defend_by_majors(white: bool, g: &GameState) -> u64 {
+    let mut def = 0u64;
+    let side = if white { WHITE } else { BLACK };
+    let all_pieces = g.get_all_pieces();
+    let mut rooks = g.pieces[ROOK][side];
+    while rooks != 0u64 {
+        let index = rooks.trailing_zeros() as usize;
+        def |= rook_attack(index, all_pieces);
+        rooks ^= 1u64 << index;
+    }
+    let mut queens = g.pieces[QUEEN][side];
+    while queens != 0u64 {
+        let index = queens.trailing_zeros() as usize;
+        def |= rook_attack(index, all_pieces) | bishop_attack(index, all_pieces);
+        queens ^= 1u64 << index;
+    }
+    def
+}
+
 pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
     let side = if white { WHITE } else { BLACK };
 
     let my_pieces = g.get_pieces_from_side(side);
+    let defended_by_minors = defended_by_minors(!white, g);
+    let defended_squares = defended_by_minors | defend_by_majors(!white, g);
+    let enemy_king_idx = g.pieces[KING][1 - side].trailing_zeros() as usize;
     let enemy_king_attackable = if white {
-        bitboards::KING_ZONE_BLACK[g.pieces[KING][1 - side].trailing_zeros() as usize]
+        bitboards::KING_ZONE_BLACK[enemy_king_idx]
     } else {
-        bitboards::KING_ZONE_WHITE[g.pieces[KING][1 - side].trailing_zeros() as usize]
-    } & !if white {
-        movegen::b_pawn_west_targets(g.pieces[PAWN][1 - side])
-            | movegen::b_pawn_east_targets(g.pieces[PAWN][1 - side])
-    } else {
-        movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
-            | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
-    } & !defended_squares(!white, g);
+        bitboards::KING_ZONE_WHITE[enemy_king_idx]
+    } & !defended_by_minors;
     let all_pieces_without_enemy_king = my_pieces | g.get_pieces_from_side_without_king(1 - side);
 
+    let knight_checks = knight_attack(enemy_king_idx);
+    let all_pieces = g.get_all_pieces();
+    let bishop_checks = bishop_attack(enemy_king_idx, all_pieces);
+    let rook_checks = rook_attack(enemy_king_idx, all_pieces);
     //Knights
     let mut knight_attackers: i16 = 0;
     let mut knight_attacker_values: i16 = 0;
@@ -337,11 +366,17 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
             _eval.trace.knight_mobility[side][mobility] += 1;
         }
 
+        let has_safe_check = (targets & knight_checks & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
-        if enemy_king_attacks != 0u64 {
+        if has_safe_check || enemy_king_attacks != 0u64 {
             knight_attackers += 1;
-            knight_attacker_values += KNIGHT_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         }
+        knight_attacker_values += KNIGHT_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        knight_attacker_values += if has_safe_check {
+            KNIGHT_ATTACK_WORTH
+        } else {
+            0
+        };
         knights ^= 1u64 << idx;
     }
     //Bishops
@@ -367,11 +402,17 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         {
             _eval.trace.bishop_mobility[side][mobility] += 1;
         }
+        let has_safe_check = (targets & bishop_checks & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
-        if enemy_king_attacks != 0u64 {
+        if has_safe_check || enemy_king_attacks != 0u64 {
             bishop_attackers += 1;
-            bishop_attacker_values += BISHOP_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         }
+        bishop_attacker_values += BISHOP_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        bishop_attacker_values += if has_safe_check {
+            BISHOP_ATTACK_WORTH
+        } else {
+            0
+        };
         bishops ^= 1u64 << idx;
     }
 
@@ -396,11 +437,13 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         {
             _eval.trace.rook_mobility[side][mobility] += 1;
         }
+        let has_safe_check = (targets & rook_checks & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
-        if enemy_king_attacks != 0u64 {
+        if has_safe_check || enemy_king_attacks != 0u64 {
             rook_attackers += 1;
-            rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         }
+        rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        rook_attacker_values += if has_safe_check { ROOK_ATTACK_WORTH } else { 0 };
         rooks ^= 1u64 << idx;
     }
     #[cfg(feature = "texel-tuning")]
@@ -425,11 +468,17 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         {
             _eval.trace.queen_mobility[side][mobility] += 1;
         }
+        let has_safe_check = (targets & (bishop_checks | rook_checks) & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
-        if enemy_king_attacks != 0u64 {
+        if has_safe_check || enemy_king_attacks != 0u64 {
             queen_attackers += 1;
-            queen_attacker_values += QUEEN_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         }
+        queen_attacker_values += QUEEN_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        queen_attacker_values += if has_safe_check {
+            QUEEN_ATTACK_WORTH
+        } else {
+            0
+        };
         queens ^= 1u64 << idx;
     }
     let attack = ((SAFETY_TABLE[(knight_attacker_values

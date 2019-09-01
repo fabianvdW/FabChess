@@ -38,7 +38,7 @@ pub const TUNE_PSQT: bool = false;
 
 //const BATCH_SIZE: usize = 2500000;
 //const BATCH_SIZE: usize = 725000;
-const BATCH_SIZE: usize = 50000;
+const BATCH_SIZE: usize = 100000;
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
         panic!("Feature texel-tuning has to be enabled");
