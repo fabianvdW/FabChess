@@ -286,6 +286,24 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16
     (mg_res, eg_res)
 }
 
+pub fn defended_squares(white: bool, g: &GameState) -> u64 {
+    let mut def = 0u64;
+    let side = if white { WHITE } else { BLACK };
+    let all_pieces = g.get_all_pieces();
+    let mut knights = g.pieces[KNIGHT][side];
+    while knights != 0u64 {
+        let index = knights.trailing_zeros() as usize;
+        def |= knight_attack(index);
+        knights ^= 1u64 << index
+    }
+    let mut bishops = g.pieces[BISHOP][side];
+    while bishops != 0u64 {
+        let index = bishops.trailing_zeros() as usize;
+        def |= bishop_attack(index, all_pieces);
+        bishops ^= 1u64 << index
+    }
+    def
+}
 pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
     let side = if white { WHITE } else { BLACK };
 
@@ -300,7 +318,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
     } else {
         movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
             | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
-    };
+    } & !defended_squares(!white, g);
     let all_pieces_without_enemy_king = my_pieces | g.get_pieces_from_side_without_king(1 - side);
 
     //Knights
