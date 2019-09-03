@@ -23,7 +23,7 @@ uci
 go infinite
 ...
 ```
-For a faster compile including POPCNT, run
+For a faster compile including popcount operatiosn for new processors, run
 ```
 cargo rustc --release --bin fabchess -- -C target-cpu=native
 ```
@@ -33,7 +33,7 @@ The binary will be in `./target/release`
 FabChess supports more commands than the standard UCI specifies.
 
 ### Static evaluation
-Use `static` to get a static evaluation for the position
+Use `static` to get a static evaluation of the position
 ```
 > position startpos
 > static
@@ -45,6 +45,7 @@ If you compile FabChess with an extra flag, it will also write a detailed overvi
 !!! Make sure not to run any go command with this, else it will quite literally produce a lot of text !!!
 ```
 > cargo run --features "display-eval"
+> position startpos
 > static
 < cp 38
 ```
@@ -200,7 +201,7 @@ Phase: 128
 Final Result: (38 * 128 + 31 * (128.0 - 128))/128.0 -> 38
 ```
 ### Perft
-You can run perft on arbitrary position. Note that if there are no kings on the board or the position is otherwise illegal, FabChess will crash (intended)
+You can run perft on an arbitrary position. Note that if there are is no king on the board for either side or the position is otherwise illegal, FabChess will crash (intended).
 ```
 > position startpos
 > perft 6
