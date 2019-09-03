@@ -1,32 +1,71 @@
 # FabChess
 UCI compliant chess engine in Rust.
-Features:
-## Movegeneration
-Magic bitboards for slider pieces and look-up tables for the rest of the pieces.
-Using only legal move generation.
-Speed about 100MNPS with bulk counting, about 20-25MNPS without bulk counting in perft 6 from startpos.
-## Search
-Principal Variaton Search
-Aspiration Window
-Null Move Pruning
-Futility Pruning
-Late move reductions
-Check extensions
-Move sorting with: Relative History Heuristic, Killer Heuristic, TT Lookup
-Quiesence search with SEE Pruning and standing pat.
 
-## Evaluation
-Is yet to support Texel tuning which will probaply increase Elo by quite a margin.
-Tapered eval from Stockfish.
-Safety Table is also still a copy from Stockfish's implementation.
+This is only an engine, connect it with a gui for real usage.
 
-## Referee
-FabChess also comes with a referee which supports 1 vs 1 Engine tourneys for any UCI compliant chess engine.
-The referee can load any opening and supports any Timecontrol.
-It can also load different epd testsuits (such as the Strategic Test suite).
+## Wiki
+Interested in how it works?
+
+Check out the wiki at: https://github.com/fabianvdW/FabChess/wiki
+## Setup
+Download latest realease for your OS in the release section.
+
+If you want to compile from source, make sure you have the latest version of Rust and Cargo installed, then do
+```
+git clone https://github.com/fabianvdW/FabChess.git
+cd FabChess
+cargo run --release
+...
+uci
+< id name FabChess v1.10
+< id author Fabian von der Warth, Contributor: Erik Imgrund
+< uciok
+go infinite
+...
+```
+
+## Usage
+FabChess supports more commands than the standard UCI specifies.
+
+Use `d` for a debug print of the board
+```
+> position startpos
+> d
+<
++---+---+---+---+---+---+---+---+
+| r | n | b | q | k | b | n | r |
++---+---+---+---+---+---+---+---+
+| p | p | p | p | p | p | p | p |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+| P | P | P | P | P | P | P | P |
++---+---+---+---+---+---+---+---+
+| R | N | B | Q | K | B | N | R |
++---+---+---+---+---+---+---+---+
+Castle Rights:
+White Kingside: true
+White Queenside: true
+Black Kingside: true
+Black Queenside: true
+En Passant Possible: 0
+Half-Counter: 0
+Full-Counter: 1
+Side to Move: 0
+Hash: 7954168898935982804
+
+FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+```
 
 ## Inspired by:
 
 - https://www.chessprogramming.org/Main_Page
 - Stockfish
 - Ethereal
+- Asymptote
