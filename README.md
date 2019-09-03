@@ -23,7 +23,7 @@ uci
 go infinite
 ...
 ```
-For a faster compile including popcount operatiosn for new processors, run
+For a faster compile including popcount operation for new processors, run
 ```
 cargo rustc --release --bin fabchess -- -C target-cpu=native
 ```
@@ -208,7 +208,7 @@ Phase: 128
 Final Result: (38 * 128 + 31 * (128.0 - 128))/128.0 -> 38
 ```
 ### Perft
-You can run perft on an arbitrary position. Note that if there are is no king on the board for either side or the position is otherwise illegal, FabChess will crash (intended).
+You can run perft on an arbitrary position. Note that if there is no king on the board for either side or the position is otherwise illegal, FabChess will crash (intended).
 ```
 > position startpos
 > perft 6
