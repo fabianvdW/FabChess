@@ -8,7 +8,7 @@ Interested in how it works?
 
 Check out the wiki at: https://github.com/fabianvdW/FabChess/wiki
 ## Setup
-Download latest realease for your OS in the release section.
+Download latest release for your OS in the release section.
 
 If you want to compile from source, make sure you have the latest version of Rust and Cargo installed, then do
 ```
