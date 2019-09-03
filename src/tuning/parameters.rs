@@ -46,8 +46,8 @@ pub struct Parameters {
     pub bishop_mobility: [[f64; 14]; 2],
     pub rook_mobility: [[f64; 15]; 2],
     pub queen_mobility: [[f64; 28]; 2],
-    pub attack_weight: [f64; 8],
-    pub safety_table: SafetyTable,
+    pub attack_weight: [[f64; 8]; 2],
+    pub safety_table: [SafetyTable; 2],
     pub psqt_pawn: [[[f64; 8]; 8]; 2],
     pub psqt_knight: [[[f64; 8]; 8]; 2],
     pub psqt_bishop: [[[f64; 8]; 8]; 2],
@@ -329,12 +329,20 @@ impl Parameters {
             array_to_string(&self.queen_mobility[EG])
         ));
         res_str.push_str(&format!(
-            "pub const ATTACK_WEIGHT: [i16;8] = {};\n",
-            array_to_string(&self.attack_weight)
+            "pub const ATTACK_WEIGHT_MG: [i16;8] = {};\n",
+            array_to_string(&self.attack_weight[MG])
         ));
         res_str.push_str(&format!(
-            "pub const SAFETY_TABLE: [i16;100] = {};\n",
-            array_to_string(&self.safety_table.safety_table)
+            "pub const SAFETY_TABLE_MG: [i16;100] = {};\n",
+            array_to_string(&self.safety_table[MG].safety_table)
+        ));
+        res_str.push_str(&format!(
+            "pub const ATTACK_WEIGHT_EG: [i16;8] = {};\n",
+            array_to_string(&self.attack_weight[EG])
+        ));
+        res_str.push_str(&format!(
+            "pub const SAFETY_TABLE_EG: [i16;100] = {};\n",
+            array_to_string(&self.safety_table[EG].safety_table)
         ));
         res_str.push_str(&"pub const KNIGHT_ATTACK_WORTH: i16 = 2;\n".to_string());
         res_str.push_str(&"pub const BISHOP_ATTACK_WORTH: i16 = 2;\n".to_string());
@@ -374,6 +382,7 @@ impl Parameters {
         ));
         res_str
     }
+
     pub fn default() -> Self {
         let mut shielding_pawn_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
@@ -435,16 +444,24 @@ impl Parameters {
             queen_mobility[MG][i] = f64::from(QUEEN_MOBILITY_BONUS_MG[i]);
             queen_mobility[EG][i] = f64::from(QUEEN_MOBILITY_BONUS_EG[i]);
         }
-        let mut attack_weight: [f64; 8] = [0.; 8];
+        let mut attack_weight: [[f64; 8]; 2] = [[0.; 8]; 2];
         for i in 0..8 {
-            attack_weight[i] = f64::from(ATTACK_WEIGHT[i]);
+            attack_weight[MG][i] = f64::from(ATTACK_WEIGHT_MG[i]);
+            attack_weight[EG][i] = f64::from(ATTACK_WEIGHT_EG[i]);
         }
-        let mut safety_table: SafetyTable = SafetyTable {
-            safety_table: [0.; 100],
-        };
-        for (i, content) in safety_table.safety_table.iter_mut().enumerate() {
-            *content = f64::from(SAFETY_TABLE[i]);
+        let mut safety_table: [SafetyTable; 2] = [
+            SafetyTable {
+                safety_table: [0.; 100],
+            },
+            SafetyTable {
+                safety_table: [0.; 100],
+            },
+        ];
+        for i in 0..100 {
+            safety_table[MG].safety_table[i] = f64::from(SAFETY_TABLE_MG[i]);
+            safety_table[EG].safety_table[i] = f64::from(SAFETY_TABLE_EG[i]);
         }
+
         let mut psqt_pawn: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
@@ -560,6 +577,7 @@ impl Parameters {
             psqt_king,
         }
     }
+
     pub fn zero() -> Self {
         Parameters {
             tempo_bonus: [0.; 2],
@@ -591,10 +609,15 @@ impl Parameters {
             bishop_mobility: [[0.; 14]; 2],
             rook_mobility: [[0.; 15]; 2],
             queen_mobility: [[0.; 28]; 2],
-            attack_weight: [0.; 8],
-            safety_table: SafetyTable {
-                safety_table: [0.; 100],
-            },
+            attack_weight: [[0.; 8]; 2],
+            safety_table: [
+                SafetyTable {
+                    safety_table: [0.; 100],
+                },
+                SafetyTable {
+                    safety_table: [0.; 100],
+                },
+            ],
             psqt_pawn: [[[0.; 8]; 8]; 2],
             psqt_knight: [[[0.; 8]; 8]; 2],
             psqt_bishop: [[[0.; 8]; 8]; 2],
@@ -682,12 +705,12 @@ impl Parameters {
                 &gradient.queen_mobility[i],
                 norm,
             );
+            apply_gradient_arr(&mut self.attack_weight[i], &gradient.attack_weight[i], norm);
+            apply_gradient_arr(
+                &mut self.safety_table[i].safety_table,
+                &gradient.safety_table[i].safety_table,
+                norm,
+            );
         }
-        apply_gradient_arr(&mut self.attack_weight, &gradient.attack_weight, norm);
-        apply_gradient_arr(
-            &mut self.safety_table.safety_table,
-            &gradient.safety_table.safety_table,
-            norm,
-        );
     }
 }

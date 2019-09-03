@@ -384,18 +384,23 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         }
         //Safety
         if TUNE_ATTACK || TUNE_ALL {
-            gradient.attack_weight[pos.trace.attackers[WHITE] as usize] += start_of_gradient
-                / 100.0
-                * tuner.params.safety_table.safety_table[pos.trace.attacker_value[WHITE] as usize];
-            gradient.safety_table.safety_table[pos.trace.attacker_value[WHITE] as usize] +=
-                start_of_gradient / 100.0
-                    * tuner.params.attack_weight[pos.trace.attackers[WHITE] as usize];
-            gradient.attack_weight[pos.trace.attackers[BLACK] as usize] -= start_of_gradient
-                / 100.0
-                * tuner.params.safety_table.safety_table[pos.trace.attacker_value[BLACK] as usize];
-            gradient.safety_table.safety_table[pos.trace.attacker_value[BLACK] as usize] +=
-                start_of_gradient / 100.0
-                    * tuner.params.attack_weight[pos.trace.attackers[BLACK] as usize];
+            for i in 0..2 {
+                let devaldg = if i == 0 { devaldmg } else { devaldeg };
+                gradient.attack_weight[i][pos.trace.attackers[WHITE] as usize] +=
+                    start_of_gradient * devaldg / 100.0
+                        * tuner.params.safety_table[i].safety_table
+                            [pos.trace.attacker_value[WHITE] as usize];
+                gradient.safety_table[i].safety_table[pos.trace.attacker_value[WHITE] as usize] +=
+                    start_of_gradient * devaldg / 100.0
+                        * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize];
+                gradient.attack_weight[i][pos.trace.attackers[BLACK] as usize] -=
+                    start_of_gradient * devaldg / 100.0
+                        * tuner.params.safety_table[i].safety_table
+                            [pos.trace.attacker_value[BLACK] as usize];
+                gradient.safety_table[i].safety_table[pos.trace.attacker_value[BLACK] as usize] +=
+                    start_of_gradient * devaldg / 100.0
+                        * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize];
+            }
         }
     }
     //Norm gradient
@@ -455,11 +460,15 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
     for i in 0..17 {
         norm += gradient.knight_value_with_pawns[i].powf(2.);
     }
-    for i in 0..8 {
-        norm += gradient.attack_weight[i].powf(2.);
+    for i in 0..2 {
+        for j in 0..8 {
+            norm += gradient.attack_weight[i][j].powf(2.);
+        }
     }
-    for i in 0..100 {
-        norm += gradient.safety_table.safety_table[i].powf(2.);
+    for i in 0..2 {
+        for j in 0..100 {
+            norm += gradient.safety_table[i].safety_table[j].powf(2.);
+        }
     }
     norm = norm.sqrt();
     (gradient, norm / multiplier)

@@ -481,12 +481,20 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         };
         queens ^= 1u64 << idx;
     }
-    let attack = ((SAFETY_TABLE[(knight_attacker_values
+    let attack_mg = ((SAFETY_TABLE_MG[(knight_attacker_values
         + bishop_attacker_values
         + rook_attacker_values
         + queen_attacker_values)
         .min(99) as usize] as isize
-        * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+        * ATTACK_WEIGHT_MG[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+            .min(7) as usize] as isize) as f64
+        / 100.0) as i16;
+    let attack_eg = ((SAFETY_TABLE_EG[(knight_attacker_values
+        + bishop_attacker_values
+        + rook_attacker_values
+        + queen_attacker_values)
+        .min(99) as usize] as isize
+        * ATTACK_WEIGHT_EG[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
             .min(7) as usize] as isize) as f64
         / 100.0) as i16;
     #[cfg(feature = "texel-tuning")]
@@ -506,7 +514,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         + mb_diag_mg
         + rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_MG
         + rooks_onseventh * ROOK_ON_SEVENTH_MG
-        + attack;
+        + attack_mg;
     let eg_res = mk_eg
         + mb_eg
         + mr_eg
@@ -514,7 +522,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         + mb_diag_eg
         + rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_EG
         + rooks_onseventh * ROOK_ON_SEVENTH_EG
-        + attack;
+        + attack_eg;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -566,15 +574,32 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
                 + queen_attacker_values
         ));
         log(&format!(
-            "\tAttack value: {} * {} / 100.0 -> {}\n",
-            SAFETY_TABLE[(knight_attacker_values
+            "\tAttack MG value: {} * {} / 100.0 -> {}\n",
+            SAFETY_TABLE_MG[(knight_attacker_values
                 + bishop_attacker_values
                 + rook_attacker_values
                 + queen_attacker_values)
                 .min(99) as usize],
-            ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+            ATTACK_WEIGHT_MG[(knight_attackers
+                + bishop_attackers
+                + rook_attackers
+                + queen_attackers)
                 .min(7) as usize],
-            attack
+            attack_mg
+        ));
+        log(&format!(
+            "\tAttack EG value: {} * {} / 100.0 -> {}\n",
+            SAFETY_TABLE_EG[(knight_attacker_values
+                + bishop_attacker_values
+                + rook_attacker_values
+                + queen_attacker_values)
+                .min(99) as usize],
+            ATTACK_WEIGHT_EG[(knight_attackers
+                + bishop_attackers
+                + rook_attackers
+                + queen_attackers)
+                .min(7) as usize],
+            attack_eg
         ));
         log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
     }

@@ -145,15 +145,15 @@ impl Trace {
             self.rook_on_seventh,
             &params.rook_on_seventh,
         );
-        piecewise_res.0 += (params.attack_weight[self.attackers[WHITE] as usize]
-            * params.safety_table.safety_table[self.attacker_value[WHITE] as usize]
-            - params.attack_weight[self.attackers[BLACK] as usize]
-                * params.safety_table.safety_table[self.attacker_value[BLACK] as usize])
+        piecewise_res.0 += (params.attack_weight[MG][self.attackers[WHITE] as usize]
+            * params.safety_table[MG].safety_table[self.attacker_value[WHITE] as usize]
+            - params.attack_weight[MG][self.attackers[BLACK] as usize]
+                * params.safety_table[MG].safety_table[self.attacker_value[BLACK] as usize])
             / 100.0;
-        piecewise_res.1 += (params.attack_weight[self.attackers[WHITE] as usize]
-            * params.safety_table.safety_table[self.attacker_value[WHITE] as usize]
-            - params.attack_weight[self.attackers[BLACK] as usize]
-                * params.safety_table.safety_table[self.attacker_value[BLACK] as usize])
+        piecewise_res.1 += (params.attack_weight[EG][self.attackers[WHITE] as usize]
+            * params.safety_table[EG].safety_table[self.attacker_value[WHITE] as usize]
+            - params.attack_weight[EG][self.attackers[BLACK] as usize]
+                * params.safety_table[EG].safety_table[self.attacker_value[BLACK] as usize])
             / 100.0;
 
         //King-Safety
@@ -426,8 +426,8 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
                 let position = GameState::from_fen(line);
                 let evaluation = eval_game_state(&position);
                 let trace_eval = evaluation.trace.evaluate(&params) as i16;
-                //Rounding erros can make up for max 1 error (only 1 place where rounding can make a difference )
-                if (evaluation.final_eval - trace_eval).abs() > 1 {
+                //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
+                if (evaluation.final_eval - trace_eval).abs() > 2 {
                     panic!(format!("{} != {}", evaluation.final_eval, trace_eval));
                 }
             }
