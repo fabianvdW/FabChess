@@ -6,6 +6,11 @@ use crate::board_representation::game_state::{
 #[cfg(feature = "display-eval")]
 use crate::logging::log;
 
+pub const BLACK_INDEX: [usize; 64] = [
+    56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
+    32, 33, 34, 35, 36, 37, 38, 39, 24, 25, 26, 27, 28, 29, 30, 31, 16, 17, 18, 19, 20, 21, 22, 23,
+    8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7,
+];
 pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> (i16, i16) {
     let (mut pawn_mg, mut pawn_eg) = (0i16, 0i16);
     let (mut knight_mg, mut knight_eg) = (0i16, 0i16);
@@ -18,7 +23,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         let mut idx = pawns.trailing_zeros() as usize;
         pawns ^= 1u64 << idx;
         if !white {
-            idx = 63 - idx;
+            idx = BLACK_INDEX[idx];
         }
         pawn_mg += PSQT_PAWN_MG[idx / 8][idx % 8];
         pawn_eg += PSQT_PAWN_EG[idx / 8][idx % 8];
@@ -33,7 +38,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         let mut idx = knights.trailing_zeros() as usize;
         knights ^= 1u64 << idx;
         if !white {
-            idx = 63 - idx;
+            idx = BLACK_INDEX[idx]
         }
         knight_mg += PSQT_KNIGHT_MG[idx / 8][idx % 8];
         knight_eg += PSQT_KNIGHT_EG[idx / 8][idx % 8];
@@ -48,7 +53,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         let mut idx = bishops.trailing_zeros() as usize;
         bishops ^= 1u64 << idx;
         if !white {
-            idx = 63 - idx;
+            idx = BLACK_INDEX[idx];
         }
         bishop_mg += PSQT_BISHOP_MG[idx / 8][idx % 8];
         bishop_eg += PSQT_BISHOP_EG[idx / 8][idx % 8];
@@ -60,7 +65,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
 
     let mut king_idx = pieces[KING][side].trailing_zeros() as usize;
     if !white {
-        king_idx = 63 - king_idx;
+        king_idx = BLACK_INDEX[king_idx];
     }
     king_mg = PSQT_KING_MG[king_idx / 8][king_idx % 8];
     king_eg = PSQT_KING_EG[king_idx / 8][king_idx % 8];
@@ -95,8 +100,8 @@ pub fn psqt_incremental_move_piece(
     psqt_eg: i16,
 ) -> (i16, i16) {
     if is_black {
-        from_square = 63 - from_square;
-        to_square = 63 - to_square;
+        from_square = BLACK_INDEX[from_square];
+        to_square = BLACK_INDEX[to_square];
     }
     let mut psqt_mg_plus: i16 = 0;
     let mut psqt_eg_plus: i16 = 0;
@@ -137,7 +142,7 @@ pub fn psqt_incremental_delete_piece(
     psqt_eg: i16,
 ) -> (i16, i16) {
     if is_black {
-        from_square = 63 - from_square;
+        from_square = BLACK_INDEX[from_square];
     }
     let mut psqt_mg_plus = 0;
     let mut psqt_eg_plus = 0;
@@ -170,7 +175,7 @@ pub fn psqt_incremental_add_piece(
     psqt_eg: i16,
 ) -> (i16, i16) {
     if is_black {
-        from_square = 63 - from_square;
+        from_square = BLACK_INDEX[from_square];
     }
     let mut psqt_mg_plus = 0;
     let mut psqt_eg_plus = 0;

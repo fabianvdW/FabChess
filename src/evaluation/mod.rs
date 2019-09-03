@@ -13,6 +13,7 @@ use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack}
 use crate::tuning::trace::Trace;
 use params::*;
 use psqt_evaluation::psqt;
+use psqt_evaluation::BLACK_INDEX;
 pub const MG: usize = 0;
 pub const EG: usize = 1;
 
@@ -251,7 +252,7 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         if g.pieces[PAWN][1 - side] & front_span == 0u64 {
             if !white {
-                idx = 63 - idx;
+                idx = BLACK_INDEX[idx];
             }
             _outposts += 1;
             outpost_mg += KNIGHT_OUTPOST_MG_TABLE[idx / 8][idx % 8];
@@ -739,7 +740,7 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
         let mut index = supported_pawns.trailing_zeros() as usize;
         supported_pawns ^= 1u64 << index;
         if !white {
-            index = 63 - index;
+            index = BLACK_INDEX[index];
         }
         mg_supp += PAWN_SUPPORTED_VALUE_MG[index / 8][index % 8];
         eg_supp += PAWN_SUPPORTED_VALUE_EG[index / 8][index % 8];
