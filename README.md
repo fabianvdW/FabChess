@@ -23,45 +23,15 @@ uci
 go infinite
 ...
 ```
+For a faster compile including POPCNT, run
+```
+cargo rustc --release --bin fabchess -- -C target-cpu=native
+```
+The binary will be in `./target/release`
 
 ## Usage
 FabChess supports more commands than the standard UCI specifies.
-### Debug print
-Use `d` for a debug print of the board
-```
-> position startpos
-> d
-<
-+---+---+---+---+---+---+---+---+
-| r | n | b | q | k | b | n | r |
-+---+---+---+---+---+---+---+---+
-| p | p | p | p | p | p | p | p |
-+---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
-+---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
-+---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
-+---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
-+---+---+---+---+---+---+---+---+
-| P | P | P | P | P | P | P | P |
-+---+---+---+---+---+---+---+---+
-| R | N | B | Q | K | B | N | R |
-+---+---+---+---+---+---+---+---+
-Castle Rights:
-White Kingside: true
-White Queenside: true
-Black Kingside: true
-Black Queenside: true
-En Passant Possible: 0
-Half-Counter: 0
-Full-Counter: 1
-Side to Move: 0
-Hash: 7954168898935982804
 
-FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-```
 ### Static evaluation
 Use `static` to get a static evaluation for the position
 ```
@@ -230,6 +200,70 @@ Phase: 128
 Final Result: (38 * 128 + 31 * (128.0 - 128))/128.0 -> 38
 ```
 ### Perft
+You can run perft on arbitrary position. Note that if there are no kings on the board or the position is otherwise illegal, FabChess will crash (intended)
+```
+> position startpos
+> perft 6
+< 
+a2a3: 4463267
+b2b3: 5310358
+c2c3: 5417640
+d2d3: 8073082
+e2e3: 9726018
+f2f3: 4404141
+g2g3: 5346260
+h2h3: 4463070
+a2a4: 5363555
+b2b4: 5293555
+c2c4: 5866666
+d2d4: 8879566
+e2e4: 9771632
+f2f4: 4890429
+g2g4: 5239875
+h2h4: 5385554
+g1f3: 5723523
+g1h3: 4877234
+b1a3: 4856835
+b1c3: 5708064
+119060324
+Time 1.222 (97430707.03764321 nps)
+```
+### Debug print
+Use `d` for a debug print of the board
+```
+> position startpos
+> d
+<
++---+---+---+---+---+---+---+---+
+| r | n | b | q | k | b | n | r |
++---+---+---+---+---+---+---+---+
+| p | p | p | p | p | p | p | p |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+| P | P | P | P | P | P | P | P |
++---+---+---+---+---+---+---+---+
+| R | N | B | Q | K | B | N | R |
++---+---+---+---+---+---+---+---+
+Castle Rights:
+White Kingside: true
+White Queenside: true
+Black Kingside: true
+Black Queenside: true
+En Passant Possible: 0
+Half-Counter: 0
+Full-Counter: 1
+Side to Move: 0
+Hash: 7954168898935982804
+
+FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+```
 ## Inspired by:
 
 - https://www.chessprogramming.org/Main_Page
