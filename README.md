@@ -28,7 +28,14 @@ For a faster compile including popcount operatiosn for new processors, run
 cargo rustc --release --bin fabchess -- -C target-cpu=native
 ```
 The binary will be in `./target/release`
-
+## Playing strength
+| Version       | 40/4    |  40/40 | Comment |
+|---------------|---------|--------|---------|
+| Latest dev    | >2650   |        | Estimate|
+| Version 1.10  | >2600   |        | Estimate|
+| Version 1.9.1 | 2510    |  2442  | See CCRL|
+| Version 1.9   | 2534    |  2463  | See CCRL|
+| Version 1.8   | 2409    |   -    | See CCRL|
 ## Usage
 FabChess supports more commands than the standard UCI specifies.
 
@@ -42,7 +49,7 @@ Use `static` to get a static evaluation of the position
 ### Display evaluation
 If you compile FabChess with an extra flag, it will also write a detailed overview of the evaluation to a logfile.
 
-!!! Make sure not to run any go command with this, else it will quite literally produce a lot of text !!!
+!!! Make sure not to run any `go` command with this, else it will quite literally produce a lot of text !!!
 ```
 > cargo run --features "display-eval"
 > position startpos
