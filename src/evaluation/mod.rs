@@ -173,6 +173,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     {
         result.trace.tempo_bonus[g.color_to_move] = 1;
     }
+    eg_eval = (f64::from(eg_eval) / 1.5) as i16;
     //Phasing is done the same way stockfish does it
     let res = ((f64::from(mg_eval) * phase + f64::from(eg_eval) * (128.0 - phase)) / 128.0) as i16;
     #[cfg(feature = "display-eval")]
