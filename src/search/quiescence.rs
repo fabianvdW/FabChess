@@ -404,26 +404,28 @@ pub fn recalculate_sliders(
 #[inline(always)]
 pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     let square_board = 1u64 << square;
-    movegen::attackers_from_white(
-        square_board,
-        square,
-        game_state.pieces[PAWN][WHITE],
-        game_state.pieces[KNIGHT][WHITE],
-        game_state.pieces[BISHOP][WHITE] | game_state.pieces[QUEEN][WHITE],
-        game_state.pieces[ROOK][WHITE] | game_state.pieces[QUEEN][WHITE],
-        occ,
-    )
-    .0 | movegen::attackers_from_black(
-        square_board,
-        square,
-        game_state.pieces[PAWN][BLACK],
-        game_state.pieces[KNIGHT][BLACK],
-        game_state.pieces[BISHOP][BLACK] | game_state.pieces[QUEEN][BLACK],
-        game_state.pieces[ROOK][BLACK] | game_state.pieces[QUEEN][BLACK],
-        occ,
-    )
-    .0 | bitboards::KING_ATTACKS[square]
-        & (game_state.pieces[KING][WHITE] | game_state.pieces[KING][BLACK])
+    let mut attacks = 0u64;
+    let knights = game_state.pieces[KNIGHT][WHITE] | game_state.pieces[KNIGHT][BLACK];
+    let bishops = game_state.pieces[BISHOP][WHITE]
+        | game_state.pieces[QUEEN][WHITE]
+        | game_state.pieces[BISHOP][BLACK]
+        | game_state.pieces[QUEEN][BLACK];
+    let rooks = game_state.pieces[ROOK][WHITE]
+        | game_state.pieces[QUEEN][WHITE]
+        | game_state.pieces[ROOK][BLACK]
+        | game_state.pieces[QUEEN][BLACK];
+    attacks |= movegen::knight_attack(square) & knights
+        | movegen::bishop_attack(square, occ) & bishops
+        | movegen::rook_attack(square, occ) & rooks;
+    attacks |= (movegen::w_pawn_west_targets(square_board)
+        | movegen::w_pawn_east_targets(square_board))
+        & game_state.pieces[PAWN][BLACK];
+    attacks |= (movegen::b_pawn_west_targets(square_board)
+        | movegen::b_pawn_east_targets(square_board))
+        & game_state.pieces[PAWN][WHITE];
+    attacks |= bitboards::KING_ATTACKS[square]
+        & (game_state.pieces[KING][WHITE] | game_state.pieces[KING][BLACK]);
+    attacks
 }
 
 #[inline(always)]

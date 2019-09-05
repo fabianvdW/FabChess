@@ -1,6 +1,6 @@
 use super::super::bitboards;
 use super::super::board_representation::game_state::{
-    self, GameMove, GameMoveType, PieceType, BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+    self, GameMove, GameMoveType, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 use super::magic::{self, Magic};
 use crate::search::GradedMove;
@@ -26,39 +26,79 @@ pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
 pub fn knight_attack(square: usize) -> u64 {
     bitboards::KNIGHT_ATTACKS[square]
 }
+//Pawn single pushes
+
+#[inline(always)]
+pub fn single_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
+    if side == WHITE {
+        w_single_push_pawn_targets(pawns, empty)
+    } else {
+        b_single_push_pawn_targets(pawns, empty)
+    }
+}
 #[inline(always)]
 pub fn w_single_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::north_one(pawns) & empty
 }
 #[inline(always)]
-pub fn w_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
-    bitboards::north_one(bitboards::north_one(pawns & bitboards::RANKS[1]) & empty) & empty
-}
-#[inline(always)]
 pub fn b_single_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::south_one(pawns) & empty
 }
+//Pawn double pushes
+#[inline(always)]
+pub fn double_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
+    if side == WHITE {
+        w_double_push_pawn_targets(pawns, empty)
+    } else {
+        b_double_push_pawn_targets(pawns, empty)
+    }
+}
+
+#[inline(always)]
+pub fn w_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
+    bitboards::north_one(bitboards::north_one(pawns & bitboards::RANKS[1]) & empty) & empty
+}
+
 #[inline(always)]
 pub fn b_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::south_one(bitboards::south_one(pawns & bitboards::RANKS[6]) & empty) & empty
 }
 
+//Pawn east targets
+#[inline(always)]
+pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
+    if side == WHITE {
+        w_pawn_east_targets(pawns)
+    } else {
+        b_pawn_east_targets(pawns)
+    }
+}
 //NorthEast = +9
 #[inline(always)]
 pub fn w_pawn_east_targets(pawns: u64) -> u64 {
     bitboards::north_east_one(pawns)
 }
 
-//NorthWest = +7
-#[inline(always)]
-pub fn w_pawn_west_targets(pawns: u64) -> u64 {
-    bitboards::north_west_one(pawns)
-}
-
 //SouthEast = -7
 #[inline(always)]
 pub fn b_pawn_east_targets(pawns: u64) -> u64 {
     bitboards::south_west_one(pawns)
+}
+
+//Pawn west targets
+#[inline(always)]
+pub fn pawn_west_targets(side: usize, pawns: u64) -> u64 {
+    if side == WHITE {
+        w_pawn_west_targets(pawns)
+    } else {
+        b_pawn_west_targets(pawns)
+    }
+}
+
+//NorthWest = +7
+#[inline(always)]
+pub fn w_pawn_west_targets(pawns: u64) -> u64 {
+    bitboards::north_west_one(pawns)
 }
 
 //NorthWest = -9
@@ -115,6 +155,7 @@ pub fn xray_bishop_attacks(
             occupied_squares ^ (my_pieces & bishop_attacks),
         )
 }
+
 #[inline(always)]
 pub fn get_rook_ray(king_square: usize, rook_square: usize) -> u64 {
     bitboards::ROOK_RAYS[king_square][rook_square]
@@ -123,64 +164,6 @@ pub fn get_rook_ray(king_square: usize, rook_square: usize) -> u64 {
 #[inline(always)]
 pub fn get_bishop_ray(king_square: usize, bishop_square: usize) -> u64 {
     bitboards::BISHOP_RAYS[king_square][bishop_square]
-}
-
-pub fn attackers_from_white(
-    square_board: u64,
-    square: usize,
-    white_pawns: u64,
-    white_knights: u64,
-    white_bishops: u64,
-    white_rooks: u64,
-    blockers: u64,
-) -> (u64, bool, bool) {
-    let mut attackers = 0u64;
-    let mut slider_flag = false;
-    let mut bishop_slider = false;
-    attackers |= knight_attack(square) & white_knights;
-    attackers |=
-        (b_pawn_west_targets(square_board) | b_pawn_east_targets(square_board)) & white_pawns;
-    let bishop_attacks = bishop_attack(square, blockers) & white_bishops;
-    attackers |= bishop_attacks;
-    if bishop_attacks != 0 {
-        slider_flag = true;
-        bishop_slider = true;
-    }
-    let rook_attacks = rook_attack(square, blockers) & white_rooks;
-    attackers |= rook_attacks;
-    if rook_attacks != 0 {
-        slider_flag = true;
-    }
-    (attackers, slider_flag, bishop_slider)
-}
-
-pub fn attackers_from_black(
-    square_board: u64,
-    square: usize,
-    black_pawns: u64,
-    black_knights: u64,
-    black_bishops: u64,
-    black_rooks: u64,
-    blockers: u64,
-) -> (u64, bool, bool) {
-    let mut attackers = 0u64;
-    let mut slider_flag = false;
-    let mut bishop_slider = false;
-    attackers |= knight_attack(square) & black_knights;
-    attackers |=
-        (w_pawn_west_targets(square_board) | w_pawn_east_targets(square_board)) & black_pawns;
-    let bishop_attacks = bishop_attack(square, blockers) & black_bishops;
-    attackers |= bishop_attacks;
-    if bishop_attacks != 0 {
-        slider_flag = true;
-        bishop_slider = true;
-    }
-    let rook_attacks = rook_attack(square, blockers) & black_rooks;
-    attackers |= rook_attacks;
-    if rook_attacks != 0 {
-        slider_flag = true;
-    }
-    (attackers, slider_flag, bishop_slider)
 }
 
 #[derive(Clone)]
@@ -229,37 +212,23 @@ pub fn calculate_additionalbitboards(
     let (mut stm_unsafe_squares, mut all_checkers) = (0u64, 0u64);
 
     //Pawns
+    let side = if stm_color_iswhite { WHITE } else { BLACK };
     let (
         stm_pawns_westattack,
         stm_pawns_eastattack,
         enemy_pawns_westattack,
         enemy_pawns_eastattack,
-    ) = if stm_color_iswhite {
-        (
-            w_pawn_west_targets(stm_pawns),
-            w_pawn_east_targets(stm_pawns),
-            b_pawn_west_targets(enemy_pawns),
-            b_pawn_east_targets(enemy_pawns),
-        )
-    } else {
-        (
-            b_pawn_west_targets(stm_pawns),
-            b_pawn_east_targets(stm_pawns),
-            w_pawn_west_targets(enemy_pawns),
-            w_pawn_east_targets(enemy_pawns),
-        )
-    };
+    ) = (
+        pawn_west_targets(side, stm_pawns),
+        pawn_east_targets(side, stm_pawns),
+        pawn_west_targets(1 - side, enemy_pawns),
+        pawn_east_targets(1 - side, enemy_pawns),
+    );
 
     stm_unsafe_squares |= enemy_pawns_westattack | enemy_pawns_eastattack;
-    all_checkers |= if stm_color_iswhite {
-        w_pawn_west_targets(stm_king & enemy_pawns_westattack)
-    } else {
-        b_pawn_west_targets(stm_king & enemy_pawns_westattack)
-    } | if stm_color_iswhite {
-        w_pawn_east_targets(stm_king & enemy_pawns_eastattack)
-    } else {
-        b_pawn_east_targets(stm_king & enemy_pawns_eastattack)
-    };
+
+    all_checkers |= pawn_west_targets(side, stm_king & enemy_pawns_westattack)
+        | pawn_east_targets(side, stm_king & enemy_pawns_eastattack);
 
     //Knights
     while enemy_knights != 0u64 {
