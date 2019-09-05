@@ -140,7 +140,6 @@ pub fn start_search(
 
 pub fn print_internal_state(engine: &UCIEngine) {
     println!("{}", engine.internal_state);
-    println!("FEN: {}", engine.internal_state.to_fen());
 }
 
 pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {

@@ -38,7 +38,7 @@ pub const TUNE_PSQT: bool = false;
 
 //const BATCH_SIZE: usize = 2500000;
 //const BATCH_SIZE: usize = 725000;
-const BATCH_SIZE: usize = 100000;
+const BATCH_SIZE: usize = 100_000;
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
         panic!("Feature texel-tuning has to be enabled");
@@ -111,7 +111,7 @@ pub fn shuffle_positions(tuner: &mut Tuner) {
 }
 pub fn add_gradient(gradient: &mut [f64; 2], trace: [i8; 2], start_of_gradient: f64, phase: f64) {
     let devaldmg = phase / 128.0;
-    let devaldeg = 1. - phase / 128.0;
+    let devaldeg = (1. - phase / 128.0) / 1.5;
     let x = f64::from(trace[WHITE] - trace[BLACK]);
     gradient[MG] += start_of_gradient * devaldmg * x;
     gradient[EG] += start_of_gradient * devaldeg * x;
@@ -129,7 +129,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         let start_of_gradient = (pos.label - s) * s * (1. - s);
         let phase = pos.trace.phase;
         let devaldmg = pos.trace.phase / 128.0;
-        let devaldeg = 1. - pos.trace.phase / 128.0;
+        let devaldeg = (1. - pos.trace.phase / 128.0) / 1.5;
         //Tempo-bonus
         if TUNE_TEMPO_BONUS || TUNE_ALL {
             add_gradient(

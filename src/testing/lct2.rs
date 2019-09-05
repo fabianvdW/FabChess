@@ -38,7 +38,7 @@ pub fn start_lct2_thread(
         );
         println!("Bestmove is actually: {:?}", test.optimal_move);
         let str = format!(
-            "ucinewgame\nposition fen {}\n go wtime 0 winc 600000 btime 0 binc 600000\n",
+            "ucinewgame\nposition fen {}\n go movetime 600000\n",
             test.game_state.to_fen()
         );
         write_to_buf(&mut child_in, &str);
@@ -102,8 +102,8 @@ pub fn start_lct2_thread(
         } else {
             println!("Best move is wrong!")
         }
-        write_to_buf(&mut child_in, "stop\nnewgame\n");
-        thread::sleep(Duration::from_millis(50));
+        write_to_buf(&mut child_in, "stop\nucinewgame\n");
+        thread::sleep(Duration::from_millis(100));
     }
 
     write_to_buf(&mut child_in, "quit\n");

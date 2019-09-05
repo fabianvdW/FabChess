@@ -774,6 +774,7 @@ impl Display for GameState {
         res_str.push_str(&format!("Full-Counter: {}\n", self.full_moves));
         res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
         res_str.push_str(&format!("Hash: {}\n", self.hash));
+        res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
 }
@@ -833,6 +834,7 @@ impl Debug for GameState {
         res_str.push_str(&format!("full_moves: {}\n", self.full_moves));
         res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
         res_str.push_str(&format!("Hash: {}\n", self.hash));
+        res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
 }

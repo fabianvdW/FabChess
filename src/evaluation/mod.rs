@@ -28,6 +28,10 @@ pub struct EvaluationResult {
 }
 
 pub fn eval_game_state(g: &GameState) -> EvaluationResult {
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!("Evaluating GameState fen: {}\n", g.to_fen()));
+    }
     let mut result = EvaluationResult {
         phase: 0.,
         final_eval: 0,
@@ -194,7 +198,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
             mg_eval
         ));
         log(&format!(
-            "\nEG Sum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
+            "\nEG Sum: ({} + {} + {} + {} + {} + {} + {}) /1.5 -> {}\n",
             psqt_eg,
             knights_w.1 - knights_b.1,
             piecewise_w.1 - piecewise_b.1,

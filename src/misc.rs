@@ -168,6 +168,16 @@ pub fn find_move(
     let mut index = 0;
     while index < movelist.counter[depth] {
         let mv = movelist.move_list[depth][index].as_ref().unwrap();
+        /*println!("Checking: {:?}", mv);
+        if &format!("{:?}", mv) == "e4d4" {
+            println!("{:?} ", ms.target_square);
+            println!("{:?} ", ms.from_square);
+            println!("{:?} ", ms.from_file);
+            println!("{:?} ", ms.from_rank);
+            println!("{:?} ", ms.moving_piece_type);
+            println!("{:?} ", ms.promotion_piece);
+        }*/
+
         if ms.matches(mv) {
             let state = make_move(g, mv);
             return Ok((*mv, state));
@@ -245,7 +255,7 @@ impl MoveSpecification {
             && (self.from_square.is_none() || self.from_square.unwrap() == mv.from)
             && (self.from_file.is_none() || self.from_file.unwrap() == mv.from % 8)
             && (self.from_rank.is_none() || self.from_rank.unwrap() == mv.from / 8)
-            && mv.piece_type == self.moving_piece_type
+            && (mv.piece_type == self.moving_piece_type || self.from_square.is_some())
             && (self.promotion_piece
                 == match mv.move_type {
                     GameMoveType::Promotion(piece, _) => Some(piece),

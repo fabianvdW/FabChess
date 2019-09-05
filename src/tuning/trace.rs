@@ -266,7 +266,7 @@ impl Trace {
             println!("Tempo:{},{}", tempo_bonus.0, tempo_bonus.1);
             println!("Res:{},{}", res.0, res.1);
         }
-        (res.0 * self.phase + res.1 * (128.0 - self.phase)) / 128.0
+        (res.0 * self.phase + res.1 / 1.5 * (128.0 - self.phase)) / 128.0
     }
     pub fn default() -> Self {
         Trace {
