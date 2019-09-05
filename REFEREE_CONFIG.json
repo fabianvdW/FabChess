@@ -1,6 +1,6 @@
 {
 	"processors":4,
-	"selfplaytests":false,
+	"selfplaytests":true,
 	"games": 1000,
 	"engine1_path":"./target/release/fabchess.exe",
 	"engine2_path":"./versions/FabChessv1.10.4.exe",
@@ -16,7 +16,7 @@
 	"testsuitetests":false,
 	"suite_movetime":1000,
 	"suite_path":"./testsuites/sts.epd",
-	"lct2tests":true,
+	"lct2tests":false,
 	"lct2_path":"./testsuites/lct2.epd"
 	
 }

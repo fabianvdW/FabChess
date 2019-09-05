@@ -7,11 +7,11 @@ use super::super::move_generation::movegen;
 use super::super::move_generation::movegen::{AdditionalGameStateInformation, MoveList};
 use super::alphabeta::{
     check_end_condition, check_for_draw, clear_pv, get_next_gm, in_check, leaf_score,
-    MAX_SEARCH_DEPTH, STANDARD_SCORE,
 };
 use super::cache::CacheEntry;
 use super::searcher::{Search, SearchUtils};
 use super::GradedMove;
+use super::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::bitboards;
 use crate::move_generation::makemove::make_move;
 
@@ -133,8 +133,7 @@ pub fn q_search(
             let (agsi, mvs) = make_and_evaluate_moves_qsearch(
                 game_state,
                 su.search,
-                current_depth,
-                su.move_list,
+                &mut su.thread_memory.reserved_movelist.move_lists[current_depth],
                 phase,
                 stand_pat,
                 alpha,
@@ -147,13 +146,13 @@ pub fn q_search(
         let capture_move: GameMove = if index < hash_move_counter {
             tt_move.expect("Couldn't unwrap tt move in q search")
         } else {
-            su.move_list.move_list[current_depth][get_next_gm(
-                su.move_list,
-                current_depth,
+            let r = get_next_gm(
+                &mut su.thread_memory.reserved_movelist.move_lists[current_depth],
                 moves_from_movelist_tried,
                 available_captures_in_movelist,
             )
-            .0]
+            .0;
+            su.thread_memory.reserved_movelist.move_lists[current_depth].move_list[r]
                 .expect("Could not get next gm")
         };
         //Make sure that our move is not the same as tt move if we have any
@@ -227,22 +226,18 @@ pub fn q_search(
 pub fn make_and_evaluate_moves_qsearch(
     game_state: &GameState,
     search: &mut Search,
-    current_depth: usize,
     move_list: &mut MoveList,
     phase: Option<f64>,
     stand_pat: Option<i16>,
     alpha: i16,
     incheck: bool,
 ) -> (AdditionalGameStateInformation, usize) {
-    let agsi = movegen::generate_moves(&game_state, !incheck, move_list, current_depth);
+    let agsi = movegen::generate_moves(&game_state, !incheck, move_list);
     let (mut mv_index, mut capture_index) = (0, 0);
-    while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
-            .as_ref()
-            .unwrap();
+    while mv_index < move_list.counter {
+        let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
         if let GameMoveType::EnPassant = mv.move_type {
-            move_list.graded_moves[current_depth][capture_index] =
-                Some(GradedMove::new(mv_index, 100.0));
+            move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 100.0));
         } else {
             if !incheck
                 && !passes_delta_pruning(
@@ -263,7 +258,7 @@ pub fn make_and_evaluate_moves_qsearch(
                     mv_index += 1;
                     continue;
                 }
-                move_list.graded_moves[current_depth][capture_index] =
+                move_list.graded_moves[capture_index] =
                     Some(GradedMove::new(mv_index, f64::from(score)));
             } else {
                 if !incheck {
@@ -272,8 +267,7 @@ pub fn make_and_evaluate_moves_qsearch(
                 let score = search.hh_score[game_state.color_to_move][mv.from][mv.to] as f64
                     / search.bf_score[game_state.color_to_move][mv.from][mv.to] as f64
                     / 1000.0;
-                move_list.graded_moves[current_depth][capture_index] =
-                    Some(GradedMove::new(mv_index, score));
+                move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, score));
             }
         }
         mv_index += 1;

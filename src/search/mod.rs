@@ -5,9 +5,15 @@ pub mod alphabeta;
 pub mod cache;
 pub mod history;
 pub mod quiescence;
+pub mod reserved_memory;
 pub mod searcher;
 pub mod statistics;
 pub mod timecontrol;
+
+pub const MAX_SEARCH_DEPTH: usize = 100;
+pub const MATE_SCORE: i16 = 15000;
+pub const MATED_IN_MAX: i16 = -14000;
+pub const STANDARD_SCORE: i16 = -32767;
 
 pub fn init_constants() {
     quiescence::PIECE_VALUES.len();

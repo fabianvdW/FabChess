@@ -111,7 +111,7 @@ pub fn play_game(
     //-------------------------------------------------------------
     //Set game up
     let opening_fen = task.opening.to_fen();
-    let agsi = movegen::generate_moves(&task.opening, false, movelist, 0);
+    let agsi = movegen::generate_moves(&task.opening, false, movelist);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
@@ -443,7 +443,7 @@ pub fn play_game(
         if state.half_moves == 0 || state.full_moves < 35 {
             draw_adjudication = 0;
         }
-        let agsi = movegen::generate_moves(&state, false, movelist, 0);
+        let agsi = movegen::generate_moves(&state, false, movelist);
         let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
         status = check.0;
         endcondition = check.1;
@@ -560,8 +560,8 @@ pub fn find_move(
     move_list: &movegen::MoveList,
 ) -> Option<&GameMove> {
     let mut index = 0;
-    while index < move_list.counter[0] {
-        let mv = move_list.move_list[0][index].as_ref().unwrap();
+    while index < move_list.counter {
+        let mv = move_list.move_list[index].as_ref().unwrap();
         if mv.from == from && mv.to == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {

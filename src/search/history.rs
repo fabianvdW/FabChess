@@ -1,4 +1,4 @@
-use super::alphabeta::MAX_SEARCH_DEPTH;
+use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::GameState;
 pub struct History {
     pub hist: Vec<u64>,

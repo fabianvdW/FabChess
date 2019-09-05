@@ -318,7 +318,6 @@ pub fn add_pin_moves_to_movelist(
     pinner_position: usize,
     enemy_queens: u64,
     other_pinner_piece_type: PieceType,
-    depth: usize,
 ) -> bool {
     let pin_quiet_targets = ray_to_king & push_mask & !(1u64 << pinned_piece_position);
     let pin_capture_possible = (capture_mask & enemy_pinner) != 0u64;
@@ -330,7 +329,6 @@ pub fn add_pin_moves_to_movelist(
             pin_quiet_targets,
             moving_piece_type,
             GameMoveType::Quiet,
-            depth,
         );
     }
     if pin_capture_possible {
@@ -344,7 +342,6 @@ pub fn add_pin_moves_to_movelist(
             } else {
                 other_pinner_piece_type
             }),
-            depth,
         );
     }
     haslegalmove
@@ -361,7 +358,6 @@ pub fn add_king_moves_to_movelist(
     enemy_rooks: u64,
     enemy_queens: u64,
     enemy_pieces: u64,
-    depth: usize,
 ) {
     let mut captures = stm_legal_kingmoves & enemy_pieces;
     let quiets = stm_legal_kingmoves & !captures;
@@ -380,7 +376,6 @@ pub fn add_king_moves_to_movelist(
                 enemy_rooks,
                 enemy_queens,
             )),
-            depth,
         );
         captures ^= 1u64 << capture_index;
     }
@@ -391,7 +386,6 @@ pub fn add_king_moves_to_movelist(
             quiets,
             PieceType::King,
             GameMoveType::Quiet,
-            depth,
         );
     }
 }
@@ -410,7 +404,6 @@ pub fn add_pawn_moves_to_movelist(
     is_capture: bool,
     is_promotion: bool,
     pinned_pieces: u64,
-    depth: usize,
 ) -> bool {
     let mut stm_haslegalmove = false;
     while target_board != 0u64 {
@@ -437,7 +430,7 @@ pub fn add_pawn_moves_to_movelist(
                 GameMoveType::Quiet
             };
             if is_promotion {
-                add_promotion_move_to_movelist(legal_moves, from_index, pawn_index, mv_type, depth);
+                add_promotion_move_to_movelist(legal_moves, from_index, pawn_index, mv_type);
             } else {
                 add_move_to_movelist(
                     legal_moves,
@@ -445,7 +438,6 @@ pub fn add_pawn_moves_to_movelist(
                     pawn_index,
                     PieceType::Pawn,
                     mv_type,
-                    depth,
                 )
             }
         }
@@ -470,7 +462,6 @@ pub fn add_normal_moves_to_movelist(
     push_mask: u64,
     capture_mask: u64,
     only_captures: bool,
-    depth: usize,
     stm_color_iswhite: bool,
 ) -> bool {
     let mut stm_haslegalmove = false;
@@ -510,7 +501,6 @@ pub fn add_normal_moves_to_movelist(
                         enemy_rooks,
                         enemy_queens,
                     )),
-                    depth,
                 );
                 captures ^= 1u64 << capture_index;
             }
@@ -525,7 +515,6 @@ pub fn add_normal_moves_to_movelist(
                         quiets,
                         piece_type,
                         GameMoveType::Quiet,
-                        depth,
                     );
                 }
             }
@@ -540,7 +529,6 @@ pub fn add_promotion_move_to_movelist(
     from_square: usize,
     to_square: usize,
     move_type: GameMoveType,
-    depth: usize,
 ) {
     let new_types = if let GameMoveType::Capture(x) = move_type {
         (
@@ -563,7 +551,6 @@ pub fn add_promotion_move_to_movelist(
         to_square,
         PieceType::Pawn,
         new_types.0,
-        depth,
     );
     add_move_to_movelist(
         legal_moves,
@@ -571,7 +558,6 @@ pub fn add_promotion_move_to_movelist(
         to_square,
         PieceType::Pawn,
         new_types.1,
-        depth,
     );
     add_move_to_movelist(
         legal_moves,
@@ -579,7 +565,6 @@ pub fn add_promotion_move_to_movelist(
         to_square,
         PieceType::Pawn,
         new_types.2,
-        depth,
     );
     add_move_to_movelist(
         legal_moves,
@@ -587,7 +572,6 @@ pub fn add_promotion_move_to_movelist(
         to_square,
         PieceType::Pawn,
         new_types.3,
-        depth,
     );
 }
 #[inline(always)]
@@ -597,7 +581,6 @@ pub fn add_moves_to_movelist(
     mut target_board: u64,
     piece_type: PieceType,
     move_type: GameMoveType,
-    depth: usize,
 ) {
     while target_board != 0u64 {
         let target_square = target_board.trailing_zeros() as usize;
@@ -607,7 +590,6 @@ pub fn add_moves_to_movelist(
             target_square,
             piece_type,
             move_type,
-            depth,
         );
         target_board ^= 1u64 << target_square;
     }
@@ -619,53 +601,52 @@ pub fn add_move_to_movelist(
     to_square: usize,
     piece_type: PieceType,
     move_type: GameMoveType,
-    depth: usize,
 ) {
-    legal_moves.add_move(
-        GameMove {
-            from: from_square,
-            to: to_square,
-            move_type,
-            piece_type,
-        },
-        depth,
-    );
+    legal_moves.add_move(GameMove {
+        from: from_square,
+        to: to_square,
+        move_type,
+        piece_type,
+    });
 }
+pub const MAX_MOVES: usize = 128;
 pub struct MoveList {
-    pub move_list: [[Option<GameMove>; 128]; 100],
-    pub graded_moves: [[Option<GradedMove>; 128]; 100],
-    //pub graded_moves: Vec<Vec<Option<GradedMove>>>,
-    pub counter: [usize; 100],
+    pub move_list: Vec<Option<GameMove>>,
+    pub graded_moves: Vec<Option<GradedMove>>,
+    pub counter: usize,
 }
+
 impl Default for MoveList {
     fn default() -> Self {
+        let mut move_list = Vec::with_capacity(MAX_MOVES);
+        let mut graded_moves = Vec::with_capacity(MAX_MOVES);
+        for _ in 0..MAX_MOVES {
+            move_list.push(None);
+            graded_moves.push(None);
+        }
         MoveList {
-            move_list: unsafe { std::mem::uninitialized() },
-            graded_moves: unsafe { std::mem::uninitialized() },
-            //move_list: [[None; 128]; 100],
-            //graded_moves: [[None; 128]; 100],
-            //graded_moves: vec![vec![None; 128]; 100],
-            counter: [0; 100],
+            move_list,
+            graded_moves,
+            counter: 0,
         }
     }
 }
-
 impl MoveList {
-    pub fn add_move(&mut self, mv: GameMove, depth: usize) {
-        self.move_list[depth][self.counter[depth]] = Some(mv);
-        self.counter[depth] += 1;
+    pub fn add_move(&mut self, mv: GameMove) {
+        self.move_list[self.counter] = Some(mv);
+        self.counter += 1;
     }
 }
+
 pub fn generate_moves(
     g: &game_state::GameState,
     only_captures: bool,
     movelist: &mut MoveList,
-    depth: usize,
 ) -> AdditionalGameStateInformation {
     //----------------------------------------------------------------------
     //**********************************************************************
     //0. General bitboards and variable initialization
-    movelist.counter[depth] = 0;
+    movelist.counter = 0;
 
     let stm_color = g.color_to_move;
     let enemy_color = 1 - stm_color;
@@ -721,7 +702,6 @@ pub fn generate_moves(
         enemy_rooks,
         enemy_queens,
         abb.enemy_pieces,
-        depth,
     );
     //----------------------------------------------------------------------
     //**********************************************************************
@@ -792,7 +772,6 @@ pub fn generate_moves(
                 enemy_rook_position,
                 enemy_queens,
                 PieceType::Rook,
-                depth,
             );
         } else if pinned_piece & stm_rooks != 0u64 {
             //Add possible rook pushes
@@ -808,7 +787,6 @@ pub fn generate_moves(
                 enemy_rook_position,
                 enemy_queens,
                 PieceType::Rook,
-                depth,
             );
         } else if pinned_piece & stm_pawns != 0u64 {
             //Add possible pawn pushes
@@ -833,7 +811,6 @@ pub fn generate_moves(
                     stm_pawn_pin_single_push | stm_pawn_pin_double_push,
                     PieceType::Pawn,
                     GameMoveType::Quiet,
-                    depth,
                 )
             }
         }
@@ -870,7 +847,6 @@ pub fn generate_moves(
                 enemy_bishop_position,
                 enemy_queens,
                 PieceType::Bishop,
-                depth,
             );
         } else if pinned_piece & stm_bishops != 0u64 {
             //Add possible bishop pushes
@@ -886,7 +862,6 @@ pub fn generate_moves(
                 enemy_bishop_position,
                 enemy_queens,
                 PieceType::Bishop,
-                depth,
             );
         } else if pinned_piece & stm_pawns != 0u64 {
             //Add possible pawn captures
@@ -912,7 +887,6 @@ pub fn generate_moves(
                     } else {
                         PieceType::Bishop
                     }),
-                    depth,
                 );
             }
             let stm_pawn_pin_nonpromotion_capture =
@@ -929,7 +903,6 @@ pub fn generate_moves(
                     } else {
                         PieceType::Bishop
                     }),
-                    depth,
                 );
             }
             //En passants
@@ -943,7 +916,6 @@ pub fn generate_moves(
                     stm_pawn_pin_enpassant.trailing_zeros() as usize,
                     PieceType::Pawn,
                     GameMoveType::EnPassant,
-                    depth,
                 );
             }
         }
@@ -976,7 +948,6 @@ pub fn generate_moves(
             false,
             true,
             pinned_pieces,
-            depth,
         );
     }
     if !only_captures {
@@ -994,7 +965,6 @@ pub fn generate_moves(
             false,
             false,
             pinned_pieces,
-            depth,
         );
     }
     //5.2 Double push
@@ -1019,7 +989,6 @@ pub fn generate_moves(
                 false,
                 false,
                 pinned_pieces,
-                depth,
             );
         }
     }
@@ -1041,7 +1010,6 @@ pub fn generate_moves(
         true,
         true,
         pinned_pieces,
-        depth,
     );
     let stm_pawn_west_nonpromotion_capture =
         stm_pawn_west_captures & !stm_pawn_west_promotion_capture;
@@ -1058,7 +1026,6 @@ pub fn generate_moves(
         true,
         false,
         pinned_pieces,
-        depth,
     );
     //En passants
     let stm_pawn_west_enpassants = abb.stm_pawns_westattack
@@ -1096,7 +1063,6 @@ pub fn generate_moves(
                 pawn_index,
                 PieceType::Pawn,
                 GameMoveType::EnPassant,
-                depth,
             );
         }
     }
@@ -1118,7 +1084,6 @@ pub fn generate_moves(
         true,
         true,
         pinned_pieces,
-        depth,
     );
     let stm_pawn_east_nonpromotion_capture =
         stm_pawn_east_captures & !stm_pawn_east_promotion_capture;
@@ -1135,7 +1100,6 @@ pub fn generate_moves(
         true,
         false,
         pinned_pieces,
-        depth,
     );
     //En passants
     let stm_pawn_east_enpassants = abb.stm_pawns_eastattack
@@ -1173,7 +1137,6 @@ pub fn generate_moves(
                 pawn_index,
                 PieceType::Pawn,
                 GameMoveType::EnPassant,
-                depth,
             );
         }
     }
@@ -1198,7 +1161,6 @@ pub fn generate_moves(
         push_mask,
         capture_mask,
         only_captures,
-        depth,
         stm_color_iswhite,
     );
     //6.4 Queens
@@ -1218,7 +1180,6 @@ pub fn generate_moves(
         push_mask,
         capture_mask,
         only_captures,
-        depth,
         stm_color_iswhite,
     );
 
@@ -1239,7 +1200,6 @@ pub fn generate_moves(
         push_mask,
         capture_mask,
         only_captures,
-        depth,
         stm_color_iswhite,
     );
     //6.3 Rooks
@@ -1259,7 +1219,6 @@ pub fn generate_moves(
         push_mask,
         capture_mask,
         only_captures,
-        depth,
         stm_color_iswhite,
     );
     //----------------------------------------------------------------------
@@ -1274,15 +1233,12 @@ pub fn generate_moves(
             {
                 stm_haslegalmove = true;
                 if !only_captures {
-                    movelist.add_move(
-                        GameMove {
-                            from: stm_king_index,
-                            to: 6usize,
-                            move_type: GameMoveType::Castle,
-                            piece_type: PieceType::King,
-                        },
-                        depth,
-                    );
+                    movelist.add_move(GameMove {
+                        from: stm_king_index,
+                        to: 6usize,
+                        move_type: GameMoveType::Castle,
+                        piece_type: PieceType::King,
+                    });
                 }
             }
             if g.castle_white_queenside
@@ -1293,15 +1249,12 @@ pub fn generate_moves(
             {
                 stm_haslegalmove = true;
                 if !only_captures {
-                    movelist.add_move(
-                        GameMove {
-                            from: stm_king_index,
-                            to: 2usize,
-                            move_type: GameMoveType::Castle,
-                            piece_type: PieceType::King,
-                        },
-                        depth,
-                    );
+                    movelist.add_move(GameMove {
+                        from: stm_king_index,
+                        to: 2usize,
+                        move_type: GameMoveType::Castle,
+                        piece_type: PieceType::King,
+                    });
                 }
             }
         } else {
@@ -1312,15 +1265,12 @@ pub fn generate_moves(
             {
                 stm_haslegalmove = true;
                 if !only_captures {
-                    movelist.add_move(
-                        GameMove {
-                            from: stm_king_index,
-                            to: 62usize,
-                            move_type: GameMoveType::Castle,
-                            piece_type: PieceType::King,
-                        },
-                        depth,
-                    );
+                    movelist.add_move(GameMove {
+                        from: stm_king_index,
+                        to: 62usize,
+                        move_type: GameMoveType::Castle,
+                        piece_type: PieceType::King,
+                    });
                 }
             }
             if g.castle_black_queenside
@@ -1331,15 +1281,12 @@ pub fn generate_moves(
             {
                 stm_haslegalmove = true;
                 if !only_captures {
-                    movelist.add_move(
-                        GameMove {
-                            from: stm_king_index,
-                            to: 58usize,
-                            move_type: GameMoveType::Castle,
-                            piece_type: PieceType::King,
-                        },
-                        depth,
-                    );
+                    movelist.add_move(GameMove {
+                        from: stm_king_index,
+                        to: 58usize,
+                        move_type: GameMoveType::Castle,
+                        piece_type: PieceType::King,
+                    });
                 }
             }
         }

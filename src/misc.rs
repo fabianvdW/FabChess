@@ -141,13 +141,12 @@ impl Iterator for GameParser {
 
 pub fn find_castle(
     movelist: &movegen::MoveList,
-    depth: usize,
     g: &GameState,
     king_side: bool,
 ) -> Result<(GameMove, GameState), ()> {
     let mut index = 0;
-    while index < movelist.counter[depth] {
-        let mv = movelist.move_list[depth][index].as_ref().unwrap();
+    while index < movelist.counter {
+        let mv = movelist.move_list[index].as_ref().unwrap();
         if mv.move_type == GameMoveType::Castle
             && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 }
         {
@@ -161,13 +160,12 @@ pub fn find_castle(
 
 pub fn find_move(
     movelist: &movegen::MoveList,
-    depth: usize,
     g: &GameState,
     ms: MoveSpecification,
 ) -> Result<(GameMove, GameState), ()> {
     let mut index = 0;
-    while index < movelist.counter[depth] {
-        let mv = movelist.move_list[depth][index].as_ref().unwrap();
+    while index < movelist.counter {
+        let mv = movelist.move_list[index].as_ref().unwrap();
         /*println!("Checking: {:?}", mv);
         if &format!("{:?}", mv) == "e4d4" {
             println!("{:?} ", ms.target_square);
@@ -269,14 +267,13 @@ pub fn parse_move(
     move_str: &str,
     movelist: &mut movegen::MoveList,
 ) -> (GameMove, GameState) {
-    let depth = 0;
     let mut my_string = move_str.to_string();
     my_string = my_string
         .replace("#", "")
         .replace("+", "")
         .replace("=", "")
         .replace("x", "");
-    movegen::generate_moves(&g, false, movelist, depth);
+    movegen::generate_moves(&g, false, movelist);
     if my_string.contains('-') {
         //Castle
         //Kingside
@@ -286,7 +283,7 @@ pub fn parse_move(
             } else {
                 assert_eq!(true, g.castle_black_kingside);
             }
-            if let Ok(res) = find_castle(movelist, depth, g, true) {
+            if let Ok(res) = find_castle(movelist, g, true) {
                 return res;
             }
         } else {
@@ -295,7 +292,7 @@ pub fn parse_move(
             } else {
                 assert_eq!(true, g.castle_black_queenside);
             }
-            if let Ok(res) = find_castle(movelist, depth, g, false) {
+            if let Ok(res) = find_castle(movelist, g, false) {
                 return res;
             }
         }
@@ -318,7 +315,7 @@ pub fn parse_move(
                 8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0)),
             );
         }
-        if let Ok(res) = find_move(movelist, depth, g, ms) {
+        if let Ok(res) = find_move(movelist, g, ms) {
             return res;
         }
     }
@@ -327,8 +324,8 @@ pub fn parse_move(
     println!("{}", g);
 
     let mut index = 0;
-    while index < movelist.counter[depth] {
-        println!("{:?}", movelist.move_list[depth][index].as_ref().unwrap());
+    while index < movelist.counter {
+        println!("{:?}", movelist.move_list[index].as_ref().unwrap());
         index += 1;
     }
     panic!("Shouldn't get here");

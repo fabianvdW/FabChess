@@ -10,6 +10,7 @@ use super::quiescence::{is_capture, q_search, see};
 use super::searcher::Search;
 use super::searcher::SearchUtils;
 use super::GradedMove;
+use super::{MATED_IN_MAX, MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::bitboards;
 use crate::evaluation::{calculate_phase, eval_game_state};
 use crate::move_generation::makemove::{make_move, make_nullmove};
@@ -17,11 +18,6 @@ use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-pub const MATE_SCORE: i16 = 15000;
-pub const MATED_IN_MAX: i16 = -14000;
-
-pub const MAX_SEARCH_DEPTH: usize = 100;
-pub const STANDARD_SCORE: i16 = -32767;
 pub const FUTILITY_MARGIN: i16 = 90;
 pub const FUTILITY_DEPTH: i16 = 8;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
@@ -235,7 +231,7 @@ pub fn principal_variation_search(
         0
     };
     if !has_generated_moves {
-        su.move_list.counter[current_depth] = 0;
+        su.thread_memory.reserved_movelist.move_lists[current_depth].counter = 0;
     }
     let mut hash_and_pv_move_counter = 0;
     {
@@ -263,12 +259,19 @@ pub fn principal_variation_search(
     let mut moves_tried: usize = 0;
     let mut moves_from_movelist_tried: usize = 0;
     let mut quiets_tried: usize = 0;
-    while moves_tried < su.move_list.counter[current_depth] + hash_and_pv_move_counter
+    while moves_tried
+        < su.thread_memory.reserved_movelist.move_lists[current_depth].counter
+            + hash_and_pv_move_counter
         || !has_generated_moves
     {
         if moves_tried == hash_and_pv_move_counter && !has_generated_moves {
             has_generated_moves = true;
-            make_and_evaluate_moves(game_state, su.search, current_depth, su.move_list);
+            make_and_evaluate_moves(
+                game_state,
+                su.search,
+                current_depth,
+                &mut su.thread_memory.reserved_movelist.move_lists[current_depth],
+            );
             continue;
         }
         let mut move_score = 0.;
@@ -283,14 +286,15 @@ pub fn principal_variation_search(
                 tt_move.expect("Moves tried >0 and no tt move")
             }
         } else {
+            let available_moves =
+                su.thread_memory.reserved_movelist.move_lists[current_depth].counter;
             let r = get_next_gm(
-                su.move_list,
-                current_depth,
+                &mut su.thread_memory.reserved_movelist.move_lists[current_depth],
                 moves_from_movelist_tried,
-                su.move_list.counter[current_depth],
+                available_moves,
             );
             move_score = r.1;
-            su.move_list.move_list[current_depth][r.0].unwrap()
+            su.thread_memory.reserved_movelist.move_lists[current_depth].move_list[r.0].unwrap()
         };
         //Make sure that our move is not the same as tt or pv move, if we have any
         if moves_tried >= hash_and_pv_move_counter {
@@ -557,7 +561,7 @@ pub fn make_and_evaluate_moves(
     current_depth: usize,
     move_list: &mut MoveList,
 ) {
-    movegen::generate_moves(&game_state, false, move_list, current_depth);
+    movegen::generate_moves(&game_state, false, move_list);
     //Move Ordering
     //1. PV-Move +30000
     //2. Hash move + 29999
@@ -568,29 +572,24 @@ pub fn make_and_evaluate_moves(
     //6. Non captures (history heuristic) history heuristic score
     //7. Losing captures (SEE<0) see score
     let mut mv_index = 0;
-    while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
-            .as_ref()
-            .unwrap();
+    while mv_index < move_list.counter {
+        let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
         if is_capture(mv) {
             if GameMoveType::EnPassant == mv.move_type {
-                move_list.graded_moves[current_depth][mv_index] =
-                    Some(GradedMove::new(mv_index, 9999.0));
+                move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, 9999.0));
             } else {
                 let mut sval = f64::from(see(&game_state, &mv, true, &mut search.see_buffer));
                 if sval >= 0.0 {
                     sval += 10000.0;
                 }
-                move_list.graded_moves[current_depth][mv_index] =
-                    Some(GradedMove::new(mv_index, sval));
+                move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, sval));
             }
         } else {
             //Assing history score
             let score = search.hh_score[game_state.color_to_move][mv.from][mv.to] as f64
                 / search.bf_score[game_state.color_to_move][mv.from][mv.to] as f64
                 / 1000.0;
-            move_list.graded_moves[current_depth][mv_index] =
-                Some(GradedMove::new(mv_index, score));
+            move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, score));
         }
         mv_index += 1;
     }
@@ -598,21 +597,15 @@ pub fn make_and_evaluate_moves(
     {
         //Killer moves
         if let Some(s) = search.killer_moves[current_depth][0] {
-            let mv_index = find_move(&s, move_list, current_depth, false);
-            if mv_index < move_list.counter[current_depth] {
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score += 5000.0;
+            let mv_index = find_move(&s, move_list, false);
+            if mv_index < move_list.counter {
+                move_list.graded_moves[mv_index].as_mut().unwrap().score += 5000.0;
             }
         }
         if let Some(s) = search.killer_moves[current_depth][1] {
-            let mv_index = find_move(&s, move_list, current_depth, false);
-            if mv_index < move_list.counter[current_depth] {
-                move_list.graded_moves[current_depth][mv_index]
-                    .as_mut()
-                    .unwrap()
-                    .score += 5000.0;
+            let mv_index = find_move(&s, move_list, false);
+            if mv_index < move_list.counter {
+                move_list.graded_moves[mv_index].as_mut().unwrap().score += 5000.0;
             }
         }
     }
@@ -695,54 +688,36 @@ pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
 }
 
 #[inline(always)]
-pub fn get_next_gm(
-    mv_list: &mut MoveList,
-    current_depth: usize,
-    mv_index: usize,
-    max_moves: usize,
-) -> (usize, f64) {
-    if mv_list.counter[current_depth] == 0 {
+pub fn get_next_gm(mv_list: &mut MoveList, mv_index: usize, max_moves: usize) -> (usize, f64) {
+    if mv_list.counter == 0 {
         panic!("List has to be longer than 1")
     } else {
         let mut index = mv_index;
         for i in (mv_index + 1)..max_moves {
-            if mv_list.graded_moves[current_depth][i]
-                .as_ref()
-                .unwrap()
-                .score
-                > mv_list.graded_moves[current_depth][index]
-                    .as_ref()
-                    .unwrap()
-                    .score
+            if mv_list.graded_moves[i].as_ref().unwrap().score
+                > mv_list.graded_moves[index].as_ref().unwrap().score
             {
                 index = i;
             }
         }
-        let result = mv_list.graded_moves[current_depth][index]
-            .as_ref()
-            .unwrap()
-            .mv_index;
-        let score = mv_list.graded_moves[current_depth][index]
-            .as_ref()
-            .unwrap()
-            .score;
-        mv_list.graded_moves[current_depth][index] =
-            mv_list.graded_moves[current_depth][mv_index].clone();
+        let result = mv_list.graded_moves[index].as_ref().unwrap().mv_index;
+        let score = mv_list.graded_moves[index].as_ref().unwrap().score;
+        mv_list.graded_moves[index] = mv_list.graded_moves[mv_index].clone();
         (result, score)
     }
 }
 
 #[inline(always)]
-pub fn find_move(mv: &GameMove, mv_list: &MoveList, current_depth: usize, contains: bool) -> usize {
+pub fn find_move(mv: &GameMove, mv_list: &MoveList, contains: bool) -> usize {
     let mut mv_index = 0;
-    while mv_index < mv_list.counter[current_depth] {
-        let mvs = mv_list.move_list[current_depth][mv_index].as_ref().unwrap();
+    while mv_index < mv_list.counter {
+        let mvs = mv_list.move_list[mv_index].as_ref().unwrap();
         if mvs.from == mv.from && mvs.to == mv.to && mvs.move_type == mv.move_type {
             break;
         }
         mv_index += 1;
     }
-    if mv_index < mv_list.counter[current_depth] {
+    if mv_index < mv_list.counter {
         mv_index
     } else if contains {
         panic!("Type 2 error");

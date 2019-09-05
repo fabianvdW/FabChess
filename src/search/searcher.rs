@@ -1,18 +1,17 @@
 use super::alphabeta::principal_variation_search;
 use super::alphabeta::PrincipalVariation;
-use super::alphabeta::MATED_IN_MAX;
-use super::alphabeta::MAX_SEARCH_DEPTH;
-use super::alphabeta::STANDARD_SCORE;
 use super::cache::{Cache, CacheEntry};
 use super::history::History;
 use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
+use super::MATED_IN_MAX;
+use super::MAX_SEARCH_DEPTH;
+use super::STANDARD_SCORE;
 use crate::board_representation::game_state::{GameState, WHITE};
 //use crate::logging::log;
+use super::reserved_memory::ReserveMemory;
 use crate::move_generation::makemove::make_move;
-use crate::move_generation::movegen;
-use crate::move_generation::movegen::MoveList;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -25,7 +24,7 @@ pub struct SearchUtils<'a> {
     pub history: &'a mut History,
     pub stop: &'a Arc<AtomicBool>,
     pub cache: &'a mut Cache,
-    pub move_list: &'a mut MoveList,
+    pub thread_memory: &'a mut ReserveMemory,
 }
 impl<'a> SearchUtils<'a> {
     pub fn new(
@@ -34,7 +33,7 @@ impl<'a> SearchUtils<'a> {
         history: &'a mut History,
         stop: &'a Arc<AtomicBool>,
         cache: &'a mut Cache,
-        move_list: &'a mut MoveList,
+        thread_memory: &'a mut ReserveMemory,
     ) -> Self {
         SearchUtils {
             root_pliesplayed,
@@ -42,7 +41,7 @@ impl<'a> SearchUtils<'a> {
             history,
             stop,
             cache,
-            move_list,
+            thread_memory,
         }
     }
 }
@@ -138,7 +137,7 @@ impl Search {
         }
 
         self.search_statistics = SearchStatistics::default();
-        let mut move_list = movegen::MoveList::default();
+        let mut reserved_memory = ReserveMemory::default();
         let mut best_pv_score = STANDARD_SCORE;
 
         for d in 1..=depth {
@@ -150,7 +149,7 @@ impl Search {
                     &mut hist,
                     &stop_ref,
                     cache,
-                    &mut move_list,
+                    &mut reserved_memory,
                 );
                 pv_score = principal_variation_search(
                     -16000,
@@ -177,7 +176,7 @@ impl Search {
                         &mut hist,
                         &stop_ref,
                         cache,
-                        &mut move_list,
+                        &mut reserved_memory,
                     );
                     pv_score = principal_variation_search(
                         alpha,

@@ -28,6 +28,7 @@ mod tests {
     use core::move_generation::makemove::make_move;
     use core::move_generation::movegen;
     use core::perft;
+    use core::search::reserved_memory::ReservedMoveList;
     use rand::Rng;
     use std::error::Error;
     use std::fs::File;
@@ -71,7 +72,7 @@ mod tests {
 
     #[test]
     fn perft_test() {
-        let mut movelist = movegen::MoveList::default();
+        let mut movelist = ReservedMoveList::default();
 
         #[rustfmt::skip]
         let cases = [
@@ -165,6 +166,7 @@ mod tests {
         ];
 
         for case in cases.iter() {
+            println!("{}", case.2);
             assert_eq!(
                 case.0,
                 perft(&GameState::from_fen(case.2), case.1, &mut movelist)
@@ -192,13 +194,13 @@ mod tests {
                         g.en_passant
                     )
                 );
-                let agsi = movegen::generate_moves(&g, false, &mut movelist, 0);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist);
                 if !agsi.stm_haslegalmove {
                     break;
                 }
                 g = make_move(
                     &g,
-                    movelist.move_list[0][rng.gen_range(0, movelist.counter[0])]
+                    movelist.move_list[rng.gen_range(0, movelist.counter)]
                         .as_ref()
                         .unwrap(),
                 )
@@ -223,13 +225,13 @@ mod tests {
             assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
             assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             for _j in 0..200 {
-                let agsi = movegen::generate_moves(&g, false, &mut movelist, 0);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist);
                 if !agsi.stm_haslegalmove {
                     break;
                 }
                 g = make_move(
                     &g,
-                    movelist.move_list[0][rng.gen_range(0, movelist.counter[0])]
+                    movelist.move_list[rng.gen_range(0, movelist.counter)]
                         .as_ref()
                         .unwrap(),
                 );

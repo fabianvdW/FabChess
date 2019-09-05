@@ -247,10 +247,10 @@ pub fn scout_and_make_draftmove(
     game_state: &GameState,
     movelist: &mut movegen::MoveList,
 ) -> GameState {
-    movegen::generate_moves(&game_state, false, movelist, 0);
+    movegen::generate_moves(&game_state, false, movelist);
     let mut index = 0;
-    while index < movelist.counter[0] {
-        let mv = movelist.move_list[0][index].as_ref().unwrap();
+    while index < movelist.counter {
+        let mv = movelist.move_list[index].as_ref().unwrap();
         if mv.from == from && mv.to == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {

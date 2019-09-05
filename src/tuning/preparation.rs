@@ -7,14 +7,15 @@ use core::evaluation::eval_game_state;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
 use core::search::alphabeta::{
-    check_end_condition, check_for_draw, get_next_gm, in_check, leaf_score, MAX_SEARCH_DEPTH,
-    STANDARD_SCORE,
+    check_end_condition, check_for_draw, get_next_gm, in_check, leaf_score,
 };
 use core::search::history::History;
 use core::search::quiescence::{
     best_move_value, is_capture, passes_delta_pruning, see, DELTA_PRUNING,
 };
+use core::search::reserved_memory::ReservedMoveList;
 use core::search::GradedMove;
+use core::search::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use core::tuning::loading::load_positions;
 use core::tuning::loading::{save_positions, FileFormatSupported, LabelledGameState, Statistics};
 use std::fs;
@@ -46,7 +47,7 @@ fn main() {
     let mut quiet_stripped: Vec<LabelledGameState> = Vec::with_capacity(positions.len());
 
     let mut history = History::default();
-    let mut move_list = MoveList::default();
+    let mut move_list = ReservedMoveList::default();
     let mut see_buffer = vec![0i16; MAX_SEARCH_DEPTH];
 
     for position in positions {
@@ -101,7 +102,7 @@ pub fn stripped_q_search(
     current_depth: usize,
     depth_left: i16,
     history: &mut History,
-    move_list: &mut MoveList,
+    move_list: &mut ReservedMoveList,
     see_buffer: &mut Vec<i16>,
 ) -> (i16, GameState) {
     //Check for draw
@@ -126,8 +127,7 @@ pub fn stripped_q_search(
     history.push(game_state.hash, game_state.half_moves == 0);
     let (agsi, max_index) = make_moves(
         &game_state,
-        current_depth,
-        move_list,
+        &mut move_list.move_lists[current_depth],
         static_evaluation.phase,
         stand_pat,
         alpha,
@@ -141,9 +141,9 @@ pub fn stripped_q_search(
     let mut current_best_state: Option<GameState> = None;
     let mut index = 0;
     while index < max_index {
-        let capture_move: GameMove = move_list.move_list[current_depth]
-            [get_next_gm(move_list, current_depth, index, max_index).0]
-            .expect("Could not get next gm");
+        let r = get_next_gm(&mut move_list.move_lists[current_depth], index, max_index).0;
+        let capture_move: GameMove =
+            move_list.move_lists[current_depth].move_list[r].expect("Could not get next gm");
         let next_g = make_move(&game_state, &capture_move);
         let (score, other_state) = stripped_q_search(
             -beta,
@@ -182,7 +182,6 @@ pub fn stripped_q_search(
 
 pub fn make_moves(
     game_state: &GameState,
-    current_depth: usize,
     move_list: &mut MoveList,
     phase: f64,
     stand_pat: i16,
@@ -190,15 +189,12 @@ pub fn make_moves(
     see_buffer: &mut Vec<i16>,
     incheck: bool,
 ) -> (AdditionalGameStateInformation, usize) {
-    let agsi = movegen::generate_moves(&game_state, !incheck, move_list, current_depth);
+    let agsi = movegen::generate_moves(&game_state, !incheck, move_list);
     let (mut mv_index, mut capture_index) = (0, 0);
-    while mv_index < move_list.counter[current_depth] {
-        let mv: &GameMove = move_list.move_list[current_depth][mv_index]
-            .as_ref()
-            .unwrap();
+    while mv_index < move_list.counter {
+        let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
         if let GameMoveType::EnPassant = mv.move_type {
-            move_list.graded_moves[current_depth][capture_index] =
-                Some(GradedMove::new(mv_index, 100.0));
+            move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 100.0));
         } else {
             if !incheck && !passes_delta_pruning(mv, phase, stand_pat, alpha) {
                 mv_index += 1;
@@ -210,11 +206,10 @@ pub fn make_moves(
                     mv_index += 1;
                     continue;
                 }
-                move_list.graded_moves[current_depth][capture_index] =
+                move_list.graded_moves[capture_index] =
                     Some(GradedMove::new(mv_index, f64::from(score)));
             } else {
-                move_list.graded_moves[current_depth][capture_index] =
-                    Some(GradedMove::new(mv_index, 0.));
+                move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 0.));
             }
         }
         mv_index += 1;
