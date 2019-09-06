@@ -3,6 +3,7 @@ use super::super::board_representation::game_state::{
     self, GameMove, GameMoveType, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 use super::magic::{self, Magic};
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::search::GradedMove;
 
 //Movegen
@@ -637,11 +638,12 @@ impl MoveList {
         self.counter += 1;
     }
 }
-
+//pub fn generate_moves_from_null(g: &game_state::GameState, only_captures:bool, )
 pub fn generate_moves(
     g: &game_state::GameState,
     only_captures: bool,
     movelist: &mut MoveList,
+    attack_container: &GameStateAttackContainer,
 ) -> AdditionalGameStateInformation {
     //----------------------------------------------------------------------
     //**********************************************************************

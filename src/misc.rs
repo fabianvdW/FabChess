@@ -2,6 +2,7 @@ use super::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, WHITE,
 };
 use super::evaluation;
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::logging::log;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
@@ -63,11 +64,12 @@ pub fn parse_pgn_find_static_eval_mistakes() {
             is_opening: false,
             opening_load_untilply: 0usize,
             move_list: movegen::MoveList::default(),
+            attack_container: GameStateAttackContainer::default(),
         };
         for _game in parser.into_iter() {
             let last_game_state = &_game.1[_game.1.len() - 1];
             let res = _game.2;
-            let eval = evaluation::eval_game_state(&last_game_state).final_eval;
+            let eval = evaluation::eval_game_state_from_null(&last_game_state).final_eval;
             if res == 1 {
                 if eval < 0 {
                     log(&format!("{} (1-0)\n", &last_game_state.to_fen()));
@@ -88,6 +90,7 @@ pub struct GameParser {
     pub is_opening: bool,
     pub opening_load_untilply: usize,
     pub move_list: movegen::MoveList,
+    pub attack_container: GameStateAttackContainer,
 }
 
 impl Iterator for GameParser {
@@ -116,8 +119,14 @@ impl Iterator for GameParser {
                         continue;
                     }
                     //println!("{} || len: {}", move_str, move_str.len());
-                    let parsed_move =
-                        parse_move(&vec_gs[vec_gs.len() - 1], &move_str, &mut self.move_list);
+                    let last_state = &vec_gs[vec_gs.len() - 1];
+                    self.attack_container.write_state(last_state);
+                    let parsed_move = parse_move(
+                        last_state,
+                        &move_str,
+                        &mut self.move_list,
+                        &self.attack_container,
+                    );
                     vec_gs.push(parsed_move.1);
                     vec_res.push(parsed_move.0);
                     if self.is_opening && vec_res.len() == self.opening_load_untilply {
@@ -266,6 +275,7 @@ pub fn parse_move(
     g: &GameState,
     move_str: &str,
     movelist: &mut movegen::MoveList,
+    attack_container: &GameStateAttackContainer,
 ) -> (GameMove, GameState) {
     let mut my_string = move_str.to_string();
     my_string = my_string
@@ -273,7 +283,7 @@ pub fn parse_move(
         .replace("+", "")
         .replace("=", "")
         .replace("x", "");
-    movegen::generate_moves(&g, false, movelist);
+    movegen::generate_moves(&g, false, movelist, &attack_container);
     if my_string.contains('-') {
         //Castle
         //Kingside

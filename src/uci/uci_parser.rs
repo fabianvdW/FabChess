@@ -1,5 +1,6 @@
 use super::uci_engine::UCIEngine;
 use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::Cache;
@@ -22,6 +23,7 @@ pub fn parse_loop() {
     let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::default()));
     let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
     let mut movelist = movegen::MoveList::default();
+    let mut attack_container = GameStateAttackContainer::default();
     let saved_time = Arc::new(AtomicU64::new(0u64));
     let stdin = io::stdin();
     let mut line = String::new();
@@ -47,7 +49,7 @@ pub fn parse_loop() {
             }
             "isready" => isready(),
             "position" => {
-                history = position(&mut us, &arg[1..], &mut movelist);
+                history = position(&mut us, &arg[1..], &mut movelist, &mut attack_container);
             }
             "go" => {
                 stop.store(false, Ordering::Relaxed);
@@ -82,7 +84,7 @@ pub fn parse_loop() {
             "static" => {
                 println!(
                     "cp {}",
-                    crate::evaluation::eval_game_state(&us.internal_state).final_eval
+                    crate::evaluation::eval_game_state_from_null(&us.internal_state).final_eval
                 );
             }
             _ => {
@@ -203,6 +205,7 @@ pub fn position(
     engine: &mut UCIEngine,
     cmd: &[&str],
     movelist: &mut movegen::MoveList,
+    attack_container: &mut GameStateAttackContainer,
 ) -> Vec<GameState> {
     let mut move_index = 1;
     match cmd[0] {
@@ -230,8 +233,14 @@ pub fn position(
             //Parse the move and make it
             let mv = cmd[move_index];
             let (from, to, promo) = GameMove::string_to_move(mv);
-            engine.internal_state =
-                scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
+            engine.internal_state = scout_and_make_draftmove(
+                from,
+                to,
+                promo,
+                &engine.internal_state,
+                movelist,
+                attack_container,
+            );
             history.push(engine.internal_state.clone());
             move_index += 1;
         }
@@ -246,8 +255,10 @@ pub fn scout_and_make_draftmove(
     promo_pieces: Option<PieceType>,
     game_state: &GameState,
     movelist: &mut movegen::MoveList,
+    attack_container: &mut GameStateAttackContainer,
 ) -> GameState {
-    movegen::generate_moves(&game_state, false, movelist);
+    attack_container.write_state(game_state);
+    movegen::generate_moves(&game_state, false, movelist, attack_container);
     let mut index = 0;
     while index < movelist.counter {
         let mv = movelist.move_list[index].as_ref().unwrap();

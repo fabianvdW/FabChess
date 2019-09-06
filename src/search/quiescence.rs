@@ -13,6 +13,7 @@ use super::searcher::{Search, SearchUtils};
 use super::GradedMove;
 use super::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::bitboards;
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 
 pub const DELTA_PRUNING: i16 = 100;
@@ -34,19 +35,31 @@ pub fn q_search(
     if su.search.stop {
         return STANDARD_SCORE;
     }
-    let incheck = in_check(game_state);
-
+    //Initialzie attack container
+    su.thread_memory.reserved_attack_container.attack_containers[current_depth]
+        .write_state(game_state);
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        return eval_game_state(&game_state).final_eval * color;
+        return eval_game_state(
+            &game_state,
+            &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
+        )
+        .final_eval
+            * color;
     }
 
     //check for draw
     if check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, current_depth as i16);
     }
+
+    let incheck = in_check(game_state);
+
     let (phase, stand_pat) = if !incheck {
-        let static_evaluation = eval_game_state(&game_state);
+        let static_evaluation = eval_game_state(
+            &game_state,
+            &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
+        );
 
         (
             Some(static_evaluation.phase),
@@ -134,6 +147,7 @@ pub fn q_search(
                 game_state,
                 su.search,
                 &mut su.thread_memory.reserved_movelist.move_lists[current_depth],
+                &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
                 phase,
                 stand_pat,
                 alpha,
@@ -227,12 +241,13 @@ pub fn make_and_evaluate_moves_qsearch(
     game_state: &GameState,
     search: &mut Search,
     move_list: &mut MoveList,
+    attack_container: &GameStateAttackContainer,
     phase: Option<f64>,
     stand_pat: Option<i16>,
     alpha: i16,
     incheck: bool,
 ) -> (AdditionalGameStateInformation, usize) {
-    let agsi = movegen::generate_moves(&game_state, !incheck, move_list);
+    let agsi = movegen::generate_moves(&game_state, !incheck, move_list, attack_container);
     let (mut mv_index, mut capture_index) = (0, 0);
     while mv_index < move_list.counter {
         let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();

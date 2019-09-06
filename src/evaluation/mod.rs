@@ -8,6 +8,7 @@ use super::board_representation::game_state::{
 #[cfg(feature = "display-eval")]
 use super::logging::log;
 use super::move_generation::movegen;
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
 #[cfg(feature = "texel-tuning")]
 use crate::tuning::trace::Trace;
@@ -27,7 +28,11 @@ pub struct EvaluationResult {
     pub trace: Trace,
 }
 
-pub fn eval_game_state(g: &GameState) -> EvaluationResult {
+pub fn eval_game_state_from_null(g: &GameState) -> EvaluationResult {
+    let mgsac = GameStateAttackContainer::from_state(g);
+    eval_game_state(g, &mgsac)
+}
+pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
         log(&format!("Evaluating GameState fen: {}\n", g.to_fen()));

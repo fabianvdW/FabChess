@@ -4,7 +4,7 @@ pub const MGSA_KNIGHT: usize = 0;
 pub const MGSA_BISHOP: usize = 1;
 pub const MGSA_ROOKS: usize = 2;
 pub const MGSA_QUEEN: usize = 3;
-pub struct MutableGameStateAttackContainer {
+pub struct GameStateAttackContainer {
     pub attack: Vec<Vec<Vec<u64>>>,
     pub king_attacks: [u64; 2],
     pub pawn_attacks: [u64; 2],
@@ -17,9 +17,9 @@ pub struct MutableGameStateAttackContainer {
     pub queens: [usize; 2],
 }
 
-impl MutableGameStateAttackContainer {
+impl GameStateAttackContainer {
     pub fn from_state(game_state: &GameState) -> Self {
-        let mut res = MutableGameStateAttackContainer::default();
+        let mut res = GameStateAttackContainer::default();
         res.write_state(game_state);
         res
     }
@@ -99,8 +99,8 @@ impl MutableGameStateAttackContainer {
     }
 }
 
-impl Default for MutableGameStateAttackContainer {
-    fn default() -> MutableGameStateAttackContainer {
+impl Default for GameStateAttackContainer {
+    fn default() -> GameStateAttackContainer {
         let mut attack: Vec<Vec<Vec<u64>>> = Vec::with_capacity(4);
         for i in 0..4 {
             attack.push(Vec::with_capacity(2));
@@ -108,7 +108,7 @@ impl Default for MutableGameStateAttackContainer {
                 attack[i].push(vec![0u64; if i <= 2 { 10 } else { 9 }]);
             }
         }
-        MutableGameStateAttackContainer {
+        GameStateAttackContainer {
             attack,
             king_attacks: [0u64; 2],
             pawn_attacks: [0u64; 2],

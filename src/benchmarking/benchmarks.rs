@@ -44,15 +44,18 @@ pub fn load_benchmarking_positions() -> Vec<GameState> {
 mod tests {
     use super::load_benchmarking_positions;
     use super::BENCHMARKING_POSITIONS_AMOUNT;
+    use core::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core::evaluation::eval_game_state;
     use test::Bencher;
     #[bench]
     pub fn evaluation(b: &mut Bencher) {
         let states = load_benchmarking_positions();
+        let mut attack_container = GameStateAttackContainer::default();
         b.iter(|| {
             let mut sum = 0;
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
-                sum += eval_game_state(&states[i]).final_eval as isize;
+                attack_container.write_state(&states[i]);
+                sum += eval_game_state(&states[i], &attack_container).final_eval as isize;
             }
             sum;
         });

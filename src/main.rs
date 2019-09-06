@@ -23,11 +23,13 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use core::board_representation::game_state::GameState;
+    use core::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core::evaluation::psqt_evaluation::psqt;
     use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
     use core::move_generation::makemove::make_move;
     use core::move_generation::movegen;
     use core::perft;
+    use core::search::reserved_memory::ReservedAttackContainer;
     use core::search::reserved_memory::ReservedMoveList;
     use rand::Rng;
     use std::error::Error;
@@ -73,7 +75,7 @@ mod tests {
     #[test]
     fn perft_test() {
         let mut movelist = ReservedMoveList::default();
-
+        let mut attack_container = ReservedAttackContainer::default();
         #[rustfmt::skip]
         let cases = [
         (20,1,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
@@ -169,7 +171,12 @@ mod tests {
             println!("{}", case.2);
             assert_eq!(
                 case.0,
-                perft(&GameState::from_fen(case.2), case.1, &mut movelist)
+                perft(
+                    &GameState::from_fen(case.2),
+                    case.1,
+                    &mut movelist,
+                    &mut attack_container
+                )
             );
         }
     }
@@ -178,6 +185,7 @@ mod tests {
     fn zobrist_hash_test() {
         //Tests incremental update of hash
         let mut movelist = movegen::MoveList::default();
+        let mut attack_container = GameStateAttackContainer::default();
         let mut rng = rand::thread_rng();
         for _i in 0..10000 {
             let mut g = GameState::standard();
@@ -194,7 +202,8 @@ mod tests {
                         g.en_passant
                     )
                 );
-                let agsi = movegen::generate_moves(&g, false, &mut movelist);
+                attack_container.write_state(&g);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
                 if !agsi.stm_haslegalmove {
                     break;
                 }
@@ -212,6 +221,7 @@ mod tests {
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
         let mut movelist = movegen::MoveList::default();
+        let mut attack_container = GameStateAttackContainer::default();
         let mut _eval = core::evaluation::EvaluationResult {
             phase: 0.,
             final_eval: 0,
@@ -225,7 +235,8 @@ mod tests {
             assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
             assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
             for _j in 0..200 {
-                let agsi = movegen::generate_moves(&g, false, &mut movelist);
+                attack_container.write_state(&g);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
                 if !agsi.stm_haslegalmove {
                     break;
                 }

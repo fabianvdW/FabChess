@@ -12,6 +12,7 @@ use super::searcher::SearchUtils;
 use super::GradedMove;
 use super::{MATED_IN_MAX, MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::bitboards;
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::evaluation::{calculate_phase, eval_game_state};
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
@@ -41,9 +42,17 @@ pub fn principal_variation_search(
     if su.search.stop {
         return STANDARD_SCORE;
     }
+    //Initialize attacks for this game_state
+    su.thread_memory.reserved_attack_container.attack_containers[current_depth]
+        .write_state(game_state);
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        return eval_game_state(&game_state).final_eval * color;
+        return eval_game_state(
+            &game_state,
+            &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
+        )
+        .final_eval
+            * color;
     }
 
     let root = current_depth == 0;
@@ -136,7 +145,10 @@ pub fn principal_variation_search(
             && (depth_left <= STATIC_NULL_MOVE_DEPTH || depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || !incheck && depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = eval_game_state(&game_state);
+        let eval_res = eval_game_state(
+            &game_state,
+            &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
+        );
         static_evaluation = Some(eval_res.final_eval);
         phase = Some(eval_res.phase);
         su.search.search_statistics.add_static_eval_node();
@@ -271,6 +283,7 @@ pub fn principal_variation_search(
                 su.search,
                 current_depth,
                 &mut su.thread_memory.reserved_movelist.move_lists[current_depth],
+                &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
             );
             continue;
         }
@@ -560,8 +573,9 @@ pub fn make_and_evaluate_moves(
     search: &mut Search,
     current_depth: usize,
     move_list: &mut MoveList,
+    attack_container: &GameStateAttackContainer,
 ) {
-    movegen::generate_moves(&game_state, false, move_list);
+    movegen::generate_moves(&game_state, false, move_list, attack_container);
     //Move Ordering
     //1. PV-Move +30000
     //2. Hash move + 29999
