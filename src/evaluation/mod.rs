@@ -1,6 +1,5 @@
 pub mod params;
 pub mod psqt_evaluation;
-
 use super::bitboards;
 use super::board_representation::game_state::{
     GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
@@ -8,7 +7,9 @@ use super::board_representation::game_state::{
 #[cfg(feature = "display-eval")]
 use super::logging::log;
 use super::move_generation::movegen;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
+use crate::board_representation::game_state_attack_container::{
+    GameStateAttackContainer, MGSA_BISHOP, MGSA_KNIGHT, MGSA_QUEEN, MGSA_ROOKS,
+};
 use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
 #[cfg(feature = "texel-tuning")]
 use crate::tuning::trace::Trace;
@@ -64,8 +65,8 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
         log(&format!("EG PSQT Sum: {}\n", psqt_eg));
     }
     let (knights_w, knights_b) = (
-        knights(true, g, &mut result),
-        knights(false, g, &mut result),
+        knights(true, g, &mut result, attacks),
+        knights(false, g, &mut result, attacks),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -83,8 +84,8 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
         ));
     }
     let (piecewise_w, piecewise_b) = (
-        piecewise(true, g, &mut result),
-        piecewise(false, g, &mut result),
+        piecewise(true, g, &mut result, attacks),
+        piecewise(false, g, &mut result, attacks),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -117,7 +118,10 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
             king_w.1 - king_b.1
         ));
     }
-    let (pawns_w, pawns_b) = (pawns(true, g, &mut result), pawns(false, g, &mut result));
+    let (pawns_w, pawns_b) = (
+        pawns(true, g, &mut result, attacks),
+        pawns(false, g, &mut result, attacks),
+    );
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -228,17 +232,16 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     result
 }
 
-pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
+pub fn knights(
+    white: bool,
+    g: &GameState,
+    _eval: &mut EvaluationResult,
+    attack_container: &GameStateAttackContainer,
+) -> (i16, i16) {
     let (mut mg_res, mut eg_res) = (0i16, 0i16);
     let side = if white { WHITE } else { BLACK };
 
-    let my_pawn_attacks = if white {
-        movegen::w_pawn_west_targets(g.pieces[PAWN][side])
-            | movegen::w_pawn_east_targets(g.pieces[PAWN][side])
-    } else {
-        movegen::b_pawn_west_targets(g.pieces[PAWN][side])
-            | movegen::b_pawn_east_targets(g.pieces[PAWN][side])
-    };
+    let my_pawn_attacks = attack_container.pawn_attacks[side];
 
     let supported_knights = g.pieces[KNIGHT][side] & my_pawn_attacks;
     let supported_knights_amount = supported_knights.count_ones() as i16;
@@ -297,65 +300,24 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16
     (mg_res, eg_res)
 }
 
-pub fn defended_by_minors(white: bool, g: &GameState) -> u64 {
-    let mut def = 0u64;
-    let side = if white { WHITE } else { BLACK };
-    def |= if white {
-        movegen::w_pawn_west_targets(g.pieces[PAWN][side])
-            | movegen::w_pawn_east_targets(g.pieces[PAWN][side])
-    } else {
-        movegen::b_pawn_west_targets(g.pieces[PAWN][side])
-            | movegen::b_pawn_east_targets(g.pieces[PAWN][side])
-    };
-    let all_pieces = g.get_all_pieces();
-    let mut knights = g.pieces[KNIGHT][side];
-    while knights != 0u64 {
-        let index = knights.trailing_zeros() as usize;
-        def |= knight_attack(index);
-        knights ^= 1u64 << index
-    }
-    let mut bishops = g.pieces[BISHOP][side];
-    while bishops != 0u64 {
-        let index = bishops.trailing_zeros() as usize;
-        def |= bishop_attack(index, all_pieces);
-        bishops ^= 1u64 << index
-    }
-
-    def
-}
-
-pub fn defend_by_majors(white: bool, g: &GameState) -> u64 {
-    let mut def = 0u64;
-    let side = if white { WHITE } else { BLACK };
-    let all_pieces = g.get_all_pieces();
-    let mut rooks = g.pieces[ROOK][side];
-    while rooks != 0u64 {
-        let index = rooks.trailing_zeros() as usize;
-        def |= rook_attack(index, all_pieces);
-        rooks ^= 1u64 << index;
-    }
-    let mut queens = g.pieces[QUEEN][side];
-    while queens != 0u64 {
-        let index = queens.trailing_zeros() as usize;
-        def |= rook_attack(index, all_pieces) | bishop_attack(index, all_pieces);
-        queens ^= 1u64 << index;
-    }
-    def
-}
-
-pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
+pub fn piecewise(
+    white: bool,
+    g: &GameState,
+    _eval: &mut EvaluationResult,
+    attack_container: &GameStateAttackContainer,
+) -> (i16, i16) {
     let side = if white { WHITE } else { BLACK };
 
+    let defended_by_minors = attack_container.attacks_minor_sum[1 - side];
+    let defended_squares = attack_container.attacks_sum[1 - side];
     let my_pieces = g.get_pieces_from_side(side);
-    let defended_by_minors = defended_by_minors(!white, g);
-    let defended_squares = defended_by_minors | defend_by_majors(!white, g);
-    let enemy_king_idx = g.pieces[KING][1 - side].trailing_zeros() as usize;
+
+    let enemy_king_idx = g.king_square(1 - side);
     let enemy_king_attackable = if white {
         bitboards::KING_ZONE_BLACK[enemy_king_idx]
     } else {
         bitboards::KING_ZONE_WHITE[enemy_king_idx]
     } & !defended_by_minors;
-    let all_pieces_without_enemy_king = my_pieces | g.get_pieces_from_side_without_king(1 - side);
 
     let knight_checks = knight_attack(enemy_king_idx);
     let all_pieces = g.get_all_pieces();
@@ -366,9 +328,10 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
     let mut knight_attacker_values: i16 = 0;
     let mut knights = g.pieces[KNIGHT][side];
     let (mut mk_mg, mut mk_eg) = (0i16, 0i16);
+    let mut index = 0;
     while knights != 0u64 {
         let idx = knights.trailing_zeros() as usize;
-        let targets = knight_attack(idx) & !my_pieces;
+        let targets = attack_container.attack[MGSA_KNIGHT][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
         mk_mg += KNIGHT_MOBILITY_BONUS_MG[mobility];
         mk_eg += KNIGHT_MOBILITY_BONUS_EG[mobility];
@@ -389,12 +352,14 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
             0
         };
         knights ^= 1u64 << idx;
+        index += 1;
     }
     //Bishops
     let mut bishop_attackers: i16 = 0;
     let mut bishop_attacker_values: i16 = 0;
     let mut bishops = g.pieces[BISHOP][side];
     let (mut mb_mg, mut mb_eg, mut mb_diag_mg, mut mb_diag_eg) = (0i16, 0i16, 0i16, 0i16);
+    let mut index = 0;
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
         let diagonally_adjacent_pawns =
@@ -405,7 +370,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         {
             _eval.trace.diagonally_adjacent_squares_withpawns[side][diagonally_adjacent_pawns] += 1;
         }
-        let targets = bishop_attack(idx, all_pieces_without_enemy_king) & !my_pieces;
+        let targets = attack_container.attack[MGSA_BISHOP][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
         mb_mg += BISHOP_MOBILITY_BONUS_MG[mobility];
         mb_eg += BISHOP_MOBILITY_BONUS_EG[mobility];
@@ -425,6 +390,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
             0
         };
         bishops ^= 1u64 << idx;
+        index += 1;
     }
 
     //Rooks
@@ -432,6 +398,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
     let mut rook_attacker_values: i16 = 0;
     let mut rooks = g.pieces[ROOK][side];
     let (mut mr_mg, mut mr_eg, mut rooks_onopen, mut rooks_onseventh) = (0i16, 0i16, 0i16, 0i16);
+    let mut index = 0;
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
         if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
@@ -440,7 +407,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         if bitboards::FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
             rooks_onopen += 1;
         }
-        let targets = rook_attack(idx, all_pieces_without_enemy_king) & !my_pieces;
+        let targets = attack_container.attack[MGSA_ROOKS][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
         mr_mg += ROOK_MOBILITY_BONUS_MG[mobility];
         mr_eg += ROOK_MOBILITY_BONUS_EG[mobility];
@@ -456,6 +423,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
         rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         rook_attacker_values += if has_safe_check { ROOK_ATTACK_WORTH } else { 0 };
         rooks ^= 1u64 << idx;
+        index += 1;
     }
     #[cfg(feature = "texel-tuning")]
     {
@@ -467,11 +435,10 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
     let mut queen_attacker_values: i16 = 0;
     let mut queens = g.pieces[QUEEN][side];
     let (mut mq_mg, mut mq_eg) = (0i16, 0i16);
+    let mut index = 0;
     while queens != 0u64 {
         let idx = queens.trailing_zeros() as usize;
-        let targets = (bishop_attack(idx, all_pieces_without_enemy_king)
-            | rook_attack(idx, all_pieces_without_enemy_king))
-            & !my_pieces;
+        let targets = attack_container.attack[MGSA_QUEEN][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
         mq_mg += QUEEN_MOBILITY_BONUS_MG[mobility];
         mq_eg += QUEEN_MOBILITY_BONUS_EG[mobility];
@@ -491,6 +458,7 @@ pub fn piecewise(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i
             0
         };
         queens ^= 1u64 << idx;
+        index += 1;
     }
     let attack_mg = ((SAFETY_TABLE_MG[(knight_attacker_values
         + bishop_attacker_values
@@ -679,7 +647,12 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i
     (mg_res, eg_res)
 }
 
-pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
+pub fn pawns(
+    white: bool,
+    g: &GameState,
+    _eval: &mut EvaluationResult,
+    attack_container: &GameStateAttackContainer,
+) -> (i16, i16) {
     let (mut mg_res, mut eg_res) = (0i16, 0i16);
     let side = if white { WHITE } else { BLACK };
     let empty = !g.get_all_pieces();
@@ -697,25 +670,12 @@ pub fn pawns(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, 
     };
     enemy_front_spans |=
         bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
-    let (my_west_attacks, my_east_attacks) = if white {
-        (
-            movegen::w_pawn_west_targets(g.pieces[PAWN][side]),
-            movegen::w_pawn_east_targets(g.pieces[PAWN][side]),
-        )
-    } else {
-        (
-            movegen::b_pawn_west_targets(g.pieces[PAWN][side]),
-            movegen::b_pawn_east_targets(g.pieces[PAWN][side]),
-        )
-    };
+    let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (
+        attack_container.pawn_west_attacks[side],
+        attack_container.pawn_east_attacks[side],
+        attack_container.pawn_attacks[1 - side],
+    );
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
-    let enemy_pawn_attacks = if white {
-        movegen::b_pawn_west_targets(g.pieces[PAWN][1 - side])
-            | movegen::b_pawn_east_targets(g.pieces[PAWN][1 - side])
-    } else {
-        movegen::w_pawn_west_targets(g.pieces[PAWN][1 - side])
-            | movegen::w_pawn_east_targets(g.pieces[PAWN][1 - side])
-    };
     let (my_pawn_pushes, my_pawn_double_pushes) = if white {
         (
             movegen::w_single_push_pawn_targets(g.pieces[PAWN][side], empty),
