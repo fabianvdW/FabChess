@@ -17,11 +17,14 @@ use self::board_representation::game_state::GameState;
 use self::move_generation::makemove::make_move;
 use self::move_generation::movegen;
 use self::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
+use std::time::Instant;
 
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let mut count = 0u64;
     let mut movelist = ReservedMoveList::default();
     let mut attack_container = ReservedAttackContainer::default();
+    let now = Instant::now();
+
     attack_container.attack_containers[depth].write_state(g);
     let _ = movegen::generate_moves(
         &g,
@@ -38,6 +41,14 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
         count += res;
         index += 1;
     }
+    println!("{}", count);
+    let after = Instant::now();
+    let dur = after.duration_since(now);
+    let secs = dur.as_millis() as f64 / 1000.0;
+    println!(
+        "{}",
+        &format!("Time {} ({} nps)", secs, count as f64 / secs)
+    );
     count
 }
 

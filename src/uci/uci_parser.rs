@@ -13,7 +13,6 @@ use std::sync::{
 };
 use std::thread;
 use std::time::Duration;
-use std::time::Instant;
 use std::u64;
 
 pub fn parse_loop() {
@@ -96,16 +95,7 @@ pub fn parse_loop() {
 
 pub fn perft(game_state: &GameState, cmd: &[&str]) {
     let depth = cmd[0].parse::<usize>().unwrap();
-    let now = Instant::now();
-    let nodes = crate::perft_div(&game_state, depth);
-    println!("{}", nodes);
-    let after = Instant::now();
-    let dur = after.duration_since(now);
-    let secs = dur.as_millis() as f64 / 1000.0;
-    println!(
-        "{}",
-        &format!("Time {} ({} nps)", secs, nodes as f64 / secs)
-    );
+    crate::perft_div(&game_state, depth);
 }
 
 pub fn start_search(
