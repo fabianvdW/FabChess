@@ -1,5 +1,5 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 use super::super::movegen;
 use super::super::movegen::MoveList;
@@ -649,43 +649,7 @@ pub fn concatenate_pv(at_depth: usize, search: &mut Search) {
 
 #[inline(always)]
 pub fn in_check(game_state: &GameState) -> bool {
-    let my_king = game_state.pieces[KING][game_state.color_to_move];
-    if (movegen::knight_attack(my_king.trailing_zeros() as usize)
-        & game_state.pieces[KNIGHT][1 - game_state.color_to_move])
-        != 0u64
-    {
-        return true;
-    }
-    if game_state.color_to_move == WHITE {
-        if (movegen::w_pawn_west_targets(my_king) | movegen::w_pawn_east_targets(my_king))
-            & game_state.pieces[PAWN][BLACK]
-            != 0u64
-        {
-            return true;
-        }
-    } else if (movegen::b_pawn_west_targets(my_king) | movegen::b_pawn_east_targets(my_king))
-        & game_state.pieces[PAWN][WHITE]
-        != 0u64
-    {
-        return true;
-    }
-    let all_pieces = game_state.get_pieces_from_side_without_king(game_state.color_to_move)
-        | game_state.get_pieces_from_side(1 - game_state.color_to_move);
-    if movegen::bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[BISHOP][1 - game_state.color_to_move]
-            | game_state.pieces[QUEEN][1 - game_state.color_to_move])
-        != 0u64
-    {
-        return true;
-    }
-    if movegen::rook_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[ROOK][1 - game_state.color_to_move]
-            | game_state.pieces[QUEEN][1 - game_state.color_to_move])
-        != 0u64
-    {
-        return true;
-    }
-    false
+    movegen::get_checkers(game_state).count_ones() > 0
 }
 
 #[inline(always)]

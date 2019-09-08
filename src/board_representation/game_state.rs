@@ -434,6 +434,7 @@ impl GameState {
             psqt_eg: p_w.1 - p_b.1,
         }
     }
+
     pub fn get_piece_on(&self, shift: i32) -> &str {
         if (self.pieces[PAWN][WHITE] >> shift) & 1u64 != 0u64 {
             "P"
@@ -576,6 +577,7 @@ impl GameState {
             psqt_eg: p_w.1 - p_b.1,
         }
     }
+
     pub fn calculate_zobrist_hash(
         color_to_move: usize,
         pieces: [[u64; 2]; 6],
@@ -698,6 +700,11 @@ impl GameState {
     #[inline(always)]
     pub fn get_all_pieces(&self) -> u64 {
         self.get_pieces_from_side(WHITE) | self.get_pieces_from_side(BLACK)
+    }
+
+    #[inline(always)]
+    pub fn king_square(&self, side: usize) -> usize {
+        self.pieces[KING][side].trailing_zeros() as usize
     }
 }
 impl Clone for GameState {

@@ -7,6 +7,8 @@ pub const MGSA_QUEEN: usize = 3;
 pub struct GameStateAttackContainer {
     pub attack: Vec<Vec<Vec<u64>>>,
     pub king_attacks: [u64; 2],
+    pub pawn_west_attacks: [u64; 2],
+    pub pawn_east_attacks: [u64; 2],
     pub pawn_attacks: [u64; 2],
     pub attacks_minor_sum: [u64; 2], //Attacked by only pawns, knights, bishops
     pub attacks_major_sum: [u64; 2], // Attacked by only rooks, queens
@@ -32,6 +34,9 @@ impl GameStateAttackContainer {
             all_pieces_without_stmking | game_state.pieces[KING][game_state.color_to_move];
 
         for side in 0..2 {
+            self.attacks_minor_sum[side] = 0u64;
+            self.attacks_major_sum[side] = 0u64;
+            self.attacks_sum[side] = 0u64;
             let occupancy_squares = if side == game_state.color_to_move {
                 all_pieces
             } else {
@@ -41,9 +46,11 @@ impl GameStateAttackContainer {
             self.king_attacks[side] =
                 movegen::king_attack(game_state.pieces[KING][side].trailing_zeros() as usize);
             //Pawn attacks
-            self.pawn_attacks[side] =
-                movegen::pawn_west_targets(side, game_state.pieces[PAWN][side])
-                    | movegen::pawn_east_targets(side, game_state.pieces[PAWN][side]);
+            self.pawn_west_attacks[side] =
+                movegen::pawn_west_targets(side, game_state.pieces[PAWN][side]);
+            self.pawn_east_attacks[side] =
+                movegen::pawn_east_targets(side, game_state.pieces[PAWN][side]);
+            self.pawn_attacks[side] = self.pawn_west_attacks[side] | self.pawn_east_attacks[side];
             let mut attacks_minor_sum = self.pawn_attacks[side];
             //Knight attacks
             let mut knights = game_state.pieces[KNIGHT][side];
@@ -111,6 +118,8 @@ impl Default for GameStateAttackContainer {
         GameStateAttackContainer {
             attack,
             king_attacks: [0u64; 2],
+            pawn_west_attacks: [0u64; 2],
+            pawn_east_attacks: [0u64; 2],
             pawn_attacks: [0u64; 2],
             attacks_minor_sum: [0u64; 2],
             attacks_major_sum: [0u64; 2],
