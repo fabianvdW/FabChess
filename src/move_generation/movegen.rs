@@ -1,9 +1,11 @@
 use super::super::bitboards;
 use super::super::board_representation::game_state::{
-    self, GameMove, GameMoveType, PieceType, BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+    GameMove, GameMoveType, GameState, PieceType, BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 use super::magic::{self, Magic};
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
+use crate::board_representation::game_state_attack_container::{
+    GameStateAttackContainer, MGSA_BISHOP, MGSA_KNIGHT, MGSA_QUEEN, MGSA_ROOKS,
+};
 use crate::search::GradedMove;
 
 //Movegen
@@ -109,25 +111,17 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn find_captured_piece_type(
-    to: usize,
-    e_pawns: u64,
-    e_knights: u64,
-    e_bishops: u64,
-    e_rooks: u64,
-    e_queens: u64,
-) -> PieceType {
+pub fn find_captured_piece_type(g: &GameState, to: usize) -> PieceType {
     let to_board = 1u64 << to;
-    if e_pawns & to_board != 0u64 {
+    if g.pieces[PAWN][1 - g.color_to_move] & to_board != 0u64 {
         PieceType::Pawn
-    } else if e_knights & to_board != 0u64 {
+    } else if g.pieces[KNIGHT][1 - g.color_to_move] & to_board != 0u64 {
         PieceType::Knight
-    //Find queens before bishops and rooks since it's in all three boards
-    } else if e_queens & to_board != 0u64 {
+    } else if g.pieces[QUEEN][1 - g.color_to_move] & to_board != 0u64 {
         PieceType::Queen
-    } else if e_bishops & to_board != 0u64 {
+    } else if g.pieces[BISHOP][1 - g.color_to_move] & to_board != 0u64 {
         PieceType::Bishop
-    } else if e_rooks & to_board != 0u64 {
+    } else if g.pieces[ROOK][1 - g.color_to_move] & to_board != 0u64 {
         PieceType::Rook
     } else {
         panic!("Shoudln't get here");
@@ -210,15 +204,11 @@ pub fn add_pin_moves_to_movelist(
 }
 #[inline(always)]
 pub fn add_king_moves_to_movelist(
+    g: &GameState,
     legal_moves: &mut MoveList,
     only_captures: bool,
     stm_legal_kingmoves: u64,
     stm_king_index: usize,
-    enemy_pawns: u64,
-    enemy_knights: u64,
-    enemy_bishops: u64,
-    enemy_rooks: u64,
-    enemy_queens: u64,
     enemy_pieces: u64,
 ) {
     let mut captures = stm_legal_kingmoves & enemy_pieces;
@@ -230,14 +220,7 @@ pub fn add_king_moves_to_movelist(
             stm_king_index,
             capture_index,
             PieceType::King,
-            GameMoveType::Capture(find_captured_piece_type(
-                capture_index,
-                enemy_pawns,
-                enemy_knights,
-                enemy_bishops,
-                enemy_rooks,
-                enemy_queens,
-            )),
+            GameMoveType::Capture(find_captured_piece_type(g, capture_index)),
         );
         captures ^= 1u64 << capture_index;
     }
@@ -254,15 +237,10 @@ pub fn add_king_moves_to_movelist(
 
 #[inline(always)]
 pub fn add_pawn_moves_to_movelist(
+    g: &GameState,
     legal_moves: &mut MoveList,
     mut target_board: u64,
     shift: usize,
-    stm_color_iswhite: bool,
-    enemy_pawns: u64,
-    enemy_knights: u64,
-    enemy_bishops: u64,
-    enemy_rooks: u64,
-    enemy_queens: u64,
     is_capture: bool,
     is_promotion: bool,
     pinned_pieces: u64,
@@ -271,7 +249,7 @@ pub fn add_pawn_moves_to_movelist(
     while target_board != 0u64 {
         let pawn_index = target_board.trailing_zeros() as usize;
         let pawn = 1u64 << pawn_index;
-        let from_index = if stm_color_iswhite {
+        let from_index = if g.color_to_move == WHITE {
             pawn_index - shift
         } else {
             pawn_index + shift
@@ -280,14 +258,7 @@ pub fn add_pawn_moves_to_movelist(
         if from_board & pinned_pieces == 0u64 {
             stm_haslegalmove = true;
             let mv_type = if is_capture {
-                GameMoveType::Capture(find_captured_piece_type(
-                    pawn_index,
-                    enemy_pawns,
-                    enemy_knights,
-                    enemy_bishops,
-                    enemy_rooks,
-                    enemy_queens,
-                ))
+                GameMoveType::Capture(find_captured_piece_type(g, pawn_index))
             } else {
                 GameMoveType::Quiet
             };
@@ -307,42 +278,35 @@ pub fn add_pawn_moves_to_movelist(
     }
     stm_haslegalmove
 }
+
 #[inline(always)]
 pub fn add_normal_moves_to_movelist(
+    g: &GameState,
     legal_moves: &mut MoveList,
+    attack_container: &GameStateAttackContainer,
     piece_type: PieceType,
     mut piece_board: u64,
     pinned_pieces: u64,
-    enemy_pawns: u64,
-    enemy_knights: u64,
-    enemy_bishops: u64,
-    enemy_rooks: u64,
-    enemy_queens: u64,
     enemy_pieces: u64,
     empty_squares: u64,
-    all_pieces: u64,
     push_mask: u64,
     capture_mask: u64,
     only_captures: bool,
-    stm_color_iswhite: bool,
 ) -> bool {
     let mut stm_haslegalmove = false;
+    let mut index = 0;
     while piece_board != 0u64 {
-        let piece_index = if stm_color_iswhite {
-            63 - piece_board.leading_zeros() as usize
-        } else {
-            piece_board.trailing_zeros() as usize
-        };
+        let piece_index = piece_board.trailing_zeros() as usize;
         let piece = 1u64 << piece_index;
         if piece & pinned_pieces == 0u64 {
             let piece_target = if let PieceType::Knight = piece_type {
-                knight_attack(piece_index)
+                attack_container.attack[MGSA_KNIGHT][g.color_to_move][index]
             } else if let PieceType::Bishop = piece_type {
-                bishop_attack(piece_index, all_pieces)
+                attack_container.attack[MGSA_BISHOP][g.color_to_move][index]
             } else if let PieceType::Rook = piece_type {
-                rook_attack(piece_index, all_pieces)
+                attack_container.attack[MGSA_ROOKS][g.color_to_move][index]
             } else if let PieceType::Queen = piece_type {
-                bishop_attack(piece_index, all_pieces) | rook_attack(piece_index, all_pieces)
+                attack_container.attack[MGSA_QUEEN][g.color_to_move][index]
             } else {
                 panic!("Shouldn't get here")
             };
@@ -355,14 +319,7 @@ pub fn add_normal_moves_to_movelist(
                     piece_index,
                     capture_index,
                     piece_type,
-                    GameMoveType::Capture(find_captured_piece_type(
-                        capture_index,
-                        enemy_pawns,
-                        enemy_knights,
-                        enemy_bishops,
-                        enemy_rooks,
-                        enemy_queens,
-                    )),
+                    GameMoveType::Capture(find_captured_piece_type(g, capture_index)),
                 );
                 captures ^= 1u64 << capture_index;
             }
@@ -382,6 +339,7 @@ pub fn add_normal_moves_to_movelist(
             }
         }
         piece_board ^= piece;
+        index += 1;
     }
     stm_haslegalmove
 }
@@ -473,7 +431,7 @@ pub fn add_move_to_movelist(
 }
 
 #[inline(always)]
-pub fn get_checkers(game_state: &game_state::GameState) -> u64 {
+pub fn get_checkers(game_state: &GameState) -> u64 {
     let mut checkers = 0u64;
     let my_king = game_state.pieces[KING][game_state.color_to_move];
     checkers |= knight_attack(my_king.trailing_zeros() as usize)
@@ -525,7 +483,7 @@ impl MoveList {
 }
 
 pub fn generate_moves(
-    g: &game_state::GameState,
+    g: &GameState,
     only_captures: bool,
     movelist: &mut MoveList,
     attack_container: &GameStateAttackContainer,
@@ -554,15 +512,11 @@ pub fn generate_moves(
         attack_container.king_attacks[side] & !attack_container.attacks_sum[enemy] & !side_pieces;
     stm_haslegalmove |= stm_legal_kingmoves != 0u64;
     add_king_moves_to_movelist(
+        g,
         movelist,
         only_captures,
         stm_legal_kingmoves,
         g.king_square(side),
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         enemy_pieces,
     );
     //----------------------------------------------------------------------
@@ -800,15 +754,10 @@ pub fn generate_moves(
         stm_pawns_single_push & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
     if !only_captures {
         add_pawn_moves_to_movelist(
+            g,
             movelist,
             stm_pawn_promotions,
             8,
-            stm_color_iswhite,
-            g.pieces[PAWN][enemy],
-            g.pieces[KNIGHT][enemy],
-            g.pieces[BISHOP][enemy],
-            g.pieces[ROOK][enemy],
-            g.pieces[QUEEN][enemy],
             false,
             true,
             pinned_pieces,
@@ -817,15 +766,10 @@ pub fn generate_moves(
     if !only_captures {
         let stm_pawns_quiet_single_push = stm_pawns_single_push & !stm_pawn_promotions;
         add_pawn_moves_to_movelist(
+            g,
             movelist,
             stm_pawns_quiet_single_push,
             8,
-            stm_color_iswhite,
-            g.pieces[PAWN][enemy],
-            g.pieces[KNIGHT][enemy],
-            g.pieces[BISHOP][enemy],
-            g.pieces[ROOK][enemy],
-            g.pieces[QUEEN][enemy],
             false,
             false,
             pinned_pieces,
@@ -841,15 +785,10 @@ pub fn generate_moves(
         stm_haslegalmove |= stm_pawns_double_push != 0u64;
         if !only_captures {
             add_pawn_moves_to_movelist(
+                g,
                 movelist,
                 stm_pawns_double_push,
                 16,
-                stm_color_iswhite,
-                g.pieces[PAWN][enemy],
-                g.pieces[KNIGHT][enemy],
-                g.pieces[BISHOP][enemy],
-                g.pieces[ROOK][enemy],
-                g.pieces[QUEEN][enemy],
                 false,
                 false,
                 pinned_pieces,
@@ -863,15 +802,10 @@ pub fn generate_moves(
     let stm_pawn_west_promotion_capture =
         stm_pawn_west_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
     stm_haslegalmove |= add_pawn_moves_to_movelist(
+        g,
         movelist,
         stm_pawn_west_promotion_capture,
         7,
-        stm_color_iswhite,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         true,
         true,
         pinned_pieces,
@@ -879,15 +813,10 @@ pub fn generate_moves(
     let stm_pawn_west_nonpromotion_capture =
         stm_pawn_west_captures & !stm_pawn_west_promotion_capture;
     stm_haslegalmove |= add_pawn_moves_to_movelist(
+        g,
         movelist,
         stm_pawn_west_nonpromotion_capture,
         7,
-        stm_color_iswhite,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         true,
         false,
         pinned_pieces,
@@ -938,15 +867,10 @@ pub fn generate_moves(
     let stm_pawn_east_promotion_capture =
         stm_pawn_east_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
     stm_haslegalmove |= add_pawn_moves_to_movelist(
+        g,
         movelist,
         stm_pawn_east_promotion_capture,
         9,
-        stm_color_iswhite,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         true,
         true,
         pinned_pieces,
@@ -954,15 +878,10 @@ pub fn generate_moves(
     let stm_pawn_east_nonpromotion_capture =
         stm_pawn_east_captures & !stm_pawn_east_promotion_capture;
     stm_haslegalmove |= add_pawn_moves_to_movelist(
+        g,
         movelist,
         stm_pawn_east_nonpromotion_capture,
         9,
-        stm_color_iswhite,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         true,
         false,
         pinned_pieces,
@@ -1012,80 +931,60 @@ pub fn generate_moves(
     //6. All other legal moves (knights, bishops, rooks, queens)
     //6.1 Knights
     stm_haslegalmove |= add_normal_moves_to_movelist(
+        g,
         movelist,
+        attack_container,
         PieceType::Knight,
         g.pieces[KNIGHT][side],
         pinned_pieces,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         enemy_pieces,
         empty_squares,
-        all_pieces,
         push_mask,
         capture_mask,
         only_captures,
-        stm_color_iswhite,
     );
     //6.4 Queens
     stm_haslegalmove |= add_normal_moves_to_movelist(
+        g,
         movelist,
+        attack_container,
         PieceType::Queen,
         g.pieces[QUEEN][side],
         pinned_pieces,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         enemy_pieces,
         empty_squares,
-        all_pieces,
         push_mask,
         capture_mask,
         only_captures,
-        stm_color_iswhite,
     );
 
     //6.2 Bishops
     stm_haslegalmove |= add_normal_moves_to_movelist(
+        g,
         movelist,
+        attack_container,
         PieceType::Bishop,
         g.pieces[BISHOP][side],
         pinned_pieces,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         enemy_pieces,
         empty_squares,
-        all_pieces,
         push_mask,
         capture_mask,
         only_captures,
-        stm_color_iswhite,
     );
     //6.3 Rooks
     stm_haslegalmove |= add_normal_moves_to_movelist(
+        g,
         movelist,
+        attack_container,
         PieceType::Rook,
         g.pieces[ROOK][side],
         pinned_pieces,
-        g.pieces[PAWN][enemy],
-        g.pieces[KNIGHT][enemy],
-        g.pieces[BISHOP][enemy],
-        g.pieces[ROOK][enemy],
-        g.pieces[QUEEN][enemy],
         enemy_pieces,
         empty_squares,
-        all_pieces,
         push_mask,
         capture_mask,
         only_captures,
-        stm_color_iswhite,
     );
     //----------------------------------------------------------------------
     //**********************************************************************
