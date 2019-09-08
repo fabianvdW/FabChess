@@ -269,6 +269,7 @@ mod tests {
                 is_opening: false,
                 opening_load_untilply: 0usize,
                 move_list: movegen::MoveList::default(),
+                attack_container: GameStateAttackContainer::default(),
             };
             for _game in parser.into_iter() {
                 //println!("{}", game.1);

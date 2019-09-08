@@ -2,7 +2,6 @@ use crate::selfplay::{play_game, EndConditionInformation};
 use crate::Config;
 use core::board_representation::game_state::GameState;
 use core::logging::Logger;
-use core::move_generation::movegen;
 use core::search::timecontrol::TimeControl;
 use core::testing::openings::PlayTask;
 use core::testing::openings::{load_db_until, load_openings_into_queue};
@@ -178,18 +177,9 @@ pub fn start_self_play_thread(
     tcp2: &TimeControl,
     error_log: Arc<Logger>,
 ) {
-    let mut movelist = movegen::MoveList::default();
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
-        let res = play_game(
-            task,
-            p1.clone(),
-            p2.clone(),
-            tcp1,
-            tcp2,
-            error_log.clone(),
-            &mut movelist,
-        );
+        let res = play_game(task, p1.clone(), p2.clone(), tcp1, tcp2, error_log.clone());
         if res.p1_disq || res.p2_disq {
             thread::sleep(Duration::from_millis(150));
         }

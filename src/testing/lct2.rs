@@ -1,5 +1,6 @@
 use crate::write_to_buf;
 use core::board_representation::game_state::{GameMove, GameState};
+use core::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core::misc::parse_move;
 use core::move_generation::movegen;
 use core::testing::queue::ThreadSafeQueue;
@@ -149,6 +150,7 @@ fn award_points(dur: u128) -> usize {
 
 fn load_lct2suit(path_to_lct2: &str) -> Vec<Lct2Test> {
     let mut movelist = movegen::MoveList::default();
+    let mut attack_container = GameStateAttackContainer::default();
     let mut res = Vec::with_capacity(30);
     let mut file: File = File::open(path_to_lct2).expect("Unable to open file");
     let mut contents = String::new();
@@ -162,7 +164,9 @@ fn load_lct2suit(path_to_lct2: &str) -> Vec<Lct2Test> {
         }
         let state = GameState::from_fen(linevec[0].trim_end());
         let mv = linevec[1].trim().split(' ').collect::<Vec<&str>>()[0].replace(";", "");
-        let (optimal_move, _) = parse_move(&state, &mv.to_string(), &mut movelist);
+        attack_container.write_state(&state);
+        let (optimal_move, _) =
+            parse_move(&state, &mv.to_string(), &mut movelist, &attack_container);
         res.push(Lct2Test {
             game_state: state,
             optimal_move,

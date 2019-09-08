@@ -6,6 +6,7 @@ use core::board_representation::game_state::{
     GameMove, GameMoveType, GameResult, GameState, PieceType, BISHOP, BLACK, KNIGHT, PAWN, QUEEN,
     ROOK, WHITE,
 };
+use core::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core::logging::Logger;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen;
@@ -25,8 +26,10 @@ pub fn play_game(
     tcp1: &TimeControl,
     tcp2: &TimeControl,
     error_log: Arc<Logger>,
-    movelist: &mut movegen::MoveList,
 ) -> TaskResult {
+    let mut movelist = movegen::MoveList::default();
+    let mut attack_container = GameStateAttackContainer::default();
+
     let player1_disq = TaskResult::disq(true, task.id);
     let player2_disq = TaskResult::disq(false, task.id);
     //-------------------------------------------------------------
@@ -111,7 +114,8 @@ pub fn play_game(
     //-------------------------------------------------------------
     //Set game up
     let opening_fen = task.opening.to_fen();
-    let agsi = movegen::generate_moves(&task.opening, false, movelist);
+    attack_container.write_state(&task.opening);
+    let agsi = movegen::generate_moves(&task.opening, false, &mut movelist, &attack_container);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
@@ -231,7 +235,7 @@ pub fn play_game(
             let split_line: Vec<&str> = line.split_whitespace().collect();
             if split_line[0] == "bestmove" {
                 let mv = GameMove::string_to_move(split_line[1]);
-                let found_move = find_move(mv.0, mv.1, mv.2, movelist);
+                let found_move = find_move(mv.0, mv.1, mv.2, &movelist);
                 if found_move.is_none() {
                     error_log.log(
                         &format!("Player 1 sent illegal {} in game {}\n", line, task.id),
@@ -360,7 +364,7 @@ pub fn play_game(
             let split_line: Vec<&str> = line.split_whitespace().collect();
             if split_line[0] == "bestmove" {
                 let mv = GameMove::string_to_move(split_line[1]);
-                let found_move = find_move(mv.0, mv.1, mv.2, movelist);
+                let found_move = find_move(mv.0, mv.1, mv.2, &movelist);
                 if found_move.is_none() {
                     error_log.log(
                         &format!("Player 2 sent illegal {} in game {}\n", line, task.id),
@@ -443,7 +447,8 @@ pub fn play_game(
         if state.half_moves == 0 || state.full_moves < 35 {
             draw_adjudication = 0;
         }
-        let agsi = movegen::generate_moves(&state, false, movelist);
+        attack_container.write_state(&state);
+        let agsi = movegen::generate_moves(&state, false, &mut movelist, &attack_container);
         let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
         status = check.0;
         endcondition = check.1;

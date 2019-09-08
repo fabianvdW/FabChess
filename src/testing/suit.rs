@@ -1,6 +1,7 @@
 use crate::write_to_buf;
 use crate::STS_SUB_SUITS;
 use core::board_representation::game_state::{GameMove, GameState};
+use core::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core::misc::parse_move;
 use core::move_generation::movegen;
 use core::testing::queue::ThreadSafeQueue;
@@ -134,6 +135,7 @@ fn suit_thread(
     move_time: u64,
 ) {
     let mut movelist = movegen::MoveList::default();
+    let mut attack_container = GameStateAttackContainer::default();
     let mut child = Command::new(p1.to_string())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -155,7 +157,13 @@ fn suit_thread(
             let cmd: Vec<&str> = line.split(' ').collect();
             if cmd[0] == "bestmove" {
                 let bm = cmd[1].trim();
-                let (mv, _) = parse_move(&test.game_state, &bm.to_owned(), &mut movelist);
+                attack_container.write_state(&test.game_state);
+                let (mv, _) = parse_move(
+                    &test.game_state,
+                    &bm.to_owned(),
+                    &mut movelist,
+                    &attack_container,
+                );
                 resultqueue.push(TestSuitResult { suit: test, mv });
                 break;
             }
@@ -165,6 +173,7 @@ fn suit_thread(
 }
 fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
     let mut movelist = movegen::MoveList::default();
+    let mut attack_container = GameStateAttackContainer::default();
     let mut res = Vec::with_capacity(30);
     let mut file: File = File::open(path_to_suit).expect("Unable to open file");
     let mut contents = String::new();
@@ -189,8 +198,13 @@ fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
                 for optimal_move_desc in comment_line {
                     let move_desc_split = optimal_move_desc.split('=').collect::<Vec<&str>>();
                     //println!("MoveDesc: {:?}", move_desc_split);
-                    let (move_desc, _) =
-                        parse_move(&state, &move_desc_split[0].trim().to_owned(), &mut movelist);
+                    attack_container.write_state(&state);
+                    let (move_desc, _) = parse_move(
+                        &state,
+                        &move_desc_split[0].trim().to_owned(),
+                        &mut movelist,
+                        &attack_container,
+                    );
                     let score = move_desc_split[1].parse::<u64>().unwrap();
                     optimal_moves.push(AwardedMove {
                         mv: move_desc,
