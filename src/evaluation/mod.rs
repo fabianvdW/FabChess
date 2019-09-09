@@ -325,7 +325,7 @@ pub fn piecewise(
     let rook_checks = rook_attack(enemy_king_idx, all_pieces);
     //Knights
     let mut knight_attackers: i16 = 0;
-    let mut knight_attacker_values: i16 = 0;
+    let (mut knight_attacker_values_mg, mut knight_attacker_values_eg): (i16, i16) = (0, 0);
     let mut knights = g.pieces[KNIGHT][side];
     let (mut mk_mg, mut mk_eg) = (0i16, 0i16);
     let mut index = 0;
@@ -345,18 +345,31 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             knight_attackers += 1;
         }
-        knight_attacker_values += KNIGHT_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
-        knight_attacker_values += if has_safe_check {
-            KNIGHT_ATTACK_WORTH
+        knight_attacker_values_mg +=
+            KNIGHT_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
+        knight_attacker_values_eg +=
+            KNIGHT_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
+        knight_attacker_values_mg += if has_safe_check {
+            KNIGHT_ATTACK_WORTH_MG
         } else {
             0
         };
+        knight_attacker_values_eg += if has_safe_check {
+            KNIGHT_ATTACK_WORTH_EG
+        } else {
+            0
+        };
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.knight_attacked_sq[side] +=
+                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+        }
         knights ^= 1u64 << idx;
         index += 1;
     }
     //Bishops
     let mut bishop_attackers: i16 = 0;
-    let mut bishop_attacker_values: i16 = 0;
+    let (mut bishop_attacker_values_mg, mut bishop_attacker_values_eg): (i16, i16) = (0, 0);
     let mut bishops = g.pieces[BISHOP][side];
     let (mut mb_mg, mut mb_eg, mut mb_diag_mg, mut mb_diag_eg) = (0i16, 0i16, 0i16, 0i16);
     let mut index = 0;
@@ -383,19 +396,32 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             bishop_attackers += 1;
         }
-        bishop_attacker_values += BISHOP_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
-        bishop_attacker_values += if has_safe_check {
-            BISHOP_ATTACK_WORTH
+        bishop_attacker_values_mg +=
+            BISHOP_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
+        bishop_attacker_values_eg +=
+            BISHOP_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
+        bishop_attacker_values_mg += if has_safe_check {
+            BISHOP_ATTACK_WORTH_MG
         } else {
             0
         };
+        bishop_attacker_values_eg += if has_safe_check {
+            BISHOP_ATTACK_WORTH_EG
+        } else {
+            0
+        };
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.bishop_attacked_sq[side] +=
+                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+        }
         bishops ^= 1u64 << idx;
         index += 1;
     }
 
     //Rooks
     let mut rook_attackers: i16 = 0;
-    let mut rook_attacker_values: i16 = 0;
+    let (mut rook_attacker_values_mg, mut rook_attacker_values_eg): (i16, i16) = (0, 0);
     let mut rooks = g.pieces[ROOK][side];
     let (mut mr_mg, mut mr_eg, mut rooks_onopen, mut rooks_onseventh) = (0i16, 0i16, 0i16, 0i16);
     let mut index = 0;
@@ -420,8 +446,23 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             rook_attackers += 1;
         }
-        rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
-        rook_attacker_values += if has_safe_check { ROOK_ATTACK_WORTH } else { 0 };
+        rook_attacker_values_mg += ROOK_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
+        rook_attacker_values_eg += ROOK_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
+        rook_attacker_values_mg += if has_safe_check {
+            ROOK_ATTACK_WORTH_MG
+        } else {
+            0
+        };
+        rook_attacker_values_eg += if has_safe_check {
+            ROOK_ATTACK_WORTH_EG
+        } else {
+            0
+        };
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.rook_attacked_sq[side] +=
+                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+        }
         rooks ^= 1u64 << idx;
         index += 1;
     }
@@ -432,7 +473,7 @@ pub fn piecewise(
     }
     //Queens
     let mut queen_attackers: i16 = 0;
-    let mut queen_attacker_values: i16 = 0;
+    let (mut queen_attacker_values_mg, mut queen_attacker_values_eg): (i16, i16) = (0, 0);
     let mut queens = g.pieces[QUEEN][side];
     let (mut mq_mg, mut mq_eg) = (0i16, 0i16);
     let mut index = 0;
@@ -451,27 +492,38 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             queen_attackers += 1;
         }
-        queen_attacker_values += QUEEN_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
-        queen_attacker_values += if has_safe_check {
-            QUEEN_ATTACK_WORTH
+        queen_attacker_values_mg += QUEEN_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
+        queen_attacker_values_eg += QUEEN_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
+        queen_attacker_values_mg += if has_safe_check {
+            QUEEN_ATTACK_WORTH_MG
         } else {
             0
         };
+        queen_attacker_values_eg += if has_safe_check {
+            QUEEN_ATTACK_WORTH_EG
+        } else {
+            0
+        };
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.queen_attacked_sq[side] +=
+                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+        }
         queens ^= 1u64 << idx;
         index += 1;
     }
-    let attack_mg = ((SAFETY_TABLE_MG[(knight_attacker_values
-        + bishop_attacker_values
-        + rook_attacker_values
-        + queen_attacker_values)
+    let attack_mg = ((SAFETY_TABLE_MG[(knight_attacker_values_mg
+        + bishop_attacker_values_mg
+        + rook_attacker_values_mg
+        + queen_attacker_values_mg)
         .min(99) as usize] as isize
         * ATTACK_WEIGHT_MG[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
             .min(7) as usize] as isize) as f64
         / 100.0) as i16;
-    let attack_eg = ((SAFETY_TABLE_EG[(knight_attacker_values
-        + bishop_attacker_values
-        + rook_attacker_values
-        + queen_attacker_values)
+    let attack_eg = ((SAFETY_TABLE_EG[(knight_attacker_values_eg
+        + bishop_attacker_values_eg
+        + rook_attacker_values_eg
+        + queen_attacker_values_eg)
         .min(99) as usize] as isize
         * ATTACK_WEIGHT_EG[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
             .min(7) as usize] as isize) as f64
@@ -480,11 +532,6 @@ pub fn piecewise(
     {
         _eval.trace.attackers[side] =
             (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
-        _eval.trace.attacker_value[side] = (knight_attacker_values
-            + bishop_attacker_values
-            + rook_attacker_values
-            + queen_attacker_values)
-            .min(99) as u16;
     }
     let mg_res = mk_mg
         + mb_mg
@@ -554,10 +601,10 @@ pub fn piecewise(
         ));
         log(&format!(
             "\tAttack MG value: {} * {} / 100.0 -> {}\n",
-            SAFETY_TABLE_MG[(knight_attacker_values
-                + bishop_attacker_values
-                + rook_attacker_values
-                + queen_attacker_values)
+            SAFETY_TABLE_MG[(knight_attacker_values_mg
+                + bishop_attacker_values_mg
+                + rook_attacker_values_mg
+                + queen_attacker_values_mg)
                 .min(99) as usize],
             ATTACK_WEIGHT_MG[(knight_attackers
                 + bishop_attackers
@@ -568,10 +615,10 @@ pub fn piecewise(
         ));
         log(&format!(
             "\tAttack EG value: {} * {} / 100.0 -> {}\n",
-            SAFETY_TABLE_EG[(knight_attacker_values
-                + bishop_attacker_values
-                + rook_attacker_values
-                + queen_attacker_values)
+            SAFETY_TABLE_EG[(knight_attacker_values_eg
+                + bishop_attacker_values_eg
+                + rook_attacker_values_eg
+                + queen_attacker_values_eg)
                 .min(99) as usize],
             ATTACK_WEIGHT_EG[(knight_attackers
                 + bishop_attackers

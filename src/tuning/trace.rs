@@ -33,7 +33,10 @@ pub struct Trace {
     pub rook_mobility: [[i8; 15]; 2],
     pub queen_mobility: [[i8; 28]; 2],
     pub attackers: [u8; 2],
-    pub attacker_value: [u16; 2],
+    pub knight_attacked_sq: [u8; 2],
+    pub bishop_attacked_sq: [u8; 2],
+    pub rook_attacked_sq: [u8; 2],
+    pub queen_attacked_sq: [u8; 2],
     pub psqt_pawn: [[[i8; 8]; 8]; 2],
     pub psqt_knight: [[[i8; 8]; 8]; 2],
     pub psqt_bishop: [[[i8; 8]; 8]; 2],
@@ -147,14 +150,44 @@ impl Trace {
             &params.rook_on_seventh,
         );
         piecewise_res.0 += (params.attack_weight[MG][self.attackers[WHITE] as usize]
-            * params.safety_table[MG].safety_table[self.attacker_value[WHITE] as usize]
+            * params.safety_table[MG].safety_table[((f64::from(self.knight_attacked_sq[WHITE])
+                * params.knight_attack_value[MG]
+                + f64::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[MG]
+                + f64::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[MG]
+                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[MG])
+                as usize)
+                .max(0)
+                .min(99)]
             - params.attack_weight[MG][self.attackers[BLACK] as usize]
-                * params.safety_table[MG].safety_table[self.attacker_value[BLACK] as usize])
+                * params.safety_table[MG].safety_table
+                    [((f64::from(self.knight_attacked_sq[BLACK]) * params.knight_attack_value[MG]
+                        + f64::from(self.bishop_attacked_sq[BLACK])
+                            * params.bishop_attack_value[MG]
+                        + f64::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[MG]
+                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[MG])
+                        as usize)
+                        .max(0)
+                        .min(99)])
             / 100.0;
         piecewise_res.1 += (params.attack_weight[EG][self.attackers[WHITE] as usize]
-            * params.safety_table[EG].safety_table[self.attacker_value[WHITE] as usize]
+            * params.safety_table[EG].safety_table[((f64::from(self.knight_attacked_sq[WHITE])
+                * params.knight_attack_value[EG]
+                + f64::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[EG]
+                + f64::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[EG]
+                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[EG])
+                as usize)
+                .max(0)
+                .min(99)]
             - params.attack_weight[EG][self.attackers[BLACK] as usize]
-                * params.safety_table[EG].safety_table[self.attacker_value[BLACK] as usize])
+                * params.safety_table[EG].safety_table
+                    [((f64::from(self.knight_attacked_sq[BLACK]) * params.knight_attack_value[EG]
+                        + f64::from(self.bishop_attacked_sq[BLACK])
+                            * params.bishop_attack_value[EG]
+                        + f64::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[EG]
+                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[EG])
+                        as usize)
+                        .max(0)
+                        .min(99)])
             / 100.0;
 
         //King-Safety
@@ -307,7 +340,10 @@ impl Trace {
             rook_mobility: [[0; 15]; 2],
             queen_mobility: [[0; 28]; 2],
             attackers: [0; 2],
-            attacker_value: [0; 2],
+            knight_attacked_sq: [0; 2],
+            bishop_attacked_sq: [0; 2],
+            rook_attacked_sq: [0; 2],
+            queen_attacked_sq: [0; 2],
             psqt_pawn: [[[0; 8]; 8]; 2],
             psqt_knight: [[[0; 8]; 8]; 2],
             psqt_bishop: [[[0; 8]; 8]; 2],

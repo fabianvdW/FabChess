@@ -49,6 +49,10 @@ pub struct Parameters {
     pub queen_mobility: [[f64; 28]; 2],
     pub attack_weight: [[f64; 8]; 2],
     pub safety_table: [SafetyTable; 2],
+    pub knight_attack_value: [f64; 2],
+    pub bishop_attack_value: [f64; 2],
+    pub rook_attack_value: [f64; 2],
+    pub queen_attack_value: [f64; 2],
     pub psqt_pawn: [[[f64; 8]; 8]; 2],
     pub psqt_knight: [[[f64; 8]; 8]; 2],
     pub psqt_bishop: [[[f64; 8]; 8]; 2],
@@ -353,10 +357,38 @@ impl Parameters {
             "pub const SAFETY_TABLE_EG: [i16;100] = {};\n",
             array_to_string(&self.safety_table[EG].safety_table)
         ));
-        res_str.push_str(&"pub const KNIGHT_ATTACK_WORTH: i16 = 2;\n".to_string());
-        res_str.push_str(&"pub const BISHOP_ATTACK_WORTH: i16 = 2;\n".to_string());
-        res_str.push_str(&"pub const ROOK_ATTACK_WORTH: i16 = 3;\n".to_string());
-        res_str.push_str(&"pub const QUEEN_ATTACK_WORTH: i16 = 5;\n".to_string());
+        res_str.push_str(&format!(
+            "pub const KNIGHT_ATTACK_WORTH_MG: i16 = {};\n",
+            self.knight_attack_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const KNIGHT_ATTACK_WORTH_EG: i16 = {};\n",
+            self.knight_attack_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const BISHOP_ATTACK_WORTH_MG: i16 = {};\n",
+            self.bishop_attack_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const BISHOP_ATTACK_WORTH_EG: i16 = {};\n",
+            self.bishop_attack_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_ATTACK_WORTH_MG: i16 = {};\n",
+            self.rook_attack_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_ATTACK_WORTH_EG: i16 = {};\n",
+            self.rook_attack_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_ATTACK_WORTH_MG: i16 = {};\n",
+            self.queen_attack_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_ATTACK_WORTH_EG: i16 = {};\n",
+            self.queen_attack_value[EG].round() as isize,
+        ));
         res_str.push_str(&format!(
             "pub const PSQT_PAWN_MG: [[i16;8];8] = {};\n",
             psqt_to_string(&self.psqt_pawn[MG])
@@ -577,6 +609,22 @@ impl Parameters {
                 f64::from(QUEEN_PIECE_VALUE_MG),
                 f64::from(QUEEN_PIECE_VALUE_EG),
             ],
+            knight_attack_value: [
+                f64::from(KNIGHT_ATTACK_WORTH_MG),
+                f64::from(KNIGHT_ATTACK_WORTH_EG),
+            ],
+            bishop_attack_value: [
+                f64::from(BISHOP_ATTACK_WORTH_MG),
+                f64::from(BISHOP_ATTACK_WORTH_EG),
+            ],
+            rook_attack_value: [
+                f64::from(ROOK_ATTACK_WORTH_MG),
+                f64::from(ROOK_ATTACK_WORTH_EG),
+            ],
+            queen_attack_value: [
+                f64::from(QUEEN_ATTACK_WORTH_MG),
+                f64::from(QUEEN_ATTACK_WORTH_EG),
+            ],
             diagonally_adjacent_squares_withpawns,
             knight_mobility,
             bishop_mobility,
@@ -632,6 +680,10 @@ impl Parameters {
                     safety_table: [0.; 100],
                 },
             ],
+            knight_attack_value: [0.; 2],
+            bishop_attack_value: [0.; 2],
+            rook_attack_value: [0.; 2],
+            queen_attack_value: [0.; 2],
             psqt_pawn: [[[0.; 8]; 8]; 2],
             psqt_knight: [[[0.; 8]; 8]; 2],
             psqt_bishop: [[[0.; 8]; 8]; 2],
@@ -672,6 +724,10 @@ impl Parameters {
             self.bishop_pair[i] += gradient.bishop_pair[i] / norm;
             self.rook_piece_value[i] += gradient.rook_piece_value[i] / norm;
             self.queen_piece_value[i] += gradient.queen_piece_value[i] / norm;
+            self.knight_attack_value[i] += gradient.knight_attack_value[i] / norm;
+            self.bishop_attack_value[i] += gradient.bishop_attack_value[i] / norm;
+            self.rook_attack_value[i] += gradient.rook_attack_value[i] / norm;
+            self.queen_attack_value[i] += gradient.queen_attack_value[i] / norm;
         }
         for i in 0..2 {
             apply_gradient_arr(&mut self.pawn_passed[i], &gradient.pawn_passed[i], norm);
