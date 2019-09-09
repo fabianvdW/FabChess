@@ -763,6 +763,7 @@ pub fn pawns(
         & !enemy_front_spans;
     let (mut passer_mg, mut passer_eg, mut _passer_normal, mut _passer_notblocked) =
         (0i16, 0i16, 0, 0);
+    let mut weak_passers = 0;
     let behind_passers = if white {
         bitboards::b_front_span(passed_pawns)
     } else {
@@ -792,12 +793,22 @@ pub fn pawns(
         {
             _eval.trace.pawn_passed[side][if white { idx / 8 } else { 7 - idx / 8 }] += 1;
         }
-        if if white {
-            bitboards::w_front_span(1u64 << idx)
-        } else {
-            bitboards::b_front_span(1u64 << idx)
-        } & enemy_pieces
-            == 0u64
+        //A weak passer is an attacked and not defended passer
+        let weak_passer = (1u64 << idx) & attack_container.attacks_sum[1 - side] != 0u64
+            && (1u64 << idx) & attack_container.attacks_sum[side] == 0u64;
+        if weak_passer {
+            //Weak passer
+            weak_passers += 1;
+        }
+        //An unblocked passer is a) not weak b) all the squares until conversions are either not attacked or defended and unoccupied or attacked
+        if !weak_passer
+            && if white {
+                bitboards::w_front_span(1u64 << idx)
+            } else {
+                bitboards::b_front_span(1u64 << idx)
+            } & (attack_container.attacks_sum[1 - side] | enemy_pieces)
+                & !attack_container.attacks_sum[side]
+                == 0u64
         {
             //Passed and not blocked
             _passer_notblocked += 1;
@@ -811,10 +822,15 @@ pub fn pawns(
                     [if white { idx / 8 } else { 7 - idx / 8 }] += 1;
             }
         }
+
         passed_pawns ^= 1u64 << idx;
     }
-    mg_res += passer_mg;
-    eg_res += passer_eg;
+    #[cfg(feature = "texel-tuning")]
+    {
+        _eval.trace.pawn_passed_weak[side] = weak_passers as i8;
+    }
+    mg_res += passer_mg + weak_passers * PAWN_PASSED_WEAK_MG;
+    eg_res += passer_eg + weak_passers * PAWN_PASSED_WEAK_EG;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -870,6 +886,12 @@ pub fn pawns(
             enemy_rooks_attack_passer,
             ROOK_BEHIND_ENEMY_PASSER_MG * enemy_rooks_attack_passer,
             ROOK_BEHIND_ENEMY_PASSER_EG * enemy_rooks_attack_passer
+        ));
+        log(&format!(
+            "\tWeak passer: {} -> ({} , {})\n",
+            weak_passers,
+            PAWN_PASSED_WEAK_MG * weak_passers,
+            PAWN_PASSED_WEAK_EG * weak_passers
         ));
         log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
     }

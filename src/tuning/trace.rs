@@ -15,6 +15,7 @@ pub struct Trace {
     pub pawn_passed_notblocked: [[i8; 7]; 2],
     pub rook_behind_support_passer: [i8; 2],
     pub rook_behind_enemy_passer: [i8; 2],
+    pub pawn_passed_weak: [i8; 2],
     pub knight_supported: [i8; 2],
     pub knight_outpost_table: [[[i8; 8]; 8]; 2],
     pub rook_on_open: [i8; 2],
@@ -213,6 +214,11 @@ impl Trace {
             self.rook_behind_enemy_passer,
             &params.rook_behind_enemy_passer,
         );
+        evaluate_single(
+            &mut pawn_res,
+            self.pawn_passed_weak,
+            &params.pawn_passed_weak,
+        );
 
         //Piece values
         let mut piecevalue_res = (0., 0.);
@@ -283,6 +289,7 @@ impl Trace {
             pawn_passed_notblocked: [[0; 7]; 2],
             rook_behind_support_passer: [0; 2],
             rook_behind_enemy_passer: [0; 2],
+            pawn_passed_weak: [0; 2],
             knight_supported: [0; 2],
             knight_outpost_table: [[[0; 8]; 8]; 2],
             rook_on_open: [0; 2],
@@ -316,7 +323,7 @@ mod tests {
     #[cfg(feature = "texel-tuning")]
     use crate::board_representation::game_state::GameState;
     #[cfg(feature = "texel-tuning")]
-    use crate::evaluation::eval_game_state;
+    use crate::evaluation::eval_game_state_from_null;
     #[test]
     #[ignore]
     pub fn traceeval() {
@@ -424,7 +431,7 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
             let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
             for line in new_linesplit {
                 let position = GameState::from_fen(line);
-                let evaluation = eval_game_state(&position);
+                let evaluation = eval_game_state_from_null(&position);
                 let trace_eval = evaluation.trace.evaluate(&params) as i16;
                 //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
                 if (evaluation.final_eval - trace_eval).abs() > 2 {

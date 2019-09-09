@@ -3,7 +3,7 @@ extern crate rand;
 
 use core::board_representation::game_state::{BLACK, WHITE};
 #[cfg(feature = "texel-tuning")]
-use core::evaluation::eval_game_state;
+use core::evaluation::eval_game_state_from_null;
 use core::evaluation::{EG, MG};
 #[cfg(feature = "texel-tuning")]
 use core::tuning::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
@@ -82,7 +82,7 @@ pub fn main() {
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(7881908);
     for state in labelledstates {
-        let eval = eval_game_state(&state.game_state);
+        let eval = eval_game_state_from_null(&state.game_state);
         res.push(TexelState {
             label: state.label,
             eval: eval.final_eval as f64,
@@ -200,6 +200,12 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             add_gradient(
                 &mut gradient.rook_behind_enemy_passer,
                 pos.trace.rook_behind_enemy_passer,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &mut gradient.pawn_passed_weak,
+                pos.trace.pawn_passed_weak,
                 start_of_gradient,
                 phase,
             );
@@ -422,6 +428,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         }
         norm += gradient.rook_behind_support_passer[i].powf(2.);
         norm += gradient.rook_behind_enemy_passer[i].powf(2.);
+        norm += gradient.pawn_passed_weak[i].powf(2.);
         norm += gradient.knight_supported[i].powf(2.);
         for j in 0..8 {
             for k in 0..8 {

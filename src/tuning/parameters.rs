@@ -30,6 +30,7 @@ pub struct Parameters {
     pub pawn_passed_notblocked: [[f64; 7]; 2],
     pub rook_behind_support_passer: [f64; 2],
     pub rook_behind_enemy_passer: [f64; 2],
+    pub pawn_passed_weak: [f64; 2],
     pub knight_supported: [f64; 2],
     pub knight_outpost_table: [[[f64; 8]; 8]; 2],
     pub rook_on_open: [f64; 2],
@@ -203,6 +204,14 @@ impl Parameters {
         res_str.push_str(&format!(
             "pub const ROOK_BEHIND_ENEMY_PASSER_EG: i16 = {};\n",
             self.rook_behind_enemy_passer[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const PAWN_PASSED_WEAK_MG: i16 = {};\n",
+            self.pawn_passed_weak[MG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const PAWN_PASSED_WEAK_EG: i16 = {};\n",
+            self.pawn_passed_weak[EG].round() as isize
         ));
         res_str.push_str(&format!(
             "pub const KNIGHT_SUPPORTED_BY_PAWN_MG: i16 = {};\n",
@@ -529,6 +538,10 @@ impl Parameters {
                 f64::from(ROOK_BEHIND_ENEMY_PASSER_MG),
                 f64::from(ROOK_BEHIND_ENEMY_PASSER_EG),
             ],
+            pawn_passed_weak: [
+                f64::from(PAWN_PASSED_WEAK_MG),
+                f64::from(PAWN_PASSED_WEAK_EG),
+            ],
             knight_supported: [
                 f64::from(KNIGHT_SUPPORTED_BY_PAWN_MG),
                 f64::from(KNIGHT_SUPPORTED_BY_PAWN_EG),
@@ -593,6 +606,7 @@ impl Parameters {
             pawn_passed_notblocked: [[0.; 7]; 2],
             rook_behind_support_passer: [0.; 2],
             rook_behind_enemy_passer: [0.; 2],
+            pawn_passed_weak: [0.; 2],
             knight_supported: [0.; 2],
             knight_outpost_table: [[[0.; 8]; 8]; 2],
             rook_on_open: [0.; 2],
@@ -648,6 +662,7 @@ impl Parameters {
             self.pawn_mobility[i] += gradient.pawn_mobility[i] / norm;
             self.rook_behind_support_passer[i] += gradient.rook_behind_support_passer[i] / norm;
             self.rook_behind_enemy_passer[i] += gradient.rook_behind_enemy_passer[i] / norm;
+            self.pawn_passed_weak[i] += gradient.pawn_passed_weak[i] / norm;
             self.knight_supported[i] += gradient.knight_supported[i] / norm;
             self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
             self.rook_on_seventh[i] += gradient.rook_on_seventh[i] / norm;
