@@ -34,6 +34,7 @@ pub const TUNE_PIECE_VALUES: bool = false;
 pub const TUNE_MOBILITY: bool = false;
 
 pub const TUNE_ATTACK: bool = false;
+pub const TUNE_ATTACK_INDEX: bool = false;
 pub const TUNE_PSQT: bool = false;
 
 //const BATCH_SIZE: usize = 2500000;
@@ -402,12 +403,24 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                     * tuner.params.rook_attack_value[i];
                 let attack_queen_white = f64::from(pos.trace.queen_attacked_sq[WHITE])
                     * tuner.params.queen_attack_value[i];
-                let attacker_value_white = ((attack_knight_white
+                let knight_check_white = f64::from(pos.trace.knight_safe_check[WHITE])
+                    * tuner.params.knight_check_value[i];
+                let bishop_check_white = f64::from(pos.trace.bishop_safe_check[WHITE])
+                    * tuner.params.bishop_check_value[i];
+                let rook_check_white =
+                    f64::from(pos.trace.rook_safe_check[WHITE]) * tuner.params.rook_check_value[i];
+                let queen_check_white = f64::from(pos.trace.queen_safe_check[WHITE])
+                    * tuner.params.queen_check_value[i];
+                let attacker_value_white = (attack_knight_white
                     + attack_bishop_white
                     + attack_rook_white
-                    + attack_queen_white) as usize)
-                    .max(0)
-                    .min(99);
+                    + attack_queen_white
+                    + knight_check_white
+                    + bishop_check_white
+                    + rook_check_white
+                    + queen_check_white)
+                    .max(0.)
+                    .min(99.);
                 let attack_knight_black = f64::from(pos.trace.knight_attacked_sq[BLACK])
                     * tuner.params.knight_attack_value[i];
                 let attack_bishop_black = f64::from(pos.trace.bishop_attacked_sq[BLACK])
@@ -416,128 +429,246 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                     * tuner.params.rook_attack_value[i];
                 let attack_queen_black = f64::from(pos.trace.queen_attacked_sq[BLACK])
                     * tuner.params.queen_attack_value[i];
-                let attacker_value_black = ((attack_knight_black
+                let knight_check_black = f64::from(pos.trace.knight_safe_check[BLACK])
+                    * tuner.params.knight_check_value[i];
+                let bishop_check_black = f64::from(pos.trace.bishop_safe_check[BLACK])
+                    * tuner.params.bishop_check_value[i];
+                let rook_check_black =
+                    f64::from(pos.trace.rook_safe_check[BLACK]) * tuner.params.rook_check_value[i];
+                let queen_check_black = f64::from(pos.trace.queen_safe_check[BLACK])
+                    * tuner.params.queen_check_value[i];
+                let attacker_value_black = (attack_knight_black
                     + attack_bishop_black
                     + attack_rook_black
-                    + attack_queen_black) as usize)
-                    .max(0)
-                    .min(99);
+                    + attack_queen_black
+                    + knight_check_black
+                    + bishop_check_black
+                    + rook_check_black
+                    + queen_check_black)
+                    .max(0.)
+                    .min(99.);
                 gradient.attack_weight[i][pos.trace.attackers[WHITE] as usize] +=
                     start_of_gradient * devaldg / 100.0
-                        * tuner.params.safety_table[i].safety_table[attacker_value_white];
-                gradient.safety_table[i].safety_table[attacker_value_white] +=
+                        * tuner.params.safety_table[i].safety_table[attacker_value_white as usize];
+                gradient.safety_table[i].safety_table[attacker_value_white as usize] +=
                     start_of_gradient * devaldg / 100.0
                         * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize];
                 gradient.attack_weight[i][pos.trace.attackers[BLACK] as usize] -=
                     start_of_gradient * devaldg / 100.0
-                        * tuner.params.safety_table[i].safety_table[attacker_value_black];
-                gradient.safety_table[i].safety_table[attacker_value_black] +=
+                        * tuner.params.safety_table[i].safety_table[attacker_value_black as usize];
+                gradient.safety_table[i].safety_table[attacker_value_black as usize] +=
                     start_of_gradient * devaldg / 100.0
                         * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize];
                 //Attack constants
-                //Knight
-                {
-                    let c = tuner.params.knight_attack_value[i];
-                    gradient.knight_attack_value[i] += start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_bishop_white + attack_rook_white + attack_queen_white,
-                            pos.trace.knight_attacked_sq[WHITE],
-                            c,
-                        )
-                        / 100.0;
-                    gradient.knight_attack_value[i] -= start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_bishop_black + attack_rook_black + attack_queen_black,
-                            pos.trace.knight_attacked_sq[BLACK],
-                            c,
-                        )
-                        / 100.0;
-                }
-                //Bishop
-                {
-                    let c = tuner.params.bishop_attack_value[i];
-                    gradient.bishop_attack_value[i] += start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_knight_white + attack_rook_white + attack_queen_white,
-                            pos.trace.bishop_attacked_sq[WHITE],
-                            c,
-                        )
-                        / 100.0;
-                    gradient.bishop_attack_value[i] -= start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_knight_black + attack_rook_black + attack_queen_black,
-                            pos.trace.bishop_attacked_sq[BLACK],
-                            c,
-                        )
-                        / 100.0;
-                }
-                //Rook
-                {
-                    let c = tuner.params.rook_attack_value[i];
-                    gradient.rook_attack_value[i] += start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_knight_white + attack_bishop_white + attack_queen_white,
-                            pos.trace.rook_attacked_sq[WHITE],
-                            c,
-                        )
-                        / 100.0;
-                    gradient.rook_attack_value[i] -= start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_knight_black + attack_bishop_black + attack_queen_black,
-                            pos.trace.rook_attacked_sq[BLACK],
-                            c,
-                        )
-                        / 100.0;
-                }
-                //Queen
-                {
-                    let c = tuner.params.queen_attack_value[i];
-                    gradient.queen_attack_value[i] += start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_knight_white + attack_bishop_white + attack_rook_white,
-                            pos.trace.queen_attacked_sq[WHITE],
-                            c,
-                        )
-                        / 100.0;
-                    gradient.queen_attack_value[i] -= start_of_gradient
-                        * devaldg
-                        * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
-                        * dsafetytabledconstant(
-                            tuner,
-                            i,
-                            attack_knight_black + attack_bishop_black + attack_rook_black,
-                            pos.trace.queen_attacked_sq[BLACK],
-                            c,
-                        )
-                        / 100.0;
+                if TUNE_ATTACK_INDEX {
+                    //Knight
+                    {
+                        let c = tuner.params.knight_attack_value[i];
+                        gradient.knight_attack_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - attack_knight_white,
+                                pos.trace.knight_attacked_sq[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.knight_attack_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - attack_knight_black,
+                                pos.trace.knight_attacked_sq[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Bishop
+                    {
+                        let c = tuner.params.bishop_attack_value[i];
+                        gradient.bishop_attack_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - attack_bishop_white,
+                                pos.trace.bishop_attacked_sq[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.bishop_attack_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - attack_bishop_black,
+                                pos.trace.bishop_attacked_sq[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Rook
+                    {
+                        let c = tuner.params.rook_attack_value[i];
+                        gradient.rook_attack_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - attack_rook_white,
+                                pos.trace.rook_attacked_sq[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.rook_attack_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - attack_rook_black,
+                                pos.trace.rook_attacked_sq[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Queen
+                    {
+                        let c = tuner.params.queen_attack_value[i];
+                        gradient.queen_attack_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - attack_queen_white,
+                                pos.trace.queen_attacked_sq[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.queen_attack_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - attack_queen_black,
+                                pos.trace.queen_attacked_sq[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Knight check
+                    {
+                        let c = tuner.params.knight_check_value[i];
+                        gradient.knight_check_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - knight_check_white,
+                                pos.trace.knight_safe_check[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.knight_check_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - knight_check_black,
+                                pos.trace.knight_safe_check[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Bishop check
+                    {
+                        let c = tuner.params.bishop_check_value[i];
+                        gradient.bishop_check_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - bishop_check_white,
+                                pos.trace.bishop_safe_check[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.bishop_check_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - bishop_check_black,
+                                pos.trace.bishop_safe_check[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Rook check
+                    {
+                        let c = tuner.params.rook_check_value[i];
+                        gradient.rook_check_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - rook_check_white,
+                                pos.trace.rook_safe_check[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.rook_check_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - rook_check_black,
+                                pos.trace.rook_safe_check[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
+                    //Queen check
+                    {
+                        let c = tuner.params.queen_check_value[i];
+                        gradient.queen_check_value[i] += start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[WHITE] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_white - queen_check_white,
+                                pos.trace.queen_safe_check[WHITE],
+                                c,
+                            )
+                            / 100.0;
+                        gradient.queen_check_value[i] -= start_of_gradient
+                            * devaldg
+                            * tuner.params.attack_weight[i][pos.trace.attackers[BLACK] as usize]
+                            * dsafetytabledconstant(
+                                tuner,
+                                i,
+                                attacker_value_black - queen_check_black,
+                                pos.trace.queen_safe_check[BLACK],
+                                c,
+                            )
+                            / 100.0;
+                    }
                 }
             }
         }
@@ -605,6 +736,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         norm += gradient.bishop_attack_value[i].powf(2.);
         norm += gradient.rook_attack_value[i].powf(2.);
         norm += gradient.queen_attack_value[i].powf(2.);
+        norm += gradient.knight_check_value[i].powf(2.);
+        norm += gradient.bishop_check_value[i].powf(2.);
+        norm += gradient.rook_check_value[i].powf(2.);
+        norm += gradient.queen_check_value[i].powf(2.);
         for j in 0..8 {
             norm += gradient.attack_weight[i][j].powf(2.);
         }

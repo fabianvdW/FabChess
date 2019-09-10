@@ -37,6 +37,10 @@ pub struct Trace {
     pub bishop_attacked_sq: [u8; 2],
     pub rook_attacked_sq: [u8; 2],
     pub queen_attacked_sq: [u8; 2],
+    pub knight_safe_check: [u8; 2],
+    pub bishop_safe_check: [u8; 2],
+    pub rook_safe_check: [u8; 2],
+    pub queen_safe_check: [u8; 2],
     pub psqt_pawn: [[[i8; 8]; 8]; 2],
     pub psqt_knight: [[[i8; 8]; 8]; 2],
     pub psqt_bishop: [[[i8; 8]; 8]; 2],
@@ -154,7 +158,11 @@ impl Trace {
                 * params.knight_attack_value[MG]
                 + f64::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[MG]
                 + f64::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[MG]
-                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[MG])
+                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[MG]
+                + f64::from(self.knight_safe_check[WHITE]) * params.knight_check_value[MG]
+                + f64::from(self.bishop_safe_check[WHITE]) * params.bishop_check_value[MG]
+                + f64::from(self.rook_safe_check[WHITE]) * params.rook_check_value[MG]
+                + f64::from(self.queen_safe_check[WHITE]) * params.queen_check_value[MG])
                 as usize)
                 .max(0)
                 .min(99)]
@@ -164,7 +172,11 @@ impl Trace {
                         + f64::from(self.bishop_attacked_sq[BLACK])
                             * params.bishop_attack_value[MG]
                         + f64::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[MG]
-                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[MG])
+                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[MG]
+                        + f64::from(self.knight_safe_check[BLACK]) * params.knight_check_value[MG]
+                        + f64::from(self.bishop_safe_check[BLACK]) * params.bishop_check_value[MG]
+                        + f64::from(self.rook_safe_check[BLACK]) * params.rook_check_value[MG]
+                        + f64::from(self.queen_safe_check[BLACK]) * params.queen_check_value[MG])
                         as usize)
                         .max(0)
                         .min(99)])
@@ -174,7 +186,11 @@ impl Trace {
                 * params.knight_attack_value[EG]
                 + f64::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[EG]
                 + f64::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[EG]
-                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[EG])
+                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[EG]
+                + f64::from(self.knight_safe_check[WHITE]) * params.knight_check_value[EG]
+                + f64::from(self.bishop_safe_check[WHITE]) * params.bishop_check_value[EG]
+                + f64::from(self.rook_safe_check[WHITE]) * params.rook_check_value[EG]
+                + f64::from(self.queen_safe_check[WHITE]) * params.queen_check_value[EG])
                 as usize)
                 .max(0)
                 .min(99)]
@@ -184,7 +200,11 @@ impl Trace {
                         + f64::from(self.bishop_attacked_sq[BLACK])
                             * params.bishop_attack_value[EG]
                         + f64::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[EG]
-                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[EG])
+                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[EG]
+                        + f64::from(self.knight_safe_check[BLACK]) * params.knight_check_value[EG]
+                        + f64::from(self.bishop_safe_check[BLACK]) * params.bishop_check_value[EG]
+                        + f64::from(self.rook_safe_check[BLACK]) * params.rook_check_value[EG]
+                        + f64::from(self.queen_safe_check[BLACK]) * params.queen_check_value[EG])
                         as usize)
                         .max(0)
                         .min(99)])
@@ -307,6 +327,7 @@ impl Trace {
         }
         (res.0 * self.phase + res.1 / 1.5 * (128.0 - self.phase)) / 128.0
     }
+
     pub fn default() -> Self {
         Trace {
             tempo_bonus: [0; 2],
@@ -344,6 +365,10 @@ impl Trace {
             bishop_attacked_sq: [0; 2],
             rook_attacked_sq: [0; 2],
             queen_attacked_sq: [0; 2],
+            knight_safe_check: [0; 2],
+            bishop_safe_check: [0; 2],
+            rook_safe_check: [0; 2],
+            queen_safe_check: [0; 2],
             psqt_pawn: [[[0; 8]; 8]; 2],
             psqt_knight: [[[0; 8]; 8]; 2],
             psqt_bishop: [[[0; 8]; 8]; 2],

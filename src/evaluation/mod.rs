@@ -350,19 +350,21 @@ pub fn piecewise(
         knight_attacker_values_eg +=
             KNIGHT_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
         knight_attacker_values_mg += if has_safe_check {
-            KNIGHT_ATTACK_WORTH_MG
+            KNIGHT_SAFE_CHECK_MG
         } else {
             0
         };
         knight_attacker_values_eg += if has_safe_check {
-            KNIGHT_ATTACK_WORTH_EG
+            KNIGHT_SAFE_CHECK_EG
         } else {
             0
         };
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.knight_attacked_sq[side] +=
-                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+            _eval.trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            if has_safe_check {
+                _eval.trace.knight_safe_check[side] += 1;
+            }
         }
         knights ^= 1u64 << idx;
         index += 1;
@@ -401,19 +403,21 @@ pub fn piecewise(
         bishop_attacker_values_eg +=
             BISHOP_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
         bishop_attacker_values_mg += if has_safe_check {
-            BISHOP_ATTACK_WORTH_MG
+            BISHOP_SAFE_CHECK_MG
         } else {
             0
         };
         bishop_attacker_values_eg += if has_safe_check {
-            BISHOP_ATTACK_WORTH_EG
+            BISHOP_SAFE_CHECK_EG
         } else {
             0
         };
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.bishop_attacked_sq[side] +=
-                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+            _eval.trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            if has_safe_check {
+                _eval.trace.bishop_safe_check[side] += 1;
+            }
         }
         bishops ^= 1u64 << idx;
         index += 1;
@@ -449,19 +453,21 @@ pub fn piecewise(
         rook_attacker_values_mg += ROOK_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
         rook_attacker_values_eg += ROOK_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
         rook_attacker_values_mg += if has_safe_check {
-            ROOK_ATTACK_WORTH_MG
+            ROOK_SAFE_CHECK_MG
         } else {
             0
         };
         rook_attacker_values_eg += if has_safe_check {
-            ROOK_ATTACK_WORTH_EG
+            ROOK_SAFE_CHECK_EG
         } else {
             0
         };
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.rook_attacked_sq[side] +=
-                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+            _eval.trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            if has_safe_check {
+                _eval.trace.rook_safe_check[side] += 1;
+            }
         }
         rooks ^= 1u64 << idx;
         index += 1;
@@ -495,19 +501,21 @@ pub fn piecewise(
         queen_attacker_values_mg += QUEEN_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
         queen_attacker_values_eg += QUEEN_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
         queen_attacker_values_mg += if has_safe_check {
-            QUEEN_ATTACK_WORTH_MG
+            QUEEN_SAFE_CHECK_MG
         } else {
             0
         };
         queen_attacker_values_eg += if has_safe_check {
-            QUEEN_ATTACK_WORTH_EG
+            QUEEN_SAFE_CHECK_EG
         } else {
             0
         };
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.queen_attacked_sq[side] +=
-                enemy_king_attacks.count_ones() as u8 + if has_safe_check { 1 } else { 0 };
+            _eval.trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            if has_safe_check {
+                _eval.trace.queen_safe_check[side] += 1;
+            }
         }
         queens ^= 1u64 << idx;
         index += 1;

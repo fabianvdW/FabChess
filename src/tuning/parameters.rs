@@ -53,6 +53,10 @@ pub struct Parameters {
     pub bishop_attack_value: [f64; 2],
     pub rook_attack_value: [f64; 2],
     pub queen_attack_value: [f64; 2],
+    pub knight_check_value: [f64; 2],
+    pub bishop_check_value: [f64; 2],
+    pub rook_check_value: [f64; 2],
+    pub queen_check_value: [f64; 2],
     pub psqt_pawn: [[[f64; 8]; 8]; 2],
     pub psqt_knight: [[[f64; 8]; 8]; 2],
     pub psqt_bishop: [[[f64; 8]; 8]; 2],
@@ -390,6 +394,38 @@ impl Parameters {
             self.queen_attack_value[EG].round() as isize,
         ));
         res_str.push_str(&format!(
+            "pub const KNIGHT_SAFE_CHECK_MG: i16 = {};\n",
+            self.knight_check_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const KNIGHT_SAFE_CHECK_EG: i16 = {};\n",
+            self.knight_check_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const BISHOP_SAFE_CHECK_MG: i16 = {};\n",
+            self.bishop_check_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const BISHOP_SAFE_CHECK_EG: i16 = {};\n",
+            self.bishop_check_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_SAFE_CHECK_MG: i16 = {};\n",
+            self.rook_check_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_SAFE_CHECK_EG: i16 = {};\n",
+            self.rook_check_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_SAFE_CHECK_MG: i16 = {};\n",
+            self.queen_check_value[MG].round() as isize,
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_SAFE_CHECK_EG: i16 = {};\n",
+            self.queen_check_value[EG].round() as isize,
+        ));
+        res_str.push_str(&format!(
             "pub const PSQT_PAWN_MG: [[i16;8];8] = {};\n",
             psqt_to_string(&self.psqt_pawn[MG])
         ));
@@ -625,6 +661,19 @@ impl Parameters {
                 f64::from(QUEEN_ATTACK_WORTH_MG),
                 f64::from(QUEEN_ATTACK_WORTH_EG),
             ],
+            knight_check_value: [
+                f64::from(KNIGHT_SAFE_CHECK_MG),
+                f64::from(KNIGHT_SAFE_CHECK_EG),
+            ],
+            bishop_check_value: [
+                f64::from(BISHOP_SAFE_CHECK_MG),
+                f64::from(BISHOP_SAFE_CHECK_EG),
+            ],
+            rook_check_value: [f64::from(ROOK_SAFE_CHECK_MG), f64::from(ROOK_SAFE_CHECK_EG)],
+            queen_check_value: [
+                f64::from(QUEEN_SAFE_CHECK_MG),
+                f64::from(QUEEN_SAFE_CHECK_EG),
+            ],
             diagonally_adjacent_squares_withpawns,
             knight_mobility,
             bishop_mobility,
@@ -684,6 +733,10 @@ impl Parameters {
             bishop_attack_value: [0.; 2],
             rook_attack_value: [0.; 2],
             queen_attack_value: [0.; 2],
+            knight_check_value: [0.; 2],
+            bishop_check_value: [0.; 2],
+            rook_check_value: [0.; 2],
+            queen_check_value: [0.; 2],
             psqt_pawn: [[[0.; 8]; 8]; 2],
             psqt_knight: [[[0.; 8]; 8]; 2],
             psqt_bishop: [[[0.; 8]; 8]; 2],
@@ -728,6 +781,10 @@ impl Parameters {
             self.bishop_attack_value[i] += gradient.bishop_attack_value[i] / norm;
             self.rook_attack_value[i] += gradient.rook_attack_value[i] / norm;
             self.queen_attack_value[i] += gradient.queen_attack_value[i] / norm;
+            self.knight_check_value[i] += gradient.knight_check_value[i] / norm;
+            self.bishop_check_value[i] += gradient.bishop_check_value[i] / norm;
+            self.rook_check_value[i] += gradient.rook_check_value[i] / norm;
+            self.queen_check_value[i] += gradient.queen_check_value[i] / norm;
         }
         for i in 0..2 {
             apply_gradient_arr(&mut self.pawn_passed[i], &gradient.pawn_passed[i], norm);
