@@ -584,28 +584,32 @@ pub fn piecewise(
             rooks_onseventh * ROOK_ON_SEVENTH_EG
         ));
         log(&format!(
-            "\tKnight Attackers/Value: ({} , {})\n",
-            knight_attackers, knight_attacker_values
+            "\tKnight Attackers/Value: ({} , MG: {}, EG: {})\n",
+            knight_attackers, knight_attacker_values_mg, knight_attacker_values_eg
         ));
         log(&format!(
-            "\tBishop Attackers/Value: ({} , {})\n",
-            bishop_attackers, bishop_attacker_values
+            "\tBishop Attackers/Value: ({} , MG: {}, EG: {})\n",
+            bishop_attackers, bishop_attacker_values_mg, bishop_attacker_values_eg
         ));
         log(&format!(
-            "\tRook Attackers/Value: ({} , {})\n",
-            rook_attackers, rook_attacker_values
+            "\tRook Attackers/Value: ({} , MG: {}, EG: {})\n",
+            rook_attackers, rook_attacker_values_mg, rook_attacker_values_eg
         ));
         log(&format!(
-            "\tQueen Attackers/Value: ({} , {})\n",
-            queen_attackers, queen_attacker_values
+            "\tQueen Attackers/Value: ({} , MG: {}, EG: {})\n",
+            queen_attackers, queen_attacker_values_mg, queen_attacker_values_eg
         ));
         log(&format!(
-            "\tSum Attackers/Value: ({} , {})\n",
+            "\tSum Attackers/Value: ({} , MG: {}, EG: {})\n",
             knight_attackers + bishop_attackers + rook_attackers + queen_attackers,
-            knight_attacker_values
-                + bishop_attacker_values
-                + rook_attacker_values
-                + queen_attacker_values
+            knight_attacker_values_mg
+                + bishop_attacker_values_mg
+                + rook_attacker_values_mg
+                + queen_attacker_values_mg,
+            knight_attacker_values_eg
+                + bishop_attacker_values_eg
+                + rook_attacker_values_eg
+                + queen_attacker_values_eg
         ));
         log(&format!(
             "\tAttack MG value: {} * {} / 100.0 -> {}\n",
