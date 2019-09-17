@@ -717,7 +717,7 @@ pub fn make_cache(
     static_evaluation: Option<i16>,
 ) {
     let beta_node: bool = score >= beta;
-    let alpha_node: bool = score < original_alpha;
+    let alpha_node: bool = score <= original_alpha;
 
     let index = game_state.hash as usize & super::cache::CACHE_MASK;
 

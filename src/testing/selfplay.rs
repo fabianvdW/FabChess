@@ -455,7 +455,7 @@ pub fn play_game(
         //Check for adjudication
         if let GameResult::Ingame = status {
             //Check adjudication values
-            if draw_adjudication >= 10 {
+            if draw_adjudication >= 30 {
                 status = GameResult::Draw;
                 endcondition = Some(EndConditionInformation::DrawByadjudication);
             } else if win_adjudication >= 10 {
