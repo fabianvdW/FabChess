@@ -1,5 +1,5 @@
-pub const TEMPO_BONUS_MG: i16 = 31;
-pub const TEMPO_BONUS_EG: i16 = 48;
+pub const TEMPO_BONUS_MG: i16 = 10;
+pub const TEMPO_BONUS_EG: i16 = 15;
 pub const SHIELDING_PAWN_MISSING_MG: [i16; 4] = [2, -39, -62, -84];
 pub const SHIELDING_PAWN_MISSING_EG: [i16; 4] = [-9, 3, 3, 3];
 pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG: [i16; 4] = [-40, -48, -102, -172];
