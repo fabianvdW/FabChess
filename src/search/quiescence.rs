@@ -36,10 +36,10 @@ pub fn q_search(
         return STANDARD_SCORE;
     }
     //Initialzie attack container
-    su.thread_memory.reserved_attack_container.attack_containers[current_depth]
-        .write_state(game_state);
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
+        su.thread_memory.reserved_attack_container.attack_containers[current_depth]
+            .write_state(game_state);
         return eval_game_state(
             &game_state,
             &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
@@ -52,8 +52,13 @@ pub fn q_search(
     if check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, current_depth as i16);
     }
+    su.thread_memory.reserved_attack_container.attack_containers[current_depth]
+        .write_state(game_state);
 
-    let incheck = in_check(game_state);
+    let incheck = in_check(
+        game_state,
+        &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
+    );
 
     let (phase, stand_pat) = if !incheck {
         let static_evaluation = eval_game_state(
@@ -252,7 +257,7 @@ pub fn make_and_evaluate_moves_qsearch(
     while mv_index < move_list.counter {
         let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
         if let GameMoveType::EnPassant = mv.move_type {
-            move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 100.0));
+            move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 99.0));
         } else {
             if !incheck
                 && !passes_delta_pruning(

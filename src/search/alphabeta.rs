@@ -1,5 +1,5 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+    GameMove, GameMoveType, GameResult, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 use super::super::movegen;
 use super::super::movegen::MoveList;
@@ -42,11 +42,11 @@ pub fn principal_variation_search(
     if su.search.stop {
         return STANDARD_SCORE;
     }
-    //Initialize attacks for this game_state
-    su.thread_memory.reserved_attack_container.attack_containers[current_depth]
-        .write_state(game_state);
+
     //Max search-depth reached
     if current_depth >= (MAX_SEARCH_DEPTH - 1) {
+        su.thread_memory.reserved_attack_container.attack_containers[current_depth]
+            .write_state(game_state);
         return eval_game_state(
             &game_state,
             &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
@@ -60,8 +60,14 @@ pub fn principal_variation_search(
     if !root && check_for_draw(game_state, su.history) {
         return leaf_score(GameResult::Draw, color, current_depth as i16);
     }
+    //Initialize attacks for this game_state
+    su.thread_memory.reserved_attack_container.attack_containers[current_depth]
+        .write_state(game_state);
     let is_pv_node = beta - alpha > 1;
-    let incheck = in_check(game_state);
+    let incheck = in_check(
+        game_state,
+        &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
+    );
 
     //Check Extensions
     if incheck && !root {
@@ -348,7 +354,7 @@ pub fn principal_variation_search(
             && !isc
             && !isp
             && current_max_score > MATED_IN_MAX
-            && !in_check(&next_state)
+            && !in_check_slow(&next_state)
         {
             if futil_margin <= alpha {
                 su.search.search_statistics.add_futil_pruning();
@@ -385,7 +391,7 @@ pub fn principal_variation_search(
             if is_pv_node {
                 reduction = (f64::from(reduction) * 0.66) as i16;
             }
-            if in_check(&next_state) {
+            if in_check_slow(&next_state) {
                 reduction -= 1;
             }
             if su.search.history_score[game_state.color_to_move][mv.from][mv.to] > 0 {
@@ -645,8 +651,14 @@ pub fn concatenate_pv(at_depth: usize, search: &mut Search) {
 }
 
 #[inline(always)]
-pub fn in_check(game_state: &GameState) -> bool {
-    movegen::get_checkers(game_state).count_ones() > 0
+pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContainer) -> bool {
+    (game_state.pieces[KING][game_state.color_to_move]
+        & attack_container.attacks_sum[1 - game_state.color_to_move])
+        != 0u64
+}
+#[inline(always)]
+pub fn in_check_slow(game_state: &GameState) -> bool {
+    movegen::get_checkers(game_state, true).count_ones() > 0
 }
 
 #[inline(always)]

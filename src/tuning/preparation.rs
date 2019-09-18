@@ -8,7 +8,7 @@ use core::evaluation::eval_game_state;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
 use core::search::alphabeta::{
-    check_end_condition, check_for_draw, get_next_gm, in_check, leaf_score,
+    check_end_condition, check_for_draw, get_next_gm, in_check_slow, leaf_score,
 };
 use core::search::history::History;
 use core::search::quiescence::{
@@ -55,7 +55,7 @@ fn main() {
     for position in positions {
         let mut other = position.game_state.clone();
         other.color_to_move = 1 - other.color_to_move;
-        if in_check(&other) {
+        if in_check_slow(&other) {
             continue;
         }
         let (score, state) = stripped_q_search(
@@ -113,7 +113,7 @@ pub fn stripped_q_search(
     if check_for_draw(&game_state, history) {
         return (leaf_score(GameResult::Draw, color, depth_left), game_state);
     }
-    let incheck = in_check(&game_state);
+    let incheck = in_check_slow(&game_state);
     attack_container.attack_containers[current_depth].write_state(&game_state);
     let static_evaluation = eval_game_state(
         &game_state,

@@ -431,7 +431,7 @@ pub fn add_move_to_movelist(
 }
 
 #[inline(always)]
-pub fn get_checkers(game_state: &GameState) -> u64 {
+pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
     let mut checkers = 0u64;
     let my_king = game_state.pieces[KING][game_state.color_to_move];
     checkers |= knight_attack(my_king.trailing_zeros() as usize)
@@ -439,10 +439,16 @@ pub fn get_checkers(game_state: &GameState) -> u64 {
     checkers |= (pawn_west_targets(game_state.color_to_move, my_king)
         | pawn_east_targets(game_state.color_to_move, my_king))
         & game_state.pieces[PAWN][1 - game_state.color_to_move];
+    if early_exit && checkers != 0u64 {
+        return checkers;
+    }
     let all_pieces = game_state.get_all_pieces();
     checkers |= bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
         & (game_state.pieces[BISHOP][1 - game_state.color_to_move]
             | game_state.pieces[QUEEN][1 - game_state.color_to_move]);
+    if early_exit && checkers != 0u64 {
+        return checkers;
+    }
     checkers |= rook_attack(my_king.trailing_zeros() as usize, all_pieces)
         & (game_state.pieces[ROOK][1 - game_state.color_to_move]
             | game_state.pieces[QUEEN][1 - game_state.color_to_move]);
@@ -522,7 +528,7 @@ pub fn generate_moves(
     //----------------------------------------------------------------------
     //**********************************************************************
     //3. Check & Check Evasions
-    let check_board = get_checkers(&g);
+    let check_board = get_checkers(&g, false);
     let checkers = check_board.count_ones() as usize;
     let stm_incheck = checkers > 0;
 
