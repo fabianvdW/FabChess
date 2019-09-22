@@ -134,7 +134,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         let devaldmg = pos.trace.phase / 128.0;
         let devaldeg = (1. - pos.trace.phase / 128.0) / 1.5;
         //Tempo-bonus
-        if TUNE_TEMPO_BONUS || TUNE_ALL {
+        if TUNE_TEMPO_BONUS {
             add_gradient(
                 &mut gradient.tempo_bonus,
                 pos.trace.tempo_bonus,
@@ -279,6 +279,18 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                     );
                     gradient.psqt_bishop[MG][i][j] += start_of_gradient * devaldmg * bishops;
                     gradient.psqt_bishop[EG][i][j] += start_of_gradient * devaldeg * bishops;
+
+                    let rooks = f64::from(
+                        pos.trace.psqt_rook[WHITE][i][j] - pos.trace.psqt_rook[BLACK][i][j],
+                    );
+                    gradient.psqt_rook[MG][i][j] += start_of_gradient * devaldmg * rooks;
+                    gradient.psqt_rook[EG][i][j] += start_of_gradient * devaldeg * rooks;
+
+                    let queens = f64::from(
+                        pos.trace.psqt_queen[WHITE][i][j] - pos.trace.psqt_queen[BLACK][i][j],
+                    );
+                    gradient.psqt_queen[MG][i][j] += start_of_gradient * devaldmg * queens;
+                    gradient.psqt_queen[EG][i][j] += start_of_gradient * devaldeg * queens;
 
                     let king = f64::from(
                         pos.trace.psqt_king[WHITE][i][j] - pos.trace.psqt_king[BLACK][i][j],
@@ -701,6 +713,8 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                 norm += gradient.psqt_pawn[i][j][k].powf(2.);
                 norm += gradient.psqt_knight[i][j][k].powf(2.);
                 norm += gradient.psqt_bishop[i][j][k].powf(2.);
+                norm += gradient.psqt_rook[i][j][k].powf(2.);
+                norm += gradient.psqt_queen[i][j][k].powf(2.);
                 norm += gradient.psqt_king[i][j][k].powf(2.);
             }
         }

@@ -60,6 +60,8 @@ pub struct Parameters {
     pub psqt_pawn: [[[f64; 8]; 8]; 2],
     pub psqt_knight: [[[f64; 8]; 8]; 2],
     pub psqt_bishop: [[[f64; 8]; 8]; 2],
+    pub psqt_rook: [[[f64; 8]; 8]; 2],
+    pub psqt_queen: [[[f64; 8]; 8]; 2],
     pub psqt_king: [[[f64; 8]; 8]; 2],
 }
 
@@ -450,6 +452,22 @@ impl Parameters {
             psqt_to_string(&self.psqt_bishop[EG])
         ));
         res_str.push_str(&format!(
+            "pub const PSQT_ROOK_MG: [[i16;8];8] = {};\n",
+            psqt_to_string(&self.psqt_rook[MG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PSQT_ROOK_EG: [[i16;8];8] = {};\n",
+            psqt_to_string(&self.psqt_rook[EG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PSQT_QUEEN_MG: [[i16;8];8] = {};\n",
+            psqt_to_string(&self.psqt_queen[MG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PSQT_QUEEN_EG: [[i16;8];8] = {};\n",
+            psqt_to_string(&self.psqt_queen[EG])
+        ));
+        res_str.push_str(&format!(
             "pub const PSQT_KING_MG: [[i16;8];8] = {};\n",
             psqt_to_string(&self.psqt_king[MG])
         ));
@@ -558,6 +576,20 @@ impl Parameters {
             for j in 0..8 {
                 psqt_bishop[MG][i][j] = f64::from(PSQT_BISHOP_MG[i][j]);
                 psqt_bishop[EG][i][j] = f64::from(PSQT_BISHOP_EG[i][j]);
+            }
+        }
+        let mut psqt_rook: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
+        for i in 0..8 {
+            for j in 0..8 {
+                psqt_rook[MG][i][j] = f64::from(PSQT_ROOK_MG[i][j]);
+                psqt_rook[EG][i][j] = f64::from(PSQT_ROOK_EG[i][j]);
+            }
+        }
+        let mut psqt_queen: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
+        for i in 0..8 {
+            for j in 0..8 {
+                psqt_queen[MG][i][j] = f64::from(PSQT_QUEEN_MG[i][j]);
+                psqt_queen[EG][i][j] = f64::from(PSQT_QUEEN_EG[i][j]);
             }
         }
         let mut psqt_king: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
@@ -684,6 +716,8 @@ impl Parameters {
             psqt_pawn,
             psqt_knight,
             psqt_bishop,
+            psqt_rook,
+            psqt_queen,
             psqt_king,
         }
     }
@@ -740,6 +774,8 @@ impl Parameters {
             psqt_pawn: [[[0.; 8]; 8]; 2],
             psqt_knight: [[[0.; 8]; 8]; 2],
             psqt_bishop: [[[0.; 8]; 8]; 2],
+            psqt_rook: [[[0.; 8]; 8]; 2],
+            psqt_queen: [[[0.; 8]; 8]; 2],
             psqt_king: [[[0.; 8]; 8]; 2],
         }
     }
@@ -803,6 +839,8 @@ impl Parameters {
         apply_gradient_psqt(&mut self.psqt_pawn, &gradient.psqt_pawn, norm);
         apply_gradient_psqt(&mut self.psqt_knight, &gradient.psqt_knight, norm);
         apply_gradient_psqt(&mut self.psqt_bishop, &gradient.psqt_bishop, norm);
+        apply_gradient_psqt(&mut self.psqt_rook, &gradient.psqt_rook, norm);
+        apply_gradient_psqt(&mut self.psqt_queen, &gradient.psqt_queen, norm);
         apply_gradient_psqt(&mut self.psqt_king, &gradient.psqt_king, norm);
 
         apply_gradient_arr(

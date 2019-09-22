@@ -236,6 +236,7 @@ pub fn q_search(
             } else {
                 Some(*stand_pat.as_ref().unwrap() * color)
             },
+            false,
         );
     }
     current_max_score

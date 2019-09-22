@@ -108,6 +108,7 @@ impl Search {
                 false,
                 &pair,
                 None,
+                true,
             ));
             index += 1;
         }

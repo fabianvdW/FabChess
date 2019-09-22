@@ -541,6 +541,7 @@ pub fn principal_variation_search(
             depth_left,
             su.root_pliesplayed,
             static_evaluation,
+            root,
         );
     }
     current_max_score
@@ -724,14 +725,16 @@ pub fn make_cache(
     depth_left: i16,
     root_plies_played: usize,
     static_evaluation: Option<i16>,
+    root: bool,
 ) {
     let beta_node: bool = score >= beta;
     let alpha_node: bool = score <= original_alpha;
 
+    let pv_node: bool = beta - original_alpha > 1;
     let index = game_state.hash as usize & super::cache::CACHE_MASK;
 
     let ce = &cache.cache[game_state.hash as usize & super::cache::CACHE_MASK];
-    let new_entry_val = f64::from(depth_left) * if beta_node || alpha_node { 0.7 } else { 1.0 };
+    let new_entry_val = f64::from(depth_left) * if !pv_node { 0.7 } else { 1.0 };
     if ce.is_none() {
         let new_entry = CacheEntry::new(
             &game_state,
@@ -744,6 +747,7 @@ pub fn make_cache(
                 _ => panic!("Invalid pv!"),
             },
             static_evaluation,
+            pv_node,
         );
         cache.cache[index] = Some(new_entry);
     } else {
@@ -755,14 +759,9 @@ pub fn make_cache(
         let old_entry_val = if old_entry.plies_played < root_plies_played as u16 {
             -1.0
         } else {
-            f64::from(old_entry.depth)
-                * if old_entry.beta || old_entry.alpha {
-                    0.7
-                } else {
-                    1.0
-                }
+            f64::from(old_entry.depth) * if !old_entry.pv_node { 0.7 } else { 1.0 }
         };
-        if old_entry_val <= new_entry_val {
+        if root || old_entry_val <= new_entry_val {
             let new_entry = CacheEntry::new(
                 &game_state,
                 depth_left,
@@ -774,6 +773,7 @@ pub fn make_cache(
                     _ => panic!("Invalid pv!"),
                 },
                 static_evaluation,
+                pv_node,
             );
             cache.cache[index] = Some(new_entry);
         }

@@ -44,6 +44,8 @@ pub struct Trace {
     pub psqt_pawn: [[[i8; 8]; 8]; 2],
     pub psqt_knight: [[[i8; 8]; 8]; 2],
     pub psqt_bishop: [[[i8; 8]; 8]; 2],
+    pub psqt_rook: [[[i8; 8]; 8]; 2],
+    pub psqt_queen: [[[i8; 8]; 8]; 2],
     pub psqt_king: [[[i8; 8]; 8]; 2],
     pub phase: f64,
 }
@@ -85,6 +87,8 @@ impl Trace {
         evaluate_psqt(&mut psqt_res, &self.psqt_pawn, &params.psqt_pawn);
         evaluate_psqt(&mut psqt_res, &self.psqt_knight, &params.psqt_knight);
         evaluate_psqt(&mut psqt_res, &self.psqt_bishop, &params.psqt_bishop);
+        evaluate_psqt(&mut psqt_res, &self.psqt_rook, &params.psqt_rook);
+        evaluate_psqt(&mut psqt_res, &self.psqt_queen, &params.psqt_queen);
         evaluate_psqt(&mut psqt_res, &self.psqt_king, &params.psqt_king);
 
         //Knight evaluation
@@ -372,6 +376,8 @@ impl Trace {
             psqt_pawn: [[[0; 8]; 8]; 2],
             psqt_knight: [[[0; 8]; 8]; 2],
             psqt_bishop: [[[0; 8]; 8]; 2],
+            psqt_rook: [[[0; 8]; 8]; 2],
+            psqt_queen: [[[0; 8]; 8]; 2],
             psqt_king: [[[0; 8]; 8]; 2],
             phase: 0.,
         }
