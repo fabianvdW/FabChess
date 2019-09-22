@@ -32,7 +32,8 @@ The binary will be in `./target/release`
 | Version       | 40/4    |  40/40 | Comment |
 |---------------|---------|--------|---------|
 | Latest dev    |  -      |   -    |         |
-| Version 1.11  | 2700    |  2650  | Estimate|
+| Version 1.12  | 2800    |  2790  | Estimate|
+| Version 1.11  |  -      |  2639  | See CCRL|
 | Version 1.10  | >2600   |        | Estimate|
 | Version 1.9.1 | 2510    |  2442  | See CCRL|
 | Version 1.9   | 2534    |  2463  | See CCRL|
