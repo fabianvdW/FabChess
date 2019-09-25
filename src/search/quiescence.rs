@@ -122,8 +122,10 @@ pub fn q_search(
                     }
                 }
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                tt_move = Some(mv);
-                has_ttmove = true;
+                if incheck || is_capture(&mv) {
+                    tt_move = Some(mv);
+                    has_ttmove = true;
+                }
             }
         }
     }
@@ -174,6 +176,7 @@ pub fn q_search(
             su.thread_memory.reserved_movelist.move_lists[current_depth].move_list[r]
                 .expect("Could not get next gm")
         };
+        debug_assert!(incheck || is_capture(&capture_move));
         //Make sure that our move is not the same as tt move if we have any
         if index >= hash_move_counter {
             moves_from_movelist_tried += 1;

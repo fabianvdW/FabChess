@@ -1,0 +1,4 @@
+5r1k/1rq1p3/Q2ppbp1/2p1n2p/4P2P/RP2BP2/P1P3P1/1K1N2R1 w - -
+Search explosion:
+position startpos moves g1f3 d7d5 g2g3 c8g4 f1g2 b8d7 c2c4 e7e6 d1b3 d7c5 b3c2 c7c6 d2d3 g8f6 e1g1 f8e7 c1e3 a8c8 b1d2 e8g8 e3d4 h7h6 f1e1 b7b5 b2b3 a7a5 f3e5 c5d7 e5g4 f6g4 d4b2 a5a4 b3a4 d7b6 a4b5 c6b5 h2h3 g4f6 e1c1 b5c4 d3c4 b6c4 d2c4 c8c4 c2d3 c4a4 b2e5 f6e4 a1b1 d8a8 c1c2 e7d6 e5d4 f7f5 b1b6 f8b8 b6b8 a8b8 e2e3 g8h7 g2f3 a4b4 c2c1 d6g3 f2g3 b8g3 f3g2 e4f2 d3d2 f2h3 g1f1 b4b7 g2h3 g3h3 d2g2 h3h4 a2a4 f5f4 g2c2 g7g6 c2c8 b7g7 c8f8 h4h1 f1e2 h1g2 e2e1 g2g3 e1d2 f4e3 d4e3 g3h2 d2d3 h2h5 c1f1 e6e5 f1f7 h5d1 d3c3 g7f7 f8f7 h7h8 f7f8 h8h7 f8h6 h7g8 h6g6 g8h8 e3g5 d1d4 c3b3 d4c4 b3b2 c4b4
+position fen 7k/8/6Q1/3pp1B1/Pq6/8/1K6/8 w - - 7 58
