@@ -657,7 +657,12 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i
         bitboards::b_front_span(g.pieces[KING][side])
     };
     king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
-
+    let file = g.king_square(side) % 8;
+    if file == 7 {
+        king_front_span |= bitboards::west_one(king_front_span);
+    } else if file == 0 {
+        king_front_span |= bitboards::east_one(king_front_span);
+    }
     let mut shields_missing = 0;
     let mut shields_on_open_missing = 0;
     if g.full_moves >= 1 {

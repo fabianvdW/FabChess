@@ -404,7 +404,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
             }
         }
         //Safety
-        if TUNE_ATTACK || TUNE_ALL {
+        if TUNE_ATTACK {
             for i in 0..2 {
                 let devaldg = if i == 0 { devaldmg } else { devaldeg };
                 let attack_knight_white = f64::from(pos.trace.knight_attacked_sq[WHITE])

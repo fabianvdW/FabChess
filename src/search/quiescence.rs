@@ -213,7 +213,7 @@ pub fn q_search(
         clear_pv(current_depth, su.search);
         return leaf_score(game_status, color, current_depth as i16);
     }
-    if has_pv {
+    if has_pv && depth_left == 0 {
         super::alphabeta::make_cache(
             su.cache,
             &su.search.pv_table[current_depth],

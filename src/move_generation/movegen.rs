@@ -566,184 +566,194 @@ pub fn generate_moves(
     //4. Pins and pinned pieces
     let mut pinned_pieces = 0u64;
     //4.1 Rook-Like pins
-    let stm_rook_attacks_from_king = rook_attack(g.king_square(side), all_pieces);
-    let stm_xray_rook_attacks_from_king = xray_rook_attacks(
-        stm_rook_attacks_from_king,
-        all_pieces,
-        side_pieces,
-        g.king_square(side),
-    );
-    let mut enemy_rooks_on_xray =
-        stm_xray_rook_attacks_from_king & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy]);
-    while enemy_rooks_on_xray != 0u64 {
-        let enemy_rook_position = enemy_rooks_on_xray.trailing_zeros() as usize;
-        let enemy_rook = 1u64 << enemy_rook_position;
-        let ray_to_king = get_rook_ray(g.king_square(side), enemy_rook_position);
-        let pinned_piece = ray_to_king & side_pieces;
-        let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
-        pinned_pieces |= pinned_piece;
-        if pinned_piece & g.pieces[QUEEN][side] != 0u64 {
-            //Add possible queen pushes
-            stm_haslegalmove |= add_pin_moves_to_movelist(
-                movelist,
-                only_captures,
-                ray_to_king,
-                push_mask,
-                capture_mask,
-                enemy_rook,
-                pinned_piece_position,
-                PieceType::Queen,
-                enemy_rook_position,
-                g.pieces[QUEEN][enemy],
-                PieceType::Rook,
-            );
-        } else if pinned_piece & g.pieces[ROOK][side] != 0u64 {
-            //Add possible rook pushes
-            stm_haslegalmove |= add_pin_moves_to_movelist(
-                movelist,
-                only_captures,
-                ray_to_king,
-                push_mask,
-                capture_mask,
-                enemy_rook,
-                pinned_piece_position,
-                PieceType::Rook,
-                enemy_rook_position,
-                g.pieces[QUEEN][enemy],
-                PieceType::Rook,
-            );
-        } else if pinned_piece & side_pawns != 0u64 {
-            //Add possible pawn pushes
-            side_pawns ^= pinned_piece;
-            let stm_pawn_pin_single_push = if stm_color_iswhite {
-                w_single_push_pawn_targets(pinned_piece, empty_squares)
-            } else {
-                b_single_push_pawn_targets(pinned_piece, empty_squares)
-            } & ray_to_king
-                & push_mask;
-            let stm_pawn_pin_double_push = if stm_color_iswhite {
-                w_double_push_pawn_targets(pinned_piece, empty_squares)
-            } else {
-                b_double_push_pawn_targets(pinned_piece, empty_squares)
-            } & ray_to_king
-                & push_mask;
-            stm_haslegalmove |= (stm_pawn_pin_single_push | stm_pawn_pin_double_push) != 0u64;
-            if !only_captures {
-                add_moves_to_movelist(
+    if bitboards::FREEFIELD_ROOK_ATTACKS[g.king_square(side)]
+        & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
+        != 0u64
+    {
+        let stm_rook_attacks_from_king = rook_attack(g.king_square(side), all_pieces);
+        let stm_xray_rook_attacks_from_king = xray_rook_attacks(
+            stm_rook_attacks_from_king,
+            all_pieces,
+            side_pieces,
+            g.king_square(side),
+        );
+        let mut enemy_rooks_on_xray =
+            stm_xray_rook_attacks_from_king & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy]);
+        while enemy_rooks_on_xray != 0u64 {
+            let enemy_rook_position = enemy_rooks_on_xray.trailing_zeros() as usize;
+            let enemy_rook = 1u64 << enemy_rook_position;
+            let ray_to_king = get_rook_ray(g.king_square(side), enemy_rook_position);
+            let pinned_piece = ray_to_king & side_pieces;
+            let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
+            pinned_pieces |= pinned_piece;
+            if pinned_piece & g.pieces[QUEEN][side] != 0u64 {
+                //Add possible queen pushes
+                stm_haslegalmove |= add_pin_moves_to_movelist(
                     movelist,
+                    only_captures,
+                    ray_to_king,
+                    push_mask,
+                    capture_mask,
+                    enemy_rook,
                     pinned_piece_position,
-                    stm_pawn_pin_single_push | stm_pawn_pin_double_push,
-                    PieceType::Pawn,
-                    GameMoveType::Quiet,
-                )
+                    PieceType::Queen,
+                    enemy_rook_position,
+                    g.pieces[QUEEN][enemy],
+                    PieceType::Rook,
+                );
+            } else if pinned_piece & g.pieces[ROOK][side] != 0u64 {
+                //Add possible rook pushes
+                stm_haslegalmove |= add_pin_moves_to_movelist(
+                    movelist,
+                    only_captures,
+                    ray_to_king,
+                    push_mask,
+                    capture_mask,
+                    enemy_rook,
+                    pinned_piece_position,
+                    PieceType::Rook,
+                    enemy_rook_position,
+                    g.pieces[QUEEN][enemy],
+                    PieceType::Rook,
+                );
+            } else if pinned_piece & side_pawns != 0u64 {
+                //Add possible pawn pushes
+                side_pawns ^= pinned_piece;
+                let stm_pawn_pin_single_push = if stm_color_iswhite {
+                    w_single_push_pawn_targets(pinned_piece, empty_squares)
+                } else {
+                    b_single_push_pawn_targets(pinned_piece, empty_squares)
+                } & ray_to_king
+                    & push_mask;
+                let stm_pawn_pin_double_push = if stm_color_iswhite {
+                    w_double_push_pawn_targets(pinned_piece, empty_squares)
+                } else {
+                    b_double_push_pawn_targets(pinned_piece, empty_squares)
+                } & ray_to_king
+                    & push_mask;
+                stm_haslegalmove |= (stm_pawn_pin_single_push | stm_pawn_pin_double_push) != 0u64;
+                if !only_captures {
+                    add_moves_to_movelist(
+                        movelist,
+                        pinned_piece_position,
+                        stm_pawn_pin_single_push | stm_pawn_pin_double_push,
+                        PieceType::Pawn,
+                        GameMoveType::Quiet,
+                    )
+                }
             }
+            enemy_rooks_on_xray ^= enemy_rook;
         }
-        enemy_rooks_on_xray ^= enemy_rook;
     }
     //4.2 Bishop-Like pins
-    let stm_bishop_attacks_from_king = bishop_attack(g.king_square(side), all_pieces);
-    let stm_xray_bishop_attacks_from_king = xray_bishop_attacks(
-        stm_bishop_attacks_from_king,
-        all_pieces,
-        side_pieces,
-        g.king_square(side),
-    );
-    let mut enemy_bishop_on_xray =
-        stm_xray_bishop_attacks_from_king & (g.pieces[BISHOP][enemy] | g.pieces[QUEEN][enemy]);
-    while enemy_bishop_on_xray != 0u64 {
-        let enemy_bishop_position = enemy_bishop_on_xray.trailing_zeros() as usize;
-        let enemy_bishop = 1u64 << enemy_bishop_position;
-        let ray_to_king = get_bishop_ray(g.king_square(side), enemy_bishop_position);
-        let pinned_piece = ray_to_king & side_pieces;
-        let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
-        pinned_pieces |= pinned_piece;
-        if pinned_piece & g.pieces[QUEEN][side] != 0u64 {
-            //Add possible queen pushes
-            stm_haslegalmove |= add_pin_moves_to_movelist(
-                movelist,
-                only_captures,
-                ray_to_king,
-                push_mask,
-                capture_mask,
-                enemy_bishop,
-                pinned_piece_position,
-                PieceType::Queen,
-                enemy_bishop_position,
-                g.pieces[QUEEN][enemy],
-                PieceType::Bishop,
-            );
-        } else if pinned_piece & g.pieces[BISHOP][side] != 0u64 {
-            //Add possible bishop pushes
-            stm_haslegalmove |= add_pin_moves_to_movelist(
-                movelist,
-                only_captures,
-                ray_to_king,
-                push_mask,
-                capture_mask,
-                enemy_bishop,
-                pinned_piece_position,
-                PieceType::Bishop,
-                enemy_bishop_position,
-                g.pieces[QUEEN][enemy],
-                PieceType::Bishop,
-            );
-        } else if pinned_piece & side_pawns != 0u64 {
-            //Add possible pawn captures
-            side_pawns ^= pinned_piece;
+    if bitboards::FREEFIELD_BISHOP_ATTACKS[g.king_square(side)]
+        & (g.pieces[BISHOP][enemy] | g.pieces[QUEEN][enemy])
+        != 0u64
+    {
+        let stm_bishop_attacks_from_king = bishop_attack(g.king_square(side), all_pieces);
+        let stm_xray_bishop_attacks_from_king = xray_bishop_attacks(
+            stm_bishop_attacks_from_king,
+            all_pieces,
+            side_pieces,
+            g.king_square(side),
+        );
+        let mut enemy_bishop_on_xray =
+            stm_xray_bishop_attacks_from_king & (g.pieces[BISHOP][enemy] | g.pieces[QUEEN][enemy]);
+        while enemy_bishop_on_xray != 0u64 {
+            let enemy_bishop_position = enemy_bishop_on_xray.trailing_zeros() as usize;
+            let enemy_bishop = 1u64 << enemy_bishop_position;
+            let ray_to_king = get_bishop_ray(g.king_square(side), enemy_bishop_position);
+            let pinned_piece = ray_to_king & side_pieces;
+            let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
+            pinned_pieces |= pinned_piece;
+            if pinned_piece & g.pieces[QUEEN][side] != 0u64 {
+                //Add possible queen pushes
+                stm_haslegalmove |= add_pin_moves_to_movelist(
+                    movelist,
+                    only_captures,
+                    ray_to_king,
+                    push_mask,
+                    capture_mask,
+                    enemy_bishop,
+                    pinned_piece_position,
+                    PieceType::Queen,
+                    enemy_bishop_position,
+                    g.pieces[QUEEN][enemy],
+                    PieceType::Bishop,
+                );
+            } else if pinned_piece & g.pieces[BISHOP][side] != 0u64 {
+                //Add possible bishop pushes
+                stm_haslegalmove |= add_pin_moves_to_movelist(
+                    movelist,
+                    only_captures,
+                    ray_to_king,
+                    push_mask,
+                    capture_mask,
+                    enemy_bishop,
+                    pinned_piece_position,
+                    PieceType::Bishop,
+                    enemy_bishop_position,
+                    g.pieces[QUEEN][enemy],
+                    PieceType::Bishop,
+                );
+            } else if pinned_piece & side_pawns != 0u64 {
+                //Add possible pawn captures
+                side_pawns ^= pinned_piece;
 
-            let stm_pawn_pin_target = if stm_color_iswhite {
-                w_pawn_east_targets(pinned_piece) | w_pawn_west_targets(pinned_piece)
-            } else {
-                b_pawn_east_targets(pinned_piece) | b_pawn_west_targets(pinned_piece)
-            };
-            //Normal captures
-            let stm_pawn_pin_captures = stm_pawn_pin_target & capture_mask & enemy_bishop;
-            let stm_pawn_pin_promotion_capture =
-                stm_pawn_pin_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
-            if stm_pawn_pin_promotion_capture != 0u64 {
-                stm_haslegalmove = true;
-                add_promotion_move_to_movelist(
-                    movelist,
-                    pinned_piece_position,
-                    enemy_bishop_position,
-                    GameMoveType::Capture(if enemy_bishop & g.pieces[QUEEN][enemy] != 0u64 {
-                        PieceType::Queen
-                    } else {
-                        PieceType::Bishop
-                    }),
-                );
+                let stm_pawn_pin_target = if stm_color_iswhite {
+                    w_pawn_east_targets(pinned_piece) | w_pawn_west_targets(pinned_piece)
+                } else {
+                    b_pawn_east_targets(pinned_piece) | b_pawn_west_targets(pinned_piece)
+                };
+                //Normal captures
+                let stm_pawn_pin_captures = stm_pawn_pin_target & capture_mask & enemy_bishop;
+                let stm_pawn_pin_promotion_capture =
+                    stm_pawn_pin_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+                if stm_pawn_pin_promotion_capture != 0u64 {
+                    stm_haslegalmove = true;
+                    add_promotion_move_to_movelist(
+                        movelist,
+                        pinned_piece_position,
+                        enemy_bishop_position,
+                        GameMoveType::Capture(if enemy_bishop & g.pieces[QUEEN][enemy] != 0u64 {
+                            PieceType::Queen
+                        } else {
+                            PieceType::Bishop
+                        }),
+                    );
+                }
+                let stm_pawn_pin_nonpromotion_capture =
+                    stm_pawn_pin_captures & !stm_pawn_pin_promotion_capture;
+                if stm_pawn_pin_nonpromotion_capture != 0u64 {
+                    stm_haslegalmove = true;
+                    add_move_to_movelist(
+                        movelist,
+                        pinned_piece_position,
+                        enemy_bishop_position,
+                        PieceType::Pawn,
+                        GameMoveType::Capture(if enemy_bishop & g.pieces[QUEEN][enemy] != 0u64 {
+                            PieceType::Queen
+                        } else {
+                            PieceType::Bishop
+                        }),
+                    );
+                }
+                //En passants
+                let stm_pawn_pin_enpassant =
+                    stm_pawn_pin_target & g.en_passant & capture_mask & ray_to_king;
+                if stm_pawn_pin_enpassant != 0u64 {
+                    stm_haslegalmove = true;
+                    add_move_to_movelist(
+                        movelist,
+                        pinned_piece_position,
+                        stm_pawn_pin_enpassant.trailing_zeros() as usize,
+                        PieceType::Pawn,
+                        GameMoveType::EnPassant,
+                    );
+                }
             }
-            let stm_pawn_pin_nonpromotion_capture =
-                stm_pawn_pin_captures & !stm_pawn_pin_promotion_capture;
-            if stm_pawn_pin_nonpromotion_capture != 0u64 {
-                stm_haslegalmove = true;
-                add_move_to_movelist(
-                    movelist,
-                    pinned_piece_position,
-                    enemy_bishop_position,
-                    PieceType::Pawn,
-                    GameMoveType::Capture(if enemy_bishop & g.pieces[QUEEN][enemy] != 0u64 {
-                        PieceType::Queen
-                    } else {
-                        PieceType::Bishop
-                    }),
-                );
-            }
-            //En passants
-            let stm_pawn_pin_enpassant =
-                stm_pawn_pin_target & g.en_passant & capture_mask & ray_to_king;
-            if stm_pawn_pin_enpassant != 0u64 {
-                stm_haslegalmove = true;
-                add_move_to_movelist(
-                    movelist,
-                    pinned_piece_position,
-                    stm_pawn_pin_enpassant.trailing_zeros() as usize,
-                    PieceType::Pawn,
-                    GameMoveType::EnPassant,
-                );
-            }
+            enemy_bishop_on_xray ^= enemy_bishop;
         }
-        enemy_bishop_on_xray ^= enemy_bishop;
     }
 
     //----------------------------------------------------------------------
