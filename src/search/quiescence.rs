@@ -23,7 +23,7 @@ lazy_static! {
 
 pub fn q_search(
     mut alpha: i16,
-    mut beta: i16,
+    beta: i16,
     game_state: &GameState,
     color: i16,
     depth_left: i16,
@@ -99,28 +99,17 @@ pub fn q_search(
             let ce: &CacheEntry = s;
             if ce.hash == game_state.hash {
                 su.search.search_statistics.add_cache_hit_qs();
-                if ce.depth >= depth_left as i8 {
-                    if !ce.alpha && !ce.beta {
-                        su.search.search_statistics.add_cache_hit_replace_qs();
-                        su.search.pv_table[current_depth].pv[0] =
-                            Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                        return ce.score;
-                    } else {
-                        if ce.beta {
-                            if ce.score > alpha {
-                                alpha = ce.score;
-                            }
-                        } else if ce.score < beta {
-                            beta = ce.score;
-                        }
-                        if alpha >= beta {
-                            su.search.search_statistics.add_cache_hit_aj_replace_qs();
-                            su.search.pv_table[current_depth].pv[0] =
-                                Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                            return ce.score;
-                        }
-                    }
+                if ce.depth >= depth_left as i8
+                    && (!ce.alpha && !ce.beta
+                        || ce.beta && ce.score >= beta
+                        || ce.alpha && ce.score <= alpha)
+                {
+                    su.search.search_statistics.add_cache_hit_replace_qs();
+                    su.search.pv_table[current_depth].pv[0] =
+                        Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                    return ce.score;
                 }
+
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
                 if incheck || is_capture(&mv) {
                     tt_move = Some(mv);
@@ -230,7 +219,7 @@ pub fn q_search(
             &su.search.pv_table[current_depth],
             current_max_score,
             &game_state,
-            alpha,
+            alpha, //Alwyays lower bound if it isn't an upper bound
             beta,
             0,
             su.root_pliesplayed,
@@ -275,9 +264,9 @@ pub fn make_and_evaluate_moves_qsearch(
                 mv_index += 1;
                 continue;
             }
-            if capture_index > 0 && is_capture(mv) || !incheck {
+            if !incheck || is_capture(&mv) {
                 let score = see(&game_state, mv, true, &mut search.see_buffer);
-                if score < 0 {
+                if score < 0 && !incheck {
                     search.search_statistics.add_q_see_cutoff();
                     mv_index += 1;
                     continue;

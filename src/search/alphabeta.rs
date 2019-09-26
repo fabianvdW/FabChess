@@ -113,28 +113,16 @@ pub fn principal_variation_search(
             if ce.hash == game_state.hash {
                 //tt_entry = Some(ce);
                 su.search.search_statistics.add_cache_hit_ns();
-                if ce.depth >= depth_left as i8 && beta - alpha == 1 {
-                    if !ce.alpha && !ce.beta {
-                        su.search.search_statistics.add_cache_hit_replace_ns();
-                        su.search.pv_table[current_depth].pv[0] =
-                            Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
-                        return ce.score;
-                    } else {
-                        if ce.beta {
-                            if ce.score > alpha {
-                                alpha = ce.score;
-                            }
-                        } else if ce.alpha && ce.score < beta {
-                            beta = ce.score;
-                        }
-
-                        if alpha >= beta {
-                            su.search.search_statistics.add_cache_hit_aj_replace_ns();
-                            let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
-                            su.search.pv_table[current_depth].pv[0] = Some(mv);
-                            return ce.score;
-                        }
-                    }
+                if ce.depth >= depth_left as i8
+                    && !is_pv_node
+                    && (!ce.alpha && !ce.beta
+                        || ce.beta && ce.score >= beta
+                        || ce.alpha && ce.score <= alpha)
+                {
+                    su.search.search_statistics.add_cache_hit_replace_ns();
+                    su.search.pv_table[current_depth].pv[0] =
+                        Some(CacheEntry::u16_to_mv(ce.mv, &game_state));
+                    return ce.score;
                 }
                 static_evaluation = ce.static_evaluation;
                 let mv = CacheEntry::u16_to_mv(ce.mv, &game_state);
@@ -271,6 +259,7 @@ pub fn principal_variation_search(
             }
         }
     }
+    let original_alpha = alpha;
     let mut current_max_score = STANDARD_SCORE;
 
     let mut index: usize = 0;
@@ -536,7 +525,7 @@ pub fn principal_variation_search(
             &su.search.pv_table[current_depth],
             current_max_score,
             &game_state,
-            alpha,
+            original_alpha,
             beta,
             depth_left,
             su.root_pliesplayed,
