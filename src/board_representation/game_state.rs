@@ -1,4 +1,8 @@
 use super::zobrist_hashing::ZOBRIST_KEYS;
+use crate::evaluation::params::{
+    PSQT_BISHOP_EG, PSQT_BISHOP_MG, PSQT_KING_EG, PSQT_KING_MG, PSQT_KNIGHT_EG, PSQT_KNIGHT_MG,
+    PSQT_PAWN_EG, PSQT_PAWN_MG, PSQT_QUEEN_EG, PSQT_QUEEN_MG, PSQT_ROOK_EG, PSQT_ROOK_MG,
+};
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -35,6 +39,42 @@ pub enum PieceType {
     Bishop,
     Rook,
     Queen,
+}
+impl PieceType {
+    #[inline(always)]
+    pub fn to_index(&self) -> usize {
+        match &self {
+            PieceType::Pawn => PAWN,
+            PieceType::Knight => KNIGHT,
+            PieceType::Bishop => BISHOP,
+            PieceType::Rook => ROOK,
+            PieceType::Queen => QUEEN,
+            PieceType::King => KING,
+        }
+    }
+    #[inline(always)]
+    pub fn to_psqt(&self) -> (&'static [[i16; 8]; 8], &'static [[i16; 8]; 8]) {
+        match &self {
+            PieceType::Pawn => (&PSQT_PAWN_MG, &PSQT_PAWN_EG),
+            PieceType::Knight => (&PSQT_KNIGHT_MG, &PSQT_KNIGHT_EG),
+            PieceType::Bishop => (&PSQT_BISHOP_MG, &PSQT_BISHOP_EG),
+            PieceType::Rook => (&PSQT_ROOK_MG, &PSQT_ROOK_EG),
+            PieceType::Queen => (&PSQT_QUEEN_MG, &PSQT_QUEEN_EG),
+            PieceType::King => (&PSQT_KING_MG, &PSQT_KING_EG),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_zobrist_key(&self) -> (&'static [u64; 64], &'static [u64; 64]) {
+        match &self {
+            PieceType::Pawn => (&ZOBRIST_KEYS.w_pawns, &ZOBRIST_KEYS.b_pawns),
+            PieceType::Knight => (&ZOBRIST_KEYS.w_knights, &ZOBRIST_KEYS.b_knights),
+            PieceType::Bishop => (&ZOBRIST_KEYS.w_bishops, &ZOBRIST_KEYS.b_bishops),
+            PieceType::Rook => (&ZOBRIST_KEYS.w_rooks, &ZOBRIST_KEYS.b_rooks),
+            PieceType::Queen => (&ZOBRIST_KEYS.w_queens, &ZOBRIST_KEYS.b_queens),
+            PieceType::King => (&ZOBRIST_KEYS.w_king, &ZOBRIST_KEYS.b_king),
+        }
+    }
 }
 
 #[derive(Copy, PartialEq)]
