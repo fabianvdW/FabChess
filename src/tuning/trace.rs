@@ -1,6 +1,7 @@
 use super::parameters::Parameters;
 use crate::board_representation::game_state::{BLACK, WHITE};
 use crate::evaluation::{EG, MG};
+
 pub struct Trace {
     pub tempo_bonus: [i8; 2],
     pub shielding_pawn_missing: [[i8; 4]; 2],
@@ -13,6 +14,9 @@ pub struct Trace {
     pub pawn_mobility: [i8; 2],
     pub pawn_passed: [[i8; 7]; 2],
     pub pawn_passed_notblocked: [[i8; 7]; 2],
+    pub pawn_passed_kingdistance: [[i8; 7]; 2],
+    pub pawn_passed_enemykingdistance: [[i8; 7]; 2],
+    pub pawn_passed_subdistance: [[i8; 13]; 2],
     pub rook_behind_support_passer: [i8; 2],
     pub rook_behind_enemy_passer: [i8; 2],
     pub pawn_passed_weak: [i8; 2],
@@ -69,6 +73,7 @@ pub fn evaluate_single(score: &mut (f64, f64), trace: [i8; 2], param: &[f64; 2])
     score.0 += f64::from(trace[WHITE] - trace[BLACK]) * param[MG];
     score.1 += f64::from(trace[WHITE] - trace[BLACK]) * param[EG];
 }
+
 pub fn evaluate_single2(
     score: &mut (f64, f64),
     trace_white: i8,
@@ -260,6 +265,29 @@ impl Trace {
                 params.pawn_passed_notblocked[MG][i],
                 params.pawn_passed_notblocked[EG][i],
             );
+            evaluate_single2(
+                &mut pawn_res,
+                self.pawn_passed_kingdistance[WHITE][i],
+                self.pawn_passed_kingdistance[BLACK][i],
+                params.pawn_passed_kingdistance[MG][i],
+                params.pawn_passed_kingdistance[EG][i],
+            );
+            evaluate_single2(
+                &mut pawn_res,
+                self.pawn_passed_enemykingdistance[WHITE][i],
+                self.pawn_passed_enemykingdistance[BLACK][i],
+                params.pawn_passed_enemykingdistance[MG][i],
+                params.pawn_passed_enemykingdistance[EG][i],
+            );
+        }
+        for i in 0..13 {
+            evaluate_single2(
+                &mut pawn_res,
+                self.pawn_passed_subdistance[WHITE][i],
+                self.pawn_passed_subdistance[BLACK][i],
+                params.pawn_passed_subdistance[MG][i],
+                params.pawn_passed_subdistance[EG][i],
+            );
         }
         evaluate_single(
             &mut pawn_res,
@@ -345,6 +373,9 @@ impl Trace {
             pawn_mobility: [0; 2],
             pawn_passed: [[0; 7]; 2],
             pawn_passed_notblocked: [[0; 7]; 2],
+            pawn_passed_kingdistance: [[0; 7]; 2],
+            pawn_passed_enemykingdistance: [[0; 7]; 2],
+            pawn_passed_subdistance: [[0; 13]; 2],
             rook_behind_support_passer: [0; 2],
             rook_behind_enemy_passer: [0; 2],
             pawn_passed_weak: [0; 2],
@@ -383,6 +414,7 @@ impl Trace {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "texel-tuning")]
@@ -391,6 +423,7 @@ mod tests {
     use crate::board_representation::game_state::GameState;
     #[cfg(feature = "texel-tuning")]
     use crate::evaluation::eval_game_state_from_null;
+
     #[test]
     #[ignore]
     pub fn traceeval() {
@@ -502,6 +535,7 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
                 let trace_eval = evaluation.trace.evaluate(&params) as i16;
                 //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
                 if (evaluation.final_eval - trace_eval).abs() > 2 {
+                    println!("{}", position.to_fen());
                     panic!(format!("{} != {}", evaluation.final_eval, trace_eval));
                 }
             }

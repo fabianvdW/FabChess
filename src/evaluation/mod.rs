@@ -1,5 +1,6 @@
 pub mod params;
 pub mod psqt_evaluation;
+
 use super::bitboards;
 use super::board_representation::game_state::{
     GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
@@ -16,6 +17,7 @@ use crate::tuning::trace::Trace;
 use params::*;
 use psqt_evaluation::psqt;
 use psqt_evaluation::BLACK_INDEX;
+
 pub const MG: usize = 0;
 pub const EG: usize = 1;
 
@@ -33,6 +35,7 @@ pub fn eval_game_state_from_null(g: &GameState) -> EvaluationResult {
     let mgsac = GameStateAttackContainer::from_state(g);
     eval_game_state(g, &mgsac)
 }
+
 pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
@@ -711,6 +714,10 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i
     (mg_res, eg_res)
 }
 
+pub fn get_distance(sq: isize, sq2: isize) -> usize {
+    (sq / 8 - sq2 / 8).abs().max((sq % 8 - sq2 % 8).abs()) as usize
+}
+
 pub fn pawns(
     white: bool,
     g: &GameState,
@@ -887,6 +894,22 @@ pub fn pawns(
             }
         }
 
+        //Distance to kings
+        let d_myking = get_distance(idx as isize, g.king_square(side) as isize);
+        let d_enemyking = get_distance(idx as isize, g.king_square(1 - side) as isize);
+        let sub_dist = ((d_myking as isize - d_enemyking as isize) + 6) as usize;
+        passer_mg += PASSED_KING_DISTANCE_MG[d_myking - 1]
+            + PASSED_ENEMY_KING_DISTANCE_MG[d_enemyking - 1]
+            + PASSED_SUBTRACT_DISTANCE_MG[sub_dist];
+        passer_eg += PASSED_KING_DISTANCE_EG[d_myking - 1]
+            + PASSED_ENEMY_KING_DISTANCE_EG[d_enemyking - 1]
+            + PASSED_SUBTRACT_DISTANCE_EG[sub_dist];
+        #[cfg(feature = "texel-tuning")]
+        {
+            _eval.trace.pawn_passed_kingdistance[side][d_myking - 1] += 1;
+            _eval.trace.pawn_passed_enemykingdistance[side][d_enemyking - 1] += 1;
+            _eval.trace.pawn_passed_subdistance[side][sub_dist] += 1;
+        }
         passed_pawns ^= 1u64 << idx;
     }
     #[cfg(feature = "texel-tuning")]

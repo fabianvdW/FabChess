@@ -2,10 +2,12 @@ use crate::evaluation::params::*;
 use crate::evaluation::{EG, MG};
 use std::fmt::{Debug, Formatter, Result};
 use std::fs;
+
 #[derive(Clone)]
 pub struct SafetyTable {
     pub safety_table: [f64; 100],
 }
+
 impl Debug for SafetyTable {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
@@ -15,6 +17,7 @@ impl Debug for SafetyTable {
         write!(formatter, "safety_table: [{}];", res_str)
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct Parameters {
     pub tempo_bonus: [f64; 2],
@@ -28,6 +31,9 @@ pub struct Parameters {
     pub pawn_mobility: [f64; 2],
     pub pawn_passed: [[f64; 7]; 2],
     pub pawn_passed_notblocked: [[f64; 7]; 2],
+    pub pawn_passed_kingdistance: [[f64; 7]; 2],
+    pub pawn_passed_enemykingdistance: [[f64; 7]; 2],
+    pub pawn_passed_subdistance: [[f64; 13]; 2],
     pub rook_behind_support_passer: [f64; 2],
     pub rook_behind_enemy_passer: [f64; 2],
     pub pawn_passed_weak: [f64; 2],
@@ -198,6 +204,30 @@ impl Parameters {
         res_str.push_str(&format!(
             "pub const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16;7] = {};\n",
             array_to_string(&self.pawn_passed_notblocked[EG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PASSED_KING_DISTANCE_MG: [i16; 7] = {};\n",
+            array_to_string(&self.pawn_passed_kingdistance[MG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PASSED_KING_DISTANCE_EG: [i16; 7] = {};\n",
+            array_to_string(&self.pawn_passed_kingdistance[EG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PASSED_ENEMY_KING_DISTANCE_MG: [i16; 7] = {};\n",
+            array_to_string(&self.pawn_passed_enemykingdistance[MG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PASSED_ENEMY_KING_DISTANCE_EG: [i16; 7] = {};\n",
+            array_to_string(&self.pawn_passed_enemykingdistance[EG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PASSED_SUBTRACT_DISTANCE_MG: [i16; 13] = {};\n",
+            array_to_string(&self.pawn_passed_subdistance[MG])
+        ));
+        res_str.push_str(&format!(
+            "pub const PASSED_SUBTRACT_DISTANCE_EG: [i16; 13] = {};\n",
+            array_to_string(&self.pawn_passed_subdistance[EG])
         ));
         res_str.push_str(&format!(
             "pub const ROOK_BEHIND_SUPPORT_PASSER_MG: i16 = {};\n",
@@ -501,6 +531,21 @@ impl Parameters {
             pawn_passed_notblocked[MG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES_MG[i]);
             pawn_passed_notblocked[EG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES_EG[i]);
         }
+        let mut pawn_passed_kingdistance: [[f64; 7]; 2] = [[0.; 7]; 2];
+        for i in 0..7 {
+            pawn_passed_kingdistance[MG][i] = f64::from(PASSED_KING_DISTANCE_MG[i]);
+            pawn_passed_kingdistance[EG][i] = f64::from(PASSED_KING_DISTANCE_EG[i]);
+        }
+        let mut pawn_passed_enemykingdistance: [[f64; 7]; 2] = [[0.; 7]; 2];
+        for i in 0..7 {
+            pawn_passed_enemykingdistance[MG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE_MG[i]);
+            pawn_passed_enemykingdistance[EG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE_EG[i]);
+        }
+        let mut pawn_passed_subdistance: [[f64; 13]; 2] = [[0.; 13]; 2];
+        for i in 0..13 {
+            pawn_passed_subdistance[MG][i] = f64::from(PASSED_SUBTRACT_DISTANCE_MG[i]);
+            pawn_passed_subdistance[EG][i] = f64::from(PASSED_SUBTRACT_DISTANCE_EG[i]);
+        }
         let mut knight_outpost_table: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
@@ -630,6 +675,9 @@ impl Parameters {
             pawn_mobility: [f64::from(PAWN_MOBILITY_MG), f64::from(PAWN_MOBILITY_EG)],
             pawn_passed,
             pawn_passed_notblocked,
+            pawn_passed_kingdistance,
+            pawn_passed_enemykingdistance,
+            pawn_passed_subdistance,
             rook_behind_support_passer: [
                 f64::from(ROOK_BEHIND_SUPPORT_PASSER_MG),
                 f64::from(ROOK_BEHIND_SUPPORT_PASSER_EG),
@@ -735,6 +783,9 @@ impl Parameters {
             pawn_mobility: [0.; 2],
             pawn_passed: [[0.; 7]; 2],
             pawn_passed_notblocked: [[0.; 7]; 2],
+            pawn_passed_kingdistance: [[0.; 7]; 2],
+            pawn_passed_enemykingdistance: [[0.; 7]; 2],
+            pawn_passed_subdistance: [[0.; 13]; 2],
             rook_behind_support_passer: [0.; 2],
             rook_behind_enemy_passer: [0.; 2],
             pawn_passed_weak: [0.; 2],
@@ -827,6 +878,21 @@ impl Parameters {
             apply_gradient_arr(
                 &mut self.pawn_passed_notblocked[i],
                 &gradient.pawn_passed_notblocked[i],
+                norm,
+            );
+            apply_gradient_arr(
+                &mut self.pawn_passed_kingdistance[i],
+                &gradient.pawn_passed_kingdistance[i],
+                norm,
+            );
+            apply_gradient_arr(
+                &mut self.pawn_passed_enemykingdistance[i],
+                &gradient.pawn_passed_enemykingdistance[i],
+                norm,
+            );
+            apply_gradient_arr(
+                &mut self.pawn_passed_subdistance[i],
+                &gradient.pawn_passed_subdistance[i],
                 norm,
             );
         }

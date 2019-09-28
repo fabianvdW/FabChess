@@ -228,6 +228,27 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                     gradient.pawn_passed_notblocked[MG][i] += start_of_gradient * devaldmg * y;
                     gradient.pawn_passed_notblocked[EG][i] += start_of_gradient * devaldeg * y;
                 }
+                let x = f64::from(
+                    pos.trace.pawn_passed_kingdistance[WHITE][i]
+                        - pos.trace.pawn_passed_kingdistance[BLACK][i],
+                );
+                gradient.pawn_passed_kingdistance[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.pawn_passed_kingdistance[EG][i] += start_of_gradient * devaldeg * x;
+
+                let x = f64::from(
+                    pos.trace.pawn_passed_enemykingdistance[WHITE][i]
+                        - pos.trace.pawn_passed_enemykingdistance[BLACK][i],
+                );
+                gradient.pawn_passed_enemykingdistance[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.pawn_passed_enemykingdistance[EG][i] += start_of_gradient * devaldeg * x;
+            }
+            for i in 0..13 {
+                let x = f64::from(
+                    pos.trace.pawn_passed_subdistance[WHITE][i]
+                        - pos.trace.pawn_passed_subdistance[BLACK][i],
+                );
+                gradient.pawn_passed_subdistance[MG][i] += start_of_gradient * devaldmg * x;
+                gradient.pawn_passed_subdistance[EG][i] += start_of_gradient * devaldeg * x;
             }
         }
         //Knight supported
@@ -701,6 +722,11 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         for j in 0..7 {
             norm += gradient.pawn_passed[i][j].powf(2.);
             norm += gradient.pawn_passed_notblocked[i][j].powf(2.);
+            norm += gradient.pawn_passed_kingdistance[i][j].powf(2.);
+            norm += gradient.pawn_passed_enemykingdistance[i][j].powf(2.);
+        }
+        for j in 0..13 {
+            norm += gradient.pawn_passed_subdistance[i][j].powf(2.);
         }
         norm += gradient.rook_behind_support_passer[i].powf(2.);
         norm += gradient.rook_behind_enemy_passer[i].powf(2.);

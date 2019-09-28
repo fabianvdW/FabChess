@@ -39,6 +39,7 @@ pub fn principal_variation_search(
     if su.search.search_statistics.nodes_searched % 1024 == 0 {
         checkup(su.search, su.stop);
     }
+
     if su.search.stop {
         return STANDARD_SCORE;
     }
@@ -548,6 +549,7 @@ pub fn is_passer(g: &GameState, mv: &GameMove) -> bool {
         bitboards::west_one(enemy_front_span) | bitboards::east_one(enemy_front_span);
     (pawn_board & !enemy_front_span).count_ones() > 0
 }
+
 pub fn decrement_history_quiets(
     search: &mut Search,
     current_depth: usize,
@@ -560,6 +562,7 @@ pub fn decrement_history_quiets(
         search.history_score[side_to_move][mv.from][mv.to] -= depth_left * depth_left;
     }
 }
+
 #[inline(always)]
 pub fn make_and_evaluate_moves(
     game_state: &GameState,
@@ -646,6 +649,7 @@ pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContai
         & attack_container.attacks_sum[1 - game_state.color_to_move])
         != 0u64
 }
+
 #[inline(always)]
 pub fn in_check_slow(game_state: &GameState) -> bool {
     movegen::get_checkers(game_state, true).count_ones() > 0
@@ -806,6 +810,7 @@ pub fn check_for_draw(game_state: &GameState, history: &History) -> bool {
     }
     false
 }
+
 #[inline(always)]
 pub fn check_end_condition(
     game_state: &GameState,
