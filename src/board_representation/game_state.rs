@@ -1,8 +1,5 @@
 use super::zobrist_hashing::ZOBRIST_KEYS;
-use crate::evaluation::params::{
-    PSQT_BISHOP_EG, PSQT_BISHOP_MG, PSQT_KING_EG, PSQT_KING_MG, PSQT_KNIGHT_EG, PSQT_KNIGHT_MG,
-    PSQT_PAWN_EG, PSQT_PAWN_MG, PSQT_QUEEN_EG, PSQT_QUEEN_MG, PSQT_ROOK_EG, PSQT_ROOK_MG,
-};
+use crate::evaluation::params::*;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -73,6 +70,30 @@ impl PieceType {
             PieceType::Rook => (&ZOBRIST_KEYS.w_rooks, &ZOBRIST_KEYS.b_rooks),
             PieceType::Queen => (&ZOBRIST_KEYS.w_queens, &ZOBRIST_KEYS.b_queens),
             PieceType::King => (&ZOBRIST_KEYS.w_king, &ZOBRIST_KEYS.b_king),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_piece_score(&self) -> (i16, i16) {
+        match &self {
+            PieceType::Pawn => (PAWN_PIECE_VALUE_MG, PAWN_PIECE_VALUE_EG),
+            PieceType::Knight => (KNIGHT_PIECE_VALUE_MG, KNIGHT_PIECE_VALUE_EG),
+            PieceType::Bishop => (BISHOP_PIECE_VALUE_MG, BISHOP_PIECE_VALUE_EG),
+            PieceType::Rook => (ROOK_PIECE_VALUE_MG, ROOK_PIECE_VALUE_EG),
+            PieceType::Queen => (QUEEN_PIECE_VALUE_MG, QUEEN_PIECE_VALUE_EG),
+            PieceType::King => panic!("King has no piece score"),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_phase_score(&self) -> i16 {
+        match &self {
+            PieceType::Pawn => 0,
+            PieceType::Knight => 500,
+            PieceType::Bishop => 510,
+            PieceType::Rook => 650,
+            PieceType::Queen => 1500,
+            PieceType::King => panic!("King has no phase score"),
         }
     }
 }

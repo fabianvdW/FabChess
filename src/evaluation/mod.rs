@@ -24,6 +24,42 @@ pub const EG: usize = 1;
 const MG_LIMIT: i16 = 9100;
 const EG_LIMIT: i16 = 2350;
 
+pub struct Phase {
+    pub phase: f64,
+    pub material_score: i16,
+}
+impl Phase {
+    pub fn update(&mut self) {
+        let tmp = self.material_score.min(EG_LIMIT).max(MG_LIMIT);
+        self.phase = f64::from(tmp - EG_LIMIT) * 128. / f64::from(MG_LIMIT - EG_LIMIT)
+    }
+    pub fn from_state(g: &GameState) -> Self {
+        let material_score = (g.pieces[QUEEN][WHITE] | g.pieces[QUEEN][BLACK]).count_ones() as i16
+            * PieceType::Queen.to_phase_score()
+            + (g.pieces[KNIGHT][WHITE] | g.pieces[KNIGHT][BLACK]).count_ones() as i16
+                * PieceType::Knight.to_phase_score()
+            + (g.pieces[BISHOP][WHITE] | g.pieces[BISHOP][BLACK]).count_ones() as i16
+                * PieceType::Bishop.to_phase_score()
+            + (g.pieces[ROOK][WHITE] | g.pieces[ROOK][BLACK]).count_ones() as i16
+                * PieceType::Rook.to_phase_score();
+        let mut res = Phase {
+            phase: 0.,
+            material_score,
+        };
+        res.update();
+        res
+    }
+
+    pub fn delete_piece(&mut self, piece: PieceType) {
+        self.material_score -= piece.to_phase_score();
+        self.update();
+    }
+
+    pub fn add_piece(&mut self, piece: PieceType) {
+        self.material_score += piece.to_phase_score();
+        self.update();
+    }
+}
 pub struct EvaluationResult {
     pub phase: f64,
     pub final_eval: i16,
@@ -47,7 +83,7 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = calculate_phase(g);
+    let phase = Phase::from_state(g).phase;
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
@@ -1078,52 +1114,7 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     (mg_res, eg_res)
 }
 
-pub fn calculate_phase(g: &GameState) -> f64 {
-    let (w_queens, b_queens, w_knights, b_knights, w_bishops, b_bishops, w_rooks, b_rooks) = (
-        g.pieces[QUEEN][WHITE],
-        g.pieces[QUEEN][BLACK],
-        g.pieces[KNIGHT][WHITE],
-        g.pieces[KNIGHT][BLACK],
-        g.pieces[BISHOP][WHITE],
-        g.pieces[BISHOP][BLACK],
-        g.pieces[ROOK][WHITE],
-        g.pieces[ROOK][BLACK],
-    );
-    let mut npm = (w_queens | b_queens).count_ones() as i16 * 1500
-        + (w_bishops | b_bishops).count_ones() as i16 * 510
-        + (w_rooks | b_rooks).count_ones() as i16 * 650
-        + (w_knights | b_knights).count_ones() as i16 * 500;
-    if npm < EG_LIMIT {
-        npm = EG_LIMIT;
-    }
-    if npm > MG_LIMIT {
-        npm = MG_LIMIT;
-    }
-    f64::from(npm - EG_LIMIT) * 128.0 / f64::from(MG_LIMIT - EG_LIMIT)
-}
-
 pub fn piece_value(piece_type: PieceType, phase: f64) -> i16 {
-    if let PieceType::Pawn = piece_type {
-        ((f64::from(PAWN_PIECE_VALUE_MG) * phase
-            + f64::from(PAWN_PIECE_VALUE_EG) * (128.0 - phase))
-            / 128.0) as i16
-    } else if let PieceType::Knight = piece_type {
-        ((f64::from(KNIGHT_PIECE_VALUE_MG) * phase
-            + f64::from(KNIGHT_PIECE_VALUE_EG) * (128.0 - phase))
-            / 128.0) as i16
-    } else if let PieceType::Bishop = piece_type {
-        ((f64::from(BISHOP_PIECE_VALUE_MG) * phase
-            + f64::from(BISHOP_PIECE_VALUE_EG) * (128.0 - phase))
-            / 128.0) as i16
-    } else if let PieceType::Rook = piece_type {
-        ((f64::from(ROOK_PIECE_VALUE_MG) * phase
-            + f64::from(ROOK_PIECE_VALUE_EG) * (128.0 - phase))
-            / 128.0) as i16
-    } else if let PieceType::Queen = piece_type {
-        ((f64::from(QUEEN_PIECE_VALUE_MG) * phase
-            + f64::from(QUEEN_PIECE_VALUE_EG) * (128.0 - phase))
-            / 128.0) as i16
-    } else {
-        panic!("Invalid piece type!");
-    }
+    let temp = piece_type.to_piece_score();
+    (f64::from(temp.0) * phase + f64::from(temp.1) * (128. - phase)) as i16
 }

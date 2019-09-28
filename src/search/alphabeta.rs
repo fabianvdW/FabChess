@@ -13,7 +13,7 @@ use super::GradedMove;
 use super::{MATED_IN_MAX, MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::bitboards;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
-use crate::evaluation::{calculate_phase, eval_game_state};
+use crate::evaluation::{eval_game_state, Phase};
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -151,7 +151,7 @@ pub fn principal_variation_search(
         //Null move pruning
         && (prunable && depth_left >= NULL_MOVE_PRUNING_DEPTH)
     {
-        phase = Some(calculate_phase(game_state));
+        phase = Some(Phase::from_state(game_state).phase);
     }
     //Replace static eval by tt score if available
     /*if false
