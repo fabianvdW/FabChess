@@ -17,14 +17,17 @@ use crate::search::GradedMove;
 pub fn king_attack(square: usize) -> u64 {
     bitboards::KING_ATTACKS[square]
 }
+
 #[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
     Magic::get_attacks(&magic::MAGICS_BISHOPS[square], all_pieces)
 }
+
 #[inline(always)]
 pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
     Magic::get_attacks(&magic::MAGICS_ROOKS[square], all_pieces)
 }
+
 #[inline(always)]
 pub fn knight_attack(square: usize) -> u64 {
     bitboards::KNIGHT_ATTACKS[square]
@@ -39,14 +42,17 @@ pub fn single_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
         b_single_push_pawn_targets(pawns, empty)
     }
 }
+
 #[inline(always)]
 pub fn w_single_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::north_one(pawns) & empty
 }
+
 #[inline(always)]
 pub fn b_single_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::south_one(pawns) & empty
 }
+
 //Pawn double pushes
 #[inline(always)]
 pub fn double_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
@@ -76,6 +82,7 @@ pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
         b_pawn_east_targets(pawns)
     }
 }
+
 //NorthEast = +9
 #[inline(always)]
 pub fn w_pawn_east_targets(pawns: u64) -> u64 {
@@ -137,6 +144,7 @@ pub fn xray_rook_attacks(
 ) -> u64 {
     rook_attacks ^ rook_attack(rook_square, occupied_squares ^ (my_pieces & rook_attacks))
 }
+
 #[inline(always)]
 pub fn xray_bishop_attacks(
     bishop_attacks: u64,
@@ -202,6 +210,7 @@ pub fn add_pin_moves_to_movelist(
     }
     haslegalmove
 }
+
 #[inline(always)]
 pub fn add_king_moves_to_movelist(
     g: &GameState,
@@ -343,6 +352,7 @@ pub fn add_normal_moves_to_movelist(
     }
     stm_haslegalmove
 }
+
 #[inline(always)]
 pub fn add_promotion_move_to_movelist(
     legal_moves: &mut MoveList,
@@ -394,6 +404,7 @@ pub fn add_promotion_move_to_movelist(
         new_types.3,
     );
 }
+
 #[inline(always)]
 pub fn add_moves_to_movelist(
     legal_moves: &mut MoveList,
@@ -414,6 +425,7 @@ pub fn add_moves_to_movelist(
         target_board ^= 1u64 << target_square;
     }
 }
+
 #[inline(always)]
 pub fn add_move_to_movelist(
     legal_moves: &mut MoveList,
@@ -454,12 +466,15 @@ pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
             | game_state.pieces[QUEEN][1 - game_state.color_to_move]);
     checkers
 }
+
 #[derive(Clone)]
 pub struct AdditionalGameStateInformation {
     pub stm_incheck: bool,
     pub stm_haslegalmove: bool,
 }
+
 pub const MAX_MOVES: usize = 128;
+
 pub struct MoveList {
     pub move_list: Vec<Option<GameMove>>,
     pub graded_moves: Vec<Option<GradedMove>>,
@@ -481,6 +496,7 @@ impl Default for MoveList {
         }
     }
 }
+
 impl MoveList {
     pub fn add_move(&mut self, mv: GameMove) {
         self.move_list[self.counter] = Some(mv);

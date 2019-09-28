@@ -40,6 +40,7 @@ pub const TUNE_PSQT: bool = false;
 //const BATCH_SIZE: usize = 2500000;
 //const BATCH_SIZE: usize = 725000;
 const BATCH_SIZE: usize = 100_000;
+
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {
         panic!("Feature texel-tuning has to be enabled");
@@ -92,24 +93,29 @@ pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelSta
     }
     res
 }
+
 pub struct TexelState {
     pub label: f64,
     pub eval: f64,
     pub trace: Trace,
 }
+
 pub struct Tuner {
     pub k: f64,
     pub positions: Vec<TexelState>,
     pub params: Parameters,
 }
+
 pub fn update_evaluations(tuner: &mut Tuner) {
     for pos in tuner.positions.iter_mut() {
         pos.eval = pos.trace.evaluate(&tuner.params);
     }
 }
+
 pub fn shuffle_positions(tuner: &mut Tuner) {
     tuner.positions.shuffle(&mut thread_rng());
 }
+
 pub fn add_gradient(gradient: &mut [f64; 2], trace: [i8; 2], start_of_gradient: f64, phase: f64) {
     let devaldmg = phase / 128.0;
     let devaldeg = (1. - phase / 128.0) / 1.5;
@@ -813,6 +819,7 @@ pub fn dsafetytabledconstant(
 
     (safety_table_inc - safety_table_dec) / 2.
 }
+
 pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
@@ -852,6 +859,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
         }
     }
 }
+
 pub fn average_evaluation_error(tuner: &Tuner) -> f64 {
     let mut res = 0.;
     for pos in &tuner.positions {
@@ -901,6 +909,7 @@ pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f64 {
     }
     best_k
 }
+
 pub fn sigmoid(k: f64, s: f64) -> f64 {
     1. / (1. + 10f64.powf(-k * s / 400.0))
 }

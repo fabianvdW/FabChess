@@ -106,6 +106,7 @@ fn main() {
         );
     }
 }
+
 pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {
     let _ = writer
         .write(message.as_bytes())

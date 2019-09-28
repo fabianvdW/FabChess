@@ -1,21 +1,25 @@
 use crate::board_representation::game_state::GameState;
 use std::fmt::{Display, Formatter, Result};
 use std::fs;
+
 pub enum FileFormatSupported {
     OwnEncoding,
     EPD,
     PGN,
 }
+
 pub struct LabelledGameState {
     pub game_state: GameState,
     pub label: f64,
 }
+
 pub struct Statistics {
     pub games: usize,
     pub white_wins: usize,
     pub black_wins: usize,
     pub draws: usize,
 }
+
 impl Default for Statistics {
     fn default() -> Self {
         Statistics {
@@ -55,6 +59,7 @@ pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
     }
     fs::write(to_file, res_str).expect("Unable to write positions");
 }
+
 pub fn load_positions(
     from_file: &str,
     file_format: FileFormatSupported,

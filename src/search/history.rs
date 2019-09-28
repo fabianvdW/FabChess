@@ -1,10 +1,12 @@
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::GameState;
+
 pub struct History {
     pub hist: Vec<u64>,
     pub is_unique: Vec<bool>,
     pub pointer: usize,
 }
+
 impl Default for History {
     fn default() -> Self {
         History {
@@ -14,6 +16,7 @@ impl Default for History {
         }
     }
 }
+
 impl History {
     pub fn push(&mut self, hash: u64, is_unique: bool) {
         self.hist[self.pointer] = hash;

@@ -27,9 +27,11 @@ pub fn log(s: &str) {
         };
     }
 }
+
 pub struct Logger {
     pub file: Mutex<File>,
 }
+
 impl Logger {
     pub fn new(path: &str, append: bool) -> Self {
         if !append {

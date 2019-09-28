@@ -213,7 +213,7 @@ pub fn q_search(
         clear_pv(current_depth, su.search);
         return leaf_score(game_status, color, current_depth as i16);
     }
-    if has_pv && depth_left == 0 {
+    if has_pv && depth_left == 0 && !su.search.stop {
         super::alphabeta::make_cache(
             su.cache,
             &su.search.pv_table[current_depth],
@@ -288,6 +288,7 @@ pub fn make_and_evaluate_moves_qsearch(
     }
     (agsi, capture_index)
 }
+
 #[inline(always)]
 pub fn is_capture(mv: &GameMove) -> bool {
     match &mv.move_type {
@@ -495,7 +496,7 @@ mod tests {
                     piece_type: PieceType::Rook,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             100
         );
@@ -509,7 +510,7 @@ mod tests {
                     piece_type: PieceType::Rook,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             -400
         );
@@ -523,7 +524,7 @@ mod tests {
                     piece_type: PieceType::Knight,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             -200
         );
@@ -537,7 +538,7 @@ mod tests {
                     piece_type: PieceType::Knight,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             0
         );
@@ -551,7 +552,7 @@ mod tests {
                     piece_type: PieceType::Knight,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             -90
         );
@@ -565,7 +566,7 @@ mod tests {
                     piece_type: PieceType::Rook,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             100
         );
@@ -579,7 +580,7 @@ mod tests {
                     piece_type: PieceType::Queen,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             500
         );
@@ -593,7 +594,7 @@ mod tests {
                     piece_type: PieceType::Queen,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             -400
         );
@@ -607,7 +608,7 @@ mod tests {
                     piece_type: PieceType::Pawn,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             0
         );
@@ -621,7 +622,7 @@ mod tests {
                     piece_type: PieceType::Pawn,
                 },
                 true,
-                &mut see_buffer
+                &mut see_buffer,
             ),
             100
         );

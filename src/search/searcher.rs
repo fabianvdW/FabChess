@@ -26,6 +26,7 @@ pub struct SearchUtils<'a> {
     pub cache: &'a mut Cache,
     pub thread_memory: &'a mut ReserveMemory,
 }
+
 impl<'a> SearchUtils<'a> {
     pub fn new(
         root_pliesplayed: usize,
@@ -45,6 +46,7 @@ impl<'a> SearchUtils<'a> {
         }
     }
 }
+
 pub struct Search {
     pub principal_variation: [Option<CacheEntry>; MAX_SEARCH_DEPTH],
     pub pv_table: Vec<PrincipalVariation>,

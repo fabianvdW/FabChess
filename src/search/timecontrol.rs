@@ -5,6 +5,7 @@ pub struct TimeControlInformation {
     pub stable_pv: bool,
     pub high_score_diff: bool,
 }
+
 impl TimeControlInformation {
     pub fn new(time_saved: u64) -> Self {
         TimeControlInformation {
@@ -14,6 +15,7 @@ impl TimeControlInformation {
         }
     }
 }
+
 #[derive(Clone)]
 pub enum TimeControl {
     Incremental(u64, u64),

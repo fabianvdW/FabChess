@@ -44,6 +44,7 @@ pub struct GameMove {
     pub move_type: GameMoveType,
     pub piece_type: PieceType,
 }
+
 impl Clone for GameMove {
     fn clone(&self) -> Self {
         GameMove {
@@ -54,6 +55,7 @@ impl Clone for GameMove {
         }
     }
 }
+
 impl GameMove {
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
@@ -173,6 +175,7 @@ fn file_to_string(file: usize) -> &'static str {
         _ => panic!("invalid file"),
     }
 }
+
 pub struct GameState {
     // 0 = White
     // 1 = Black
@@ -707,6 +710,7 @@ impl GameState {
         self.pieces[KING][side].trailing_zeros() as usize
     }
 }
+
 impl Clone for GameState {
     fn clone(&self) -> Self {
         GameState {

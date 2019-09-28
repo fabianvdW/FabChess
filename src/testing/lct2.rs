@@ -14,6 +14,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
+
 pub fn start_lct2_thread(
     queue: Arc<ThreadSafeQueue<Lct2Test>>,
     p1: String,

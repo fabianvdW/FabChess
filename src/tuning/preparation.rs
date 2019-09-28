@@ -23,6 +23,7 @@ use std::fs;
 
 //const FEN_DIR: &str = "D:/FenCollection/Real";
 const FEN_DIR: &str = "D:/FenCollection/Lichess";
+
 fn main() {
     //2. Transform all FEN-Positions in Quiet positions
     //3. Save all positions just like loaded, all positions after q-search, all positions after q-search without stripped(no positions with >10 or <-10 eval)

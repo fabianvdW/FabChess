@@ -7,10 +7,12 @@ use core::board_representation::game_state::GameState;
 use core::testing::openings::load_db_until;
 use rand::Rng;
 use std::fs;
+
 pub const BENCHMARKING_POSITIONS: &str = "benchmarking_positions.txt";
 pub const BENCHMARKING_POSITIONS_AMOUNT: usize = 1000;
 pub const MAKE_BENCHMARKING_POSITIONS_FROM: &str = "./O-Deville/o-deville.pgn";
 pub const LOAD_DB_UNTIL: usize = 40;
+
 //************************************************************
 //* Benchmarking positions are just some random 100 positions from o-deville database loaded until 40th ply
 //*
@@ -30,6 +32,7 @@ pub fn make_benchmarking_positions() {
     }
     fs::write(BENCHMARKING_POSITIONS, write_str).expect("Unable to write file!");
 }
+
 pub fn load_benchmarking_positions() -> Vec<GameState> {
     let mut states = Vec::with_capacity(BENCHMARKING_POSITIONS_AMOUNT);
     let positions =
@@ -40,6 +43,7 @@ pub fn load_benchmarking_positions() -> Vec<GameState> {
     }
     states
 }
+
 #[cfg(test)]
 mod tests {
     use super::load_benchmarking_positions;
@@ -47,6 +51,7 @@ mod tests {
     use core::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core::evaluation::eval_game_state;
     use test::Bencher;
+
     #[bench]
     pub fn evaluation(b: &mut Bencher) {
         let states = load_benchmarking_positions();

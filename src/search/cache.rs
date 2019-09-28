@@ -17,6 +17,7 @@ impl Default for Cache {
         }
     }
 }
+
 impl Cache {
     pub fn clear(&mut self) {
         for i in 0..self.cache.len() {
@@ -27,15 +28,23 @@ impl Cache {
 
 #[derive(Copy, Clone)]
 pub struct CacheEntry {
-    pub hash: u64,                      //64 bits
-    pub depth: i8,                      //8 bits
-    pub plies_played: u16,              //16 bits
-    pub score: i16,                     //64 bits
-    pub alpha: bool,                    //8 bits
-    pub beta: bool,                     //8 bits
-    pub mv: u16,                        //16 bits
-    pub static_evaluation: Option<i16>, //16 bits
-    pub pv_node: bool,                  //Summed 200 bits 25 bytes
+    pub hash: u64,
+    //64 bits
+    pub depth: i8,
+    //8 bits
+    pub plies_played: u16,
+    //16 bits
+    pub score: i16,
+    //64 bits
+    pub alpha: bool,
+    //8 bits
+    pub beta: bool,
+    //8 bits
+    pub mv: u16,
+    //16 bits
+    pub static_evaluation: Option<i16>,
+    //16 bits
+    pub pv_node: bool, //Summed 200 bits 25 bytes
 }
 
 impl CacheEntry {

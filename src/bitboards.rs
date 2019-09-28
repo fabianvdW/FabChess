@@ -72,6 +72,7 @@ pub fn initialize_king_zone_white() -> [u64; 64] {
     }
     res
 }
+
 pub fn initialize_bishop_rays() -> [[u64; 64]; 64] {
     let mut res = [[0u64; 64]; 64];
     for king_sq in 0..64 {
@@ -174,6 +175,7 @@ pub fn initialize_freefield_rook_attacks() -> [u64; 64] {
     }
     res
 }
+
 pub fn initialize_freefield_bishop_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
     for (sq, item) in res.iter_mut().enumerate() {
@@ -181,13 +183,16 @@ pub fn initialize_freefield_bishop_attacks() -> [u64; 64] {
     }
     res
 }
+
 pub fn initialize_inner_center() -> u64 {
     (FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4])
 }
+
 pub fn initialize_center() -> u64 {
     (FILES[1] | FILES[2] | FILES[3] | FILES[4] | FILES[5] | FILES[6])
         & (RANKS[1] | RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5] | RANKS[6])
 }
+
 pub fn initialize_files() -> [u64; 8] {
     let mut res = [0u64; 8];
     for file in 0..8 {

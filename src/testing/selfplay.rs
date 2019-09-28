@@ -215,7 +215,7 @@ pub fn play_game(
                 error_log.log(
                     &format!(
                         "Player 1 didn't send bestmove in time in game {}! He had {}ms left!\nPosition:\n{}",
-                        task.id, player1_time,position_string.clone()
+                        task.id, player1_time, position_string.clone()
                     ),
                     true,
                 );
@@ -224,7 +224,7 @@ pub fn play_game(
             }
             player1_output = output.1.unwrap();
             if output.2 as u64 > player1_time {
-                error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 1! Disqualifying player1 illegitimately in game {}\n",task.id),true);
+                error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 1! Disqualifying player1 illegitimately in game {}\n", task.id), true);
                 return player1_disq;
             }
             player1_time -= output.2 as u64;
@@ -249,7 +249,7 @@ pub fn play_game(
                 error_log.log(&format!(
                     "Bestmove wasn't first argument after bestmove keyword! Disqualifiying player 1 in game {}\n",
                     task.id
-                ),true);
+                ), true);
                 write_stderr_to_log(error_log, player1_stderr, &mut runtime);
                 return player1_disq;
             }
@@ -353,7 +353,7 @@ pub fn play_game(
             }
             player2_output = output.1.unwrap();
             if output.2 as u64 > player2_time {
-                error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 2! Disqualifying player1 illegitimately in game {}\n",task.id),true);
+                error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 2! Disqualifying player1 illegitimately in game {}\n", task.id), true);
                 return player2_disq;
             }
             player2_time -= output.2 as u64;
@@ -378,7 +378,7 @@ pub fn play_game(
                 error_log.log(&format!(
                     "Bestmove wasn't first argument after bestmove keyword! Disqualifiying player 2 in game {}\n",
                     task.id
-                ),true);
+                ), true);
                 write_stderr_to_log(error_log, player2_stderr, &mut runtime);
                 return player2_disq;
             }
@@ -660,6 +660,7 @@ pub enum EndConditionInformation {
     Mate,
     MateByadjudication,
 }
+
 impl Display for EndConditionInformation {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();

@@ -1,18 +1,23 @@
 use super::game_state::*;
 use crate::move_generation::movegen;
+
 pub const MGSA_KNIGHT: usize = 0;
 pub const MGSA_BISHOP: usize = 1;
 pub const MGSA_ROOKS: usize = 2;
 pub const MGSA_QUEEN: usize = 3;
+
 pub struct GameStateAttackContainer {
     pub attack: Vec<Vec<Vec<u64>>>,
     pub king_attacks: [u64; 2],
     pub pawn_west_attacks: [u64; 2],
     pub pawn_east_attacks: [u64; 2],
     pub pawn_attacks: [u64; 2],
-    pub attacks_minor_sum: [u64; 2], //Attacked by only pawns, knights, bishops
-    pub attacks_major_sum: [u64; 2], // Attacked by only rooks, queens
-    pub attacks_sum: [u64; 2],       //Attacked by pawns | knights | bishops | rooks | queens |kings
+    pub attacks_minor_sum: [u64; 2],
+    //Attacked by only pawns, knights, bishops
+    pub attacks_major_sum: [u64; 2],
+    // Attacked by only rooks, queens
+    pub attacks_sum: [u64; 2],
+    //Attacked by pawns | knights | bishops | rooks | queens |kings
     pub knights: [usize; 2],
     pub bishops: [usize; 2],
     pub rooks: [usize; 2],

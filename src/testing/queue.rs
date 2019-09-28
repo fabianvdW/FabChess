@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+
 pub struct ThreadSafeQueue<T> {
     queue: Mutex<Vec<T>>,
 }
@@ -26,6 +27,7 @@ impl<T> ThreadSafeQueue<T> {
 pub struct ThreadSafeString {
     string: Mutex<String>,
 }
+
 impl Default for ThreadSafeString {
     fn default() -> Self {
         ThreadSafeString {
@@ -33,6 +35,7 @@ impl Default for ThreadSafeString {
         }
     }
 }
+
 impl ThreadSafeString {
     pub fn push(&self, str: &str) {
         let mut data = self.string.lock().unwrap();

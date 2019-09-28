@@ -6,6 +6,7 @@ pub struct ReserveMemory {
     pub reserved_movelist: ReservedMoveList,
     pub reserved_attack_container: ReservedAttackContainer,
 }
+
 impl Default for ReserveMemory {
     fn default() -> ReserveMemory {
         ReserveMemory {
@@ -18,6 +19,7 @@ impl Default for ReserveMemory {
 pub struct ReservedMoveList {
     pub move_lists: Vec<MoveList>,
 }
+
 impl Default for ReservedMoveList {
     fn default() -> ReservedMoveList {
         let mut move_lists = Vec::with_capacity(MAX_SEARCH_DEPTH);
@@ -27,9 +29,11 @@ impl Default for ReservedMoveList {
         ReservedMoveList { move_lists }
     }
 }
+
 pub struct ReservedAttackContainer {
     pub attack_containers: Vec<GameStateAttackContainer>,
 }
+
 impl Default for ReservedAttackContainer {
     fn default() -> ReservedAttackContainer {
         let mut attack_containers = Vec::with_capacity(MAX_SEARCH_DEPTH);

@@ -17,10 +17,12 @@ pub struct TestSuitResult {
     suit: SuitTest,
     mv: GameMove,
 }
+
 pub struct AwardedMove {
     mv: GameMove,
     score: f64,
 }
+
 pub struct SuitInfos {
     move_time: u64,
     points: usize,
@@ -171,6 +173,7 @@ fn suit_thread(
     }
     write_to_buf(&mut child_in, "quit\n");
 }
+
 fn load_suit(path_to_suit: &str) -> Vec<SuitTest> {
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();

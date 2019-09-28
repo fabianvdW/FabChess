@@ -186,6 +186,7 @@ pub fn start_self_play_thread(
         result_queue.push(res);
     }
 }
+
 pub struct TaskResult {
     pub p1_won: bool,
     pub draw: bool,
@@ -202,6 +203,7 @@ pub struct TaskResult {
     pub depth_p2: f64,
     pub time_left_p2: usize,
 }
+
 impl TaskResult {
     pub fn disq(p1: bool, id: usize) -> Self {
         TaskResult {
