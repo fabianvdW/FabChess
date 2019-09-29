@@ -19,6 +19,329 @@ pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
 pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
 pub const NULL_MOVE_PRUNING_DEPTH: i16 = 3;
 
+pub fn principal_variation_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
+    //Step 0. Prepare variables
+    su.search.search_statistics.add_normal_node(p.current_depth);
+    clear_pv(p.current_depth, su.search);
+    let root = p.current_depth == 0;
+    let is_pv_node = p.beta - p.alpha > 1;
+    //Step 1. Check timeout and if stop flag is set
+    if su.search.search_statistics.nodes_searched % 1024 == 0 {
+        checkup(su.search, su.stop)
+    }
+    if su.search.stop {
+        return STANDARD_SCORE;
+    }
+
+    //Step 2. Max Search depth reached
+    if let SearchInstruction::StopSearching(res) = max_depth(&p, su) {
+        return res;
+    }
+
+    //Step 3. Check for draw or mate distance pruning if not root (need best move at root)
+    if !root {
+        if let SearchInstruction::StopSearching(res) = check_for_draw(p.game_state, su.history) {
+            return res;
+        }
+        //Mate distance pruning
+        if let SearchInstruction::StopSearching(res) = mate_distance_pruning(&mut p) {
+            return res;
+        }
+    }
+    let original_alpha = p.alpha;
+
+    //Step 4. Attacks and in check  flag
+    su.thread_memory.reserved_attack_container.attack_containers[p.current_depth]
+        .write_state(p.game_state);
+    let incheck = in_check(
+        p.game_state,
+        &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+    );
+
+    //Step 5. Check extensions if not at root
+    if incheck && !root {
+        p.depth_left += 1;
+    }
+
+    //Step 6. Drop into quiescence search if depth == 0
+    if p.depth_left <= 0 {
+        debug_assert_eq!(p.depth_left, 0);
+        su.search.search_statistics.add_q_root();
+        return q_search(p, su);
+    }
+
+    //Step 7. PV-Table Lookup
+    let pv_table_move = get_pvtable_move(&p, su.search);
+
+    //Step 8. TT Lookup
+    let mut static_evaluation = None;
+    let mut tt_move: Option<GameMove> = None;
+    if let SearchInstruction::StopSearching(res) =
+        su.cache
+            .lookup(su.search, &p, &mut static_evaluation, &mut tt_move)
+    {
+        return res;
+    }
+    su.history
+        .push(p.game_state.hash, p.game_state.half_moves == 0);
+
+    //Step 9. Static Eval if needed
+    let prunable = !is_pv_node && !incheck;
+    make_eval(&p, su, &mut static_evaluation, prunable, incheck);
+
+    //Step 10. Prunings
+    if prunable {
+        //Step 10.1 Static Null Move Pruning
+        if let SearchInstruction::StopSearching(res) =
+            static_null_move_pruning(&p, su, &static_evaluation)
+        {
+            return res;
+        }
+        //Step 10.2 Null Move Forward Pruning
+        if let SearchInstruction::StopSearching(res) = null_move_pruning(&p, su, &static_evaluation)
+        {
+            return res;
+        }
+    }
+
+    //Step 11. Internal Iterative Deepening
+    let mut has_generated_moves = if is_pv_node
+        && !incheck
+        && pv_table_move.is_none()
+        && tt_move.is_none()
+        && p.depth_left > 6
+    {
+        if let SearchInstruction::StopSearching(res) =
+            internal_iterative_deepening(&p, su, &mut tt_move)
+        {
+            return res;
+        }
+        true
+    } else {
+        false
+    };
+
+    //Step 12. Futil Pruning and margin preparation
+    let futil_margin = prepare_futility_pruning(&p, incheck, static_evaluation);
+    //Step 13. Prepare staged movegen
+    let hash_and_pv_move_counter =
+        prepare_staged_movegen(&p, su, has_generated_moves, &pv_table_move, &tt_move);
+
+    //Step 14. Iterate through all moves
+    let mut current_max_score = STANDARD_SCORE;
+    let mut index: usize = 0;
+    let mut moves_tried: usize = 0;
+    let mut moves_from_movelist_tried: usize = 0;
+    let mut quiets_tried: usize = 0;
+    while moves_tried
+        < su.thread_memory.reserved_movelist.move_lists[p.current_depth].counter
+            + hash_and_pv_move_counter
+        || !has_generated_moves
+    {
+        //Step 14.1. If tt move and pv move have been tried, generate all moves
+        if moves_tried == hash_and_pv_move_counter && !has_generated_moves {
+            has_generated_moves = true;
+            make_and_evaluate_moves(
+                p.game_state,
+                su.search,
+                p.current_depth,
+                &mut su.thread_memory.reserved_movelist.move_lists[p.current_depth],
+                &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+            );
+            continue;
+        }
+
+        //Step 14.2. Select the next move
+        let (mv, move_score) = select_next_move(
+            &p,
+            su,
+            moves_tried,
+            moves_from_movelist_tried,
+            hash_and_pv_move_counter,
+            &tt_move,
+            &pv_table_move,
+        );
+
+        //Step 14.3. If the move is from the movelist, make sure we haven't searched it already as tt move or pv table move
+        if moves_tried >= hash_and_pv_move_counter {
+            moves_from_movelist_tried += 1;
+            if let SearchInstruction::SkipMove = is_duplicate(&mv, &pv_table_move, &tt_move) {
+                moves_tried += 1;
+                continue;
+            }
+        }
+        moves_tried += 1;
+
+        //Step 14.4. UCI Reporting at root
+        uci_report_move(&p, su, &mv, index);
+
+        let isc = is_capture(&mv);
+        let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
+            true
+        } else {
+            false
+        };
+        let next_state = make_move(p.game_state, &mv);
+
+        //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
+        if !isc && !isp && current_max_score > MATED_IN_MAX && !in_check_slow(&next_state) {
+            if futil_margin <= p.alpha {
+                su.search.search_statistics.add_futil_pruning();
+                continue;
+            }
+        }
+
+        //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
+        if !root
+            && p.depth_left <= 2
+            && !isc
+            && !isp
+            && !incheck
+            && current_max_score > MATED_IN_MAX
+            && su.search.history_score[p.game_state.color_to_move][mv.from][mv.to] < 0
+        {
+            su.search.search_statistics.add_history_pruned();
+            continue;
+        }
+
+        //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
+        let reduction = if p.depth_left > 2
+            && !incheck
+            && (!isc || move_score < 0.)
+            && index >= 2
+            && (!root || index >= 5)
+        {
+            compute_lmr_reduction(&p, su, &mv, index, isc || isp, &next_state)
+        } else {
+            0
+        };
+
+        //Step 14.8. Search the moves
+        let mut following_score: i16;
+        if p.depth_left <= 2 || !is_pv_node || index == 0 {
+            //Step 14.8.1 Full move window. This is done in pv nodes when index == 0 or depth left <= 2, e.g. the first move. If we are in a pv node,
+            // reduction is 0 and we really search the full window (without research). Else we are in a zero window, and the full window search is just
+            // zero window again (with reduction). If the reduced zero window search raises alpha, research without reduction
+            debug_assert!(!is_pv_node || reduction == 0);
+            following_score = -principal_variation_search(
+                CombinedSearchParameters::from(
+                    -p.beta,
+                    -p.alpha,
+                    p.depth_left - 1 - reduction,
+                    &next_state,
+                    -p.color,
+                    p.current_depth + 1,
+                ),
+                su,
+            );
+            if reduction > 0 && following_score > p.alpha {
+                following_score = -principal_variation_search(
+                    CombinedSearchParameters::from(
+                        -p.beta,
+                        -p.alpha,
+                        p.depth_left - 1,
+                        &next_state,
+                        -p.color,
+                        p.current_depth + 1,
+                    ),
+                    su,
+                );
+            }
+        } else {
+            //We are in a pv node and search with zero window all moves except the first (and with reduction). If
+            // the reduced zero window search raises alpha, research
+            following_score = -principal_variation_search(
+                CombinedSearchParameters::from(
+                    -p.alpha - 1,
+                    -p.alpha,
+                    p.depth_left - 1 - reduction,
+                    &next_state,
+                    -p.color,
+                    p.current_depth + 1,
+                ),
+                su,
+            );
+            if following_score > p.alpha {
+                following_score = -principal_variation_search(
+                    CombinedSearchParameters::from(
+                        -p.beta,
+                        -p.alpha,
+                        p.depth_left - 1,
+                        &next_state,
+                        -p.color,
+                        p.current_depth + 1,
+                    ),
+                    su,
+                );
+            }
+        }
+
+        //Step 14.9. Update principal variation if move raised current best moves score (does not have to raise alpha)
+        // Also update UCI pv
+        if following_score > current_max_score && !su.search.stop {
+            su.search.pv_table[p.current_depth].pv[0] = Some(mv);
+            current_max_score = following_score;
+            concatenate_pv(p.current_depth, su.search);
+            uci_report_pv(&p, su, following_score);
+        }
+
+        //Step 14.10. Update alpha if score raises alpha
+        if following_score > p.alpha {
+            p.alpha = following_score;
+        }
+
+        //Step 14.11. Beta cutoff: update several history statistics, and killer moves, then break
+        if p.alpha >= p.beta {
+            su.search
+                .search_statistics
+                .add_normal_node_beta_cutoff(index);
+            if !isc {
+                update_quiet_cutoff(&p, su, &mv, quiets_tried);
+            }
+            break;
+        } else if !isc {
+            //Step 14.12 Move does not cause beta cutoff, add to quiet moves tried and update butterfly heuristic
+            su.search.quiets_tried[p.current_depth][quiets_tried] = Some(mv);
+            quiets_tried += 1;
+            su.search.bf_score[p.game_state.color_to_move][mv.from][mv.to] +=
+                p.depth_left as usize * p.depth_left as usize;
+            //TODO: Update bf should maybe also be done in decrement history quiets
+        }
+
+        index += 1;
+    }
+
+    su.history.pop();
+
+    //Step 15. Evaluate leafs correctly
+    let game_status = check_end_condition(p.game_state, moves_tried > 0, incheck);
+    if game_status != GameResult::Ingame {
+        clear_pv(p.current_depth, su.search);
+        return leaf_score(game_status, p.color, p.current_depth as i16);
+    }
+
+    if p.alpha < p.beta {
+        su.search
+            .search_statistics
+            .add_normal_node_non_beta_cutoff();
+    }
+
+    //Step 16. Make TT Entry
+    if !su.search.stop {
+        su.cache.insert(
+            &p,
+            &su.search.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
+            current_max_score,
+            original_alpha,
+            su.root_pliesplayed,
+            static_evaluation,
+        );
+    }
+
+    //Step 17. Return
+    current_max_score
+}
+
 #[inline(always)]
 pub fn uci_report_move(
     p: &CombinedSearchParameters,
@@ -355,333 +678,6 @@ pub fn update_quiet_cutoff(
         su.search.killer_moves[p.current_depth][1] = Some(s);
     }
     su.search.killer_moves[p.current_depth][0] = Some(*mv);
-}
-
-pub fn principal_variation_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
-    //Step 0. Prepare variables
-    su.search.search_statistics.add_normal_node(p.current_depth);
-    clear_pv(p.current_depth, su.search);
-    let root = p.current_depth == 0;
-    let is_pv_node = p.beta - p.alpha > 1;
-    //Step 1. Check timeout and if stop flag is set
-    if su.search.search_statistics.nodes_searched % 1024 == 0 {
-        checkup(su.search, su.stop)
-    }
-    if su.search.stop {
-        return STANDARD_SCORE;
-    }
-
-    //Step 2. Max Search depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p, su) {
-        return res;
-    }
-
-    //Step 3. Check for draw or mate distance pruning if not root (need best move at root)
-    if !root {
-        if let SearchInstruction::StopSearching(res) = check_for_draw(p.game_state, su.history) {
-            return res;
-        }
-        //Mate distance pruning
-        if let SearchInstruction::StopSearching(res) = mate_distance_pruning(&mut p) {
-            return res;
-        }
-    }
-    let original_alpha = p.alpha;
-
-    //Step 4. Attacks and in check  flag
-    su.thread_memory.reserved_attack_container.attack_containers[p.current_depth]
-        .write_state(p.game_state);
-    let incheck = in_check(
-        p.game_state,
-        &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
-    );
-
-    //Step 5. Check extensions if not at root
-    if incheck && !root {
-        p.depth_left += 1;
-    }
-
-    //Step 6. Drop into quiescence search if depth == 0
-    if p.depth_left <= 0 {
-        debug_assert_eq!(p.depth_left, 0);
-        su.search.search_statistics.add_q_root();
-        return q_search(p, su);
-    }
-
-    //Step 7. PV-Table Lookup
-    let pv_table_move = get_pvtable_move(&p, su.search);
-
-    //Step 8. TT Lookup
-    let mut static_evaluation = None;
-    let mut tt_move: Option<GameMove> = None;
-    if let SearchInstruction::StopSearching(res) =
-        su.cache
-            .lookup(su.search, &p, &mut static_evaluation, &mut tt_move)
-    {
-        return res;
-    }
-    su.history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
-
-    //Step 9. Static Eval if needed
-    let prunable = !is_pv_node && !incheck;
-    make_eval(&p, su, &mut static_evaluation, prunable, incheck);
-
-    //Step 10. Prunings
-    if prunable {
-        //Step 10.1 Static Null Move Pruning
-        if let SearchInstruction::StopSearching(res) =
-            static_null_move_pruning(&p, su, &static_evaluation)
-        {
-            return res;
-        }
-        //Step 10.2 Null Move Forward Pruning
-        if let SearchInstruction::StopSearching(res) = null_move_pruning(&p, su, &static_evaluation)
-        {
-            return res;
-        }
-    }
-
-    //Step 11. Internal Iterative Deepening
-    let mut has_generated_moves = if is_pv_node
-        && !incheck
-        && pv_table_move.is_none()
-        && tt_move.is_none()
-        && p.depth_left > 6
-    {
-        if let SearchInstruction::StopSearching(res) =
-            internal_iterative_deepening(&p, su, &mut tt_move)
-        {
-            return res;
-        }
-        true
-    } else {
-        false
-    };
-
-    //Step 12. Futil Pruning and margin preparation
-    let futil_margin = prepare_futility_pruning(&p, incheck, static_evaluation);
-    //Step 13. Prepare staged movegen
-    let hash_and_pv_move_counter =
-        prepare_staged_movegen(&p, su, has_generated_moves, &pv_table_move, &tt_move);
-
-    //Step 14. Iterate through all moves
-    let mut current_max_score = STANDARD_SCORE;
-    let mut index: usize = 0;
-    let mut moves_tried: usize = 0;
-    let mut moves_from_movelist_tried: usize = 0;
-    let mut quiets_tried: usize = 0;
-    while moves_tried
-        < su.thread_memory.reserved_movelist.move_lists[p.current_depth].counter
-            + hash_and_pv_move_counter
-        || !has_generated_moves
-    {
-        //Step 14.1. If tt move and pv move have been tried, generate all moves
-        if moves_tried == hash_and_pv_move_counter && !has_generated_moves {
-            has_generated_moves = true;
-            make_and_evaluate_moves(
-                p.game_state,
-                su.search,
-                p.current_depth,
-                &mut su.thread_memory.reserved_movelist.move_lists[p.current_depth],
-                &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
-            );
-            continue;
-        }
-
-        //Step 14.2. Select the next move
-        let (mv, move_score) = select_next_move(
-            &p,
-            su,
-            moves_tried,
-            moves_from_movelist_tried,
-            hash_and_pv_move_counter,
-            &tt_move,
-            &pv_table_move,
-        );
-
-        //Step 14.3. If the move is from the movelist, make sure we haven't searched it already as tt move or pv table move
-        if moves_tried >= hash_and_pv_move_counter {
-            moves_from_movelist_tried += 1;
-            if let SearchInstruction::SkipMove = is_duplicate(&mv, &pv_table_move, &tt_move) {
-                moves_tried += 1;
-                continue;
-            }
-        }
-        moves_tried += 1;
-
-        //Step 14.4. UCI Reporting at root
-        uci_report_move(&p, su, &mv, index);
-
-        let isc = is_capture(&mv);
-        let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
-            true
-        } else {
-            false
-        };
-        let next_state = make_move(p.game_state, &mv);
-
-        //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
-        if !isc && !isp && current_max_score > MATED_IN_MAX && !in_check_slow(&next_state) {
-            if futil_margin <= p.alpha {
-                su.search.search_statistics.add_futil_pruning();
-                continue;
-            }
-        }
-
-        //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
-        if !root
-            && p.depth_left <= 2
-            && !isc
-            && !isp
-            && !incheck
-            && current_max_score > MATED_IN_MAX
-            && su.search.history_score[p.game_state.color_to_move][mv.from][mv.to] < 0
-        {
-            su.search.search_statistics.add_history_pruned();
-            continue;
-        }
-
-        //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
-        let reduction = if p.depth_left > 2
-            && !incheck
-            && (!isc || move_score < 0.)
-            && index >= 2
-            && (!root || index >= 5)
-        {
-            compute_lmr_reduction(&p, su, &mv, index, isc || isp, &next_state)
-        } else {
-            0
-        };
-
-        //Step 14.8. Search the moves
-        let mut following_score: i16;
-        if p.depth_left <= 2 || !is_pv_node || index == 0 {
-            //Step 14.8.1 Full move window. This is done in pv nodes when index == 0 or depth left <= 2, e.g. the first move. If we are in a pv node,
-            // reduction is 0 and we really search the full window (without research). Else we are in a zero window, and the full window search is just
-            // zero window again (with reduction). If the reduced zero window search raises alpha, research without reduction
-            debug_assert!(!is_pv_node || reduction == 0);
-            following_score = -principal_variation_search(
-                CombinedSearchParameters::from(
-                    -p.beta,
-                    -p.alpha,
-                    p.depth_left - 1 - reduction,
-                    &next_state,
-                    -p.color,
-                    p.current_depth + 1,
-                ),
-                su,
-            );
-            if reduction > 0 && following_score > p.alpha {
-                following_score = -principal_variation_search(
-                    CombinedSearchParameters::from(
-                        -p.beta,
-                        -p.alpha,
-                        p.depth_left - 1,
-                        &next_state,
-                        -p.color,
-                        p.current_depth + 1,
-                    ),
-                    su,
-                );
-            }
-        } else {
-            //We are in a pv node and search with zero window all moves except the first (and with reduction). If
-            // the reduced zero window search raises alpha, research
-            following_score = -principal_variation_search(
-                CombinedSearchParameters::from(
-                    -p.alpha - 1,
-                    -p.alpha,
-                    p.depth_left - 1 - reduction,
-                    &next_state,
-                    -p.color,
-                    p.current_depth + 1,
-                ),
-                su,
-            );
-            if following_score > p.alpha {
-                following_score = -principal_variation_search(
-                    CombinedSearchParameters::from(
-                        -p.beta,
-                        -p.alpha,
-                        p.depth_left - 1,
-                        &next_state,
-                        -p.color,
-                        p.current_depth + 1,
-                    ),
-                    su,
-                );
-            }
-        }
-
-        //Step 14.9. Update principal variation if move raised current best moves score (does not have to raise alpha)
-        // Also update UCI pv
-        if following_score > current_max_score && !su.search.stop {
-            su.search.pv_table[p.current_depth].pv[0] = Some(mv);
-            current_max_score = following_score;
-            concatenate_pv(p.current_depth, su.search);
-            uci_report_pv(&p, su, following_score);
-        }
-
-        //Step 14.10. Update alpha if score raises alpha
-        if following_score > p.alpha {
-            p.alpha = following_score;
-        }
-
-        //Step 14.11. Beta cutoff: update several history statistics, and killer moves, then break
-        if p.alpha >= p.beta {
-            su.search
-                .search_statistics
-                .add_normal_node_beta_cutoff(index);
-            if !isc {
-                update_quiet_cutoff(&p, su, &mv, quiets_tried);
-            }
-            break;
-        } else if !isc {
-            //Step 14.12 Move does not cause beta cutoff, add to quiet moves tried and update butterfly heuristic
-            su.search.quiets_tried[p.current_depth][quiets_tried] = Some(mv);
-            quiets_tried += 1;
-            su.search.bf_score[p.game_state.color_to_move][mv.from][mv.to] +=
-                p.depth_left as usize * p.depth_left as usize;
-            //TODO: Update bf should maybe also be done in decrement history quiets
-        }
-
-        index += 1;
-    }
-
-    su.history.pop();
-
-    //Step 15. Evaluate leafs correctly
-    let game_status = check_end_condition(p.game_state, moves_tried > 0, incheck);
-    if game_status != GameResult::Ingame {
-        clear_pv(p.current_depth, su.search);
-        return leaf_score(game_status, p.color, p.current_depth as i16);
-    }
-
-    if p.alpha < p.beta {
-        su.search
-            .search_statistics
-            .add_normal_node_non_beta_cutoff();
-    }
-
-    //Step 16. Make TT Entry
-    if !su.search.stop {
-        make_cache(
-            su.cache,
-            &su.search.pv_table[p.current_depth],
-            current_max_score,
-            p.game_state,
-            original_alpha,
-            p.beta,
-            p.depth_left,
-            su.root_pliesplayed,
-            static_evaluation,
-            root,
-        );
-    }
-
-    //Step 17. Return
-    current_max_score
 }
 
 pub fn decrement_history_quiets(

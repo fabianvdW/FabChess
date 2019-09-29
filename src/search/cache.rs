@@ -24,6 +24,59 @@ impl Cache {
             self.cache[i] = None;
         }
     }
+
+    pub fn insert(
+        &mut self,
+        p: &CombinedSearchParameters,
+        mv: &GameMove,
+        score: i16,
+        original_alpha: i16,
+        root_plies_played: usize,
+        static_evaluation: Option<i16>,
+    ) {
+        let lower_bound = score >= p.beta;
+        let upper_bound = score <= original_alpha;
+        let pv_node = p.beta - p.alpha > 1;
+        let index = p.game_state.hash as usize % CACHE_ENTRYS;
+        let ce = &self.cache[index];
+        if ce.is_none() {
+            let new_entry = CacheEntry::new(
+                p.game_state,
+                p.depth_left,
+                score,
+                upper_bound,
+                lower_bound,
+                mv,
+                static_evaluation,
+                pv_node,
+            );
+            self.cache[index] = Some(new_entry);
+        } else {
+            let new_entry_val = f64::from(p.depth_left) * if !pv_node { 0.7 } else { 1.0 };
+            let old_entry = ce.as_ref().unwrap();
+
+            let old_entry_val = if old_entry.plies_played < root_plies_played as u16 {
+                -1.0
+            } else {
+                f64::from(old_entry.depth) * if !old_entry.pv_node { 0.7 } else { 1.0 }
+            };
+            let state_plies_played = (p.game_state.full_moves - 1) * 2 + p.game_state.color_to_move;
+            if state_plies_played == root_plies_played || old_entry_val <= new_entry_val {
+                let new_entry = CacheEntry::new(
+                    p.game_state,
+                    p.depth_left,
+                    score,
+                    upper_bound,
+                    lower_bound,
+                    mv,
+                    static_evaluation,
+                    pv_node,
+                );
+                self.cache[index] = Some(new_entry);
+            }
+        }
+    }
+
     pub fn lookup(
         &self,
         search: &mut Search,

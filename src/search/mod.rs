@@ -11,7 +11,6 @@ use crate::board_representation::game_state::*;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::MoveList;
-use cache::{Cache, CacheEntry};
 use history::History;
 use searcher::Search;
 use std::cmp::Ordering;
@@ -261,71 +260,5 @@ pub fn find_move(mv: &GameMove, mv_list: &MoveList, contains: bool) -> usize {
         panic!("Type 2 error");
     } else {
         mv_index
-    }
-}
-
-#[inline(always)]
-pub fn make_cache(
-    cache: &mut Cache,
-    pv: &PrincipalVariation,
-    score: i16,
-    game_state: &GameState,
-    original_alpha: i16,
-    beta: i16,
-    depth_left: i16,
-    root_plies_played: usize,
-    static_evaluation: Option<i16>,
-    root: bool,
-) {
-    let beta_node: bool = score >= beta;
-    let alpha_node: bool = score <= original_alpha;
-
-    let pv_node: bool = beta - original_alpha > 1;
-    let index = game_state.hash as usize % cache::CACHE_ENTRYS;
-
-    let ce = &cache.cache[index];
-    let new_entry_val = f64::from(depth_left) * if !pv_node { 0.7 } else { 1.0 };
-    if ce.is_none() {
-        let new_entry = CacheEntry::new(
-            &game_state,
-            depth_left,
-            score,
-            alpha_node,
-            beta_node,
-            match pv.pv[0].as_ref() {
-                Some(mv) => &mv,
-                _ => panic!("Invalid pv!"),
-            },
-            static_evaluation,
-            pv_node,
-        );
-        cache.cache[index] = Some(new_entry);
-    } else {
-        let old_entry: &CacheEntry = match ce {
-            Some(s) => s,
-            _ => panic!("Invalid if let!"),
-        };
-        //Make replacement scheme better
-        let old_entry_val = if old_entry.plies_played < root_plies_played as u16 {
-            -1.0
-        } else {
-            f64::from(old_entry.depth) * if !old_entry.pv_node { 0.7 } else { 1.0 }
-        };
-        if root || old_entry_val <= new_entry_val {
-            let new_entry = CacheEntry::new(
-                &game_state,
-                depth_left,
-                score,
-                alpha_node,
-                beta_node,
-                match pv.pv[0].as_ref() {
-                    Some(mv) => &mv,
-                    _ => panic!("Invalid pv!"),
-                },
-                static_evaluation,
-                pv_node,
-            );
-            cache.cache[index] = Some(new_entry);
-        }
     }
 }
