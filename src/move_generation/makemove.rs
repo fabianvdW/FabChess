@@ -70,6 +70,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
         hash,
         psqt_mg: g.psqt_mg,
         psqt_eg: g.psqt_eg,
+        phase: g.phase.clone(),
     }
 }
 
@@ -96,6 +97,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
     let mut pieces = g.pieces;
     let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
     let (mut psqt_mg, mut psqt_eg) = (g.psqt_mg, g.psqt_eg);
+    let mut phase = g.phase.clone();
     //Remove piece from original square
     toggle_piece(&mut pieces, mv.piece_type, mv.from, g.color_to_move);
     toggle_hash(mv.piece_type, mv.from, g.color_to_move, &mut hash);
@@ -140,6 +142,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             &mut psqt_mg,
             &mut psqt_eg,
         );
+        phase.delete_piece(piece);
     }
     //Move rook for castling
     if let GameMoveType::Castle = mv.move_type {
@@ -186,6 +189,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             &mut psqt_mg,
             &mut psqt_eg,
         );
+        phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
         toggle_piece(&mut pieces, mv.piece_type, mv.to, g.color_to_move);
@@ -286,5 +290,6 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         hash,
         psqt_mg,
         psqt_eg,
+        phase,
     }
 }

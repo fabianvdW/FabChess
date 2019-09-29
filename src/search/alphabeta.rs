@@ -13,7 +13,7 @@ use super::GradedMove;
 use super::{MATED_IN_MAX, MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::bitboards;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
-use crate::evaluation::{eval_game_state, Phase};
+use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use std::fmt::{Display, Formatter, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -104,7 +104,7 @@ pub fn principal_variation_search(
     }
     //Probe TT
     let mut static_evaluation = None;
-    let mut phase = None;
+    let phase = game_state.phase.phase;
     //let mut tt_entry = None;
     let mut tt_move: Option<GameMove> = None;
     {
@@ -145,13 +145,7 @@ pub fn principal_variation_search(
             &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
         );
         static_evaluation = Some(eval_res.final_eval);
-        phase = Some(eval_res.phase);
         su.search.search_statistics.add_static_eval_node();
-    } else if static_evaluation.is_some()
-        //Null move pruning
-        && (prunable && depth_left >= NULL_MOVE_PRUNING_DEPTH)
-    {
-        phase = Some(Phase::from_state(game_state).phase);
     }
     //Replace static eval by tt score if available
     /*if false
@@ -185,7 +179,7 @@ pub fn principal_variation_search(
     //Null Move Forward Pruning
     if prunable
         && depth_left >= NULL_MOVE_PRUNING_DEPTH
-        && phase.expect("Null move phase") > 0.
+        && phase > 0.
         && static_evaluation.expect("null move static") * color >= beta
     {
         let nextgs = make_nullmove(&game_state);

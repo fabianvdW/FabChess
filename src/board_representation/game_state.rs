@@ -1,5 +1,6 @@
 use super::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::params::*;
+use crate::evaluation::phase::Phase;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -268,6 +269,7 @@ pub struct GameState {
     pub hash: u64,
     pub psqt_mg: i16,
     pub psqt_eg: i16,
+    pub phase: Phase,
 }
 
 impl GameState {
@@ -476,13 +478,13 @@ impl GameState {
             en_passant,
         );
         let mut _eval = crate::evaluation::EvaluationResult {
-            phase: 0.,
             final_eval: 0,
             #[cfg(feature = "texel-tuning")]
             trace: crate::tuning::trace::Trace::default(),
         };
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces_arr, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces_arr, &mut _eval);
+        let phase = Phase::from_pieces(&pieces_arr);
         GameState {
             color_to_move,
             pieces: pieces_arr,
@@ -496,6 +498,7 @@ impl GameState {
             hash,
             psqt_mg: p_w.0 - p_b.0,
             psqt_eg: p_w.1 - p_b.1,
+            phase,
         }
     }
 
@@ -611,13 +614,13 @@ impl GameState {
             [0x10u64, 0x1000_0000_0000_0000u64],
         ];
         let mut _eval = crate::evaluation::EvaluationResult {
-            phase: 0.,
             final_eval: 0,
             #[cfg(feature = "texel-tuning")]
             trace: crate::tuning::trace::Trace::default(),
         };
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces, &mut _eval);
+        let phase = Phase::from_pieces(&pieces);
         GameState {
             color_to_move,
             pieces,
@@ -639,6 +642,7 @@ impl GameState {
             ),
             psqt_mg: p_w.0 - p_b.0,
             psqt_eg: p_w.1 - p_b.1,
+            phase,
         }
     }
 
@@ -787,6 +791,7 @@ impl Clone for GameState {
             hash: self.hash,
             psqt_mg: self.psqt_mg,
             psqt_eg: self.psqt_eg,
+            phase: self.phase.clone(),
         }
     }
 }

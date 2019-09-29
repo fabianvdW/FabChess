@@ -62,7 +62,7 @@ mod tests {
                 attack_container.write_state(&states[i]);
                 sum += eval_game_state(&states[i], &attack_container).final_eval as isize;
             }
-            sum;
+            sum
         });
     }
 }

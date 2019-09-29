@@ -25,6 +25,7 @@ fn main() {
 mod tests {
     use core::board_representation::game_state::GameState;
     use core::board_representation::game_state_attack_container::GameStateAttackContainer;
+    use core::evaluation::phase::{calculate_phase, Phase};
     use core::evaluation::psqt_evaluation::psqt;
     use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
     use core::move_generation::makemove::make_move;
@@ -219,12 +220,37 @@ mod tests {
     }
 
     #[test]
+    fn phase_incremental() {
+        let mut rng = rand::thread_rng();
+        let mut movelist = movegen::MoveList::default();
+        let mut attack_container = GameStateAttackContainer::default();
+        for _i in 0..10_000 {
+            let mut g = GameState::standard();
+            assert_eq!(g.phase.phase, Phase::from_pieces(&g.pieces).phase);
+            assert_eq!(g.phase.phase, calculate_phase(&g));
+            for _j in 0..200 {
+                attack_container.write_state(&g);
+                let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                if !agsi.stm_haslegalmove {
+                    break;
+                }
+                g = make_move(
+                    &g,
+                    movelist.move_list[rng.gen_range(0, movelist.counter)]
+                        .as_ref()
+                        .unwrap(),
+                );
+                assert_eq!(g.phase.phase, Phase::from_pieces(&g.pieces).phase);
+                assert_eq!(g.phase.phase, calculate_phase(&g));
+            }
+        }
+    }
+    #[test]
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
         let mut movelist = movegen::MoveList::default();
         let mut attack_container = GameStateAttackContainer::default();
         let mut _eval = core::evaluation::EvaluationResult {
-            phase: 0.,
             final_eval: 0,
             #[cfg(feature = "texel-tuning")]
             trace: core::tuning::trace::Trace::default(),

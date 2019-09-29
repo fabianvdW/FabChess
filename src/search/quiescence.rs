@@ -60,18 +60,15 @@ pub fn q_search(
         &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
     );
 
-    let (phase, stand_pat) = if !incheck {
+    let phase = game_state.phase.phase;
+    let stand_pat = if !incheck {
         let static_evaluation = eval_game_state(
             &game_state,
             &su.thread_memory.reserved_attack_container.attack_containers[current_depth],
         );
-
-        (
-            Some(static_evaluation.phase),
-            Some(static_evaluation.final_eval * color),
-        )
+        Some(static_evaluation.final_eval * color)
     } else {
-        (None, None)
+        None
     };
     if !incheck {
         //Stand pat
@@ -240,7 +237,7 @@ pub fn make_and_evaluate_moves_qsearch(
     search: &mut Search,
     move_list: &mut MoveList,
     attack_container: &GameStateAttackContainer,
-    phase: Option<f64>,
+    phase: f64,
     stand_pat: Option<i16>,
     alpha: i16,
     incheck: bool,
@@ -252,14 +249,7 @@ pub fn make_and_evaluate_moves_qsearch(
         if let GameMoveType::EnPassant = mv.move_type {
             move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 99.0));
         } else {
-            if !incheck
-                && !passes_delta_pruning(
-                    mv,
-                    *phase.as_ref().unwrap(),
-                    *stand_pat.as_ref().unwrap(),
-                    alpha,
-                )
-            {
+            if !incheck && !passes_delta_pruning(mv, phase, *stand_pat.as_ref().unwrap(), alpha) {
                 search.search_statistics.add_q_delta_cutoff();
                 mv_index += 1;
                 continue;

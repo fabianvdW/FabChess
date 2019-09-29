@@ -138,7 +138,7 @@ pub fn stripped_q_search(
         &game_state,
         &mut move_list.move_lists[current_depth],
         &attack_container.attack_containers[current_depth],
-        static_evaluation.phase,
+        game_state.phase.phase,
         stand_pat,
         alpha,
         see_buffer,

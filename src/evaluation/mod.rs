@@ -1,4 +1,5 @@
 pub mod params;
+pub mod phase;
 pub mod psqt_evaluation;
 
 use super::bitboards;
@@ -11,6 +12,7 @@ use super::move_generation::movegen;
 use crate::board_representation::game_state_attack_container::{
     GameStateAttackContainer, MGSA_BISHOP, MGSA_KNIGHT, MGSA_QUEEN, MGSA_ROOKS,
 };
+use crate::evaluation::phase::Phase;
 use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
 #[cfg(feature = "texel-tuning")]
 use crate::tuning::trace::Trace;
@@ -21,47 +23,7 @@ use psqt_evaluation::BLACK_INDEX;
 pub const MG: usize = 0;
 pub const EG: usize = 1;
 
-const MG_LIMIT: i16 = 9100;
-const EG_LIMIT: i16 = 2350;
-
-pub struct Phase {
-    pub phase: f64,
-    pub material_score: i16,
-}
-impl Phase {
-    pub fn update(&mut self) {
-        let tmp = self.material_score.min(EG_LIMIT).max(MG_LIMIT);
-        self.phase = f64::from(tmp - EG_LIMIT) * 128. / f64::from(MG_LIMIT - EG_LIMIT)
-    }
-    pub fn from_state(g: &GameState) -> Self {
-        let material_score = (g.pieces[QUEEN][WHITE] | g.pieces[QUEEN][BLACK]).count_ones() as i16
-            * PieceType::Queen.to_phase_score()
-            + (g.pieces[KNIGHT][WHITE] | g.pieces[KNIGHT][BLACK]).count_ones() as i16
-                * PieceType::Knight.to_phase_score()
-            + (g.pieces[BISHOP][WHITE] | g.pieces[BISHOP][BLACK]).count_ones() as i16
-                * PieceType::Bishop.to_phase_score()
-            + (g.pieces[ROOK][WHITE] | g.pieces[ROOK][BLACK]).count_ones() as i16
-                * PieceType::Rook.to_phase_score();
-        let mut res = Phase {
-            phase: 0.,
-            material_score,
-        };
-        res.update();
-        res
-    }
-
-    pub fn delete_piece(&mut self, piece: PieceType) {
-        self.material_score -= piece.to_phase_score();
-        self.update();
-    }
-
-    pub fn add_piece(&mut self, piece: PieceType) {
-        self.material_score += piece.to_phase_score();
-        self.update();
-    }
-}
 pub struct EvaluationResult {
-    pub phase: f64,
     pub final_eval: i16,
     #[cfg(feature = "texel-tuning")]
     pub trace: Trace,
@@ -78,12 +40,11 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
         log(&format!("Evaluating GameState fen: {}\n", g.to_fen()));
     }
     let mut result = EvaluationResult {
-        phase: 0.,
         final_eval: 0,
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = Phase::from_state(g).phase;
+    let phase = g.phase.phase;
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
@@ -266,7 +227,6 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
             mg_eval, phase, eg_eval, phase, res,
         ));
     }
-    result.phase = phase;
     result.final_eval = res;
     result
 }
@@ -1116,5 +1076,5 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
 
 pub fn piece_value(piece_type: PieceType, phase: f64) -> i16 {
     let temp = piece_type.to_piece_score();
-    (f64::from(temp.0) * phase + f64::from(temp.1) * (128. - phase)) as i16
+    ((f64::from(temp.0) * phase + f64::from(temp.1) * (128. - phase)) / 128.0) as i16
 }
