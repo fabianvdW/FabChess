@@ -1,10 +1,10 @@
 use super::alphabeta::principal_variation_search;
-use super::alphabeta::PrincipalVariation;
 use super::cache::{Cache, CacheEntry};
 use super::history::History;
 use super::statistics::SearchStatistics;
 use super::timecontrol::{TimeControl, TimeControlInformation};
 use super::GameMove;
+use super::PrincipalVariation;
 use super::MATED_IN_MAX;
 use super::MAX_SEARCH_DEPTH;
 use super::STANDARD_SCORE;
@@ -12,6 +12,7 @@ use crate::board_representation::game_state::{GameState, WHITE};
 //use crate::logging::log;
 use super::reserved_memory::ReserveMemory;
 use crate::move_generation::makemove::make_move;
+use crate::search::CombinedSearchParameters;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -155,16 +156,18 @@ impl Search {
                     &mut reserved_memory,
                 );
                 pv_score = principal_variation_search(
-                    -16000,
-                    16000,
-                    d,
-                    &game_state,
-                    if game_state.color_to_move == WHITE {
-                        1
-                    } else {
-                        -1
-                    },
-                    0,
+                    CombinedSearchParameters::from(
+                        -16000,
+                        16000,
+                        d,
+                        &game_state,
+                        if game_state.color_to_move == WHITE {
+                            1
+                        } else {
+                            -1
+                        },
+                        0,
+                    ),
                     &mut searchutils,
                 );
             } else {
@@ -182,16 +185,18 @@ impl Search {
                         &mut reserved_memory,
                     );
                     pv_score = principal_variation_search(
-                        alpha,
-                        beta,
-                        d,
-                        &game_state,
-                        if game_state.color_to_move == WHITE {
-                            1
-                        } else {
-                            -1
-                        },
-                        0,
+                        CombinedSearchParameters::from(
+                            alpha,
+                            beta,
+                            d,
+                            &game_state,
+                            if game_state.color_to_move == WHITE {
+                                1
+                            } else {
+                                -1
+                            },
+                            0,
+                        ),
                         &mut searchutils,
                     );
                     if self.stop {

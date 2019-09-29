@@ -1,9 +1,9 @@
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BISHOP, KNIGHT, PAWN, QUEEN, ROOK,
 };
+use crate::search::searcher::Search;
+use crate::search::{CombinedSearchParameters, SearchInstruction};
 
-//2^20 Entrys
-pub const CACHE_MASK: usize = 0x007F_FFFF;
 pub const CACHE_ENTRYS: usize = 8 * 1_048_576;
 
 pub struct Cache {
@@ -23,6 +23,35 @@ impl Cache {
         for i in 0..self.cache.len() {
             self.cache[i] = None;
         }
+    }
+    pub fn lookup(
+        &self,
+        search: &mut Search,
+        p: &CombinedSearchParameters,
+        static_evaluation: &mut Option<i16>,
+        tt_move: &mut Option<GameMove>,
+    ) -> SearchInstruction {
+        let ce = &self.cache[p.game_state.hash as usize % CACHE_ENTRYS];
+        if let Some(ce) = ce {
+            if ce.hash == p.game_state.hash {
+                search.search_statistics.add_cache_hit_ns();
+                if ce.depth >= p.depth_left as i8
+                    && p.beta - p.alpha <= 1
+                    && (!ce.alpha && !ce.beta
+                        || ce.beta && ce.score >= p.beta
+                        || ce.alpha && ce.score <= p.alpha)
+                {
+                    search.search_statistics.add_cache_hit_replace_ns();
+                    search.pv_table[p.current_depth].pv[0] =
+                        Some(CacheEntry::u16_to_mv(ce.mv, p.game_state));
+                    return SearchInstruction::StopSearching(ce.score);
+                }
+                *static_evaluation = ce.static_evaluation;
+                let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
+                *tt_move = Some(mv);
+            }
+        }
+        SearchInstruction::ContinueSearching
     }
 }
 
