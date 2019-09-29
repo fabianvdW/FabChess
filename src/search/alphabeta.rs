@@ -189,6 +189,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, su: &mut Sear
             && current_max_score > MATED_IN_MAX
             && !in_check_slow(&next_state)
             && futil_margin <= p.alpha
+            && quiets_tried > 0
         {
             su.search.search_statistics.add_futil_pruning();
             continue;
