@@ -36,7 +36,7 @@ impl Cache {
             if ce.hash == p.game_state.hash {
                 search.search_statistics.add_cache_hit_ns();
                 if ce.depth >= p.depth_left as i8
-                    && p.beta - p.alpha <= 1
+                    && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
                     && (!ce.alpha && !ce.beta
                         || ce.beta && ce.score >= p.beta
                         || ce.alpha && ce.score <= p.alpha)

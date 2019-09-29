@@ -56,6 +56,7 @@ impl<'a> CombinedSearchParameters<'a> {
     }
 }
 pub enum SearchInstruction {
+    SkipMove,
     ContinueSearching,
     StopSearching(i16),
 }
