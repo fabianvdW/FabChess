@@ -93,7 +93,7 @@ impl TimeControl {
         }
     }
 
-    pub fn to_string(&self, tc_information: &TimeControlInformation) -> String {
+    pub fn as_string(&self, tc_information: &TimeControlInformation) -> String {
         let mut res_str: String = String::new();
         if let TimeControl::Incremental(mytime, myinc) = self {
             res_str.push_str(&format!("My Time: {}\n", mytime));

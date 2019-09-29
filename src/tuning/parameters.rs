@@ -1,6 +1,6 @@
 use crate::evaluation::params::*;
 use crate::evaluation::{EG, MG};
-use std::fmt::{Debug, Formatter, Result};
+use std::fmt::{Debug, Display, Formatter, Result};
 use std::fs;
 
 #[derive(Clone)]
@@ -111,11 +111,8 @@ pub fn apply_gradient_psqt(
     }
 }
 
-impl Parameters {
-    pub fn write_to_file(&self, file: &str) {
-        fs::write(file, self.to_string().as_str()).expect("Unable to write file");
-    }
-    pub fn to_string(&self) -> String {
+impl Display for Parameters {
+    fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
         res_str.push_str(&format!(
             "pub const TEMPO_BONUS_MG: i16 = {};\n",
@@ -505,7 +502,12 @@ impl Parameters {
             "pub const PSQT_KING_EG: [[i16;8];8] = {};\n",
             psqt_to_string(&self.psqt_king[EG])
         ));
-        res_str
+        write!(formatter, "{}", res_str)
+    }
+}
+impl Parameters {
+    pub fn write_to_file(&self, file: &str) {
+        fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
 
     pub fn default() -> Self {

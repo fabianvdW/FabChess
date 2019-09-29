@@ -25,7 +25,7 @@ fn main() {
 mod tests {
     use core::board_representation::game_state::GameState;
     use core::board_representation::game_state_attack_container::GameStateAttackContainer;
-    use core::evaluation::phase::{calculate_phase, Phase};
+    use core::evaluation::phase::Phase;
     use core::evaluation::psqt_evaluation::psqt;
     use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
     use core::move_generation::makemove::make_move;
@@ -226,8 +226,9 @@ mod tests {
         let mut attack_container = GameStateAttackContainer::default();
         for _i in 0..10_000 {
             let mut g = GameState::standard();
-            assert_eq!(g.phase.phase, Phase::from_pieces(&g.pieces).phase);
-            assert_eq!(g.phase.phase, calculate_phase(&g));
+            assert!(
+                (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
+            );
             for _j in 0..200 {
                 attack_container.write_state(&g);
                 let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
@@ -240,8 +241,9 @@ mod tests {
                         .as_ref()
                         .unwrap(),
                 );
-                assert_eq!(g.phase.phase, Phase::from_pieces(&g.pieces).phase);
-                assert_eq!(g.phase.phase, calculate_phase(&g));
+                assert!(
+                    (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
+                );
             }
         }
     }

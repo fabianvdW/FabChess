@@ -93,12 +93,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, su: &mut Sear
     if prunable {
         //Step 10.1 Static Null Move Pruning
         if let SearchInstruction::StopSearching(res) =
-            static_null_move_pruning(&p, su, &static_evaluation)
+            static_null_move_pruning(&p, su, static_evaluation)
         {
             return res;
         }
         //Step 10.2 Null Move Forward Pruning
-        if let SearchInstruction::StopSearching(res) = null_move_pruning(&p, su, &static_evaluation)
+        if let SearchInstruction::StopSearching(res) = null_move_pruning(&p, su, static_evaluation)
         {
             return res;
         }
@@ -184,11 +184,14 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, su: &mut Sear
         let next_state = make_move(p.game_state, &mv);
 
         //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
-        if !isc && !isp && current_max_score > MATED_IN_MAX && !in_check_slow(&next_state) {
-            if futil_margin <= p.alpha {
-                su.search.search_statistics.add_futil_pruning();
-                continue;
-            }
+        if !isc
+            && !isp
+            && current_max_score > MATED_IN_MAX
+            && !in_check_slow(&next_state)
+            && futil_margin <= p.alpha
+        {
+            su.search.search_statistics.add_futil_pruning();
+            continue;
         }
 
         //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
@@ -427,7 +430,7 @@ pub fn make_eval(
 pub fn static_null_move_pruning(
     p: &CombinedSearchParameters,
     su: &mut SearchUtils,
-    static_evaluation: &Option<i16>,
+    static_evaluation: Option<i16>,
 ) -> SearchInstruction {
     if p.depth_left <= STATIC_NULL_MOVE_DEPTH
         && static_evaluation.expect("Static null move") * p.color
@@ -449,7 +452,7 @@ pub fn static_null_move_pruning(
 pub fn null_move_pruning(
     p: &CombinedSearchParameters,
     su: &mut SearchUtils,
-    static_evaluation: &Option<i16>,
+    static_evaluation: Option<i16>,
 ) -> SearchInstruction {
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
         && p.game_state.phase.phase > 0.
@@ -511,12 +514,11 @@ pub fn prepare_futility_pruning(
     static_evaluation: Option<i16>,
 ) -> (i16) {
     let futil_pruning = p.depth_left <= FUTILITY_DEPTH && !incheck && p.current_depth > 0;
-    let futil_margin = if futil_pruning {
+    if futil_pruning {
         static_evaluation.expect("Futil pruning") * p.color + p.depth_left * FUTILITY_MARGIN
     } else {
         MATE_SCORE
-    };
-    futil_margin
+    }
 }
 
 #[inline(always)]

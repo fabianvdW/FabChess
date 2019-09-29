@@ -40,7 +40,7 @@ pub enum PieceType {
 }
 impl PieceType {
     #[inline(always)]
-    pub fn to_index(&self) -> usize {
+    pub fn to_index(self) -> usize {
         match &self {
             PieceType::Pawn => PAWN,
             PieceType::Knight => KNIGHT,
@@ -51,7 +51,7 @@ impl PieceType {
         }
     }
     #[inline(always)]
-    pub fn to_psqt(&self) -> (&'static [[i16; 8]; 8], &'static [[i16; 8]; 8]) {
+    pub fn to_psqt(self) -> (&'static [[i16; 8]; 8], &'static [[i16; 8]; 8]) {
         match &self {
             PieceType::Pawn => (&PSQT_PAWN_MG, &PSQT_PAWN_EG),
             PieceType::Knight => (&PSQT_KNIGHT_MG, &PSQT_KNIGHT_EG),
@@ -63,7 +63,7 @@ impl PieceType {
     }
 
     #[inline(always)]
-    pub fn to_zobrist_key(&self) -> (&'static [u64; 64], &'static [u64; 64]) {
+    pub fn to_zobrist_key(self) -> (&'static [u64; 64], &'static [u64; 64]) {
         match &self {
             PieceType::Pawn => (&ZOBRIST_KEYS.w_pawns, &ZOBRIST_KEYS.b_pawns),
             PieceType::Knight => (&ZOBRIST_KEYS.w_knights, &ZOBRIST_KEYS.b_knights),
@@ -75,7 +75,7 @@ impl PieceType {
     }
 
     #[inline(always)]
-    pub fn to_piece_score(&self) -> (i16, i16) {
+    pub fn to_piece_score(self) -> (i16, i16) {
         match &self {
             PieceType::Pawn => (PAWN_PIECE_VALUE_MG, PAWN_PIECE_VALUE_EG),
             PieceType::Knight => (KNIGHT_PIECE_VALUE_MG, KNIGHT_PIECE_VALUE_EG),
@@ -87,7 +87,7 @@ impl PieceType {
     }
 
     #[inline(always)]
-    pub fn to_phase_score(&self) -> i16 {
+    pub fn to_phase_score(self) -> i16 {
         match &self {
             PieceType::Pawn => 0,
             PieceType::Knight => 500,

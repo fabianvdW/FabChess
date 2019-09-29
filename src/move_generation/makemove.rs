@@ -230,12 +230,10 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             } else if mv.from == 7 {
                 castle_white_kingside = false;
             }
-        } else {
-            if mv.from == 56 {
-                castle_black_queenside = false;
-            } else if mv.from == 63 {
-                castle_black_kingside = false;
-            }
+        } else if mv.from == 56 {
+            castle_black_queenside = false;
+        } else if mv.from == 63 {
+            castle_black_kingside = false;
         }
     }
     if captured_piece.is_some() {

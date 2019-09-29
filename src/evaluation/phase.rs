@@ -8,29 +8,7 @@ pub struct Phase {
     pub phase: f64,
     pub material_score: i16,
 }
-pub fn calculate_phase(g: &GameState) -> f64 {
-    let (w_queens, b_queens, w_knights, b_knights, w_bishops, b_bishops, w_rooks, b_rooks) = (
-        g.pieces[QUEEN][WHITE],
-        g.pieces[QUEEN][BLACK],
-        g.pieces[KNIGHT][WHITE],
-        g.pieces[KNIGHT][BLACK],
-        g.pieces[BISHOP][WHITE],
-        g.pieces[BISHOP][BLACK],
-        g.pieces[ROOK][WHITE],
-        g.pieces[ROOK][BLACK],
-    );
-    let mut npm = (w_queens | b_queens).count_ones() as i16 * 1500
-        + (w_bishops | b_bishops).count_ones() as i16 * 510
-        + (w_rooks | b_rooks).count_ones() as i16 * 650
-        + (w_knights | b_knights).count_ones() as i16 * 500;
-    if npm < EG_LIMIT {
-        npm = EG_LIMIT;
-    }
-    if npm > MG_LIMIT {
-        npm = MG_LIMIT;
-    }
-    f64::from(npm - EG_LIMIT) * 128.0 / f64::from(MG_LIMIT - EG_LIMIT)
-}
+
 impl Phase {
     #[inline(always)]
     pub fn update(&mut self) {
