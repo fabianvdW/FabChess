@@ -8,6 +8,7 @@ pub mod evaluation;
 pub mod logging;
 pub mod misc;
 pub mod move_generation;
+pub mod pgn;
 pub mod search;
 pub mod testing;
 pub mod tuning;

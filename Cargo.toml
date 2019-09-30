@@ -11,6 +11,8 @@ display-eval=[]
 texel-tuning=[]
 [dependencies]
 lazy_static = "1.2.0"
+hostname="0.1.5"
+chrono = "0.4"
 rand = "0.6.4"
 tokio = "0.1.19"
 tokio-process="0.2"

@@ -1,6 +1,10 @@
 use super::zobrist_hashing::ZOBRIST_KEYS;
+use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
+use crate::move_generation::makemove::make_move;
+use crate::move_generation::movegen::{generate_moves, MoveList};
+use crate::search::quiescence::is_capture;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -19,7 +23,17 @@ pub enum GameResult {
     BlackWin,
     Draw,
 }
-
+impl Display for GameResult {
+    fn fmt(&self, formatter: &mut Formatter) -> Result {
+        let res_str = String::from(match self {
+            GameResult::Ingame => "*",
+            GameResult::WhiteWin => "1-0",
+            GameResult::BlackWin => "0-1",
+            GameResult::Draw => "1/2-1/2",
+        });
+        write!(formatter, "{}", res_str)
+    }
+}
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,
@@ -157,6 +171,85 @@ impl GameMove {
         }
         (from_file + 8 * from_rank, to_file + 8 * to_rank, None)
     }
+
+    pub fn to_san(&self, game_state: &GameState) -> String {
+        let mut movelist = MoveList::default();
+        let mut agsi = GameStateAttackContainer::from_state(game_state);
+        generate_moves(game_state, false, &mut movelist, &agsi);
+        let mut res_str = String::new();
+        if let GameMoveType::Castle = self.move_type {
+            if self.to == 2 || self.to == 58 {
+                res_str.push_str("O-O-O");
+            } else {
+                res_str.push_str("O-O");
+            }
+        } else {
+            res_str.push_str(match self.piece_type {
+                PieceType::Pawn => "",
+                PieceType::Knight => "N",
+                PieceType::Bishop => "B",
+                PieceType::Rook => "R",
+                PieceType::Queen => "Q",
+                PieceType::King => "K",
+            });
+            //Check for disambiguities
+            let mut file_needed = false;
+            let mut rank_needed = false;
+            let mut index = 0;
+            while index < movelist.counter {
+                let other_mv = movelist.move_list[index].as_ref().unwrap();
+                if other_mv.piece_type == self.piece_type
+                    && other_mv.to == self.to
+                    && other_mv.from != self.from
+                {
+                    if other_mv.from % 8 != self.from % 8 {
+                        file_needed = true;
+                    } else if other_mv.from / 8 != self.from / 8 {
+                        rank_needed = true;
+                    } else {
+                        file_needed = true;
+                        rank_needed = true;
+                    }
+                }
+                index += 1;
+            }
+            if file_needed {
+                res_str.push_str(file_to_string(self.from % 8));
+            }
+            if rank_needed {
+                res_str.push_str(&format!("{}", self.from / 8 + 1))
+            };
+            if is_capture(self) {
+                if self.piece_type == PieceType::Pawn && !file_needed {
+                    res_str.push_str(file_to_string(self.from % 8));
+                }
+                res_str.push_str("x");
+            }
+            res_str.push_str(file_to_string(self.to % 8));
+            res_str.push_str(&format!("{}", self.to / 8 + 1));
+            if let GameMoveType::Promotion(promo_piece, _) = self.move_type {
+                res_str.push_str(&format!(
+                    "={}",
+                    match promo_piece {
+                        PieceType::Queen => "Q",
+                        PieceType::Rook => "R",
+                        PieceType::Bishop => "B",
+                        PieceType::Knight => "N",
+                        _ => panic!("Invalid promotion piece"),
+                    }
+                ));
+            }
+        }
+        let game_state = make_move(game_state, self);
+        agsi.write_state(&game_state);
+        let agsi = generate_moves(&game_state, false, &mut movelist, &agsi);
+        if agsi.stm_incheck && !agsi.stm_haslegalmove {
+            res_str.push_str("#");
+        } else if agsi.stm_incheck {
+            res_str.push_str("+");
+        }
+        res_str
+    }
 }
 
 impl Debug for GameMove {
@@ -192,7 +285,7 @@ fn char_to_promotion_piecetype(c: char) -> PieceType {
     }
 }
 
-fn char_to_rank(c: char) -> usize {
+pub fn char_to_rank(c: char) -> usize {
     match c {
         '1' => 0,
         '2' => 1,
@@ -208,7 +301,7 @@ fn char_to_rank(c: char) -> usize {
     }
 }
 
-fn char_to_file(c: char) -> usize {
+pub fn char_to_file(c: char) -> usize {
     match c {
         'a' => 0,
         'b' => 1,

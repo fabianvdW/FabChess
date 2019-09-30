@@ -1,7 +1,7 @@
 use super::queue::ThreadSafeQueue;
 use crate::board_representation::game_state::GameState;
-use crate::misc::{GameParser, PGNParser};
 use crate::move_generation::movegen;
+use crate::pgn::pgn_reader::{GameParser, PGNParser};
 use rand::Rng;
 use std::fs::File;
 use std::io::BufReader;

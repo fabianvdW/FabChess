@@ -296,9 +296,9 @@ mod tests {
 
     use crate::board_representation::game_state::*;
     use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
-    use crate::misc::parse_move;
     use crate::move_generation::makemove::*;
     use crate::move_generation::movegen::MoveList;
+    use crate::pgn::pgn_reader::parse_move;
 
     #[test]
     fn make_test() {

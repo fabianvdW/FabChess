@@ -1,8 +1,8 @@
 use crate::write_to_buf;
 use core::board_representation::game_state::{GameMove, GameState};
 use core::board_representation::game_state_attack_container::GameStateAttackContainer;
-use core::misc::parse_move;
 use core::move_generation::movegen;
+use core::pgn::pgn_reader::parse_move;
 use core::testing::queue::ThreadSafeQueue;
 use std::fs::File;
 use std::io::prelude::*;
