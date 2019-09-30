@@ -24,6 +24,9 @@ lto=true
 [profile.test]
 opt-level=3
 debug=true
+[profile.bench]
+opt-level=3
+lto=true
 [lib]
 name="core"
 path= "src/lib.rs"
