@@ -44,6 +44,7 @@ pub fn expect_output_and_listen_for_info(
     time_frame: u64,
     output: tokio_process::ChildStdout,
     runtime: &mut tokio::runtime::Runtime,
+    info: String,
 ) -> (
     Option<String>,
     Option<tokio_process::ChildStdout>,
@@ -55,7 +56,7 @@ pub fn expect_output_and_listen_for_info(
     let lines_codec = tokio::codec::LinesCodec::new();
     let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
         .inspect(move |line| {
-            if line.starts_with("info") {
+            if line.starts_with(&info) {
                 //println!("{}", line);
                 info_listener_moved.push(&format!("{} ", line));
             }

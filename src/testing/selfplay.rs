@@ -29,9 +29,22 @@ pub fn play_game(
 ) -> TaskResult {
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
-
-    let player1_disq = TaskResult::disq(true, task.id);
-    let player2_disq = TaskResult::disq(false, task.id);
+    //-------------------------------------------------------------
+    //Set game up
+    let opening_fen = task.opening.to_fen();
+    attack_container.write_state(&task.opening);
+    let agsi = movegen::generate_moves(&task.opening, false, &mut movelist, &attack_container);
+    let mut history: Vec<GameState> = Vec::with_capacity(100);
+    let mut status = check_end_condition(
+        &task.opening,
+        agsi.stm_haslegalmove,
+        agsi.stm_incheck,
+        &history,
+    )
+    .0;
+    history.push(task.opening.clone());
+    let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
+    let mut endcondition = None;
     //-------------------------------------------------------------
     //Set tokio runtime up
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
@@ -53,15 +66,33 @@ pub fn play_game(
     let player1_output = player1_process.stdout().take().unwrap();
     let player1_stderr = player1_process.stderr().take().unwrap();
     let player1_input = print_command(&mut runtime, player1_input, "uci\n".to_owned());
-    let output = expect_output("uciok".to_owned(), 10000, player1_output, &mut runtime);
+    let output = expect_output_and_listen_for_info(
+        "uciok".to_owned(),
+        10000,
+        player1_output,
+        &mut runtime,
+        "id name".to_owned(),
+    );
     if output.0.is_none() {
         error_log.log(
             &format!("Player 1 didn't uciok in game {}!\n", task.id),
             true,
         );
         write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-        return player1_disq;
+        return TaskResult::disq(
+            true,
+            task.id,
+            task.opening_sequence,
+            move_history,
+            status,
+            task.p1_is_white,
+            None,
+            None,
+        );
     }
+    let engine1_name = output.3.replace("id name ", "");
+    let engine1_name = engine1_name[..engine1_name.len() - 1].to_owned();
+    let engine1_name = Some(engine1_name);
     let player1_output = output.1.unwrap();
     let mut player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
     let output = expect_output("readyok".to_owned(), 10000, player1_output, &mut runtime);
@@ -71,7 +102,16 @@ pub fn play_game(
             true,
         );
         write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-        return player1_disq;
+        return TaskResult::disq(
+            true,
+            task.id,
+            task.opening_sequence,
+            move_history,
+            status,
+            task.p1_is_white,
+            engine1_name,
+            None,
+        );
     }
     let mut player1_output = output.1.unwrap();
     //Player 2
@@ -90,15 +130,33 @@ pub fn play_game(
     let player2_output = player2_process.stdout().take().unwrap();
     let player2_stderr = player2_process.stderr().take().unwrap();
     let player2_input = print_command(&mut runtime, player2_input, "uci\n".to_owned());
-    let output = expect_output("uciok".to_owned(), 10000, player2_output, &mut runtime);
+    let output = expect_output_and_listen_for_info(
+        "uciok".to_owned(),
+        10000,
+        player2_output,
+        &mut runtime,
+        "id name".to_owned(),
+    );
     if output.0.is_none() {
         error_log.log(
             &format!("Player 2 didn't uciok in game {}!\n", task.id),
             true,
         );
         write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-        return player2_disq;
+        return TaskResult::disq(
+            false,
+            task.id,
+            task.opening_sequence,
+            move_history,
+            status,
+            task.p1_is_white,
+            engine1_name,
+            None,
+        );
     }
+    let engine2_name = output.3.replace("id name ", "");
+    let engine2_name = engine2_name[..engine2_name.len() - 1].to_owned();
+    let engine2_name = Some(engine2_name);
     let player2_output = output.1.unwrap();
     let mut player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
     let output = expect_output("readyok".to_owned(), 10000, player2_output, &mut runtime);
@@ -108,26 +166,18 @@ pub fn play_game(
             true,
         );
         write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-        return player2_disq;
+        return TaskResult::disq(
+            false,
+            task.id,
+            task.opening_sequence,
+            move_history,
+            status,
+            task.p1_is_white,
+            engine1_name,
+            engine2_name,
+        );
     }
     let mut player2_output = output.1.unwrap();
-    //-------------------------------------------------------------
-    //Set game up
-    let opening_fen = task.opening.to_fen();
-    attack_container.write_state(&task.opening);
-    let agsi = movegen::generate_moves(&task.opening, false, &mut movelist, &attack_container);
-    let mut history: Vec<GameState> = Vec::with_capacity(100);
-    let mut status = check_end_condition(
-        &task.opening,
-        agsi.stm_haslegalmove,
-        agsi.stm_incheck,
-        &history,
-    )
-    .0;
-    history.push(task.opening.clone());
-    let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
-    let mut fen_history: Vec<String> = Vec::with_capacity(100);
-    let mut endcondition = None;
     //-------------------------------------------------------------
     //Adjudications
     let mut draw_adjudication = 0;
@@ -201,7 +251,16 @@ pub fn play_game(
                     true,
                 );
                 write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-                return player1_disq;
+                return TaskResult::disq(
+                    true,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
             player1_output = output.1.unwrap();
             player1_input = print_command(&mut runtime, player1_input, go_string);
@@ -210,6 +269,7 @@ pub fn play_game(
                 player1_time,
                 player1_output,
                 &mut runtime,
+                "info".to_owned(),
             );
             if output.0.is_none() {
                 error_log.log(
@@ -220,12 +280,30 @@ pub fn play_game(
                     true,
                 );
                 write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-                return player1_disq;
+                return TaskResult::disq(
+                    true,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
             player1_output = output.1.unwrap();
             if output.2 as u64 > player1_time {
                 error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 1! Disqualifying player1 illegitimately in game {}\n", task.id), true);
-                return player1_disq;
+                return TaskResult::disq(
+                    true,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
             player1_time -= output.2 as u64;
             player1_time += player1_inc;
@@ -242,7 +320,16 @@ pub fn play_game(
                         true,
                     );
                     write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-                    return player1_disq;
+                    return TaskResult::disq(
+                        true,
+                        task.id,
+                        task.opening_sequence,
+                        move_history,
+                        status,
+                        task.p1_is_white,
+                        engine1_name,
+                        engine2_name,
+                    );
                 }
                 game_move = found_move.unwrap();
             } else {
@@ -251,7 +338,16 @@ pub fn play_game(
                     task.id
                 ), true);
                 write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-                return player1_disq;
+                return TaskResult::disq(
+                    true,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
 
             //Get additional info about player1 e.g. how deep he saw, nps, and his evaluation
@@ -274,9 +370,6 @@ pub fn play_game(
                         win_adjudication += 1;
                     }
                 } else {
-                    if !has_score || info.cp_score.unwrap().abs() < 10000 {
-                        fen_history.push(latest_state.to_fen());
-                    }
                     if has_score {
                         let score = info.cp_score.unwrap();
                         if score.abs() <= 10 {
@@ -304,7 +397,6 @@ pub fn play_game(
                         win_adjudication = 0;
                     }
                 }
-
                 if let Some(s) = info.depth {
                     average_depth_p1 += s as f64;
                 }
@@ -330,7 +422,16 @@ pub fn play_game(
                     true,
                 );
                 write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-                return player2_disq;
+                return TaskResult::disq(
+                    false,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
             player2_output = output.1.unwrap();
             player2_input = print_command(&mut runtime, player2_input, go_string);
@@ -339,6 +440,7 @@ pub fn play_game(
                 player2_time,
                 player2_output,
                 &mut runtime,
+                "info".to_owned(),
             );
             if output.0.is_none() {
                 error_log.log(
@@ -349,12 +451,30 @@ pub fn play_game(
                     true,
                 );
                 write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-                return player2_disq;
+                return TaskResult::disq(
+                    false,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
             player2_output = output.1.unwrap();
             if output.2 as u64 > player2_time {
                 error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for player 2! Disqualifying player1 illegitimately in game {}\n", task.id), true);
-                return player2_disq;
+                return TaskResult::disq(
+                    false,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
             player2_time -= output.2 as u64;
             player2_time += player2_inc;
@@ -371,7 +491,16 @@ pub fn play_game(
                         true,
                     );
                     write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-                    return player2_disq;
+                    return TaskResult::disq(
+                        false,
+                        task.id,
+                        task.opening_sequence,
+                        move_history,
+                        status,
+                        task.p1_is_white,
+                        engine1_name,
+                        engine2_name,
+                    );
                 }
                 game_move = found_move.unwrap();
             } else {
@@ -380,7 +509,16 @@ pub fn play_game(
                     task.id
                 ), true);
                 write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-                return player2_disq;
+                return TaskResult::disq(
+                    false,
+                    task.id,
+                    task.opening_sequence,
+                    move_history,
+                    status,
+                    task.p1_is_white,
+                    engine1_name,
+                    engine2_name,
+                );
             }
 
             //Get additional info about player2 e.g. how deep he saw, nps, and his evaluation
@@ -403,9 +541,6 @@ pub fn play_game(
                         win_adjudication += 1;
                     }
                 } else {
-                    if !has_score || info.cp_score.unwrap().abs() < 10000 {
-                        fen_history.push(latest_state.to_fen());
-                    }
                     if has_score {
                         let score = info.cp_score.unwrap();
                         if score.abs() <= 10 {
@@ -487,14 +622,18 @@ pub fn play_game(
         || status == GameResult::BlackWin && !task.p1_is_white;
 
     TaskResult {
+        p1_name: engine1_name,
+        p2_name: engine2_name,
+        p1_white: task.p1_is_white,
         p1_won: p1_win,
         draw,
         p1_disq: false,
         p2_disq: false,
         endcondition,
         task_id: task.id,
-        fen_history,
-        white_win: status == GameResult::WhiteWin,
+        opening_sequence: task.opening_sequence,
+        move_sequence: move_history,
+        final_status: status,
         nps_p1: average_nps_p1 / f64::from(moves_p1),
         nps_p2: average_nps_p2 / f64::from(moves_p2),
         depth_p1: average_depth_p1 / f64::from(moves_p1),
@@ -651,6 +790,7 @@ pub fn get_occurences(history: &[GameState], state: &GameState) -> usize {
     occ
 }
 
+#[derive(Clone, Copy)]
 pub enum EndConditionInformation {
     HundredMoveDraw,
     ThreeFoldRepetition,

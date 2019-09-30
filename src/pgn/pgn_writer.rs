@@ -6,15 +6,15 @@ use chrono::Local;
 use hostname::get_hostname;
 
 pub struct PGNMetadata {
-    event_name: Option<String>,
-    site: Option<String>,
-    date: Option<String>,
-    round: Option<String>,
-    white: Option<String>,
-    black: Option<String>,
-    result: Option<String>,
-    termination: Option<String>,
-    starting_position: String,
+    pub event_name: Option<String>,
+    pub site: Option<String>,
+    pub date: Option<String>,
+    pub round: Option<String>,
+    pub white: Option<String>,
+    pub black: Option<String>,
+    pub result: Option<String>,
+    pub termination: Option<String>,
+    pub starting_position: String,
 }
 impl PGNMetadata {
     pub fn fill_systemdata(&mut self) {

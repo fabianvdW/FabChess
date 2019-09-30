@@ -1,7 +1,8 @@
 use crate::selfplay::{play_game, EndConditionInformation};
 use crate::Config;
-use core::board_representation::game_state::GameState;
+use core::board_representation::game_state::*;
 use core::logging::Logger;
+use core::pgn::pgn_writer::*;
 use core::search::timecontrol::TimeControl;
 use core::testing::openings::PlayTask;
 use core::testing::openings::{load_db_until, load_openings_into_queue};
@@ -20,9 +21,12 @@ pub fn start_self_play(config: Config) {
         config.timecontrol_engine2_time,
         config.timecontrol_engine2_inc,
     );
-    let mut db: Vec<GameState> = vec![];
+    let mut db: Vec<GameState> = Vec::with_capacity(100_000);
+    let mut db_sequences: Vec<Vec<GameMove>> = Vec::with_capacity(100_000);
     for database in config.opening_databases {
-        db.append(&mut load_db_until(&database, config.opening_load_untilply));
+        let mut database_loaded = load_db_until(&database, config.opening_load_untilply);
+        db.append(&mut database_loaded.0);
+        db_sequences.append(&mut database_loaded.1);
     }
     println!(
         "{}",
@@ -32,12 +36,12 @@ pub fn start_self_play(config: Config) {
         )
     );
     let queue: Arc<ThreadSafeQueue<PlayTask>> =
-        Arc::new(load_openings_into_queue(config.games / 2, db));
+        Arc::new(load_openings_into_queue(config.games / 2, db, db_sequences));
     println!("Games prepared! Starting...");
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
     let error_log = Arc::new(Logger::new("referee_error_log.txt", false));
-    let fen_log = Logger::new("fens.txt", true);
+    let fen_log = Logger::new("pgns.pgn", true);
     let mut childs = Vec::with_capacity(config.processors);
     for _ in 0..config.processors {
         let queue_clone = queue.clone();
@@ -67,7 +71,7 @@ pub fn start_self_play(config: Config) {
     let mut p2_disqs = 0;
     while results_collected < (config.games / 2) * 2 {
         thread::sleep(Duration::from_millis(50));
-        if let Some(result) = result_queue.pop() {
+        if let Some(mut result) = result_queue.pop() {
             results_collected += 1;
             println!("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
             println!("Game {} finished!", result.task_id);
@@ -137,24 +141,38 @@ pub fn start_self_play(config: Config) {
             );
             println!("-------------------------------------------------");
 
-            //Write all fens of game to string
-            if !result.fen_history.is_empty() {
-                let mut game_string = String::new();
-                game_string.push_str("New Game:\n");
-                for fen in result.fen_history {
-                    game_string.push_str(&format!(
-                        "{} |{}\n",
-                        fen,
-                        if result.draw {
-                            "Draw"
-                        } else if result.white_win {
-                            "White"
-                        } else {
-                            "Black"
-                        }
-                    ));
-                }
-                fen_log.log(&game_string, false);
+            //Write all fens of game to pgn
+            let opening_moves = Some(result.opening_sequence.len());
+            let mut moves = result.opening_sequence;
+            if !result.move_sequence.is_empty() {
+                moves.append(&mut result.move_sequence);
+                let mut metadata = PGNMetadata::default();
+                metadata.fill_systemdata();
+                metadata.event_name = Some("FabChess local gauntlet".to_owned());
+                metadata.round = Some(format!("{}", result.task_id));
+                metadata.result = Some(result.final_status.to_string());
+                metadata.termination = Some(if result.endcondition.is_none() {
+                    "rules infraction".to_owned()
+                } else {
+                    let temp = result.endcondition.unwrap();
+                    match temp {
+                        EndConditionInformation::DrawByadjudication
+                        | EndConditionInformation::MateByadjudication => "adjudication",
+                        _ => "normal",
+                    }
+                    .to_owned()
+                });
+                metadata.white = if result.p1_white {
+                    result.p1_name.clone()
+                } else {
+                    result.p2_name.clone()
+                };
+                metadata.black = if result.p1_white {
+                    result.p2_name.clone()
+                } else {
+                    result.p1_name.clone()
+                };
+                fen_log.log(&get_pgn_string(&metadata, moves, opening_moves), false);
             }
         }
     }
@@ -188,14 +206,18 @@ pub fn start_self_play_thread(
 }
 
 pub struct TaskResult {
+    pub p1_name: Option<String>,
+    pub p2_name: Option<String>,
+    pub p1_white: bool,
     pub p1_won: bool,
     pub draw: bool,
     pub p1_disq: bool,
     pub p2_disq: bool,
     pub endcondition: Option<EndConditionInformation>,
     pub task_id: usize,
-    pub fen_history: Vec<String>,
-    pub white_win: bool,
+    pub opening_sequence: Vec<GameMove>,
+    pub move_sequence: Vec<GameMove>,
+    pub final_status: GameResult,
     pub nps_p1: f64,
     pub depth_p1: f64,
     pub time_left_p1: usize,
@@ -205,16 +227,29 @@ pub struct TaskResult {
 }
 
 impl TaskResult {
-    pub fn disq(p1: bool, id: usize) -> Self {
+    pub fn disq(
+        p1: bool,
+        id: usize,
+        opening_sequence: Vec<GameMove>,
+        move_sequence: Vec<GameMove>,
+        final_status: GameResult,
+        p1_white: bool,
+        p1_name: Option<String>,
+        p2_name: Option<String>,
+    ) -> Self {
         TaskResult {
+            p1_name,
+            p2_name,
+            p1_white,
             p1_won: false,
             draw: false,
             p1_disq: p1,
             p2_disq: !p1,
             endcondition: None,
             task_id: id,
-            fen_history: vec![],
-            white_win: false,
+            opening_sequence,
+            move_sequence,
+            final_status,
             nps_p1: 0.0,
             nps_p2: 0.0,
             depth_p1: 0.0,
