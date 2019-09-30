@@ -217,13 +217,13 @@ pub fn get_piece_type(my_string: &mut String) -> PieceType {
 
 pub fn is_promotion(my_string: &mut String) -> Option<PieceType> {
     let mut promotion_piece = None;
-    if my_string.ends_with('Q') {
+    if my_string.to_lowercase().ends_with('q') {
         promotion_piece = Some(PieceType::Queen)
-    } else if my_string.ends_with('R') {
+    } else if my_string.to_lowercase().ends_with('r') {
         promotion_piece = Some(PieceType::Rook);
-    } else if my_string.ends_with('B') {
+    } else if my_string.to_lowercase().ends_with('b') {
         promotion_piece = Some(PieceType::Bishop);
-    } else if my_string.ends_with('N') {
+    } else if my_string.to_lowercase().ends_with('n') {
         promotion_piece = Some(PieceType::Knight);
     }
     if promotion_piece.is_some() {

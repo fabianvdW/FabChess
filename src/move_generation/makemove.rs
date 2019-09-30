@@ -291,3 +291,47 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         phase,
     }
 }
+#[cfg(test)]
+mod tests {
+
+    use crate::board_representation::game_state::*;
+    use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
+    use crate::misc::parse_move;
+    use crate::move_generation::makemove::*;
+    use crate::move_generation::movegen::MoveList;
+
+    #[test]
+    fn make_test() {
+        let g = GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/4K2R w K c6 0 2");
+        let mut movelist = MoveList::default();
+        let agsi = GameStateAttackContainer::from_state(&g);
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "e1g1", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/5RK1 b - - 1 2").hash
+        );
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "g7g8q", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k1Q1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+        );
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "g7g8b", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k1B1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+        );
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "g7g8n", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k1N1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+        );
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "g7g8r", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k1R1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+        );
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "b5c6", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k3/6P1/2P5/8/6b1/8/2B5/4K2R b K - 0 2").hash
+        );
+        assert_eq!(
+            make_move(&g, &parse_move(&g, "c2d3", &mut movelist, &agsi).0).hash,
+            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/3B4/8/4K2R b K - 1 2").hash
+        );
+    }
+}
