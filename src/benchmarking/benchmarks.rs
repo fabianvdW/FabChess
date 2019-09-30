@@ -50,6 +50,9 @@ mod tests {
     use super::BENCHMARKING_POSITIONS_AMOUNT;
     use core::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core::evaluation::eval_game_state;
+    use core::move_generation::movegen;
+    use core::move_generation::movegen::MoveList;
+    use core::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
     use test::Bencher;
 
     #[bench]
@@ -61,6 +64,35 @@ mod tests {
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
                 attack_container.write_state(&states[i]);
                 sum += eval_game_state(&states[i], &attack_container).final_eval as isize;
+            }
+            sum
+        });
+    }
+    #[bench]
+    pub fn generate_moves(b: &mut Bencher) {
+        let states = load_benchmarking_positions();
+        let mut attack_container = GameStateAttackContainer::default();
+        let mut movelist = MoveList::default();
+        b.iter(|| {
+            let mut sum = 0;
+            for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
+                attack_container.write_state(&states[i]);
+                movegen::generate_moves(&states[i], false, &mut movelist, &attack_container);
+                sum += movelist.counter;
+            }
+            sum
+        });
+    }
+
+    #[bench]
+    pub fn perft(b: &mut Bencher) {
+        let states = load_benchmarking_positions();
+        let mut movelist = ReservedMoveList::default();
+        let mut attack_container = ReservedAttackContainer::default();
+        b.iter(|| {
+            let mut sum = 0;
+            for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
+                sum += core::perft(&states[i], 2, &mut movelist, &mut attack_container);
             }
             sum
         });
