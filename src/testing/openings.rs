@@ -2,16 +2,10 @@ use super::queue::ThreadSafeQueue;
 use crate::board_representation::game_state::*;
 use crate::move_generation::movegen;
 use crate::pgn::pgn_reader::{GameParser, PGNParser};
+use crate::testing::{Engine, PlayTask};
 use rand::Rng;
 use std::fs::File;
 use std::io::BufReader;
-
-pub struct PlayTask {
-    pub opening: GameState,
-    pub opening_sequence: Vec<GameMove>,
-    pub p1_is_white: bool,
-    pub id: usize,
-}
 
 pub fn load_db_until(db: &str, until: usize) -> (Vec<GameState>, Vec<Vec<GameMove>>) {
     let movelist = movegen::MoveList::default();
@@ -43,10 +37,13 @@ pub fn load_openings_into_queue(
     n: usize,
     mut db: Vec<GameState>,
     mut db_sequences: Vec<Vec<GameMove>>,
+    gauntlet_engine: &Engine,
+    enemies: &Vec<Engine>,
 ) -> ThreadSafeQueue<PlayTask> {
     let mut rng = rand::thread_rng();
     let mut res: Vec<PlayTask> = Vec::with_capacity(n);
-    for i in 0..n {
+    let mut id = 0;
+    for _ in 0..n {
         loop {
             if db.is_empty() {
                 panic!("There are not enough different openings in database! Use bigger database or load until higher ply!");
@@ -55,18 +52,26 @@ pub fn load_openings_into_queue(
             let state = db.remove(index);
             let sequence = db_sequences.remove(index);
             if !contains(&res, &state) {
-                res.push(PlayTask {
-                    opening: state.clone(),
-                    opening_sequence: sequence.clone(),
-                    p1_is_white: true,
-                    id: 2 * i,
-                });
-                res.push(PlayTask {
-                    opening: state,
-                    opening_sequence: sequence,
-                    p1_is_white: false,
-                    id: 2 * i + 1,
-                });
+                for enemy_engine in enemies {
+                    res.push(PlayTask {
+                        opening: state.clone(),
+                        opening_sequence: sequence.clone(),
+                        p1_is_white: true,
+                        id,
+                        engine1: gauntlet_engine.clone(),
+                        engine2: enemy_engine.clone(),
+                    });
+                    id += 1;
+                    res.push(PlayTask {
+                        opening: state.clone(),
+                        opening_sequence: sequence.clone(),
+                        p1_is_white: false,
+                        id,
+                        engine1: gauntlet_engine.clone(),
+                        engine2: enemy_engine.clone(),
+                    });
+                    id += 1;
+                }
                 break;
             }
         }

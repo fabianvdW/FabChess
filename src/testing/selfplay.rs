@@ -1,7 +1,3 @@
-use crate::async_communication::{
-    expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
-};
-use crate::selfplay_splitter::TaskResult;
 use core::board_representation::game_state::{
     GameMove, GameMoveType, GameResult, GameState, PieceType, BISHOP, BLACK, KNIGHT, PAWN, QUEEN,
     ROOK, WHITE,
@@ -11,22 +7,20 @@ use core::logging::Logger;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen;
 use core::search::timecontrol::TimeControl;
-use core::testing::openings::PlayTask;
-use std::fmt::{Display, Formatter, Result};
+use core::testing::async_communication::{
+    expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
+};
+use core::testing::EndConditionInformation;
+use core::testing::EngineReaction;
+use core::testing::PlayTask;
+use core::testing::TaskResult;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tokio_process::CommandExt;
 
-pub fn play_game(
-    task: PlayTask,
-    p1: String,
-    p2: String,
-    tcp1: &TimeControl,
-    tcp2: &TimeControl,
-    error_log: Arc<Logger>,
-) -> TaskResult {
+pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
     //-------------------------------------------------------------
@@ -42,6 +36,7 @@ pub fn play_game(
         &history,
     )
     .0;
+    assert_eq!(status, GameResult::Ingame);
     history.push(task.opening.clone());
     let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
     let mut endcondition = None;
@@ -50,147 +45,52 @@ pub fn play_game(
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
     //-------------------------------------------------------------
     //Set players up
-    //Player 1
-    let (mut player1_time, player1_inc) = match tcp1 {
-        TimeControl::Incremental(time, inc) => (*time, *inc),
-        _ => panic!("Invalid Timecontrol"),
-    };
+    let disq_closure = |p1| TaskResult::disq(task, p1, move_history, status);
 
-    let mut player1_process = Command::new(p1)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn_async()
-        .expect("Failed to start player 1!");
-    let player1_input = player1_process.stdin().take().unwrap();
-    let player1_output = player1_process.stdout().take().unwrap();
-    let player1_stderr = player1_process.stderr().take().unwrap();
-    let player1_input = print_command(&mut runtime, player1_input, "uci\n".to_owned());
-    let output = expect_output_and_listen_for_info(
-        "uciok".to_owned(),
-        10000,
-        player1_output,
+    //Check uci and isready
+    let (mut e1_process, mut e1_input, mut e1_output, mut e1_err) = task.engine1.get_handles();
+    let reaction = task.engine1.valid_uci_isready_reaction(
+        e1_input,
+        e1_output,
+        e1_err,
         &mut runtime,
-        "id name".to_owned(),
+        task.id,
+        error_log,
     );
-    if output.0.is_none() {
-        error_log.log(
-            &format!("Player 1 didn't uciok in game {}!\n", task.id),
-            true,
-        );
-        write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-        return TaskResult::disq(
-            true,
-            task.id,
-            task.opening_sequence,
-            move_history,
-            status,
-            task.p1_is_white,
-            None,
-            None,
-        );
+    match reaction {
+        EngineReaction::DisqualifyEngine => return disq_closure(true),
+        EngineReaction::ContinueGame(temp) => {
+            e1_input = temp.0;
+            e1_output = temp.1;
+            e1_err = temp.2;
+            error_log = temp.3;
+        }
     }
-    let engine1_name = output.3.replace("id name ", "");
-    let engine1_name = engine1_name[..engine1_name.len() - 1].to_owned();
-    let engine1_name = Some(engine1_name);
-    let player1_output = output.1.unwrap();
-    let mut player1_input = print_command(&mut runtime, player1_input, "isready\n".to_owned());
-    let output = expect_output("readyok".to_owned(), 10000, player1_output, &mut runtime);
-    if output.0.is_none() {
-        error_log.log(
-            &format!("Player 1 didn't readyok in game {}!\n", task.id),
-            true,
-        );
-        write_stderr_to_log(error_log, player1_stderr, &mut runtime);
-        return TaskResult::disq(
-            true,
-            task.id,
-            task.opening_sequence,
-            move_history,
-            status,
-            task.p1_is_white,
-            engine1_name,
-            None,
-        );
-    }
-    let mut player1_output = output.1.unwrap();
-    //Player 2
-    let (mut player2_time, player2_inc) = match tcp2 {
-        TimeControl::Incremental(time, inc) => (*time, *inc),
-        _ => panic!("Invalid Timecontrol"),
-    };
 
-    let mut player2_process = Command::new(p2)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn_async()
-        .expect("Failed to start player 2!");
-    let player2_input = player2_process.stdin().take().unwrap();
-    let player2_output = player2_process.stdout().take().unwrap();
-    let player2_stderr = player2_process.stderr().take().unwrap();
-    let player2_input = print_command(&mut runtime, player2_input, "uci\n".to_owned());
-    let output = expect_output_and_listen_for_info(
-        "uciok".to_owned(),
-        10000,
-        player2_output,
+    let (mut e2_process, mut e2_input, mut e2_output, mut e2_err) = task.engine2.get_handles();
+    let reaction = task.engine2.valid_uci_isready_reaction(
+        e2_input,
+        e2_output,
+        e2_err,
         &mut runtime,
-        "id name".to_owned(),
+        task.id,
+        error_log,
     );
-    if output.0.is_none() {
-        error_log.log(
-            &format!("Player 2 didn't uciok in game {}!\n", task.id),
-            true,
-        );
-        write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-        return TaskResult::disq(
-            false,
-            task.id,
-            task.opening_sequence,
-            move_history,
-            status,
-            task.p1_is_white,
-            engine1_name,
-            None,
-        );
+    match reaction {
+        EngineReaction::DisqualifyEngine => return disq_closure(false),
+        EngineReaction::ContinueGame(temp) => {
+            e2_input = temp.0;
+            e2_output = temp.1;
+            e2_err = temp.2;
+            error_log = temp.3;
+        }
     }
-    let engine2_name = output.3.replace("id name ", "");
-    let engine2_name = engine2_name[..engine2_name.len() - 1].to_owned();
-    let engine2_name = Some(engine2_name);
-    let player2_output = output.1.unwrap();
-    let mut player2_input = print_command(&mut runtime, player2_input, "isready\n".to_owned());
-    let output = expect_output("readyok".to_owned(), 10000, player2_output, &mut runtime);
-    if output.0.is_none() {
-        error_log.log(
-            &format!("Player 2 didn't readyok in game {}!\n", task.id),
-            true,
-        );
-        write_stderr_to_log(error_log, player2_stderr, &mut runtime);
-        return TaskResult::disq(
-            false,
-            task.id,
-            task.opening_sequence,
-            move_history,
-            status,
-            task.p1_is_white,
-            engine1_name,
-            engine2_name,
-        );
-    }
-    let mut player2_output = output.1.unwrap();
     //-------------------------------------------------------------
     //Adjudications
     let mut draw_adjudication = 0;
     let mut win_adjudication = 0;
     let mut win_adjudication_for_p1 = true;
-    //-------------------------------------------------------------
-    //Additional information about players
-    let mut average_depth_p1: f64 = 0.0;
-    let mut average_nps_p1: f64 = 0.0;
-    let mut moves_p1 = 0;
-    let mut average_depth_p2: f64 = 0.0;
-    let mut average_nps_p2: f64 = 0.0;
-    let mut moves_p2 = 0;
+
     while let GameResult::Ingame = status {
         //Request move
         let latest_state = &history[history.len() - 1];
@@ -233,6 +133,9 @@ pub fn play_game(
             }
         ));
         let game_move: &GameMove;
+        if player1_move {
+        } else {
+        }
         if player1_move {
             moves_p1 += 1;
             player1_input = print_command(&mut runtime, player1_input, position_string.clone());
@@ -579,18 +482,19 @@ pub fn play_game(
         //Make new state with move
         move_history.push(game_move.clone());
         let state = make_move(latest_state, game_move);
-        if state.half_moves == 0 || state.full_moves < 35 {
+        if state.full_moves < 35 {
             draw_adjudication = 0;
         }
         attack_container.write_state(&state);
         let agsi = movegen::generate_moves(&state, false, &mut movelist, &attack_container);
         let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
+        history.push(state);
         status = check.0;
         endcondition = check.1;
         //Check for adjudication
         if let GameResult::Ingame = status {
             //Check adjudication values
-            if draw_adjudication >= 30 {
+            if draw_adjudication >= 20 {
                 status = GameResult::Draw;
                 endcondition = Some(EndConditionInformation::DrawByadjudication);
             } else if win_adjudication >= 10 {
@@ -608,8 +512,6 @@ pub fn play_game(
                 }
             }
         }
-        //Preparing next round
-        history.push(state);
     }
 
     //-------------------------------------------------------------
@@ -621,6 +523,10 @@ pub fn play_game(
     let p1_win = status == GameResult::WhiteWin && task.p1_is_white
         || status == GameResult::BlackWin && !task.p1_is_white;
 
+    task.engine1.stats.divide(); //Make the mean of nps and deepth
+    task.engine2.stats.divide();
+    task.engine1.stats.avg_timeleft = task.engine1.time_control.time_left() as f64; //Set the time left
+    task.engine2.stats.avg_timeleft = task.engine2.time_control.time_left() as f64;
     TaskResult {
         p1_name: engine1_name,
         p2_name: engine2_name,
@@ -641,91 +547,6 @@ pub fn play_game(
         time_left_p1: player1_time as usize,
         time_left_p2: player2_time as usize,
     }
-}
-
-pub fn fetch_info(info: String) -> UCIInfo {
-    let split_line: Vec<&str> = info.split_whitespace().collect();
-    let mut depth = None;
-    let mut nps = None;
-    let mut cp_score = None;
-    let mut positive_mate_found = false;
-    let mut negative_mate_found = false;
-    let mut index = 0;
-    while index < split_line.len() {
-        match split_line[index] {
-            "depth" => {
-                depth = split_line[index + 1].parse::<usize>().ok();
-                index += 1;
-            }
-            "cp" => {
-                cp_score = split_line[index + 1].parse::<isize>().ok();
-                index += 1;
-            }
-            "nps" => {
-                nps = split_line[index + 1].parse::<usize>().ok();
-                index += 1;
-            }
-            "mate" => {
-                let mate_score = match split_line[index + 1].parse::<isize>() {
-                    Ok(s) => s,
-                    _ => 0,
-                };
-                if mate_score < 0 {
-                    negative_mate_found = true;
-                } else if mate_score > 0 {
-                    positive_mate_found = true;
-                }
-            }
-            _ => {}
-        }
-        index += 1;
-    }
-    UCIInfo {
-        depth,
-        nps,
-        cp_score,
-        positive_mate_found,
-        negative_mate_found,
-    }
-}
-
-pub struct UCIInfo {
-    depth: Option<usize>,
-    nps: Option<usize>,
-    cp_score: Option<isize>,
-    positive_mate_found: bool,
-    negative_mate_found: bool,
-}
-
-pub fn find_move(
-    from: usize,
-    to: usize,
-    promo_pieces: Option<PieceType>,
-    move_list: &movegen::MoveList,
-) -> Option<&GameMove> {
-    let mut index = 0;
-    while index < move_list.counter {
-        let mv = move_list.move_list[index].as_ref().unwrap();
-        if mv.from == from && mv.to == to {
-            if let GameMoveType::Promotion(ps, _) = mv.move_type {
-                match promo_pieces {
-                    Some(piece) => {
-                        if piece != ps {
-                            index += 1;
-                            continue;
-                        }
-                    }
-                    None => {
-                        index += 1;
-                        continue;
-                    }
-                }
-            }
-            return Some(mv);
-        }
-        index += 1;
-    }
-    None
 }
 
 pub fn check_end_condition(
@@ -788,31 +609,4 @@ pub fn get_occurences(history: &[GameState], state: &GameState) -> usize {
         }
     }
     occ
-}
-
-#[derive(Clone, Copy)]
-pub enum EndConditionInformation {
-    HundredMoveDraw,
-    ThreeFoldRepetition,
-    DrawByadjudication,
-    DrawByMissingPieces,
-    StaleMate,
-    Mate,
-    MateByadjudication,
-}
-
-impl Display for EndConditionInformation {
-    fn fmt(&self, formatter: &mut Formatter) -> Result {
-        let mut res_str: String = String::new();
-        res_str.push_str(match *self {
-            EndConditionInformation::HundredMoveDraw => "Hundred Move Draw",
-            EndConditionInformation::ThreeFoldRepetition => "Draw by Three Fold Repetition",
-            EndConditionInformation::DrawByadjudication => "Draw by adjudication",
-            EndConditionInformation::DrawByMissingPieces => "Draw by missing pieces",
-            EndConditionInformation::StaleMate => "Draw by Stalemate",
-            EndConditionInformation::Mate => "Win by Mate",
-            EndConditionInformation::MateByadjudication => "Win by adjudication",
-        });
-        write!(formatter, "{}", res_str)
-    }
 }

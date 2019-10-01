@@ -1,3 +1,5 @@
+use core::panicking::panic_fmt;
+
 const MOVE_OVERHEAD: u64 = 25;
 
 pub struct TimeControlInformation {
@@ -25,6 +27,35 @@ pub enum TimeControl {
 }
 
 impl TimeControl {
+    pub fn update(&mut self, time_spent: u64, tournament_info: Option<(usize, u64)>) {
+        match self {
+            TimeControl::Incremental(left, inc) => {
+                assert!(*left > time_spent);
+                *self = TimeControl::Incremental(*left - time_spent + *inc, *inc);
+            }
+            TimeControl::MoveTime(time) => {
+                *self = TimeControl::MoveTime(*time);
+            }
+            TimeControl::Infinite => panic!("Should not call updat eon Infinite"),
+            TimeControl::Tournament(left, inc, movestogo) => {
+                assert!(*left > time_spent);
+                let mut new_left = *left - time_spent + *inc;
+                if *movestogo == 0 {
+                    new_left += tournament_info.unwrap().1;
+                    *movestogo = tournament_info.unwrap().0;
+                }
+                *self = TimeControl::Tournament(new_left, *inc, *movestogo);
+            }
+        }
+    }
+    pub fn time_left(&self) -> u64 {
+        match self {
+            TimeControl::Incremental(left, _) => *left,
+            TimeControl::MoveTime(left) => *left,
+            TimeControl::Infinite => panic!("Should not call time_left on Infinite"),
+            TimeControl::Tournament(left, _, _) => *left,
+        }
+    }
     pub fn time_over(&self, time_spent: u64, tc_information: &TimeControlInformation) -> bool {
         if let TimeControl::Incremental(mytime, myinc) = self {
             if time_spent as isize > *mytime as isize - 4 * MOVE_OVERHEAD as isize {

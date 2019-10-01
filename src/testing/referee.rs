@@ -11,7 +11,6 @@ use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
 
-pub mod async_communication;
 pub mod lct2;
 pub mod selfplay;
 pub mod selfplay_splitter;
@@ -41,14 +40,14 @@ pub struct Config {
     pub processors: usize,
     selfplaytests: bool,
     pub games: usize,
-    pub engine1_path: String,
-    pub engine2_path: String,
+    pub engine_path: String,
+    pub enemies_paths: Vec<String>,
     pub opening_databases: Vec<String>,
     pub opening_load_untilply: usize,
-    pub timecontrol_engine1_time: u64,
-    pub timecontrol_engine1_inc: u64,
-    pub timecontrol_engine2_time: u64,
-    pub timecontrol_engine2_inc: u64,
+    pub timecontrol_engine_time: u64,
+    pub timecontrol_engine_inc: u64,
+    pub timecontrol_enemies_time: u64,
+    pub timecontrol_enemies_inc: u64,
     testsuitetests: bool,
     suite_path: String,
     suite_movetime: u64,
@@ -72,6 +71,9 @@ Win/Elo Gain:-------------------------------------------------------------------
 0.7 /147.19  82.78  56.41  38.97  31.52  24.19   19.64   16.96   13.79   11.91    7.50
 */
 fn main() {
+    //let some_engine = Engine::from_path("./target/release/fabchess.exe".to_owned(), 0);
+    //println!("{}", some_engine.get_elo_gain().0);
+    //panic!("hi");
     let mut config_path = "REFEREE_CONFIG.json";
     let args: Vec<String> = env::args().collect();
     let mut index: usize = 1;
@@ -96,10 +98,10 @@ fn main() {
     if config.selfplaytests {
         selfplay_splitter::start_self_play(config);
     } else if config.lct2tests {
-        lct2::lct2(&config.engine1_path, config.processors, &config.lct2_path);
+        lct2::lct2(&config.engine_path, config.processors, &config.lct2_path);
     } else if config.testsuitetests {
         suit::start_suit(
-            &config.engine1_path,
+            &config.engine_path,
             config.processors,
             &config.suite_path,
             config.suite_movetime,
