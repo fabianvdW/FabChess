@@ -49,7 +49,7 @@ pub fn main() {
     {
         //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
         let mut stats = Statistics::default();
-        let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8000000);
+        let mut positions: Vec<LabelledGameState> = Vec::with_capacity(1);
         load_positions(
             POSITION_FILE,
             if POSITION_FILE.ends_with(".txt") {
@@ -82,7 +82,7 @@ pub fn main() {
 
 #[cfg(feature = "texel-tuning")]
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
-    let mut res: Vec<TexelState> = Vec::with_capacity(7881908);
+    let mut res: Vec<TexelState> = Vec::with_capacity(1);
     for state in labelledstates {
         let eval = eval_game_state_from_null(&state.game_state);
         res.push(TexelState {
@@ -116,10 +116,10 @@ pub fn shuffle_positions(tuner: &mut Tuner) {
     tuner.positions.shuffle(&mut thread_rng());
 }
 
-pub fn add_gradient(gradient: &mut [f64; 2], trace: [i8; 2], start_of_gradient: f64, phase: f64) {
+pub fn add_gradient(gradient: &mut [f64; 2], trace: i8, start_of_gradient: f64, phase: f64) {
     let devaldmg = phase / 128.0;
     let devaldeg = (1. - phase / 128.0) / 1.5;
-    let x = f64::from(trace[WHITE] - trace[BLACK]);
+    let x = f64::from(trace);
     gradient[MG] += start_of_gradient * devaldmg * x;
     gradient[EG] += start_of_gradient * devaldeg * x;
 }
@@ -151,14 +151,8 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         //Shielding pawns
         if TUNE_SHIELDING_PAWNS || TUNE_ALL {
             for i in 0..4 {
-                let x = f64::from(
-                    pos.trace.shielding_pawn_missing[WHITE][i]
-                        - pos.trace.shielding_pawn_missing[BLACK][i],
-                );
-                let y = f64::from(
-                    pos.trace.shielding_pawn_onopen_missing[WHITE][i]
-                        - pos.trace.shielding_pawn_onopen_missing[BLACK][i],
-                );
+                let x = f64::from(pos.trace.shielding_pawn_missing[i]);
+                let y = f64::from(pos.trace.shielding_pawn_onopen_missing[i]);
                 gradient.shielding_pawn_missing[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.shielding_pawn_missing[EG][i] += start_of_gradient * devaldeg * x;
                 gradient.shielding_pawn_onopen_missing[MG][i] += start_of_gradient * devaldmg * y;
@@ -219,12 +213,8 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                 phase,
             );
             for i in 0..7 {
-                let x =
-                    f64::from(pos.trace.pawn_passed[WHITE][i] - pos.trace.pawn_passed[BLACK][i]);
-                let y = f64::from(
-                    pos.trace.pawn_passed_notblocked[WHITE][i]
-                        - pos.trace.pawn_passed_notblocked[BLACK][i],
-                );
+                let x = f64::from(pos.trace.pawn_passed[i]);
+                let y = f64::from(pos.trace.pawn_passed_notblocked[i]);
 
                 if TUNE_PASSED_PAWN || TUNE_ALL {
                     gradient.pawn_passed[MG][i] += start_of_gradient * devaldmg * x;
@@ -234,25 +224,16 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                     gradient.pawn_passed_notblocked[MG][i] += start_of_gradient * devaldmg * y;
                     gradient.pawn_passed_notblocked[EG][i] += start_of_gradient * devaldeg * y;
                 }
-                let x = f64::from(
-                    pos.trace.pawn_passed_kingdistance[WHITE][i]
-                        - pos.trace.pawn_passed_kingdistance[BLACK][i],
-                );
+                let x = f64::from(pos.trace.pawn_passed_kingdistance[i]);
                 gradient.pawn_passed_kingdistance[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.pawn_passed_kingdistance[EG][i] += start_of_gradient * devaldeg * x;
 
-                let x = f64::from(
-                    pos.trace.pawn_passed_enemykingdistance[WHITE][i]
-                        - pos.trace.pawn_passed_enemykingdistance[BLACK][i],
-                );
+                let x = f64::from(pos.trace.pawn_passed_enemykingdistance[i]);
                 gradient.pawn_passed_enemykingdistance[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.pawn_passed_enemykingdistance[EG][i] += start_of_gradient * devaldeg * x;
             }
             for i in 0..13 {
-                let x = f64::from(
-                    pos.trace.pawn_passed_subdistance[WHITE][i]
-                        - pos.trace.pawn_passed_subdistance[BLACK][i],
-                );
+                let x = f64::from(pos.trace.pawn_passed_subdistance[i]);
                 gradient.pawn_passed_subdistance[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.pawn_passed_subdistance[EG][i] += start_of_gradient * devaldeg * x;
             }
@@ -270,18 +251,12 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         for i in 0..8 {
             for j in 0..8 {
                 if TUNE_PAWNS || TUNE_ALL {
-                    let supported = f64::from(
-                        pos.trace.pawn_supported[WHITE][i][j]
-                            - pos.trace.pawn_supported[BLACK][i][j],
-                    );
+                    let supported = f64::from(pos.trace.pawn_supported[i][j]);
                     gradient.pawn_supported[MG][i][j] += start_of_gradient * devaldmg * supported;
                     gradient.pawn_supported[EG][i][j] += start_of_gradient * devaldeg * supported;
                 }
                 if TUNE_KNIGHTS || TUNE_ALL {
-                    let outposts = f64::from(
-                        pos.trace.knight_outpost_table[WHITE][i][j]
-                            - pos.trace.knight_outpost_table[BLACK][i][j],
-                    );
+                    let outposts = f64::from(pos.trace.knight_outpost_table[i][j]);
 
                     gradient.knight_outpost_table[MG][i][j] +=
                         start_of_gradient * devaldmg * outposts;
@@ -289,39 +264,27 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                         start_of_gradient * devaldeg * outposts;
                 }
                 if TUNE_PSQT || TUNE_ALL {
-                    let pawns = f64::from(
-                        pos.trace.psqt_pawn[WHITE][i][j] - pos.trace.psqt_pawn[BLACK][i][j],
-                    );
+                    let pawns = f64::from(pos.trace.psqt_pawn[i][j]);
                     gradient.psqt_pawn[MG][i][j] += start_of_gradient * devaldmg * pawns;
                     gradient.psqt_pawn[EG][i][j] += start_of_gradient * devaldeg * pawns;
 
-                    let knights = f64::from(
-                        pos.trace.psqt_knight[WHITE][i][j] - pos.trace.psqt_knight[BLACK][i][j],
-                    );
+                    let knights = f64::from(pos.trace.psqt_knight[i][j]);
                     gradient.psqt_knight[MG][i][j] += start_of_gradient * devaldmg * knights;
                     gradient.psqt_knight[EG][i][j] += start_of_gradient * devaldeg * knights;
 
-                    let bishops = f64::from(
-                        pos.trace.psqt_bishop[WHITE][i][j] - pos.trace.psqt_bishop[BLACK][i][j],
-                    );
+                    let bishops = f64::from(pos.trace.psqt_bishop[i][j]);
                     gradient.psqt_bishop[MG][i][j] += start_of_gradient * devaldmg * bishops;
                     gradient.psqt_bishop[EG][i][j] += start_of_gradient * devaldeg * bishops;
 
-                    let rooks = f64::from(
-                        pos.trace.psqt_rook[WHITE][i][j] - pos.trace.psqt_rook[BLACK][i][j],
-                    );
+                    let rooks = f64::from(pos.trace.psqt_rook[i][j]);
                     gradient.psqt_rook[MG][i][j] += start_of_gradient * devaldmg * rooks;
                     gradient.psqt_rook[EG][i][j] += start_of_gradient * devaldeg * rooks;
 
-                    let queens = f64::from(
-                        pos.trace.psqt_queen[WHITE][i][j] - pos.trace.psqt_queen[BLACK][i][j],
-                    );
+                    let queens = f64::from(pos.trace.psqt_queen[i][j]);
                     gradient.psqt_queen[MG][i][j] += start_of_gradient * devaldmg * queens;
                     gradient.psqt_queen[EG][i][j] += start_of_gradient * devaldeg * queens;
 
-                    let king = f64::from(
-                        pos.trace.psqt_king[WHITE][i][j] - pos.trace.psqt_king[BLACK][i][j],
-                    );
+                    let king = f64::from(pos.trace.psqt_king[i][j]);
                     gradient.psqt_king[MG][i][j] += start_of_gradient * devaldmg * king;
                     gradient.psqt_king[EG][i][j] += start_of_gradient * devaldeg * king;
                 }
@@ -357,7 +320,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
                 start_of_gradient,
                 phase,
             );
-            let knights = f64::from(pos.trace.knights[WHITE] - pos.trace.knights[BLACK]);
+            let knights = f64::from(pos.trace.knights);
             gradient.knight_value_with_pawns[pos.trace.knight_value_with_pawns as usize] +=
                 start_of_gradient * knights;
 
@@ -389,10 +352,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         //Diagonally adjacent
         if TUNE_PIECE_VALUES || TUNE_ALL {
             for i in 0..5 {
-                let x = f64::from(
-                    pos.trace.diagonally_adjacent_squares_withpawns[WHITE][i]
-                        - pos.trace.diagonally_adjacent_squares_withpawns[BLACK][i],
-                );
+                let x = f64::from(pos.trace.diagonally_adjacent_squares_withpawns[i]);
                 gradient.diagonally_adjacent_squares_withpawns[MG][i] +=
                     start_of_gradient * devaldmg * x;
                 gradient.diagonally_adjacent_squares_withpawns[EG][i] +=
@@ -402,30 +362,22 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize, lr: f64) ->
         //Mobility
         if TUNE_MOBILITY || TUNE_ALL {
             for i in 0..9 {
-                let x = f64::from(
-                    pos.trace.knight_mobility[WHITE][i] - pos.trace.knight_mobility[BLACK][i],
-                );
+                let x = f64::from(pos.trace.knight_mobility[i]);
                 gradient.knight_mobility[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.knight_mobility[EG][i] += start_of_gradient * devaldeg * x;
             }
             for i in 0..14 {
-                let x = f64::from(
-                    pos.trace.bishop_mobility[WHITE][i] - pos.trace.bishop_mobility[BLACK][i],
-                );
+                let x = f64::from(pos.trace.bishop_mobility[i]);
                 gradient.bishop_mobility[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.bishop_mobility[EG][i] += start_of_gradient * devaldeg * x;
             }
             for i in 0..15 {
-                let x = f64::from(
-                    pos.trace.rook_mobility[WHITE][i] - pos.trace.rook_mobility[BLACK][i],
-                );
+                let x = f64::from(pos.trace.rook_mobility[i]);
                 gradient.rook_mobility[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.rook_mobility[EG][i] += start_of_gradient * devaldeg * x;
             }
             for i in 0..28 {
-                let x = f64::from(
-                    pos.trace.queen_mobility[WHITE][i] - pos.trace.queen_mobility[BLACK][i],
-                );
+                let x = f64::from(pos.trace.queen_mobility[i]);
                 gradient.queen_mobility[MG][i] += start_of_gradient * devaldmg * x;
                 gradient.queen_mobility[EG][i] += start_of_gradient * devaldeg * x;
             }

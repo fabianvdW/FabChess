@@ -32,7 +32,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         pawn_eg += PSQT_PAWN_EG[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.psqt_pawn[side][idx / 8][idx % 8] += 1;
+            _eval.trace.psqt_pawn[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
 
@@ -47,7 +47,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         knight_eg += PSQT_KNIGHT_EG[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.psqt_knight[side][idx / 8][idx % 8] += 1;
+            _eval.trace.psqt_knight[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
 
@@ -62,7 +62,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         bishop_eg += PSQT_BISHOP_EG[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.psqt_bishop[side][idx / 8][idx % 8] += 1;
+            _eval.trace.psqt_bishop[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
 
@@ -77,7 +77,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         rook_eg += PSQT_ROOK_EG[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.psqt_rook[side][idx / 8][idx % 8] += 1;
+            _eval.trace.psqt_rook[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
 
@@ -92,7 +92,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         queen_eg += PSQT_QUEEN_EG[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.psqt_queen[side][idx / 8][idx % 8] += 1;
+            _eval.trace.psqt_queen[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
     let mut king_idx = pieces[KING][side].trailing_zeros() as usize;
@@ -103,7 +103,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
     king_eg = PSQT_KING_EG[king_idx / 8][king_idx % 8];
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.psqt_king[side][king_idx / 8][king_idx % 8] += 1;
+        _eval.trace.psqt_king[king_idx / 8][king_idx % 8] += if side == WHITE { 1 } else { -1 };
     }
     let mg_sum = pawn_mg + knight_mg + bishop_mg + rook_mg + queen_mg + king_mg;
     let eg_sum = pawn_eg + knight_eg + bishop_eg + rook_eg + queen_eg + king_eg;

@@ -3,39 +3,39 @@ use crate::board_representation::game_state::{BLACK, WHITE};
 use crate::evaluation::{EG, MG};
 
 pub struct Trace {
-    pub tempo_bonus: [i8; 2],
-    pub shielding_pawn_missing: [[i8; 4]; 2],
-    pub shielding_pawn_onopen_missing: [[i8; 4]; 2],
-    pub pawn_doubled: [i8; 2],
-    pub pawn_isolated: [i8; 2],
-    pub pawn_backward: [i8; 2],
-    pub pawn_supported: [[[i8; 8]; 8]; 2],
-    pub pawn_attack_center: [i8; 2],
-    pub pawn_mobility: [i8; 2],
-    pub pawn_passed: [[i8; 7]; 2],
-    pub pawn_passed_notblocked: [[i8; 7]; 2],
-    pub pawn_passed_kingdistance: [[i8; 7]; 2],
-    pub pawn_passed_enemykingdistance: [[i8; 7]; 2],
-    pub pawn_passed_subdistance: [[i8; 13]; 2],
-    pub rook_behind_support_passer: [i8; 2],
-    pub rook_behind_enemy_passer: [i8; 2],
-    pub pawn_passed_weak: [i8; 2],
-    pub knight_supported: [i8; 2],
-    pub knight_outpost_table: [[[i8; 8]; 8]; 2],
-    pub rook_on_open: [i8; 2],
-    pub rook_on_seventh: [i8; 2],
-    pub pawns: [i8; 2],
-    pub knights: [i8; 2],
+    pub tempo_bonus: i8,
+    pub shielding_pawn_missing: [i8; 4],
+    pub shielding_pawn_onopen_missing: [i8; 4],
+    pub pawn_doubled: i8,
+    pub pawn_isolated: i8,
+    pub pawn_backward: i8,
+    pub pawn_supported: [[i8; 8]; 8],
+    pub pawn_attack_center: i8,
+    pub pawn_mobility: i8,
+    pub pawn_passed: [i8; 7],
+    pub pawn_passed_notblocked: [i8; 7],
+    pub pawn_passed_kingdistance: [i8; 7],
+    pub pawn_passed_enemykingdistance: [i8; 7],
+    pub pawn_passed_subdistance: [i8; 13],
+    pub rook_behind_support_passer: i8,
+    pub rook_behind_enemy_passer: i8,
+    pub pawn_passed_weak: i8,
+    pub knight_supported: i8,
+    pub knight_outpost_table: [[i8; 8]; 8],
+    pub rook_on_open: i8,
+    pub rook_on_seventh: i8,
+    pub pawns: i8,
+    pub knights: i8,
     pub knight_value_with_pawns: u8,
-    pub bishops: [i8; 2],
-    pub bishop_bonus: [i8; 2],
-    pub rooks: [i8; 2],
-    pub queens: [i8; 2],
-    pub diagonally_adjacent_squares_withpawns: [[i8; 5]; 2],
-    pub knight_mobility: [[i8; 9]; 2],
-    pub bishop_mobility: [[i8; 14]; 2],
-    pub rook_mobility: [[i8; 15]; 2],
-    pub queen_mobility: [[i8; 28]; 2],
+    pub bishops: i8,
+    pub bishop_bonus: i8,
+    pub rooks: i8,
+    pub queens: i8,
+    pub diagonally_adjacent_squares_withpawns: [i8; 5],
+    pub knight_mobility: [i8; 9],
+    pub bishop_mobility: [i8; 14],
+    pub rook_mobility: [i8; 15],
+    pub queen_mobility: [i8; 28],
     pub attackers: [u8; 2],
     pub knight_attacked_sq: [u8; 2],
     pub bishop_attacked_sq: [u8; 2],
@@ -45,44 +45,36 @@ pub struct Trace {
     pub bishop_safe_check: [u8; 2],
     pub rook_safe_check: [u8; 2],
     pub queen_safe_check: [u8; 2],
-    pub psqt_pawn: [[[i8; 8]; 8]; 2],
-    pub psqt_knight: [[[i8; 8]; 8]; 2],
-    pub psqt_bishop: [[[i8; 8]; 8]; 2],
-    pub psqt_rook: [[[i8; 8]; 8]; 2],
-    pub psqt_queen: [[[i8; 8]; 8]; 2],
-    pub psqt_king: [[[i8; 8]; 8]; 2],
+    pub psqt_pawn: [[i8; 8]; 8],
+    pub psqt_knight: [[i8; 8]; 8],
+    pub psqt_bishop: [[i8; 8]; 8],
+    pub psqt_rook: [[i8; 8]; 8],
+    pub psqt_queen: [[i8; 8]; 8],
+    pub psqt_king: [[i8; 8]; 8],
     pub phase: f64,
 }
 
 pub fn evaluate_psqt(
     score: &mut (f64, f64),
-    trace_psqt: &[[[i8; 8]; 8]; 2],
+    trace_psqt: &[[i8; 8]; 8],
     param_psqt: &[[[f64; 8]; 8]; 2],
 ) {
     for i in 0..8 {
         for j in 0..8 {
-            score.0 +=
-                f64::from(trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) * param_psqt[MG][i][j];
-            score.1 +=
-                f64::from(trace_psqt[WHITE][i][j] - trace_psqt[BLACK][i][j]) * param_psqt[EG][i][j];
+            score.0 += f64::from(trace_psqt[i][j]) * param_psqt[MG][i][j];
+            score.1 += f64::from(trace_psqt[i][j]) * param_psqt[EG][i][j];
         }
     }
 }
 
-pub fn evaluate_single(score: &mut (f64, f64), trace: [i8; 2], param: &[f64; 2]) {
-    score.0 += f64::from(trace[WHITE] - trace[BLACK]) * param[MG];
-    score.1 += f64::from(trace[WHITE] - trace[BLACK]) * param[EG];
+pub fn evaluate_single(score: &mut (f64, f64), trace: i8, param: &[f64; 2]) {
+    score.0 += f64::from(trace) * param[MG];
+    score.1 += f64::from(trace) * param[EG];
 }
 
-pub fn evaluate_single2(
-    score: &mut (f64, f64),
-    trace_white: i8,
-    trace_black: i8,
-    param_mg: f64,
-    param_eg: f64,
-) {
-    score.0 += f64::from(trace_white - trace_black) * param_mg;
-    score.1 += f64::from(trace_white - trace_black) * param_eg;
+pub fn evaluate_single2(score: &mut (f64, f64), trace: i8, param_mg: f64, param_eg: f64) {
+    score.0 += f64::from(trace) * param_mg;
+    score.1 += f64::from(trace) * param_eg;
 }
 
 impl Trace {
@@ -114,8 +106,7 @@ impl Trace {
         for i in 0..9 {
             evaluate_single2(
                 &mut piecewise_res,
-                self.knight_mobility[WHITE][i],
-                self.knight_mobility[BLACK][i],
+                self.knight_mobility[i],
                 params.knight_mobility[MG][i],
                 params.knight_mobility[EG][i],
             );
@@ -123,8 +114,7 @@ impl Trace {
         for i in 0..14 {
             evaluate_single2(
                 &mut piecewise_res,
-                self.bishop_mobility[WHITE][i],
-                self.bishop_mobility[BLACK][i],
+                self.bishop_mobility[i],
                 params.bishop_mobility[MG][i],
                 params.bishop_mobility[EG][i],
             );
@@ -132,8 +122,7 @@ impl Trace {
         for i in 0..5 {
             evaluate_single2(
                 &mut piecewise_res,
-                self.diagonally_adjacent_squares_withpawns[WHITE][i],
-                self.diagonally_adjacent_squares_withpawns[BLACK][i],
+                self.diagonally_adjacent_squares_withpawns[i],
                 params.diagonally_adjacent_squares_withpawns[MG][i],
                 params.diagonally_adjacent_squares_withpawns[EG][i],
             );
@@ -141,8 +130,7 @@ impl Trace {
         for i in 0..15 {
             evaluate_single2(
                 &mut piecewise_res,
-                self.rook_mobility[WHITE][i],
-                self.rook_mobility[BLACK][i],
+                self.rook_mobility[i],
                 params.rook_mobility[MG][i],
                 params.rook_mobility[EG][i],
             );
@@ -150,8 +138,7 @@ impl Trace {
         for i in 0..28 {
             evaluate_single2(
                 &mut piecewise_res,
-                self.queen_mobility[WHITE][i],
-                self.queen_mobility[BLACK][i],
+                self.queen_mobility[i],
                 params.queen_mobility[MG][i],
                 params.queen_mobility[EG][i],
             );
@@ -224,15 +211,13 @@ impl Trace {
         for i in 0..4 {
             evaluate_single2(
                 &mut king_res,
-                self.shielding_pawn_missing[WHITE][i],
-                self.shielding_pawn_missing[BLACK][i],
+                self.shielding_pawn_missing[i],
                 params.shielding_pawn_missing[MG][i],
                 params.shielding_pawn_missing[EG][i],
             );
             evaluate_single2(
                 &mut king_res,
-                self.shielding_pawn_onopen_missing[WHITE][i],
-                self.shielding_pawn_onopen_missing[BLACK][i],
+                self.shielding_pawn_onopen_missing[i],
                 params.shielding_pawn_onopen_missing[MG][i],
                 params.shielding_pawn_onopen_missing[EG][i],
             );
@@ -253,29 +238,25 @@ impl Trace {
         for i in 0..7 {
             evaluate_single2(
                 &mut pawn_res,
-                self.pawn_passed[WHITE][i],
-                self.pawn_passed[BLACK][i],
+                self.pawn_passed[i],
                 params.pawn_passed[MG][i],
                 params.pawn_passed[EG][i],
             );
             evaluate_single2(
                 &mut pawn_res,
-                self.pawn_passed_notblocked[WHITE][i],
-                self.pawn_passed_notblocked[BLACK][i],
+                self.pawn_passed_notblocked[i],
                 params.pawn_passed_notblocked[MG][i],
                 params.pawn_passed_notblocked[EG][i],
             );
             evaluate_single2(
                 &mut pawn_res,
-                self.pawn_passed_kingdistance[WHITE][i],
-                self.pawn_passed_kingdistance[BLACK][i],
+                self.pawn_passed_kingdistance[i],
                 params.pawn_passed_kingdistance[MG][i],
                 params.pawn_passed_kingdistance[EG][i],
             );
             evaluate_single2(
                 &mut pawn_res,
-                self.pawn_passed_enemykingdistance[WHITE][i],
-                self.pawn_passed_enemykingdistance[BLACK][i],
+                self.pawn_passed_enemykingdistance[i],
                 params.pawn_passed_enemykingdistance[MG][i],
                 params.pawn_passed_enemykingdistance[EG][i],
             );
@@ -283,8 +264,7 @@ impl Trace {
         for i in 0..13 {
             evaluate_single2(
                 &mut pawn_res,
-                self.pawn_passed_subdistance[WHITE][i],
-                self.pawn_passed_subdistance[BLACK][i],
+                self.pawn_passed_subdistance[i],
                 params.pawn_passed_subdistance[MG][i],
                 params.pawn_passed_subdistance[EG][i],
             );
@@ -362,39 +342,39 @@ impl Trace {
 
     pub fn default() -> Self {
         Trace {
-            tempo_bonus: [0; 2],
-            shielding_pawn_missing: [[0; 4]; 2],
-            shielding_pawn_onopen_missing: [[0; 4]; 2],
-            pawn_doubled: [0; 2],
-            pawn_isolated: [0; 2],
-            pawn_backward: [0; 2],
-            pawn_supported: [[[0; 8]; 8]; 2],
-            pawn_attack_center: [0; 2],
-            pawn_mobility: [0; 2],
-            pawn_passed: [[0; 7]; 2],
-            pawn_passed_notblocked: [[0; 7]; 2],
-            pawn_passed_kingdistance: [[0; 7]; 2],
-            pawn_passed_enemykingdistance: [[0; 7]; 2],
-            pawn_passed_subdistance: [[0; 13]; 2],
-            rook_behind_support_passer: [0; 2],
-            rook_behind_enemy_passer: [0; 2],
-            pawn_passed_weak: [0; 2],
-            knight_supported: [0; 2],
-            knight_outpost_table: [[[0; 8]; 8]; 2],
-            rook_on_open: [0; 2],
-            rook_on_seventh: [0; 2],
-            pawns: [0; 2],
-            knights: [0; 2],
+            tempo_bonus: 0,
+            shielding_pawn_missing: [0; 4],
+            shielding_pawn_onopen_missing: [0; 4],
+            pawn_doubled: 0,
+            pawn_isolated: 0,
+            pawn_backward: 0,
+            pawn_supported: [[0; 8]; 8],
+            pawn_attack_center: 0,
+            pawn_mobility: 0,
+            pawn_passed: [0; 7],
+            pawn_passed_notblocked: [0; 7],
+            pawn_passed_kingdistance: [0; 7],
+            pawn_passed_enemykingdistance: [0; 7],
+            pawn_passed_subdistance: [0; 13],
+            rook_behind_support_passer: 0,
+            rook_behind_enemy_passer: 0,
+            pawn_passed_weak: 0,
+            knight_supported: 0,
+            knight_outpost_table: [[0; 8]; 8],
+            rook_on_open: 0,
+            rook_on_seventh: 0,
+            pawns: 0,
+            knights: 0,
             knight_value_with_pawns: 0,
-            bishops: [0; 2],
-            bishop_bonus: [0; 2],
-            rooks: [0; 2],
-            queens: [0; 2],
-            diagonally_adjacent_squares_withpawns: [[0; 5]; 2],
-            knight_mobility: [[0; 9]; 2],
-            bishop_mobility: [[0; 14]; 2],
-            rook_mobility: [[0; 15]; 2],
-            queen_mobility: [[0; 28]; 2],
+            bishops: 0,
+            bishop_bonus: 0,
+            rooks: 0,
+            queens: 0,
+            diagonally_adjacent_squares_withpawns: [0; 5],
+            knight_mobility: [0; 9],
+            bishop_mobility: [0; 14],
+            rook_mobility: [0; 15],
+            queen_mobility: [0; 28],
             attackers: [0; 2],
             knight_attacked_sq: [0; 2],
             bishop_attacked_sq: [0; 2],
@@ -404,12 +384,12 @@ impl Trace {
             bishop_safe_check: [0; 2],
             rook_safe_check: [0; 2],
             queen_safe_check: [0; 2],
-            psqt_pawn: [[[0; 8]; 8]; 2],
-            psqt_knight: [[[0; 8]; 8]; 2],
-            psqt_bishop: [[[0; 8]; 8]; 2],
-            psqt_rook: [[[0; 8]; 8]; 2],
-            psqt_queen: [[[0; 8]; 8]; 2],
-            psqt_king: [[[0; 8]; 8]; 2],
+            psqt_pawn: [[0; 8]; 8],
+            psqt_knight: [[0; 8]; 8],
+            psqt_bishop: [[0; 8]; 8],
+            psqt_rook: [[0; 8]; 8],
+            psqt_queen: [[0; 8]; 8],
+            psqt_king: [[0; 8]; 8],
             phase: 0.,
         }
     }
