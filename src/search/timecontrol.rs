@@ -1,5 +1,3 @@
-use core::panicking::panic_fmt;
-
 const MOVE_OVERHEAD: u64 = 25;
 
 pub struct TimeControlInformation {
@@ -27,6 +25,26 @@ pub enum TimeControl {
 }
 
 impl TimeControl {
+    pub fn to_go(&self, white: bool) -> String {
+        match &self {
+            TimeControl::Incremental(time_left, inc) => {
+                if white {
+                    format!("wtime {} winc {}", time_left, inc)
+                } else {
+                    format!("btime {} binc {}", time_left, inc)
+                }
+            }
+            TimeControl::MoveTime(time) => format!("movetime {}", time),
+            TimeControl::Infinite => "infinite".to_owned(),
+            TimeControl::Tournament(time_left, inc, movestogo) => {
+                if white {
+                    format!("wtime {} winc {} movestogo {}", time_left, inc, movestogo)
+                } else {
+                    format!("btime {} binc {} movestogo {}", time_left, inc, movestogo)
+                }
+            }
+        }
+    }
     pub fn update(&mut self, time_spent: u64, tournament_info: Option<(usize, u64)>) {
         match self {
             TimeControl::Incremental(left, inc) => {

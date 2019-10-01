@@ -10,7 +10,6 @@ use std::env;
 use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
-
 pub mod lct2;
 pub mod selfplay;
 pub mod selfplay_splitter;
@@ -71,9 +70,6 @@ Win/Elo Gain:-------------------------------------------------------------------
 0.7 /147.19  82.78  56.41  38.97  31.52  24.19   19.64   16.96   13.79   11.91    7.50
 */
 fn main() {
-    //let some_engine = Engine::from_path("./target/release/fabchess.exe".to_owned(), 0);
-    //println!("{}", some_engine.get_elo_gain().0);
-    //panic!("hi");
     let mut config_path = "REFEREE_CONFIG.json";
     let args: Vec<String> = env::args().collect();
     let mut index: usize = 1;

@@ -131,13 +131,17 @@ pub fn get_pgn_string(
     //Make sure that every line is only 80 long at maximum
     let mut move_text = String::new();
     let mut current_line = String::new();
-    for content in contents {
+    for (index, content) in contents.iter().enumerate() {
         if current_line.chars().count() + content.chars().count() >= 80 {
             current_line = current_line[..current_line.len() - 1].to_owned();
             move_text.push_str(&format!("{}\n", current_line));
             current_line.clear();
         }
-        current_line.push_str(&format!("{} ", content));
+        if index == contents.len() - 1 {
+            current_line.push_str(&format!("{}", content));
+        } else {
+            current_line.push_str(&format!("{} ", content));
+        }
     }
     move_text.push_str(&current_line);
     res_str.push_str(&move_text);

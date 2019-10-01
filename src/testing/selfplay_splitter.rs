@@ -4,13 +4,11 @@ use core::board_representation::game_state::*;
 use core::logging::Logger;
 use core::pgn::pgn_writer::*;
 use core::search::timecontrol::TimeControl;
-use core::testing::get_elo_gain;
 use core::testing::openings::{load_db_until, load_openings_into_queue};
 use core::testing::queue::ThreadSafeQueue;
 use core::testing::{EndConditionInformation, Engine};
 use core::testing::{PlayTask, TaskResult};
 use std::cmp::Ordering;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -50,7 +48,8 @@ pub fn start_self_play(config: Config) {
         &gauntlet_engine,
         &engines,
     ));
-    println!("Games prepared! Starting...");
+    let games = queue.len();
+    println!("Prepared {} games! Starting...", games);
 
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
@@ -70,12 +69,7 @@ pub fn start_self_play(config: Config) {
 
     //Collect results
     let mut results_collected = 0;
-    let mut p1_wins = 0;
-    let mut p2_wins = 0;
-    let mut draws = 0;
-    let mut p1_disqs = 0;
-    let mut p2_disqs = 0;
-    while results_collected < (config.games / 2) * 2 {
+    while results_collected < games {
         thread::sleep(Duration::from_millis(50));
         if let Some(mut result) = result_queue.pop() {
             results_collected += 1;
@@ -92,24 +86,33 @@ pub fn start_self_play(config: Config) {
             engines[result.task.engine2.id].add(&result.task.engine2);
 
             println!("-------------------------------------------------");
-            println!("{}", gauntlet_engine.get_elo_gain().0);
-            let mut other: Vec<(String, f64)> = Vec::with_capacity(engines.len());
+            let (rank, descr, _) = gauntlet_engine.get_elo_gain();
+            println!("{}", rank);
+            let mut other: Vec<(String, String, f64)> = Vec::with_capacity(engines.len());
             for engine in &engines {
                 other.push(engine.get_elo_gain());
             }
             other.sort_by(|a, b| {
-                if a.1 > b.1 {
-                    Ordering::Greater
-                } else if a.1 == b.1 {
+                if a.2 > b.2 {
+                    Ordering::Less
+                } else if a.2 == b.2 {
                     Ordering::Equal
                 } else {
-                    Ordering::Less
+                    Ordering::Greater
                 }
             });
-            for desc in other {
+            for desc in &other {
                 println!("{}", desc.0);
             }
             println!("-------------------------------------------------");
+            if (results_collected + 1) % 5 == 0 {
+                println!("++++++++++++++++++++++++++++++++++++++++++++++++++");
+                println!("{}", descr);
+                for desc in &other {
+                    println!("{}", desc.1);
+                }
+                println!("++++++++++++++++++++++++++++++++++++++++++++++++++");
+            }
 
             //Write all fens of game to pgn
             let opening_moves = Some(result.task.opening_sequence.len());

@@ -115,7 +115,7 @@ impl Engine {
         self.losses += other.losses;
         self.disqs += other.disqs;
     }
-    pub fn get_elo_gain(&self) -> (String, f64) {
+    pub fn get_elo_gain(&self) -> (String, String, f64) {
         //Derived from 1. E_A= 1/(1+10^(-DeltaElo/400)) and 2. |X/N-p|<=1.96*sqrt(N*p*(1-p))/n
         let n: f64 = (self.wins + self.draws + self.losses) as f64;
         let x_a: f64 = self.wins as f64 + self.draws as f64 / 2.0;
@@ -132,17 +132,23 @@ impl Engine {
         };
         (
             format!(
-                "{}\t{:.2}   +/- {:.2}   +{}   ={}   -{}\n{}\tdisq {} dep {:.2} nps {:.0}",
+                "{}\t\t{:.2}   +/- {:.2}   +{}   ={}   -{}  sc {:.1}%",
                 self.name,
                 elo_gain,
                 elo_bounds,
                 self.wins,
                 self.draws,
                 self.losses,
+                100. * (self.wins as f64 + self.draws as f64 / 2.)
+                    / (self.wins + self.draws + self.losses) as f64,
+            ),
+            format!(
+                "{}\tdisq {} dep {:.2} nps {:.0} time {:.0}",
                 self.name,
                 self.disqs,
                 self.stats.avg_depth,
-                self.stats.avg_nps
+                self.stats.avg_nps,
+                self.stats.avg_timeleft
             ),
             elo_gain,
         )
@@ -162,7 +168,7 @@ impl Engine {
         };
         let (_child, input, output, _err) = res.get_handles();
         let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
-        let _ = print_command(&mut runtime, input, "uci\n".to_owned());
+        let _input = print_command(&mut runtime, input, "uci\n".to_owned());
         let output = expect_output_and_listen_for_info(
             "uciok".to_owned(),
             10000,
@@ -181,7 +187,6 @@ impl Engine {
 
     pub fn request_move(
         &mut self,
-        current_state: &GameState,
         position_description: String,
         go_string: String,
         mut stdin: ChildStdin,
@@ -234,12 +239,10 @@ impl Engine {
         }
         stdout = output.1.unwrap();
         if output.2 as u64 > self.time_control.time_left() {
-            error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left for engine {}! Disqualifying engine illegitimately in game {}\n",self.name ,task_id), true);
+            error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",self.time_control.time_left(),self.name ,task_id), true);
             return EngineReaction::DisqualifyEngine;
         }
-        println!("Before {}", self.time_control.time_left());
         self.time_control.update(output.2 as u64, None);
-        println!("After {}", self.time_control.time_left());
 
         //Parse the move
         let line = output.0.unwrap();
@@ -273,54 +276,29 @@ impl Engine {
         self.stats.moves_played += 1;
         let info = fetch_info(output.3.clone());
         if info.negative_mate_found {
+            status = EngineStatus::ProclaimsLoss;
         } else if info.positive_mate_found {
+            status = EngineStatus::ProclaimsWin;
         } else if info.cp_score.is_some() {
             let score = info.cp_score.unwrap();
             if score.abs() <= 10 {
-                draw_adjudication += 1;
-            } else {
-                draw_adjudication = 0;
+                status = EngineStatus::ProclaimsDraw;
             }
             if score < -1000 {
-                if win_adjudication_for_p1 {
-                    win_adjudication_for_p1 = false;
-                    win_adjudication = 0;
-                }
-                win_adjudication += 1;
+                status = EngineStatus::ProclaimsLoss;
             } else if score > 1000 {
-                if !win_adjudication_for_p1 {
-                    win_adjudication_for_p1 = true;
-                    win_adjudication = 0;
-                }
-                win_adjudication += 1;
-            } else {
-                win_adjudication = 0;
+                status = EngineStatus::ProclaimsWin
             }
-        } else {
-            draw_adjudication = 0;
-            win_adjudication = 0;
         }
 
         if let Some(dep) = info.depth {
-            average_depth_p1 += dep as f64;
+            self.stats.avg_depth += dep as f64;
         }
         if let Some(nps) = info.nps {
-            average_nps_p1 += nps as f64;
+            self.stats.avg_nps += nps as f64;
         }
 
-        EngineReaction::ContinueGame((
-            GameMove {
-                from: 0,
-                to: 0,
-                piece_type: PieceType::Pawn,
-                move_type: GameMoveType::Quiet,
-            },
-            stdin,
-            stdout,
-            stderr,
-            error_log,
-            status,
-        ))
+        EngineReaction::ContinueGame((game_move, stdin, stdout, stderr, error_log, status))
     }
 
     pub fn valid_isready_reaction(

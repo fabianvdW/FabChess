@@ -22,6 +22,10 @@ impl<T> ThreadSafeQueue<T> {
         let mut data = self.queue.lock().unwrap();
         (*data).push(item);
     }
+    pub fn len(&self) -> usize {
+        let data = self.queue.lock().unwrap();
+        data.len()
+    }
 }
 
 pub struct ThreadSafeString {

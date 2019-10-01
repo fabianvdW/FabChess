@@ -16,7 +16,7 @@ pub const KING: usize = 5;
 pub const WHITE: usize = 0;
 pub const BLACK: usize = 1;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum GameResult {
     Ingame,
     WhiteWin,
