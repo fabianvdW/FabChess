@@ -2,6 +2,7 @@ use super::zobrist_hashing::ZOBRIST_KEYS;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
+use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{generate_moves, MoveList};
 use crate::search::quiescence::is_capture;
@@ -65,14 +66,14 @@ impl PieceType {
         }
     }
     #[inline(always)]
-    pub fn to_psqt(self) -> (&'static [[i16; 8]; 8], &'static [[i16; 8]; 8]) {
+    pub fn to_psqt(self) -> &'static [[EvaluationScore; 8]; 8] {
         match &self {
-            PieceType::Pawn => (&PSQT_PAWN_MG, &PSQT_PAWN_EG),
-            PieceType::Knight => (&PSQT_KNIGHT_MG, &PSQT_KNIGHT_EG),
-            PieceType::Bishop => (&PSQT_BISHOP_MG, &PSQT_BISHOP_EG),
-            PieceType::Rook => (&PSQT_ROOK_MG, &PSQT_ROOK_EG),
-            PieceType::Queen => (&PSQT_QUEEN_MG, &PSQT_QUEEN_EG),
-            PieceType::King => (&PSQT_KING_MG, &PSQT_KING_EG),
+            PieceType::Pawn => &PSQT_PAWN,
+            PieceType::Knight => &PSQT_KNIGHT,
+            PieceType::Bishop => &PSQT_BISHOP,
+            PieceType::Rook => &PSQT_ROOK,
+            PieceType::Queen => &PSQT_QUEEN,
+            PieceType::King => &PSQT_KING,
         }
     }
 
@@ -89,13 +90,13 @@ impl PieceType {
     }
 
     #[inline(always)]
-    pub fn to_piece_score(self) -> (i16, i16) {
+    pub fn to_piece_score(self) -> EvaluationScore {
         match &self {
-            PieceType::Pawn => (PAWN_PIECE_VALUE_MG, PAWN_PIECE_VALUE_EG),
-            PieceType::Knight => (KNIGHT_PIECE_VALUE_MG, KNIGHT_PIECE_VALUE_EG),
-            PieceType::Bishop => (BISHOP_PIECE_VALUE_MG, BISHOP_PIECE_VALUE_EG),
-            PieceType::Rook => (ROOK_PIECE_VALUE_MG, ROOK_PIECE_VALUE_EG),
-            PieceType::Queen => (QUEEN_PIECE_VALUE_MG, QUEEN_PIECE_VALUE_EG),
+            PieceType::Pawn => PAWN_PIECE_VALUE,
+            PieceType::Knight => KNIGHT_PIECE_VALUE,
+            PieceType::Bishop => BISHOP_PIECE_VALUE,
+            PieceType::Rook => ROOK_PIECE_VALUE,
+            PieceType::Queen => QUEEN_PIECE_VALUE,
             PieceType::King => panic!("King has no piece score"),
         }
     }
@@ -360,8 +361,7 @@ pub struct GameState {
     pub half_moves: usize,
     pub full_moves: usize,
     pub hash: u64,
-    pub psqt_mg: i16,
-    pub psqt_eg: i16,
+    pub psqt: EvaluationScore,
     pub phase: Phase,
 }
 
@@ -589,8 +589,7 @@ impl GameState {
             full_moves,
             en_passant,
             hash,
-            psqt_mg: p_w.0 - p_b.0,
-            psqt_eg: p_w.1 - p_b.1,
+            psqt: p_w - p_b,
             phase,
         }
     }
@@ -733,8 +732,7 @@ impl GameState {
                 true,
                 0u64,
             ),
-            psqt_mg: p_w.0 - p_b.0,
-            psqt_eg: p_w.1 - p_b.1,
+            psqt: p_w - p_b,
             phase,
         }
     }
@@ -882,8 +880,7 @@ impl Clone for GameState {
             half_moves: self.half_moves,
             full_moves: self.full_moves,
             hash: self.hash,
-            psqt_mg: self.psqt_mg,
-            psqt_eg: self.psqt_eg,
+            psqt: self.psqt,
             phase: self.phase.clone(),
         }
     }

@@ -18,9 +18,80 @@ use crate::tuning::trace::Trace;
 use params::*;
 use psqt_evaluation::psqt;
 use psqt_evaluation::BLACK_INDEX;
+use std::fmt::{Debug, Display, Formatter, Result};
+use std::ops;
 
 pub const MG: usize = 0;
 pub const EG: usize = 1;
+
+#[derive(Copy, Clone, PartialEq)]
+pub struct EvaluationScore(pub i16, pub i16);
+impl EvaluationScore {
+    pub fn interpolate(self, phase: f64) -> i16 {
+        ((f64::from(self.0) * phase + f64::from(self.1) * (128.0 - phase)) / 128.0) as i16
+    }
+}
+impl Default for EvaluationScore {
+    fn default() -> Self {
+        EvaluationScore(0, 0)
+    }
+}
+impl Display for EvaluationScore {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "({} , {})", self.0, self.1)
+    }
+}
+impl Debug for EvaluationScore {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "EvaluationScore({}, {})", self.0, self.1)
+    }
+}
+impl ops::Add<EvaluationScore> for EvaluationScore {
+    type Output = EvaluationScore;
+
+    fn add(self, other: EvaluationScore) -> Self::Output {
+        EvaluationScore(self.0 + other.0, self.1 + other.1)
+    }
+}
+impl ops::Add<i16> for EvaluationScore {
+    type Output = EvaluationScore;
+
+    fn add(self, other: i16) -> Self::Output {
+        EvaluationScore(self.0 + other, self.1 + other)
+    }
+}
+impl ops::AddAssign<EvaluationScore> for EvaluationScore {
+    fn add_assign(&mut self, other: EvaluationScore) {
+        self.0 += other.0;
+        self.1 += other.1;
+    }
+}
+impl ops::Sub<EvaluationScore> for EvaluationScore {
+    type Output = EvaluationScore;
+
+    fn sub(self, other: EvaluationScore) -> Self::Output {
+        EvaluationScore(self.0 - other.0, self.1 - other.1)
+    }
+}
+impl ops::SubAssign<EvaluationScore> for EvaluationScore {
+    fn sub_assign(&mut self, other: EvaluationScore) {
+        self.0 -= other.0;
+        self.1 -= other.1;
+    }
+}
+impl ops::Mul<i16> for EvaluationScore {
+    type Output = EvaluationScore;
+
+    fn mul(self, other: i16) -> Self::Output {
+        EvaluationScore(self.0 * other, self.1 * other)
+    }
+}
+impl ops::MulAssign<i16> for EvaluationScore {
+    fn mul_assign(&mut self, other: i16) {
+        self.0 *= other;
+        self.1 *= other;
+    }
+}
 
 pub struct EvaluationResult {
     pub final_eval: i16,
@@ -48,20 +119,20 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     {
         result.trace.phase = phase;
     }
-    let (psqt_mg, psqt_eg) = if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
-        let (psqt_w, psqt_b) = (
-            psqt(true, &g.pieces, &mut result),
-            psqt(false, &g.pieces, &mut result),
-        );
-        (psqt_w.0 - psqt_b.0, psqt_w.1 - psqt_b.1)
-    } else {
-        (g.psqt_mg, g.psqt_eg)
-    };
+    let psqt_score: EvaluationScore =
+        if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
+            let (psqt_w, psqt_b) = (
+                psqt(true, &g.pieces, &mut result),
+                psqt(false, &g.pieces, &mut result),
+            );
+            (psqt_w - psqt_b)
+        } else {
+            g.psqt
+        };
 
     #[cfg(feature = "display-eval")]
     {
-        log(&format!("\nMG PSQT Sum: {}\n", psqt_mg));
-        log(&format!("EG PSQT Sum: {}\n", psqt_eg));
+        log(&format!("\nPSQT Sum: {}\n", psqt_score));
     }
     let (knights_w, knights_b) = (
         knights(true, g, &mut result, attacks),
@@ -70,16 +141,10 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nMG Knight Sum: {} - {} -> {}\n",
-            knights_w.0,
-            knights_b.0,
-            knights_w.0 - knights_b.0
-        ));
-        log(&format!(
-            "EG Knight Sum: {} - {} -> {}\n",
-            knights_w.1,
-            knights_b.1,
-            knights_w.1 - knights_b.1
+            "\nKnights Sum: {} - {} -> {}\n",
+            knights_w,
+            knights_b,
+            knights_w - knights_b
         ));
     }
     let (piecewise_w, piecewise_b) = (
@@ -89,32 +154,20 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nMG Piecewise Sum: {} - {} -> {}\n",
-            piecewise_w.0,
-            piecewise_b.0,
-            piecewise_w.0 - piecewise_b.0
-        ));
-        log(&format!(
-            "EG Piecewise Sum: {} - {} -> {}\n",
-            piecewise_w.1,
-            piecewise_b.1,
-            piecewise_w.1 - piecewise_b.1
+            "\nPiecewise Sum: {} - {} -> {}\n",
+            piecewise_w,
+            piecewise_b,
+            piecewise_w - piecewise_b
         ));
     }
     let (king_w, king_b) = (king(true, g, &mut result), king(false, g, &mut result));
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nMG King Sum: {} - {} -> {}\n",
-            king_w.0,
-            king_b.0,
-            king_w.0 - king_b.0
-        ));
-        log(&format!(
-            "EG King Sum: {} - {} -> {}\n",
-            king_w.1,
-            king_b.1,
-            king_w.1 - king_b.1
+            "\nKing Sum: {} - {} -> {}\n",
+            king_w,
+            king_b,
+            king_w - king_b
         ));
     }
     let (pawns_w, pawns_b) = (
@@ -124,16 +177,10 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nMG Pawn Sum: {} - {} -> {}\n",
-            pawns_w.0,
-            pawns_b.0,
-            pawns_w.0 - pawns_b.0
-        ));
-        log(&format!(
-            "EG Pawn Sum: {} - {} -> {}\n",
-            pawns_w.1,
-            pawns_b.1,
-            pawns_w.1 - pawns_b.1
+            "\nPawn Sum: {} - {} -> {}\n",
+            pawns_w,
+            pawns_b,
+            pawns_w - pawns_b
         ));
     }
     let (pieces_w, pieces_b) = (
@@ -143,16 +190,10 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nMG Piece value Sum: {} - {} -> {}\n",
-            pieces_w.0,
-            pieces_b.0,
-            pieces_w.0 - pieces_b.0
-        ));
-        log(&format!(
-            "EG Piece value Sum: {} - {} -> {}\n",
-            pieces_w.1,
-            pieces_b.1,
-            pieces_w.1 - pieces_b.1
+            "\nPiece value Sum: {} - {} -> {}\n",
+            pieces_w,
+            pieces_b,
+            pieces_w - pieces_b
         ));
     }
     #[cfg(feature = "display-eval")]
@@ -168,26 +209,21 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
         }
         log(&format!("\nTempo:({} , {})\n", tempo_mg, tempo_eg,));
     }
-    let mut mg_eval = (knights_w.0 + piecewise_w.0 + king_w.0 + pawns_w.0 + pieces_w.0)
-        - (knights_b.0 + piecewise_b.0 + king_b.0 + pawns_b.0 + pieces_b.0)
-        + psqt_mg;
-    let mut eg_eval = (knights_w.1 + piecewise_w.1 + king_w.1 + pawns_w.1 + pieces_w.1)
-        - (knights_b.1 + piecewise_b.1 + king_b.1 + pawns_b.1 + pieces_b.1)
-        + psqt_eg;
+    let mut eval: EvaluationScore = (knights_w + piecewise_w + king_w + pawns_w + pieces_w)
+        - (knights_b + piecewise_b + king_b + pawns_b + pieces_b)
+        + psqt_score;
     if g.color_to_move == WHITE {
-        mg_eval += TEMPO_BONUS_MG;
-        eg_eval += TEMPO_BONUS_EG;
+        eval += TEMPO_BONUS;
     } else {
-        mg_eval += -TEMPO_BONUS_MG;
-        eg_eval += -TEMPO_BONUS_EG;
+        eval -= TEMPO_BONUS;
     }
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.tempo_bonus = if g.color_to_move == WHITE { 1 } else { -1 };
     }
-    eg_eval = (f64::from(eg_eval) / 1.5) as i16;
+    eval.1 = (f64::from(eval.1) / 1.5) as i16;
     //Phasing is done the same way stockfish does it
-    let res = ((f64::from(mg_eval) * phase + f64::from(eg_eval) * (128.0 - phase)) / 128.0) as i16;
+    let res = eval.interpolate(phase);
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -235,23 +271,22 @@ pub fn knights(
     g: &GameState,
     _eval: &mut EvaluationResult,
     attack_container: &GameStateAttackContainer,
-) -> (i16, i16) {
-    let (mut mg_res, mut eg_res) = (0i16, 0i16);
+) -> EvaluationScore {
+    let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
 
     let my_pawn_attacks = attack_container.pawn_attacks[side];
 
     let supported_knights = g.pieces[KNIGHT][side] & my_pawn_attacks;
     let supported_knights_amount = supported_knights.count_ones() as i16;
-    mg_res += KNIGHT_SUPPORTED_BY_PAWN_MG * supported_knights_amount;
-    eg_res += KNIGHT_SUPPORTED_BY_PAWN_EG * supported_knights_amount;
+    res += KNIGHT_SUPPORTED_BY_PAWN * supported_knights_amount;
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.knight_supported +=
             supported_knights_amount as i8 * if side == WHITE { 1 } else { -1 };
     }
-
-    let (mut outpost_mg, mut outpost_eg, mut _outposts) = (0i16, 0i16, 0);
+    let mut outpost = EvaluationScore::default();
+    let mut _outposts = 0;
     let mut supp = supported_knights;
     while supp != 0u64 {
         let mut idx = supp.trailing_zeros() as usize;
@@ -267,8 +302,7 @@ pub fn knights(
                 idx = BLACK_INDEX[idx];
             }
             _outposts += 1;
-            outpost_mg += KNIGHT_OUTPOST_MG_TABLE[idx / 8][idx % 8];
-            outpost_eg += KNIGHT_OUTPOST_EG_TABLE[idx / 8][idx % 8];
+            outpost += KNIGHT_OUTPOST_TABLE[idx / 8][idx % 8];
             #[cfg(feature = "texel-tuning")]
             {
                 _eval.trace.knight_outpost_table[idx / 8][idx % 8] +=
@@ -276,8 +310,7 @@ pub fn knights(
             }
         }
     }
-    mg_res += outpost_mg;
-    eg_res += outpost_eg;
+    res += outpost;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -285,19 +318,15 @@ pub fn knights(
             if white { "White" } else { "Black" }
         ));
         log(&format!(
-            "\tSupported by pawns: {} -> ({} , {})\n",
+            "\tSupported by pawns: {} -> {}\n",
             supported_knights_amount,
-            KNIGHT_SUPPORTED_BY_PAWN_MG * supported_knights_amount,
-            KNIGHT_SUPPORTED_BY_PAWN_EG * supported_knights_amount
+            KNIGHT_SUPPORTED_BY_PAWN * supported_knights_amount,
         ));
-        log(&format!(
-            "\tOutposts: {} -> ({} , {})\n",
-            _outposts, outpost_mg, outpost_eg
-        ));
-        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+        log(&format!("\tOutposts: {} -> {}\n", _outposts, outpost));
+        log(&format!("Sum: {}\n", res));
     }
 
-    (mg_res, eg_res)
+    res
 }
 
 pub fn piecewise(
@@ -305,7 +334,7 @@ pub fn piecewise(
     g: &GameState,
     _eval: &mut EvaluationResult,
     attack_container: &GameStateAttackContainer,
-) -> (i16, i16) {
+) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
 
     let defended_by_minors = attack_container.attacks_minor_sum[1 - side];
@@ -325,16 +354,15 @@ pub fn piecewise(
     let rook_checks = rook_attack(enemy_king_idx, all_pieces);
     //Knights
     let mut knight_attackers: i16 = 0;
-    let (mut knight_attacker_values_mg, mut knight_attacker_values_eg): (i16, i16) = (0, 0);
+    let mut knight_attacker_values = EvaluationScore::default();
+    let mut mk = EvaluationScore::default();
     let mut knights = g.pieces[KNIGHT][side];
-    let (mut mk_mg, mut mk_eg) = (0i16, 0i16);
     let mut index = 0;
     while knights != 0u64 {
         let idx = knights.trailing_zeros() as usize;
         let targets = attack_container.attack[MGSA_KNIGHT][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
-        mk_mg += KNIGHT_MOBILITY_BONUS_MG[mobility];
-        mk_eg += KNIGHT_MOBILITY_BONUS_EG[mobility];
+        mk += KNIGHT_MOBILITY_BONUS[mobility];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.knight_mobility[mobility] += if side == WHITE { 1 } else { -1 };
@@ -345,20 +373,10 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             knight_attackers += 1;
         }
-        knight_attacker_values_mg +=
-            KNIGHT_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
-        knight_attacker_values_eg +=
-            KNIGHT_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
-        knight_attacker_values_mg += if has_safe_check {
-            KNIGHT_SAFE_CHECK_MG
-        } else {
-            0
-        };
-        knight_attacker_values_eg += if has_safe_check {
-            KNIGHT_SAFE_CHECK_EG
-        } else {
-            0
-        };
+        knight_attacker_values += KNIGHT_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        if has_safe_check {
+            knight_attacker_values += KNIGHT_SAFE_CHECK;
+        }
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
@@ -371,16 +389,15 @@ pub fn piecewise(
     }
     //Bishops
     let mut bishop_attackers: i16 = 0;
-    let (mut bishop_attacker_values_mg, mut bishop_attacker_values_eg): (i16, i16) = (0, 0);
+    let mut bishop_attacker_values = EvaluationScore::default();
+    let (mut mb, mut mb_diag) = (EvaluationScore::default(), EvaluationScore::default());
     let mut bishops = g.pieces[BISHOP][side];
-    let (mut mb_mg, mut mb_eg, mut mb_diag_mg, mut mb_diag_eg) = (0i16, 0i16, 0i16, 0i16);
     let mut index = 0;
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
         let diagonally_adjacent_pawns =
             (bitboards::DIAGONALLY_ADJACENT[idx] & g.pieces[PAWN][side]).count_ones() as usize;
-        mb_diag_mg += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[diagonally_adjacent_pawns];
-        mb_diag_eg += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[diagonally_adjacent_pawns];
+        mb_diag += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[diagonally_adjacent_pawns];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.diagonally_adjacent_squares_withpawns[diagonally_adjacent_pawns] +=
@@ -388,8 +405,7 @@ pub fn piecewise(
         }
         let targets = attack_container.attack[MGSA_BISHOP][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
-        mb_mg += BISHOP_MOBILITY_BONUS_MG[mobility];
-        mb_eg += BISHOP_MOBILITY_BONUS_EG[mobility];
+        mb += BISHOP_MOBILITY_BONUS[mobility];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.bishop_mobility[mobility] += if side == WHITE { 1 } else { -1 };
@@ -399,20 +415,10 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             bishop_attackers += 1;
         }
-        bishop_attacker_values_mg +=
-            BISHOP_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
-        bishop_attacker_values_eg +=
-            BISHOP_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
-        bishop_attacker_values_mg += if has_safe_check {
-            BISHOP_SAFE_CHECK_MG
-        } else {
-            0
-        };
-        bishop_attacker_values_eg += if has_safe_check {
-            BISHOP_SAFE_CHECK_EG
-        } else {
-            0
-        };
+        bishop_attacker_values += BISHOP_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        if has_safe_check {
+            bishop_attacker_values += BISHOP_SAFE_CHECK;
+        }
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
@@ -426,9 +432,9 @@ pub fn piecewise(
 
     //Rooks
     let mut rook_attackers: i16 = 0;
-    let (mut rook_attacker_values_mg, mut rook_attacker_values_eg): (i16, i16) = (0, 0);
+    let mut rook_attacker_values = EvaluationScore::default();
+    let (mut mr, mut rooks_onopen, mut rooks_onseventh) = (EvaluationScore::default(), 0i16, 0i16);
     let mut rooks = g.pieces[ROOK][side];
-    let (mut mr_mg, mut mr_eg, mut rooks_onopen, mut rooks_onseventh) = (0i16, 0i16, 0i16, 0i16);
     let mut index = 0;
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
@@ -440,8 +446,7 @@ pub fn piecewise(
         }
         let targets = attack_container.attack[MGSA_ROOKS][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
-        mr_mg += ROOK_MOBILITY_BONUS_MG[mobility];
-        mr_eg += ROOK_MOBILITY_BONUS_EG[mobility];
+        mr += ROOK_MOBILITY_BONUS[mobility];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.rook_mobility[mobility] += if side == WHITE { 1 } else { -1 };
@@ -451,18 +456,10 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             rook_attackers += 1;
         }
-        rook_attacker_values_mg += ROOK_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
-        rook_attacker_values_eg += ROOK_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
-        rook_attacker_values_mg += if has_safe_check {
-            ROOK_SAFE_CHECK_MG
-        } else {
-            0
-        };
-        rook_attacker_values_eg += if has_safe_check {
-            ROOK_SAFE_CHECK_EG
-        } else {
-            0
-        };
+        rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        if has_safe_check {
+            rook_attacker_values += ROOK_SAFE_CHECK;
+        }
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
@@ -480,16 +477,15 @@ pub fn piecewise(
     }
     //Queens
     let mut queen_attackers: i16 = 0;
-    let (mut queen_attacker_values_mg, mut queen_attacker_values_eg): (i16, i16) = (0, 0);
+    let mut queen_attacker_values = EvaluationScore::default();
+    let mut mq = EvaluationScore::default();
     let mut queens = g.pieces[QUEEN][side];
-    let (mut mq_mg, mut mq_eg) = (0i16, 0i16);
     let mut index = 0;
     while queens != 0u64 {
         let idx = queens.trailing_zeros() as usize;
         let targets = attack_container.attack[MGSA_QUEEN][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
-        mq_mg += QUEEN_MOBILITY_BONUS_MG[mobility];
-        mq_eg += QUEEN_MOBILITY_BONUS_EG[mobility];
+        mq += QUEEN_MOBILITY_BONUS[mobility];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.queen_mobility[mobility] += if side == WHITE { 1 } else { -1 };
@@ -499,18 +495,10 @@ pub fn piecewise(
         if has_safe_check || enemy_king_attacks != 0u64 {
             queen_attackers += 1;
         }
-        queen_attacker_values_mg += QUEEN_ATTACK_WORTH_MG * enemy_king_attacks.count_ones() as i16;
-        queen_attacker_values_eg += QUEEN_ATTACK_WORTH_EG * enemy_king_attacks.count_ones() as i16;
-        queen_attacker_values_mg += if has_safe_check {
-            QUEEN_SAFE_CHECK_MG
-        } else {
-            0
-        };
-        queen_attacker_values_eg += if has_safe_check {
-            QUEEN_SAFE_CHECK_EG
-        } else {
-            0
-        };
+        queen_attacker_values += QUEEN_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
+        if has_safe_check {
+            queen_attacker_values += QUEEN_SAFE_CHECK;
+        }
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
@@ -521,131 +509,117 @@ pub fn piecewise(
         queens ^= 1u64 << idx;
         index += 1;
     }
-    let attack_mg = ((SAFETY_TABLE_MG[(knight_attacker_values_mg
-        + bishop_attacker_values_mg
-        + rook_attacker_values_mg
-        + queen_attacker_values_mg)
-        .min(99) as usize] as isize
-        * ATTACK_WEIGHT_MG[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-            .min(7) as usize] as isize) as f64
+    let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0
+        + bishop_attacker_values.0
+        + rook_attacker_values.0
+        + queen_attacker_values.0)
+        .min(99) as usize]
+        .0 as isize
+        * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+            .min(7) as usize]
+            .0 as isize) as f64
         / 100.0) as i16;
-    let attack_eg = ((SAFETY_TABLE_EG[(knight_attacker_values_eg
-        + bishop_attacker_values_eg
-        + rook_attacker_values_eg
-        + queen_attacker_values_eg)
-        .min(99) as usize] as isize
-        * ATTACK_WEIGHT_EG[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-            .min(7) as usize] as isize) as f64
+    let attack_eg = ((SAFETY_TABLE[(knight_attacker_values.1
+        + bishop_attacker_values.1
+        + rook_attacker_values.1
+        + queen_attacker_values.1)
+        .min(99) as usize]
+        .1 as isize
+        * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+            .min(7) as usize]
+            .1 as isize) as f64
         / 100.0) as i16;
+    let attack = EvaluationScore(attack_mg, attack_eg);
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.attackers[side] =
             (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
     }
-    let mg_res = mk_mg
-        + mb_mg
-        + mr_mg
-        + mq_mg
-        + mb_diag_mg
-        + rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_MG
-        + rooks_onseventh * ROOK_ON_SEVENTH_MG
-        + attack_mg;
-    let eg_res = mk_eg
-        + mb_eg
-        + mr_eg
-        + mq_eg
-        + mb_diag_eg
-        + rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_EG
-        + rooks_onseventh * ROOK_ON_SEVENTH_EG
-        + attack_eg;
+    let res = mk
+        + mb
+        + mr
+        + mq
+        + mb_diag
+        + ROOK_ON_OPEN_FILE_BONUS * rooks_onopen
+        + ROOK_ON_SEVENTH * rooks_onseventh
+        + attack;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
             "\nPiecewise for {}:\n",
             if white { "White" } else { "Black" }
         ));
-        log(&format!("\tMobility Knight: ({} , {})\n", mk_mg, mk_eg));
-        log(&format!("\tMobility Bishop: ({} , {})\n", mb_mg, mb_eg));
+        log(&format!("\tMobility Knight: {}\n", mk));
+        log(&format!("\tMobility Bishop: {}\n", mb));
+        log(&format!("\tBishop Diagonally Adj: {}\n", mb_diag));
+        log(&format!("\tMobility Rook  : {}\n", mr));
+        log(&format!("\tMobility Queen : {}\n", mq));
         log(&format!(
-            "\tBishop Diagonally Adj: ({} , {})\n",
-            mb_diag_mg, mb_diag_eg
-        ));
-        log(&format!("\tMobility Rook  : ({} , {})\n", mr_mg, mr_eg));
-        log(&format!("\tMobility Queen : ({} , {})\n", mq_mg, mq_eg));
-        log(&format!(
-            "\tRooks on open  : {} -> ({} , {})\n",
+            "\tRooks on open  : {} -> {}\n",
             rooks_onopen,
-            rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_MG,
-            rooks_onopen * ROOK_ON_OPEN_FILE_BONUS_EG
+            ROOK_ON_OPEN_FILE_BONUS * rooks_onopen,
         ));
         log(&format!(
-            "\tRooks on seventh: {} -> ({} , {})\n",
+            "\tRooks on seventh: {} -> {}\n",
             rooks_onseventh,
-            rooks_onseventh * ROOK_ON_SEVENTH_MG,
-            rooks_onseventh * ROOK_ON_SEVENTH_EG
+            ROOK_ON_SEVENTH * rooks_onseventh
         ));
         log(&format!(
-            "\tKnight Attackers/Value: ({} , MG: {}, EG: {})\n",
-            knight_attackers, knight_attacker_values_mg, knight_attacker_values_eg
+            "\tKnight Attackers: Num: {} , Val: {}\n",
+            knight_attackers, knight_attacker_values
         ));
         log(&format!(
-            "\tBishop Attackers/Value: ({} , MG: {}, EG: {})\n",
-            bishop_attackers, bishop_attacker_values_mg, bishop_attacker_values_eg
+            "\tBishop Attackers: Num: {} , Val: {}\n",
+            bishop_attackers, bishop_attacker_values
         ));
         log(&format!(
-            "\tRook Attackers/Value: ({} , MG: {}, EG: {})\n",
-            rook_attackers, rook_attacker_values_mg, rook_attacker_values_eg
+            "\tRook Attackers: Num: {} , Val: {}\n",
+            rook_attackers, rook_attacker_values
         ));
         log(&format!(
-            "\tQueen Attackers/Value: ({} , MG: {}, EG: {})\n",
-            queen_attackers, queen_attacker_values_mg, queen_attacker_values_eg
+            "\tQueen Attackers: Num: {} , Val: {}\n",
+            queen_attackers, queen_attacker_values
         ));
         log(&format!(
-            "\tSum Attackers/Value: ({} , MG: {}, EG: {})\n",
+            "\tSum Attackers: (Num: {} , Val: {}\n",
             knight_attackers + bishop_attackers + rook_attackers + queen_attackers,
-            knight_attacker_values_mg
-                + bishop_attacker_values_mg
-                + rook_attacker_values_mg
-                + queen_attacker_values_mg,
-            knight_attacker_values_eg
-                + bishop_attacker_values_eg
-                + rook_attacker_values_eg
-                + queen_attacker_values_eg
+            knight_attacker_values
+                + bishop_attacker_values
+                + rook_attacker_values
+                + queen_attacker_values
         ));
         log(&format!(
             "\tAttack MG value: {} * {} / 100.0 -> {}\n",
-            SAFETY_TABLE_MG[(knight_attacker_values_mg
-                + bishop_attacker_values_mg
-                + rook_attacker_values_mg
-                + queen_attacker_values_mg)
-                .min(99) as usize],
-            ATTACK_WEIGHT_MG[(knight_attackers
-                + bishop_attackers
-                + rook_attackers
-                + queen_attackers)
-                .min(7) as usize],
+            SAFETY_TABLE[(knight_attacker_values.0
+                + bishop_attacker_values.0
+                + rook_attacker_values.0
+                + queen_attacker_values.0)
+                .min(99) as usize]
+                .0,
+            ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+                .min(7) as usize]
+                .0,
             attack_mg
         ));
         log(&format!(
             "\tAttack EG value: {} * {} / 100.0 -> {}\n",
-            SAFETY_TABLE_EG[(knight_attacker_values_eg
-                + bishop_attacker_values_eg
-                + rook_attacker_values_eg
-                + queen_attacker_values_eg)
-                .min(99) as usize],
-            ATTACK_WEIGHT_EG[(knight_attackers
-                + bishop_attackers
-                + rook_attackers
-                + queen_attackers)
-                .min(7) as usize],
+            SAFETY_TABLE[(knight_attacker_values.1
+                + bishop_attacker_values.1
+                + rook_attacker_values.1
+                + queen_attacker_values.1)
+                .min(99) as usize]
+                .1,
+            ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
+                .min(7) as usize]
+                .1,
             attack_eg
         ));
-        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+        log(&format!("Sum: {}\n", res));
     }
-    (mg_res, eg_res)
+    res
 }
 
-pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
+pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
     let mut pawn_shield = if white {
         bitboards::SHIELDING_PAWNS_WHITE[g.pieces[KING][side].trailing_zeros() as usize]
@@ -684,12 +658,9 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i
         _eval.trace.shielding_pawn_onopen_missing[shields_on_open_missing] +=
             if side == WHITE { 1 } else { -1 };
     }
-    let (mg_res, eg_res) = (
-        SHIELDING_PAWN_MISSING_MG[shields_missing]
-            + SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[shields_on_open_missing],
-        SHIELDING_PAWN_MISSING_EG[shields_missing]
-            + SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[shields_on_open_missing],
-    );
+    let res = SHIELDING_PAWN_MISSING[shields_missing]
+        + SHIELDING_PAWN_MISSING_ON_OPEN_FILE[shields_on_open_missing];
+
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -697,20 +668,16 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i
             if white { "White" } else { "Black" }
         ));
         log(&format!(
-            "\tShield pawn missing: {} -> ({} , {})\n",
-            shields_missing,
-            SHIELDING_PAWN_MISSING_MG[shields_missing],
-            SHIELDING_PAWN_MISSING_EG[shields_missing]
+            "\tShield pawn missing: {} -> {}\n",
+            shields_missing, SHIELDING_PAWN_MISSING[shields_missing],
         ));
         log(&format!(
-            "\tShield pawn on open file missing: {} -> ({} , {})\n",
-            shields_on_open_missing,
-            SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[shields_on_open_missing],
-            SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[shields_on_open_missing]
+            "\tShield pawn on open file missing: {} -> {}\n",
+            shields_on_open_missing, SHIELDING_PAWN_MISSING_ON_OPEN_FILE[shields_on_open_missing],
         ));
-        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+        log(&format!("Sum: {}\n", res));
     }
-    (mg_res, eg_res)
+    res
 }
 
 pub fn get_distance(sq: isize, sq2: isize) -> usize {
@@ -722,8 +689,8 @@ pub fn pawns(
     g: &GameState,
     _eval: &mut EvaluationResult,
     attack_container: &GameStateAttackContainer,
-) -> (i16, i16) {
-    let (mut mg_res, mut eg_res) = (0i16, 0i16);
+) -> EvaluationScore {
+    let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
     let empty = !g.get_all_pieces();
     //Bitboards
@@ -774,23 +741,20 @@ pub fn pawns(
         .count_ones() as i16;
     let mut supported_pawns = g.pieces[PAWN][side] & my_pawn_attacks;
     let _supported_amt = supported_pawns.count_ones() as usize;
-    let mut mg_supp = 0;
-    let mut eg_supp = 0;
+    let mut supp = EvaluationScore::default();
     while supported_pawns != 0u64 {
         let mut index = supported_pawns.trailing_zeros() as usize;
         supported_pawns ^= 1u64 << index;
         if !white {
             index = BLACK_INDEX[index];
         }
-        mg_supp += PAWN_SUPPORTED_VALUE_MG[index / 8][index % 8];
-        eg_supp += PAWN_SUPPORTED_VALUE_EG[index / 8][index % 8];
+        supp += PAWN_SUPPORTED_VALUE[index / 8][index % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.pawn_supported[index / 8][index % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
-    mg_res += mg_supp;
-    eg_res += eg_supp;
+    res += supp;
     let center_attack_pawns = (g.pieces[PAWN][side]
         & if white {
             bitboards::south_east_one(*bitboards::INNER_CENTER)
@@ -804,16 +768,12 @@ pub fn pawns(
         + my_east_attacks.count_ones()
         + my_pawn_pushes.count_ones()
         + my_pawn_double_pushes.count_ones()) as i16;
-    mg_res += doubled_pawns * PAWN_DOUBLED_VALUE_MG
-        + isolated_pawns * PAWN_ISOLATED_VALUE_MG
-        + backward_pawns * PAWN_BACKWARD_VALUE_MG
-        + center_attack_pawns * PAWN_ATTACK_CENTER_MG
-        + pawn_mobility * PAWN_MOBILITY_MG;
-    eg_res += doubled_pawns * PAWN_DOUBLED_VALUE_EG
-        + isolated_pawns * PAWN_ISOLATED_VALUE_EG
-        + backward_pawns * PAWN_BACKWARD_VALUE_EG
-        + center_attack_pawns * PAWN_ATTACK_CENTER_EG
-        + pawn_mobility * PAWN_MOBILITY_EG;
+    res += PAWN_DOUBLED_VALUE * doubled_pawns
+        + PAWN_ISOLATED_VALUE * isolated_pawns
+        + PAWN_BACKWARD_VALUE * backward_pawns
+        + PAWN_ATTACK_CENTER * center_attack_pawns
+        + PAWN_MOBILITY * pawn_mobility;
+
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.pawn_doubled += doubled_pawns as i8 * if side == WHITE { 1 } else { -1 };
@@ -832,8 +792,9 @@ pub fn pawns(
             bitboards::b_rear_span(g.pieces[PAWN][side])
         }*/
         & !enemy_front_spans;
-    let (mut passer_mg, mut passer_eg, mut _passer_normal, mut _passer_notblocked) =
-        (0i16, 0i16, 0, 0);
+    let (mut passer_score, mut _passer_normal, mut _passer_notblocked) =
+        (EvaluationScore::default(), 0, 0);
+    let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;
     let behind_passers = if white {
         bitboards::b_front_span(passed_pawns)
@@ -845,10 +806,8 @@ pub fn pawns(
     let enemy_rooks_attack_passer = (behind_passers
         & (g.pieces[ROOK][1 - side] | g.pieces[QUEEN][1 - side]))
         .count_ones() as i16;
-    mg_res += rooks_support_passer * ROOK_BEHIND_SUPPORT_PASSER_MG
-        + enemy_rooks_attack_passer * ROOK_BEHIND_ENEMY_PASSER_MG;
-    eg_res += rooks_support_passer * ROOK_BEHIND_SUPPORT_PASSER_EG
-        + enemy_rooks_attack_passer * ROOK_BEHIND_ENEMY_PASSER_EG;
+    res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer
+        + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.rook_behind_support_passer +=
@@ -856,13 +815,11 @@ pub fn pawns(
         _eval.trace.rook_behind_enemy_passer +=
             enemy_rooks_attack_passer as i8 * if side == WHITE { 1 } else { -1 };
     }
-    let (mut passer_dist_mg, mut passer_dist_eg) = (0, 0);
     while passed_pawns != 0u64 {
         let idx = passed_pawns.trailing_zeros() as usize;
         //Passed and blocked
         _passer_normal += 1;
-        passer_mg += PAWN_PASSED_VALUES_MG[if white { idx / 8 } else { 7 - idx / 8 }];
-        passer_eg += PAWN_PASSED_VALUES_EG[if white { idx / 8 } else { 7 - idx / 8 }];
+        passer_score += PAWN_PASSED_VALUES[if white { idx / 8 } else { 7 - idx / 8 }];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.pawn_passed[if white { idx / 8 } else { 7 - idx / 8 }] +=
@@ -887,10 +844,8 @@ pub fn pawns(
         {
             //Passed and not blocked
             _passer_notblocked += 1;
-            passer_mg +=
-                PAWN_PASSED_NOT_BLOCKED_VALUES_MG[if white { idx / 8 } else { 7 - idx / 8 }];
-            passer_eg +=
-                PAWN_PASSED_NOT_BLOCKED_VALUES_EG[if white { idx / 8 } else { 7 - idx / 8 }];
+            passer_score +=
+                PAWN_PASSED_NOT_BLOCKED_VALUES[if white { idx / 8 } else { 7 - idx / 8 }];
             #[cfg(feature = "texel-tuning")]
             {
                 _eval.trace.pawn_passed_notblocked[if white { idx / 8 } else { 7 - idx / 8 }] +=
@@ -902,12 +857,9 @@ pub fn pawns(
         let d_myking = get_distance(idx as isize, g.king_square(side) as isize);
         let d_enemyking = get_distance(idx as isize, g.king_square(1 - side) as isize);
         let sub_dist = ((d_myking as isize - d_enemyking as isize) + 6) as usize;
-        passer_dist_mg += PASSED_KING_DISTANCE_MG[d_myking - 1]
-            + PASSED_ENEMY_KING_DISTANCE_MG[d_enemyking - 1]
-            + PASSED_SUBTRACT_DISTANCE_MG[sub_dist];
-        passer_dist_eg += PASSED_KING_DISTANCE_EG[d_myking - 1]
-            + PASSED_ENEMY_KING_DISTANCE_EG[d_enemyking - 1]
-            + PASSED_SUBTRACT_DISTANCE_EG[sub_dist];
+        passer_dist += PASSED_KING_DISTANCE[d_myking - 1]
+            + PASSED_ENEMY_KING_DISTANCE[d_enemyking - 1]
+            + PASSED_SUBTRACT_DISTANCE[sub_dist];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.pawn_passed_kingdistance[d_myking - 1] +=
@@ -922,8 +874,7 @@ pub fn pawns(
     {
         _eval.trace.pawn_passed_weak += weak_passers as i8 * if side == WHITE { 1 } else { -1 };
     }
-    mg_res += passer_mg + weak_passers * PAWN_PASSED_WEAK_MG + passer_dist_mg;
-    eg_res += passer_eg + weak_passers * PAWN_PASSED_WEAK_EG + passer_dist_eg;
+    res += passer_score + PAWN_PASSED_WEAK * weak_passers + passer_dist;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -931,72 +882,58 @@ pub fn pawns(
             if white { "White" } else { "Black" }
         ));
         log(&format!(
-            "\tDoubled: {} -> ({} , {})\n",
+            "\tDoubled: {} -> {}\n",
             doubled_pawns,
-            PAWN_DOUBLED_VALUE_MG * doubled_pawns,
-            PAWN_DOUBLED_VALUE_EG * doubled_pawns
+            PAWN_DOUBLED_VALUE * doubled_pawns
         ));
         log(&format!(
-            "\tIsolated: {} -> ({} , {})\n",
+            "\tIsolated: {} -> {}\n",
             isolated_pawns,
-            PAWN_ISOLATED_VALUE_MG * isolated_pawns,
-            PAWN_ISOLATED_VALUE_EG * isolated_pawns
+            PAWN_ISOLATED_VALUE * isolated_pawns,
         ));
         log(&format!(
-            "\tBackward: {} -> ({} , {})\n",
+            "\tBackward: {} -> {}\n",
             backward_pawns,
-            PAWN_BACKWARD_VALUE_MG * backward_pawns,
-            PAWN_BACKWARD_VALUE_EG * backward_pawns
+            PAWN_BACKWARD_VALUE * backward_pawns,
         ));
+        log(&format!("\tSupported: {} -> {}\n", _supported_amt, supp));
         log(&format!(
-            "\tSupported: {} -> ({} , {})\n",
-            _supported_amt, mg_supp, eg_supp
-        ));
-        log(&format!(
-            "\tAttack Center: {} -> ({} , {})\n",
+            "\tAttack Center: {} -> {}\n",
             center_attack_pawns,
-            PAWN_ATTACK_CENTER_MG * center_attack_pawns,
-            PAWN_ATTACK_CENTER_EG * center_attack_pawns
+            PAWN_ATTACK_CENTER * center_attack_pawns,
         ));
         log(&format!(
-            "\tMobility: {} -> ({} , {})\n",
+            "\tMobility: {} -> {}\n",
             pawn_mobility,
-            PAWN_MOBILITY_MG * pawn_mobility,
-            PAWN_MOBILITY_EG * pawn_mobility
+            PAWN_MOBILITY * pawn_mobility,
         ));
         log(&format!(
-            "\tPasser Blocked/Not Blocked: {} , {} -> MG/EG({} , {})\n",
-            _passer_normal, _passer_notblocked, passer_mg, passer_eg
+            "\tPasser Blocked/Not Blocked: {} , {} -> {}\n",
+            _passer_normal, _passer_notblocked, passer_score
         ));
         log(&format!(
-            "\tRook behind passer: {} -> ({} , {})\n",
+            "\tRook behind passer: {} -> {}\n",
             rooks_support_passer,
-            ROOK_BEHIND_SUPPORT_PASSER_MG * rooks_support_passer,
-            ROOK_BEHIND_SUPPORT_PASSER_EG * rooks_support_passer
+            ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer,
         ));
         log(&format!(
-            "\tEnemy Rook behind passer: {} -> ({} , {})\n",
+            "\tEnemy Rook behind passer: {} -> {}\n",
             enemy_rooks_attack_passer,
-            ROOK_BEHIND_ENEMY_PASSER_MG * enemy_rooks_attack_passer,
-            ROOK_BEHIND_ENEMY_PASSER_EG * enemy_rooks_attack_passer
+            ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer,
         ));
         log(&format!(
-            "\tWeak passer: {} -> ({} , {})\n",
+            "\tWeak passer: {} -> {}\n",
             weak_passers,
-            PAWN_PASSED_WEAK_MG * weak_passers,
-            PAWN_PASSED_WEAK_EG * weak_passers
+            PAWN_PASSED_WEAK * weak_passers,
         ));
-        log(&format!(
-            "\tPassers distance to kings ->({} , {})\n",
-            passer_dist_mg, passer_dist_eg
-        ));
-        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+        log(&format!("\tPassers distance to kings -> {}\n", passer_dist));
+        log(&format!("Sum: {}\n", res));
     }
-    (mg_res, eg_res)
+    res
 }
 
-pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> (i16, i16) {
-    let (mut mg_res, mut eg_res) = (0i16, 0i16);
+pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+    let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
 
     let my_pawns = g.pieces[PAWN][side].count_ones() as i16;
@@ -1008,26 +945,20 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
         my_knights = 0;
         my_bishops = 0;
     }
-    mg_res += PAWN_PIECE_VALUE_MG * my_pawns;
-    eg_res += PAWN_PIECE_VALUE_EG * my_pawns;
+    res += PAWN_PIECE_VALUE * my_pawns;
 
     let pawns_on_board = (g.pieces[PAWN][WHITE] | g.pieces[PAWN][BLACK]).count_ones() as usize;
 
-    mg_res += (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
-    eg_res += (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
+    res += (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
 
-    mg_res += BISHOP_PIECE_VALUE_MG * my_bishops;
-    eg_res += BISHOP_PIECE_VALUE_EG * my_bishops;
+    res += BISHOP_PIECE_VALUE * my_bishops;
     if my_bishops > 1 {
-        mg_res += BISHOP_PAIR_BONUS_MG;
-        eg_res += BISHOP_PAIR_BONUS_EG;
+        res += BISHOP_PAIR_BONUS;
     }
 
-    mg_res += ROOK_PIECE_VALUE_MG * my_rooks;
-    eg_res += ROOK_PIECE_VALUE_EG * my_rooks;
+    res += ROOK_PIECE_VALUE * my_rooks;
 
-    mg_res += QUEEN_PIECE_VALUE_MG * my_queens;
-    eg_res += QUEEN_PIECE_VALUE_EG * my_queens;
+    res += QUEEN_PIECE_VALUE * my_queens;
 
     #[cfg(feature = "texel-tuning")]
     {
@@ -1048,47 +979,38 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
             if white { "White" } else { "Black" }
         ));
         log(&format!(
-            "\tPawns: {} -> ({} , {})\n",
+            "\tPawns: {} -> {}\n",
             my_pawns,
-            PAWN_PIECE_VALUE_MG * my_pawns,
-            PAWN_PIECE_VALUE_EG * my_pawns
+            PAWN_PIECE_VALUE * my_pawns,
         ));
         log(&format!(
-            "\tKnights: {} -> ({} , {})\n",
+            "\tKnights: {} -> {}\n",
             my_knights,
-            (KNIGHT_PIECE_VALUE_MG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights,
-            (KNIGHT_PIECE_VALUE_EG + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights
+            (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights,
         ));
         log(&format!(
-            "\tBishops: {} -> ({} , {})\n",
+            "\tBishops: {} -> {}\n",
             my_bishops,
-            BISHOP_PIECE_VALUE_MG * my_bishops,
-            BISHOP_PIECE_VALUE_EG * my_bishops
+            BISHOP_PIECE_VALUE * my_bishops,
         ));
         if my_bishops > 1 {
-            log(&format!(
-                "\tBishop-Pair: {} -> ({} , {})\n",
-                1, BISHOP_PAIR_BONUS_MG, BISHOP_PAIR_BONUS_EG
-            ));
+            log(&format!("\tBishop-Pair: {} -> {}\n", 1, BISHOP_PAIR_BONUS));
         }
         log(&format!(
-            "\tRooks: {} -> ({} , {})\n",
+            "\tRooks: {} -> {}\n",
             my_rooks,
-            ROOK_PIECE_VALUE_MG * my_rooks,
-            ROOK_PIECE_VALUE_EG * my_rooks
+            ROOK_PIECE_VALUE * my_rooks,
         ));
         log(&format!(
-            "\tQueens: {} -> ({} , {})\n",
+            "\tQueens: {} -> {}\n",
             my_queens,
-            QUEEN_PIECE_VALUE_MG * my_queens,
-            QUEEN_PIECE_VALUE_EG * my_queens
+            QUEEN_PIECE_VALUE * my_queens,
         ));
-        log(&format!("Sum: ({} , {})\n", mg_res, eg_res));
+        log(&format!("Sum: {}\n", res));
     }
-    (mg_res, eg_res)
+    res
 }
 
 pub fn piece_value(piece_type: PieceType, phase: f64) -> i16 {
-    let temp = piece_type.to_piece_score();
-    ((f64::from(temp.0) * phase + f64::from(temp.1) * (128. - phase)) / 128.0) as i16
+    piece_type.to_piece_score().interpolate(phase)
 }

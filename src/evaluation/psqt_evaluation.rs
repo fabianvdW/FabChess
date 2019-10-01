@@ -1,5 +1,6 @@
 use super::params::*;
 use super::EvaluationResult;
+use super::EvaluationScore;
 use crate::board_representation::game_state::{
     PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
@@ -12,13 +13,14 @@ pub const BLACK_INDEX: [usize; 64] = [
     8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7,
 ];
 
-pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> (i16, i16) {
-    let (mut pawn_mg, mut pawn_eg) = (0i16, 0i16);
-    let (mut knight_mg, mut knight_eg) = (0i16, 0i16);
-    let (mut bishop_mg, mut bishop_eg) = (0i16, 0i16);
-    let (mut rook_mg, mut rook_eg) = (0i16, 0i16);
-    let (mut queen_mg, mut queen_eg) = (0i16, 0i16);
-    let (king_mg, king_eg);
+pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> EvaluationScore {
+    let mut pawn = EvaluationScore::default();
+    let mut knight = EvaluationScore::default();
+    let mut bishop = EvaluationScore::default();
+    let mut rook = EvaluationScore::default();
+    let mut queen = EvaluationScore::default();
+    let king;
+
     let side = if white { WHITE } else { BLACK };
 
     let mut pawns = pieces[PAWN][side];
@@ -28,8 +30,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         if !white {
             idx = BLACK_INDEX[idx];
         }
-        pawn_mg += PSQT_PAWN_MG[idx / 8][idx % 8];
-        pawn_eg += PSQT_PAWN_EG[idx / 8][idx % 8];
+        pawn += PSQT_PAWN[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.psqt_pawn[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
@@ -43,8 +44,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         if !white {
             idx = BLACK_INDEX[idx]
         }
-        knight_mg += PSQT_KNIGHT_MG[idx / 8][idx % 8];
-        knight_eg += PSQT_KNIGHT_EG[idx / 8][idx % 8];
+        knight += PSQT_KNIGHT[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.psqt_knight[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
@@ -58,8 +58,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         if !white {
             idx = BLACK_INDEX[idx];
         }
-        bishop_mg += PSQT_BISHOP_MG[idx / 8][idx % 8];
-        bishop_eg += PSQT_BISHOP_EG[idx / 8][idx % 8];
+        bishop += PSQT_BISHOP[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.psqt_bishop[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
@@ -73,8 +72,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         if !white {
             idx = BLACK_INDEX[idx];
         }
-        rook_mg += PSQT_ROOK_MG[idx / 8][idx % 8];
-        rook_eg += PSQT_ROOK_EG[idx / 8][idx % 8];
+        rook += PSQT_ROOK[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.psqt_rook[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
@@ -88,8 +86,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         if !white {
             idx = BLACK_INDEX[idx];
         }
-        queen_mg += PSQT_QUEEN_MG[idx / 8][idx % 8];
-        queen_eg += PSQT_QUEEN_EG[idx / 8][idx % 8];
+        queen += PSQT_QUEEN[idx / 8][idx % 8];
         #[cfg(feature = "texel-tuning")]
         {
             _eval.trace.psqt_queen[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
@@ -99,29 +96,27 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
     if !white {
         king_idx = BLACK_INDEX[king_idx];
     }
-    king_mg = PSQT_KING_MG[king_idx / 8][king_idx % 8];
-    king_eg = PSQT_KING_EG[king_idx / 8][king_idx % 8];
+    king = PSQT_KING[king_idx / 8][king_idx % 8];
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.psqt_king[king_idx / 8][king_idx % 8] += if side == WHITE { 1 } else { -1 };
     }
-    let mg_sum = pawn_mg + knight_mg + bishop_mg + rook_mg + queen_mg + king_mg;
-    let eg_sum = pawn_eg + knight_eg + bishop_eg + rook_eg + queen_eg + king_eg;
+    let sum = pawn + knight + bishop + rook + queen + king;
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
             "\nPSQT for {}:\n",
             if white { "White" } else { "Black" }
         ));
-        log(&format!("\tPawns  : ({} , {})\n", pawn_mg, pawn_eg));
-        log(&format!("\tKnights: ({} , {})\n", knight_mg, knight_eg));
-        log(&format!("\tBishops: ({} , {})\n", bishop_mg, bishop_eg));
-        log(&format!("\tRooks: ({} , {})\n", rook_mg, rook_eg));
-        log(&format!("\tQueens: ({} , {})\n", queen_mg, queen_eg));
-        log(&format!("\tKing   : ({} , {})\n", king_mg, king_eg));
-        log(&format!("Sum: ({} , {})\n", mg_sum, eg_sum));
+        log(&format!("\tPawns  : {}\n", pawn));
+        log(&format!("\tKnights: {}\n", knight));
+        log(&format!("\tBishops: {}\n", bishop));
+        log(&format!("\tRooks: {}\n", rook));
+        log(&format!("\tQueens: {}\n", queen));
+        log(&format!("\tKing   : {}\n", king));
+        log(&format!("Sum: {}\n", sum));
     }
-    (mg_sum, eg_sum)
+    sum
 }
 
 #[inline(always)]
@@ -130,8 +125,7 @@ pub fn psqt_toggle_piece(
     piece: PieceType,
     square: usize,
     side: usize,
-    mg_score: &mut i16,
-    eg_score: &mut i16,
+    score: &mut EvaluationScore,
 ) {
     let temp = pieces[piece.to_index()][side];
     let (rank, file) = if side == WHITE {
@@ -139,16 +133,10 @@ pub fn psqt_toggle_piece(
     } else {
         (BLACK_INDEX[square] / 8, BLACK_INDEX[square] % 8)
     };
-    let (mut mg, mut eg) = {
-        let psqt = piece.to_psqt();
-        (psqt.0[rank][file], psqt.1[rank][file])
-    };
+    let mut new_score = piece.to_psqt()[rank][file];
     if (temp & 1u64 << square) == 0u64 {
-        mg *= -1;
-        eg *= -1;
+        new_score *= -1;
     }
-    mg *= if side == WHITE { 1 } else { -1 };
-    eg *= if side == WHITE { 1 } else { -1 };
-    *mg_score += mg;
-    *eg_score += eg;
+    new_score *= if side == WHITE { 1 } else { -1 };
+    *score += new_score;
 }

@@ -17,7 +17,6 @@ fn main() {
         new_now.duration_since(now).as_secs() * 1000
             + u64::from(new_now.duration_since(now).subsec_millis())
     ));
-
     core::uci::uci_parser::parse_loop();
 }
 
@@ -260,10 +259,9 @@ mod tests {
         };
         for _i in 0..100_000 {
             let mut g = GameState::standard();
-            let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces, &mut _eval);
-            let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces, &mut _eval);
-            assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
-            assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
+            let w_psqt = psqt(true, &g.pieces, &mut _eval);
+            let b_psqt = psqt(false, &g.pieces, &mut _eval);
+            assert_eq!(g.psqt, w_psqt - b_psqt);
             for _j in 0..200 {
                 attack_container.write_state(&g);
                 let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
@@ -276,10 +274,9 @@ mod tests {
                         .as_ref()
                         .unwrap(),
                 );
-                let (white_psqt_eval_mg, white_psqt_eval_eg) = psqt(true, &g.pieces, &mut _eval);
-                let (black_psqt_eval_mg, black_psqt_eval_eg) = psqt(false, &g.pieces, &mut _eval);
-                assert_eq!(g.psqt_mg, white_psqt_eval_mg - black_psqt_eval_mg);
-                assert_eq!(g.psqt_eg, white_psqt_eval_eg - black_psqt_eval_eg);
+                let w_psqt = psqt(true, &g.pieces, &mut _eval);
+                let b_psqt = psqt(false, &g.pieces, &mut _eval);
+                assert_eq!(g.psqt, w_psqt - b_psqt);
             }
         }
     }

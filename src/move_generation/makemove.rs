@@ -68,8 +68,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
         half_moves,
         full_moves,
         hash,
-        psqt_mg: g.psqt_mg,
-        psqt_eg: g.psqt_eg,
+        psqt: g.psqt,
         phase: g.phase.clone(),
     }
 }
@@ -96,7 +95,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
     //Step 2. Update pieces, hash and other incremental fields
     let mut pieces = g.pieces;
     let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
-    let (mut psqt_mg, mut psqt_eg) = (g.psqt_mg, g.psqt_eg);
+    let mut psqt = g.psqt;
     let mut phase = g.phase.clone();
     //Remove piece from original square
     toggle_piece(&mut pieces, mv.piece_type, mv.from, g.color_to_move);
@@ -106,8 +105,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         mv.piece_type,
         mv.from,
         g.color_to_move,
-        &mut psqt_mg,
-        &mut psqt_eg,
+        &mut psqt,
     );
     let captured_piece = match mv.move_type {
         GameMoveType::Capture(c) => Some(c),
@@ -134,14 +132,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         };
         toggle_piece(&mut pieces, piece, square, color_to_move);
         toggle_hash(piece, square, color_to_move, &mut hash);
-        psqt_toggle_piece(
-            &mut pieces,
-            piece,
-            square,
-            color_to_move,
-            &mut psqt_mg,
-            &mut psqt_eg,
-        );
+        psqt_toggle_piece(&mut pieces, piece, square, color_to_move, &mut psqt);
         phase.delete_piece(piece);
     }
     //Move rook for castling
@@ -153,8 +144,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             mv.piece_type,
             mv.to,
             g.color_to_move,
-            &mut psqt_mg,
-            &mut psqt_eg,
+            &mut psqt,
         );
         let (rook_from, rook_to) = rook_castling(mv.to);
         toggle_piece(&mut pieces, PieceType::Rook, rook_from, g.color_to_move);
@@ -164,8 +154,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             PieceType::Rook,
             rook_from,
             g.color_to_move,
-            &mut psqt_mg,
-            &mut psqt_eg,
+            &mut psqt,
         );
         toggle_piece(&mut pieces, PieceType::Rook, rook_to, g.color_to_move);
         toggle_hash(PieceType::Rook, rook_to, g.color_to_move, &mut hash);
@@ -174,21 +163,13 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             PieceType::Rook,
             rook_to,
             g.color_to_move,
-            &mut psqt_mg,
-            &mut psqt_eg,
+            &mut psqt,
         );
     } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
         //If promotion, add promotion piece
         toggle_piece(&mut pieces, promo_piece, mv.to, g.color_to_move);
         toggle_hash(promo_piece, mv.to, g.color_to_move, &mut hash);
-        psqt_toggle_piece(
-            &mut pieces,
-            promo_piece,
-            mv.to,
-            g.color_to_move,
-            &mut psqt_mg,
-            &mut psqt_eg,
-        );
+        psqt_toggle_piece(&mut pieces, promo_piece, mv.to, g.color_to_move, &mut psqt);
         phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
@@ -199,8 +180,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
             mv.piece_type,
             mv.to,
             g.color_to_move,
-            &mut psqt_mg,
-            &mut psqt_eg,
+            &mut psqt,
         );
     }
     //Step 3. Update Castling Rights
@@ -286,8 +266,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         half_moves,
         full_moves,
         hash,
-        psqt_mg,
-        psqt_eg,
+        psqt,
         phase,
     }
 }

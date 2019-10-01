@@ -1,267 +1,942 @@
-pub const TEMPO_BONUS_MG: i16 = 10;
-pub const TEMPO_BONUS_EG: i16 = 15;
-pub const SHIELDING_PAWN_MISSING_MG: [i16; 4] = [16, -22, -44, -69];
-pub const SHIELDING_PAWN_MISSING_EG: [i16; 4] = [-8, 3, 2, 3];
-pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG: [i16; 4] = [10, -2, -59, -71];
-pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG: [i16; 4] = [-3, 2, 7, -6];
-pub const PAWN_DOUBLED_VALUE_MG: i16 = 3;
-pub const PAWN_DOUBLED_VALUE_EG: i16 = -17;
-pub const PAWN_ISOLATED_VALUE_MG: i16 = -16;
-pub const PAWN_ISOLATED_VALUE_EG: i16 = -16;
-pub const PAWN_BACKWARD_VALUE_MG: i16 = -14;
-pub const PAWN_BACKWARD_VALUE_EG: i16 = -17;
-pub const PAWN_SUPPORTED_VALUE_MG: [[i16; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [5, 9, 22, 9, 20, -5, 35, 18],
-    [2, 9, 11, 12, 13, 4, 9, 11],
-    [-7, 2, 12, 5, 28, 31, -3, -17],
-    [-15, -14, 52, 74, 77, 62, 15, -17],
-    [15, 23, 24, 28, 28, 23, 20, 15],
-    [0, 0, 0, 0, 0, 0, 0, 0],
+use super::EvaluationScore;
+pub const TEMPO_BONUS: EvaluationScore = EvaluationScore(10, 15);
+pub const SHIELDING_PAWN_MISSING: [EvaluationScore; 4] = [
+    EvaluationScore(16, -8),
+    EvaluationScore(-22, 3),
+    EvaluationScore(-44, 2),
+    EvaluationScore(-69, 3),
 ];
-pub const PAWN_SUPPORTED_VALUE_EG: [[i16; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [11, 21, 25, 29, 41, 22, 17, 19],
-    [-2, 9, 8, 30, 17, 4, 1, -7],
-    [-5, 6, 30, 37, 38, 11, 9, -3],
-    [15, 30, 52, 99, 105, 70, 30, 34],
-    [16, 22, 26, 34, 39, 30, 19, 12],
-    [0, 0, 0, 0, 0, 0, 0, 0],
+pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: [EvaluationScore; 4] = [
+    EvaluationScore(10, -3),
+    EvaluationScore(-2, 2),
+    EvaluationScore(-59, 7),
+    EvaluationScore(-71, -6),
 ];
-pub const PAWN_ATTACK_CENTER_MG: i16 = -16;
-pub const PAWN_ATTACK_CENTER_EG: i16 = -17;
-pub const PAWN_MOBILITY_MG: i16 = 7;
-pub const PAWN_MOBILITY_EG: i16 = 16;
-pub const PAWN_PASSED_VALUES_MG: [i16; 7] = [0, -14, -22, -5, 26, 39, 81];
-pub const PAWN_PASSED_VALUES_EG: [i16; 7] = [0, -21, 4, 48, 99, 149, 240];
-pub const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [i16; 7] = [0, 11, -4, -25, -43, -6, 86];
-pub const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16; 7] = [0, 23, 13, 52, 118, 286, 361];
-pub const PASSED_KING_DISTANCE_MG: [i16; 7] = [-4, -17, -8, -2, 4, 15, 2];
-pub const PASSED_KING_DISTANCE_EG: [i16; 7] = [24, 11, -7, -9, 1, 6, -3];
-pub const PASSED_ENEMY_KING_DISTANCE_MG: [i16; 7] = [-11, 9, -6, -3, 6, 5, -8];
-pub const PASSED_ENEMY_KING_DISTANCE_EG: [i16; 7] = [-45, -15, -1, 3, 5, 5, 2];
-pub const PASSED_SUBTRACT_DISTANCE_MG: [i16; 13] =
-    [-1, -2, -7, -5, -12, -2, 13, 7, 6, 5, -3, -5, 0];
-pub const PASSED_SUBTRACT_DISTANCE_EG: [i16; 13] =
-    [49, 26, 21, 20, 18, 10, 3, -5, -15, -25, -33, -37, -35];
-pub const ROOK_BEHIND_SUPPORT_PASSER_MG: i16 = 10;
-pub const ROOK_BEHIND_SUPPORT_PASSER_EG: i16 = 9;
-pub const ROOK_BEHIND_ENEMY_PASSER_MG: i16 = 16;
-pub const ROOK_BEHIND_ENEMY_PASSER_EG: i16 = -134;
-pub const PAWN_PASSED_WEAK_MG: i16 = -10;
-pub const PAWN_PASSED_WEAK_EG: i16 = 1;
-pub const KNIGHT_SUPPORTED_BY_PAWN_MG: i16 = 2;
-pub const KNIGHT_SUPPORTED_BY_PAWN_EG: i16 = 7;
-pub const KNIGHT_OUTPOST_MG_TABLE: [[i16; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [-7, 2, 19, -3, 9, 3, 0, 8],
-    [31, 35, 46, 44, 58, 56, 22, 42],
-    [20, 47, 60, 66, 75, 74, 81, 11],
-    [11, 2, 43, 33, 35, 61, 27, 19],
-    [15, 19, 18, 25, 37, 20, 17, 16],
-    [0, 0, 0, 0, 0, 0, 0, 0],
+pub const PAWN_DOUBLED_VALUE: EvaluationScore = EvaluationScore(3, -17);
+pub const PAWN_ISOLATED_VALUE: EvaluationScore = EvaluationScore(-16, -16);
+pub const PAWN_BACKWARD_VALUE: EvaluationScore = EvaluationScore(-14, -17);
+pub const PAWN_SUPPORTED_VALUE: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
+    [
+        EvaluationScore(5, 11),
+        EvaluationScore(9, 21),
+        EvaluationScore(22, 25),
+        EvaluationScore(9, 29),
+        EvaluationScore(20, 41),
+        EvaluationScore(-5, 22),
+        EvaluationScore(35, 17),
+        EvaluationScore(18, 19),
+    ],
+    [
+        EvaluationScore(2, -2),
+        EvaluationScore(9, 9),
+        EvaluationScore(11, 8),
+        EvaluationScore(12, 30),
+        EvaluationScore(13, 17),
+        EvaluationScore(4, 4),
+        EvaluationScore(9, 1),
+        EvaluationScore(11, -7),
+    ],
+    [
+        EvaluationScore(-7, -5),
+        EvaluationScore(2, 6),
+        EvaluationScore(12, 30),
+        EvaluationScore(5, 37),
+        EvaluationScore(28, 38),
+        EvaluationScore(31, 11),
+        EvaluationScore(-3, 9),
+        EvaluationScore(-17, -3),
+    ],
+    [
+        EvaluationScore(-15, 15),
+        EvaluationScore(-14, 30),
+        EvaluationScore(52, 52),
+        EvaluationScore(74, 99),
+        EvaluationScore(77, 105),
+        EvaluationScore(62, 70),
+        EvaluationScore(15, 30),
+        EvaluationScore(-17, 34),
+    ],
+    [
+        EvaluationScore(15, 16),
+        EvaluationScore(23, 22),
+        EvaluationScore(24, 26),
+        EvaluationScore(28, 34),
+        EvaluationScore(28, 39),
+        EvaluationScore(23, 30),
+        EvaluationScore(20, 19),
+        EvaluationScore(15, 12),
+    ],
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
 ];
-pub const KNIGHT_OUTPOST_EG_TABLE: [[i16; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [8, 8, 17, 8, 13, 3, 3, -2],
-    [7, 23, 36, 40, 37, 35, 28, 18],
-    [18, 28, 37, 50, 56, 53, 40, 17],
-    [10, 8, 32, 61, 51, 45, 24, 11],
-    [15, 22, 20, 25, 29, 18, 24, 15],
-    [0, 1, 0, 0, 1, 0, 1, 0],
+pub const PAWN_ATTACK_CENTER: EvaluationScore = EvaluationScore(-16, -17);
+pub const PAWN_MOBILITY: EvaluationScore = EvaluationScore(7, 16);
+pub const PAWN_PASSED_VALUES: [EvaluationScore; 7] = [
+    EvaluationScore(0, 0),
+    EvaluationScore(-14, -21),
+    EvaluationScore(-22, 4),
+    EvaluationScore(-5, 48),
+    EvaluationScore(26, 99),
+    EvaluationScore(39, 149),
+    EvaluationScore(81, 240),
 ];
-pub const ROOK_ON_OPEN_FILE_BONUS_MG: i16 = 43;
-pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = 28;
-pub const ROOK_ON_SEVENTH_MG: i16 = 23;
-pub const ROOK_ON_SEVENTH_EG: i16 = 52;
-pub const PAWN_PIECE_VALUE_MG: i16 = 104;
-pub const PAWN_PIECE_VALUE_EG: i16 = 191;
-pub const KNIGHT_PIECE_VALUE_MG: i16 = 430;
-pub const KNIGHT_PIECE_VALUE_EG: i16 = 741;
+pub const PAWN_PASSED_NOT_BLOCKED_VALUES: [EvaluationScore; 7] = [
+    EvaluationScore(0, 0),
+    EvaluationScore(11, 23),
+    EvaluationScore(-4, 13),
+    EvaluationScore(-25, 52),
+    EvaluationScore(-43, 118),
+    EvaluationScore(-6, 286),
+    EvaluationScore(86, 361),
+];
+pub const PASSED_KING_DISTANCE: [EvaluationScore; 7] = [
+    EvaluationScore(-4, 24),
+    EvaluationScore(-17, 11),
+    EvaluationScore(-8, -7),
+    EvaluationScore(-2, -9),
+    EvaluationScore(4, 1),
+    EvaluationScore(15, 6),
+    EvaluationScore(2, -3),
+];
+pub const PASSED_ENEMY_KING_DISTANCE: [EvaluationScore; 7] = [
+    EvaluationScore(-11, -45),
+    EvaluationScore(9, -15),
+    EvaluationScore(-6, -1),
+    EvaluationScore(-3, 3),
+    EvaluationScore(6, 5),
+    EvaluationScore(5, 5),
+    EvaluationScore(-8, 2),
+];
+pub const PASSED_SUBTRACT_DISTANCE: [EvaluationScore; 13] = [
+    EvaluationScore(-1, 49),
+    EvaluationScore(-2, 26),
+    EvaluationScore(-7, 21),
+    EvaluationScore(-5, 20),
+    EvaluationScore(-12, 18),
+    EvaluationScore(-2, 10),
+    EvaluationScore(13, 3),
+    EvaluationScore(7, -5),
+    EvaluationScore(6, -15),
+    EvaluationScore(5, -25),
+    EvaluationScore(-3, -33),
+    EvaluationScore(-5, -37),
+    EvaluationScore(0, -35),
+];
+pub const ROOK_BEHIND_SUPPORT_PASSER: EvaluationScore = EvaluationScore(10, 9);
+pub const ROOK_BEHIND_ENEMY_PASSER: EvaluationScore = EvaluationScore(16, -134);
+pub const PAWN_PASSED_WEAK: EvaluationScore = EvaluationScore(-10, 1);
+pub const KNIGHT_SUPPORTED_BY_PAWN: EvaluationScore = EvaluationScore(2, 7);
+pub const KNIGHT_OUTPOST_TABLE: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
+    [
+        EvaluationScore(-7, 8),
+        EvaluationScore(2, 8),
+        EvaluationScore(19, 17),
+        EvaluationScore(-3, 8),
+        EvaluationScore(9, 13),
+        EvaluationScore(3, 3),
+        EvaluationScore(0, 3),
+        EvaluationScore(8, -2),
+    ],
+    [
+        EvaluationScore(31, 7),
+        EvaluationScore(35, 23),
+        EvaluationScore(46, 36),
+        EvaluationScore(44, 40),
+        EvaluationScore(58, 37),
+        EvaluationScore(56, 35),
+        EvaluationScore(22, 28),
+        EvaluationScore(42, 18),
+    ],
+    [
+        EvaluationScore(20, 18),
+        EvaluationScore(47, 28),
+        EvaluationScore(60, 37),
+        EvaluationScore(66, 50),
+        EvaluationScore(75, 56),
+        EvaluationScore(74, 53),
+        EvaluationScore(81, 40),
+        EvaluationScore(11, 17),
+    ],
+    [
+        EvaluationScore(11, 10),
+        EvaluationScore(2, 8),
+        EvaluationScore(43, 32),
+        EvaluationScore(33, 61),
+        EvaluationScore(35, 51),
+        EvaluationScore(61, 45),
+        EvaluationScore(27, 24),
+        EvaluationScore(19, 11),
+    ],
+    [
+        EvaluationScore(15, 15),
+        EvaluationScore(19, 22),
+        EvaluationScore(18, 20),
+        EvaluationScore(25, 25),
+        EvaluationScore(37, 29),
+        EvaluationScore(20, 18),
+        EvaluationScore(17, 24),
+        EvaluationScore(16, 15),
+    ],
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 1),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 1),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 1),
+        EvaluationScore(0, 0),
+    ],
+];
+pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(43, 28);
+pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore(23, 52);
+pub const PAWN_PIECE_VALUE: EvaluationScore = EvaluationScore(104, 191);
+pub const KNIGHT_PIECE_VALUE: EvaluationScore = EvaluationScore(430, 741);
 pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [
     -41, -124, -47, -36, -29, -21, -4, 1, 19, 24, 33, 39, 47, 53, 53, 61, 58,
 ];
-pub const BISHOP_PIECE_VALUE_MG: i16 = 484;
-pub const BISHOP_PIECE_VALUE_EG: i16 = 725;
-pub const BISHOP_PAIR_BONUS_MG: i16 = 35;
-pub const BISHOP_PAIR_BONUS_EG: i16 = 113;
-pub const ROOK_PIECE_VALUE_MG: i16 = 658;
-pub const ROOK_PIECE_VALUE_EG: i16 = 1302;
-pub const QUEEN_PIECE_VALUE_MG: i16 = 1543;
-pub const QUEEN_PIECE_VALUE_EG: i16 = 2425;
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16; 5] = [-19, -19, -28, 0, -100];
-pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16; 5] = [60, 64, 50, 22, -100];
-pub const KNIGHT_MOBILITY_BONUS_MG: [i16; 9] = [-45, -20, -10, -3, 0, 0, -2, -3, -4];
-pub const KNIGHT_MOBILITY_BONUS_EG: [i16; 9] = [-69, 5, 11, 15, 27, 42, 44, 47, 42];
-pub const BISHOP_MOBILITY_BONUS_MG: [i16; 14] =
-    [-10, 4, 14, 22, 29, 38, 44, 48, 45, 45, 47, 47, 66, 93];
-pub const BISHOP_MOBILITY_BONUS_EG: [i16; 14] =
-    [-30, -22, -9, 3, 31, 53, 58, 66, 75, 71, 65, 66, 52, 51];
-pub const ROOK_MOBILITY_BONUS_MG: [i16; 15] =
-    [-26, -9, -4, 4, 0, 7, 15, 23, 20, 20, 22, 18, 19, 14, 19];
-pub const ROOK_MOBILITY_BONUS_EG: [i16; 15] =
-    [-24, 9, 16, 19, 30, 40, 38, 43, 55, 64, 69, 75, 78, 80, 76];
-pub const QUEEN_MOBILITY_BONUS_MG: [i16; 28] = [
-    -19, 7, 0, 10, 12, 17, 22, 19, 20, 22, 22, 17, 18, 16, 14, 12, 11, 9, 11, 8, 18, 15, 20, 39,
-    49, 59, 56, 55,
+pub const BISHOP_PIECE_VALUE: EvaluationScore = EvaluationScore(484, 725);
+pub const BISHOP_PAIR_BONUS: EvaluationScore = EvaluationScore(35, 113);
+pub const ROOK_PIECE_VALUE: EvaluationScore = EvaluationScore(658, 1302);
+pub const QUEEN_PIECE_VALUE: EvaluationScore = EvaluationScore(1543, 2425);
+pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS: [EvaluationScore; 5] = [
+    EvaluationScore(-19, 60),
+    EvaluationScore(-19, 64),
+    EvaluationScore(-28, 50),
+    EvaluationScore(0, 22),
+    EvaluationScore(-100, -100),
 ];
-pub const QUEEN_MOBILITY_BONUS_EG: [i16; 28] = [
-    -40, -37, -35, -39, -43, -44, -35, 4, 18, 23, 38, 64, 63, 80, 92, 102, 110, 118, 126, 121, 125,
-    133, 122, 116, 88, 98, 89, 88,
+pub const KNIGHT_MOBILITY_BONUS: [EvaluationScore; 9] = [
+    EvaluationScore(-45, -69),
+    EvaluationScore(-20, 5),
+    EvaluationScore(-10, 11),
+    EvaluationScore(-3, 15),
+    EvaluationScore(0, 27),
+    EvaluationScore(0, 42),
+    EvaluationScore(-2, 44),
+    EvaluationScore(-3, 47),
+    EvaluationScore(-4, 42),
 ];
-pub const ATTACK_WEIGHT_MG: [i16; 8] = [0, 41, 112, 138, 208, 114, 100, 100];
-pub const SAFETY_TABLE_MG: [i16; 100] = [
-    0, 0, 1, 2, 3, 11, 60, 70, 12, 15, 20, 27, 57, 62, 79, 41, 46, 53, 61, 69, 89, 103, 84, 87, 91,
-    100, 116, 126, 137, 133, 141, 151, 171, 184, 202, 208, 213, 225, 237, 248, 261, 277, 280, 295,
-    307, 319, 331, 342, 354, 367, 377, 389, 401, 412, 423, 436, 449, 459, 471, 483, 494, 501, 500,
-    501, 500, 500, 500, 500, 499, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-    500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+pub const BISHOP_MOBILITY_BONUS: [EvaluationScore; 14] = [
+    EvaluationScore(-10, -30),
+    EvaluationScore(4, -22),
+    EvaluationScore(14, -9),
+    EvaluationScore(22, 3),
+    EvaluationScore(29, 31),
+    EvaluationScore(38, 53),
+    EvaluationScore(44, 58),
+    EvaluationScore(48, 66),
+    EvaluationScore(45, 75),
+    EvaluationScore(45, 71),
+    EvaluationScore(47, 65),
+    EvaluationScore(47, 66),
+    EvaluationScore(66, 52),
+    EvaluationScore(93, 51),
 ];
-pub const ATTACK_WEIGHT_EG: [i16; 8] = [-1, 68, 76, 116, 196, 110, 100, 100];
-pub const SAFETY_TABLE_EG: [i16; 100] = [
-    -1, 7, 5, 2, 9, 7, 17, 9, 20, 19, 21, 24, 30, 29, 36, 38, 46, 51, 57, 65, 69, 76, 82, 86, 89,
-    98, 105, 113, 121, 133, 141, 150, 169, 182, 192, 201, 213, 226, 237, 249, 259, 273, 284, 296,
-    307, 322, 330, 342, 354, 366, 378, 389, 401, 412, 424, 436, 448, 459, 471, 483, 494, 500, 500,
-    500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-    500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+pub const ROOK_MOBILITY_BONUS: [EvaluationScore; 15] = [
+    EvaluationScore(-26, -24),
+    EvaluationScore(-9, 9),
+    EvaluationScore(-4, 16),
+    EvaluationScore(4, 19),
+    EvaluationScore(0, 30),
+    EvaluationScore(7, 40),
+    EvaluationScore(15, 38),
+    EvaluationScore(23, 43),
+    EvaluationScore(20, 55),
+    EvaluationScore(20, 64),
+    EvaluationScore(22, 69),
+    EvaluationScore(18, 75),
+    EvaluationScore(19, 78),
+    EvaluationScore(14, 80),
+    EvaluationScore(19, 76),
 ];
-pub const KNIGHT_ATTACK_WORTH_MG: i16 = 6;
-pub const KNIGHT_ATTACK_WORTH_EG: i16 = 1;
-pub const BISHOP_ATTACK_WORTH_MG: i16 = 7;
-pub const BISHOP_ATTACK_WORTH_EG: i16 = 0;
-pub const ROOK_ATTACK_WORTH_MG: i16 = 7;
-pub const ROOK_ATTACK_WORTH_EG: i16 = 2;
-pub const QUEEN_ATTACK_WORTH_MG: i16 = 7;
-pub const QUEEN_ATTACK_WORTH_EG: i16 = 4;
-pub const KNIGHT_SAFE_CHECK_MG: i16 = 14;
-pub const KNIGHT_SAFE_CHECK_EG: i16 = 7;
-pub const BISHOP_SAFE_CHECK_MG: i16 = 6;
-pub const BISHOP_SAFE_CHECK_EG: i16 = 13;
-pub const ROOK_SAFE_CHECK_MG: i16 = 7;
-pub const ROOK_SAFE_CHECK_EG: i16 = 13;
-pub const QUEEN_SAFE_CHECK_MG: i16 = 6;
-pub const QUEEN_SAFE_CHECK_EG: i16 = 29;
-pub const PSQT_PAWN_MG: [[i16; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [-44, -44, -33, -42, -24, -21, 4, -34],
-    [-38, -41, -11, -1, 2, -2, -21, -25],
-    [-35, -30, 10, 29, 34, 27, -4, -15],
-    [-26, -11, -3, 12, 29, 17, 14, -2],
-    [-6, 7, 35, 32, 58, 111, 56, 21],
-    [7, 1, 30, 34, 39, 8, -22, -70],
-    [0, 0, 0, 0, 0, 0, 0, 0],
+pub const QUEEN_MOBILITY_BONUS: [EvaluationScore; 28] = [
+    EvaluationScore(-19, -40),
+    EvaluationScore(7, -37),
+    EvaluationScore(0, -35),
+    EvaluationScore(10, -39),
+    EvaluationScore(12, -43),
+    EvaluationScore(17, -44),
+    EvaluationScore(22, -35),
+    EvaluationScore(19, 4),
+    EvaluationScore(20, 18),
+    EvaluationScore(22, 23),
+    EvaluationScore(22, 38),
+    EvaluationScore(17, 64),
+    EvaluationScore(18, 63),
+    EvaluationScore(16, 80),
+    EvaluationScore(14, 92),
+    EvaluationScore(12, 102),
+    EvaluationScore(11, 110),
+    EvaluationScore(9, 118),
+    EvaluationScore(11, 126),
+    EvaluationScore(8, 121),
+    EvaluationScore(18, 125),
+    EvaluationScore(15, 133),
+    EvaluationScore(20, 122),
+    EvaluationScore(39, 116),
+    EvaluationScore(49, 88),
+    EvaluationScore(59, 98),
+    EvaluationScore(56, 89),
+    EvaluationScore(55, 88),
 ];
-pub const PSQT_PAWN_EG: [[i16; 8]; 8] = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [-18, -31, -30, -38, -16, -20, -36, -36],
-    [-7, -19, -16, -14, -12, -1, -19, -17],
-    [9, -10, -6, -20, -10, -2, -9, -8],
-    [37, 6, -21, -42, -40, -18, 0, 14],
-    [60, 45, 3, -49, -59, -5, 40, 41],
-    [95, 61, 47, -12, -17, 7, 24, 33],
-    [0, 0, 0, 0, 0, 0, 0, 0],
+pub const ATTACK_WEIGHT: [EvaluationScore; 8] = [
+    EvaluationScore(0, -1),
+    EvaluationScore(41, 68),
+    EvaluationScore(112, 76),
+    EvaluationScore(138, 116),
+    EvaluationScore(208, 196),
+    EvaluationScore(114, 110),
+    EvaluationScore(100, 100),
+    EvaluationScore(100, 100),
 ];
-pub const PSQT_KNIGHT_MG: [[i16; 8]; 8] = [
-    [-69, -40, -46, -27, -24, -15, -38, -68],
-    [-57, -44, -23, 1, -4, -3, -13, -19],
-    [-49, -10, 8, 12, 24, 17, 22, -27],
-    [-24, 0, 23, 13, 29, 26, 13, -17],
-    [-12, -2, 30, 58, 20, 56, -2, 10],
-    [-23, 29, 36, 45, 107, 85, 48, -19],
-    [-66, -30, 19, 36, -13, 92, -24, -48],
-    [-185, -48, -39, -43, -31, -55, -40, -146],
+pub const SAFETY_TABLE: [EvaluationScore; 100] = [
+    EvaluationScore(0, -1),
+    EvaluationScore(0, 7),
+    EvaluationScore(1, 5),
+    EvaluationScore(2, 2),
+    EvaluationScore(3, 9),
+    EvaluationScore(11, 7),
+    EvaluationScore(60, 17),
+    EvaluationScore(70, 9),
+    EvaluationScore(12, 20),
+    EvaluationScore(15, 19),
+    EvaluationScore(20, 21),
+    EvaluationScore(27, 24),
+    EvaluationScore(57, 30),
+    EvaluationScore(62, 29),
+    EvaluationScore(79, 36),
+    EvaluationScore(41, 38),
+    EvaluationScore(46, 46),
+    EvaluationScore(53, 51),
+    EvaluationScore(61, 57),
+    EvaluationScore(69, 65),
+    EvaluationScore(89, 69),
+    EvaluationScore(103, 76),
+    EvaluationScore(84, 82),
+    EvaluationScore(87, 86),
+    EvaluationScore(91, 89),
+    EvaluationScore(100, 98),
+    EvaluationScore(116, 105),
+    EvaluationScore(126, 113),
+    EvaluationScore(137, 121),
+    EvaluationScore(133, 133),
+    EvaluationScore(141, 141),
+    EvaluationScore(151, 150),
+    EvaluationScore(171, 169),
+    EvaluationScore(184, 182),
+    EvaluationScore(202, 192),
+    EvaluationScore(208, 201),
+    EvaluationScore(213, 213),
+    EvaluationScore(225, 226),
+    EvaluationScore(237, 237),
+    EvaluationScore(248, 249),
+    EvaluationScore(261, 259),
+    EvaluationScore(277, 273),
+    EvaluationScore(280, 284),
+    EvaluationScore(295, 296),
+    EvaluationScore(307, 307),
+    EvaluationScore(319, 322),
+    EvaluationScore(331, 330),
+    EvaluationScore(342, 342),
+    EvaluationScore(354, 354),
+    EvaluationScore(367, 366),
+    EvaluationScore(377, 378),
+    EvaluationScore(389, 389),
+    EvaluationScore(401, 401),
+    EvaluationScore(412, 412),
+    EvaluationScore(423, 424),
+    EvaluationScore(436, 436),
+    EvaluationScore(449, 448),
+    EvaluationScore(459, 459),
+    EvaluationScore(471, 471),
+    EvaluationScore(483, 483),
+    EvaluationScore(494, 494),
+    EvaluationScore(501, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(501, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(499, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
+    EvaluationScore(500, 500),
 ];
-pub const PSQT_KNIGHT_EG: [[i16; 8]; 8] = [
-    [-58, -50, -24, -19, -19, -34, -42, -57],
-    [-31, -29, -7, -6, -8, -12, -12, -9],
-    [-17, 8, 12, 38, 27, 21, 4, -11],
-    [-12, 12, 32, 44, 46, 26, 10, -10],
-    [-1, 10, 31, 38, 31, 33, 5, -19],
-    [-23, 3, 38, 33, 15, 15, -3, -29],
-    [-50, -10, -3, 1, -30, -8, -15, -61],
-    [-160, -53, -40, -35, -27, -55, -46, -146],
+pub const KNIGHT_ATTACK_WORTH: EvaluationScore = EvaluationScore(6, 1);
+pub const BISHOP_ATTACK_WORTH: EvaluationScore = EvaluationScore(7, 0);
+pub const ROOK_ATTACK_WORTH: EvaluationScore = EvaluationScore(7, 2);
+pub const QUEEN_ATTACK_WORTH: EvaluationScore = EvaluationScore(7, 4);
+pub const KNIGHT_SAFE_CHECK: EvaluationScore = EvaluationScore(14, 7);
+pub const BISHOP_SAFE_CHECK: EvaluationScore = EvaluationScore(6, 13);
+pub const ROOK_SAFE_CHECK: EvaluationScore = EvaluationScore(7, 13);
+pub const QUEEN_SAFE_CHECK: EvaluationScore = EvaluationScore(6, 29);
+pub const PSQT_PAWN: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
+    [
+        EvaluationScore(-44, -18),
+        EvaluationScore(-44, -31),
+        EvaluationScore(-33, -30),
+        EvaluationScore(-42, -38),
+        EvaluationScore(-24, -16),
+        EvaluationScore(-21, -20),
+        EvaluationScore(4, -36),
+        EvaluationScore(-34, -36),
+    ],
+    [
+        EvaluationScore(-38, -7),
+        EvaluationScore(-41, -19),
+        EvaluationScore(-11, -16),
+        EvaluationScore(-1, -14),
+        EvaluationScore(2, -12),
+        EvaluationScore(-2, -1),
+        EvaluationScore(-21, -19),
+        EvaluationScore(-25, -17),
+    ],
+    [
+        EvaluationScore(-35, 9),
+        EvaluationScore(-30, -10),
+        EvaluationScore(10, -6),
+        EvaluationScore(29, -20),
+        EvaluationScore(34, -10),
+        EvaluationScore(27, -2),
+        EvaluationScore(-4, -9),
+        EvaluationScore(-15, -8),
+    ],
+    [
+        EvaluationScore(-26, 37),
+        EvaluationScore(-11, 6),
+        EvaluationScore(-3, -21),
+        EvaluationScore(12, -42),
+        EvaluationScore(29, -40),
+        EvaluationScore(17, -18),
+        EvaluationScore(14, 0),
+        EvaluationScore(-2, 14),
+    ],
+    [
+        EvaluationScore(-6, 60),
+        EvaluationScore(7, 45),
+        EvaluationScore(35, 3),
+        EvaluationScore(32, -49),
+        EvaluationScore(58, -59),
+        EvaluationScore(111, -5),
+        EvaluationScore(56, 40),
+        EvaluationScore(21, 41),
+    ],
+    [
+        EvaluationScore(7, 95),
+        EvaluationScore(1, 61),
+        EvaluationScore(30, 47),
+        EvaluationScore(34, -12),
+        EvaluationScore(39, -17),
+        EvaluationScore(8, 7),
+        EvaluationScore(-22, 24),
+        EvaluationScore(-70, 33),
+    ],
+    [
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+        EvaluationScore(0, 0),
+    ],
 ];
-pub const PSQT_BISHOP_MG: [[i16; 8]; 8] = [
-    [1, 20, -2, -5, -3, -19, 6, 2],
-    [1, 12, 18, -5, 8, 17, 29, 13],
-    [2, 19, 14, 7, 7, 23, 25, 12],
-    [-6, -15, -9, 18, 15, 5, 1, 7],
-    [-25, -6, 6, 16, 28, 7, 0, -45],
-    [-15, 5, 15, 37, 10, 46, 19, 17],
-    [-49, -20, -19, -8, -13, -18, -34, -41],
-    [-55, -28, -18, -53, -49, -29, -19, -74],
+pub const PSQT_KNIGHT: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(-69, -58),
+        EvaluationScore(-40, -50),
+        EvaluationScore(-46, -24),
+        EvaluationScore(-27, -19),
+        EvaluationScore(-24, -19),
+        EvaluationScore(-15, -34),
+        EvaluationScore(-38, -42),
+        EvaluationScore(-68, -57),
+    ],
+    [
+        EvaluationScore(-57, -31),
+        EvaluationScore(-44, -29),
+        EvaluationScore(-23, -7),
+        EvaluationScore(1, -6),
+        EvaluationScore(-4, -8),
+        EvaluationScore(-3, -12),
+        EvaluationScore(-13, -12),
+        EvaluationScore(-19, -9),
+    ],
+    [
+        EvaluationScore(-49, -17),
+        EvaluationScore(-10, 8),
+        EvaluationScore(8, 12),
+        EvaluationScore(12, 38),
+        EvaluationScore(24, 27),
+        EvaluationScore(17, 21),
+        EvaluationScore(22, 4),
+        EvaluationScore(-27, -11),
+    ],
+    [
+        EvaluationScore(-24, -12),
+        EvaluationScore(0, 12),
+        EvaluationScore(23, 32),
+        EvaluationScore(13, 44),
+        EvaluationScore(29, 46),
+        EvaluationScore(26, 26),
+        EvaluationScore(13, 10),
+        EvaluationScore(-17, -10),
+    ],
+    [
+        EvaluationScore(-12, -1),
+        EvaluationScore(-2, 10),
+        EvaluationScore(30, 31),
+        EvaluationScore(58, 38),
+        EvaluationScore(20, 31),
+        EvaluationScore(56, 33),
+        EvaluationScore(-2, 5),
+        EvaluationScore(10, -19),
+    ],
+    [
+        EvaluationScore(-23, -23),
+        EvaluationScore(29, 3),
+        EvaluationScore(36, 38),
+        EvaluationScore(45, 33),
+        EvaluationScore(107, 15),
+        EvaluationScore(85, 15),
+        EvaluationScore(48, -3),
+        EvaluationScore(-19, -29),
+    ],
+    [
+        EvaluationScore(-66, -50),
+        EvaluationScore(-30, -10),
+        EvaluationScore(19, -3),
+        EvaluationScore(36, 1),
+        EvaluationScore(-13, -30),
+        EvaluationScore(92, -8),
+        EvaluationScore(-24, -15),
+        EvaluationScore(-48, -61),
+    ],
+    [
+        EvaluationScore(-185, -160),
+        EvaluationScore(-48, -53),
+        EvaluationScore(-39, -40),
+        EvaluationScore(-43, -35),
+        EvaluationScore(-31, -27),
+        EvaluationScore(-55, -55),
+        EvaluationScore(-40, -46),
+        EvaluationScore(-146, -146),
+    ],
 ];
-pub const PSQT_BISHOP_EG: [[i16; 8]; 8] = [
-    [-34, -35, -29, -19, -6, -9, -29, -33],
-    [-24, -19, -27, -7, -6, -17, -2, -45],
-    [-13, 30, 20, 18, 25, 25, 13, 1],
-    [-3, 1, 25, 25, 19, 14, -4, -23],
-    [-2, 12, 6, 33, 17, 6, -11, -9],
-    [-4, 0, 6, -5, -8, 9, -8, -18],
-    [-28, -12, -8, -7, -16, -22, -29, -44],
-    [-28, -6, -16, -22, -32, -26, -28, -46],
+pub const PSQT_BISHOP: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(1, -34),
+        EvaluationScore(20, -35),
+        EvaluationScore(-2, -29),
+        EvaluationScore(-5, -19),
+        EvaluationScore(-3, -6),
+        EvaluationScore(-19, -9),
+        EvaluationScore(6, -29),
+        EvaluationScore(2, -33),
+    ],
+    [
+        EvaluationScore(1, -24),
+        EvaluationScore(12, -19),
+        EvaluationScore(18, -27),
+        EvaluationScore(-5, -7),
+        EvaluationScore(8, -6),
+        EvaluationScore(17, -17),
+        EvaluationScore(29, -2),
+        EvaluationScore(13, -45),
+    ],
+    [
+        EvaluationScore(2, -13),
+        EvaluationScore(19, 30),
+        EvaluationScore(14, 20),
+        EvaluationScore(7, 18),
+        EvaluationScore(7, 25),
+        EvaluationScore(23, 25),
+        EvaluationScore(25, 13),
+        EvaluationScore(12, 1),
+    ],
+    [
+        EvaluationScore(-6, -3),
+        EvaluationScore(-15, 1),
+        EvaluationScore(-9, 25),
+        EvaluationScore(18, 25),
+        EvaluationScore(15, 19),
+        EvaluationScore(5, 14),
+        EvaluationScore(1, -4),
+        EvaluationScore(7, -23),
+    ],
+    [
+        EvaluationScore(-25, -2),
+        EvaluationScore(-6, 12),
+        EvaluationScore(6, 6),
+        EvaluationScore(16, 33),
+        EvaluationScore(28, 17),
+        EvaluationScore(7, 6),
+        EvaluationScore(0, -11),
+        EvaluationScore(-45, -9),
+    ],
+    [
+        EvaluationScore(-15, -4),
+        EvaluationScore(5, 0),
+        EvaluationScore(15, 6),
+        EvaluationScore(37, -5),
+        EvaluationScore(10, -8),
+        EvaluationScore(46, 9),
+        EvaluationScore(19, -8),
+        EvaluationScore(17, -18),
+    ],
+    [
+        EvaluationScore(-49, -28),
+        EvaluationScore(-20, -12),
+        EvaluationScore(-19, -8),
+        EvaluationScore(-8, -7),
+        EvaluationScore(-13, -16),
+        EvaluationScore(-18, -22),
+        EvaluationScore(-34, -29),
+        EvaluationScore(-41, -44),
+    ],
+    [
+        EvaluationScore(-55, -28),
+        EvaluationScore(-28, -6),
+        EvaluationScore(-18, -16),
+        EvaluationScore(-53, -22),
+        EvaluationScore(-49, -32),
+        EvaluationScore(-29, -26),
+        EvaluationScore(-19, -28),
+        EvaluationScore(-74, -46),
+    ],
 ];
-pub const PSQT_ROOK_MG: [[i16; 8]; 8] = [
-    [-4, 2, 7, 17, 25, 23, 39, 7],
-    [-15, -10, 3, -4, 10, 16, 30, 8],
-    [-15, -9, -8, -10, -1, 4, 32, 12],
-    [-14, -19, -20, -1, -5, -19, 6, 3],
-    [-22, -11, 0, 5, 4, 11, 4, -28],
-    [-18, 8, 10, 22, 28, 49, 36, 25],
-    [-40, -37, -15, -3, -14, -2, -20, -25],
-    [-37, -24, -13, -41, -39, -23, -16, -58],
+pub const PSQT_ROOK: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(-4, -13),
+        EvaluationScore(2, -13),
+        EvaluationScore(7, -3),
+        EvaluationScore(17, -14),
+        EvaluationScore(25, -14),
+        EvaluationScore(23, -11),
+        EvaluationScore(39, -20),
+        EvaluationScore(7, -31),
+    ],
+    [
+        EvaluationScore(-15, -28),
+        EvaluationScore(-10, -23),
+        EvaluationScore(3, -18),
+        EvaluationScore(-4, -12),
+        EvaluationScore(10, -13),
+        EvaluationScore(16, -23),
+        EvaluationScore(30, -16),
+        EvaluationScore(8, -42),
+    ],
+    [
+        EvaluationScore(-15, -12),
+        EvaluationScore(-9, 1),
+        EvaluationScore(-8, 2),
+        EvaluationScore(-10, -3),
+        EvaluationScore(-1, -7),
+        EvaluationScore(4, -5),
+        EvaluationScore(32, -9),
+        EvaluationScore(12, -15),
+    ],
+    [
+        EvaluationScore(-14, 3),
+        EvaluationScore(-19, -1),
+        EvaluationScore(-20, 9),
+        EvaluationScore(-1, 0),
+        EvaluationScore(-5, -2),
+        EvaluationScore(-19, 3),
+        EvaluationScore(6, -9),
+        EvaluationScore(3, -23),
+    ],
+    [
+        EvaluationScore(-22, 9),
+        EvaluationScore(-11, 16),
+        EvaluationScore(0, 14),
+        EvaluationScore(5, 8),
+        EvaluationScore(4, -8),
+        EvaluationScore(11, -4),
+        EvaluationScore(4, -4),
+        EvaluationScore(-28, -5),
+    ],
+    [
+        EvaluationScore(-18, 5),
+        EvaluationScore(8, 12),
+        EvaluationScore(10, 16),
+        EvaluationScore(22, -4),
+        EvaluationScore(28, -4),
+        EvaluationScore(49, 8),
+        EvaluationScore(36, 0),
+        EvaluationScore(25, -17),
+    ],
+    [
+        EvaluationScore(-40, -37),
+        EvaluationScore(-37, -16),
+        EvaluationScore(-15, -4),
+        EvaluationScore(-3, -11),
+        EvaluationScore(-14, -18),
+        EvaluationScore(-2, -12),
+        EvaluationScore(-20, -16),
+        EvaluationScore(-25, -33),
+    ],
+    [
+        EvaluationScore(-37, -6),
+        EvaluationScore(-24, -1),
+        EvaluationScore(-13, 6),
+        EvaluationScore(-41, 11),
+        EvaluationScore(-39, -6),
+        EvaluationScore(-23, -4),
+        EvaluationScore(-16, -14),
+        EvaluationScore(-58, -19),
+    ],
 ];
-pub const PSQT_ROOK_EG: [[i16; 8]; 8] = [
-    [-13, -13, -3, -14, -14, -11, -20, -31],
-    [-28, -23, -18, -12, -13, -23, -16, -42],
-    [-12, 1, 2, -3, -7, -5, -9, -15],
-    [3, -1, 9, 0, -2, 3, -9, -23],
-    [9, 16, 14, 8, -8, -4, -4, -5],
-    [5, 12, 16, -4, -4, 8, 0, -17],
-    [-37, -16, -4, -11, -18, -12, -16, -33],
-    [-6, -1, 6, 11, -6, -4, -14, -19],
+pub const PSQT_QUEEN: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(2, -37),
+        EvaluationScore(0, -39),
+        EvaluationScore(3, -22),
+        EvaluationScore(10, -5),
+        EvaluationScore(12, -10),
+        EvaluationScore(-13, -10),
+        EvaluationScore(10, -27),
+        EvaluationScore(2, -31),
+    ],
+    [
+        EvaluationScore(-2, -28),
+        EvaluationScore(5, -21),
+        EvaluationScore(11, -17),
+        EvaluationScore(15, 1),
+        EvaluationScore(17, -1),
+        EvaluationScore(24, -16),
+        EvaluationScore(24, -11),
+        EvaluationScore(24, -43),
+    ],
+    [
+        EvaluationScore(-3, -15),
+        EvaluationScore(6, 17),
+        EvaluationScore(5, 21),
+        EvaluationScore(-2, 12),
+        EvaluationScore(4, 19),
+        EvaluationScore(12, 35),
+        EvaluationScore(36, 17),
+        EvaluationScore(18, -3),
+    ],
+    [
+        EvaluationScore(-3, 3),
+        EvaluationScore(-13, 5),
+        EvaluationScore(-10, 19),
+        EvaluationScore(-4, 21),
+        EvaluationScore(4, 12),
+        EvaluationScore(2, 14),
+        EvaluationScore(17, 11),
+        EvaluationScore(21, -14),
+    ],
+    [
+        EvaluationScore(-29, -2),
+        EvaluationScore(-6, 9),
+        EvaluationScore(-12, 1),
+        EvaluationScore(-15, 19),
+        EvaluationScore(-7, 5),
+        EvaluationScore(1, -1),
+        EvaluationScore(4, 0),
+        EvaluationScore(-9, 0),
+    ],
+    [
+        EvaluationScore(-19, -11),
+        EvaluationScore(-3, -7),
+        EvaluationScore(0, 3),
+        EvaluationScore(22, -12),
+        EvaluationScore(16, -3),
+        EvaluationScore(41, 11),
+        EvaluationScore(34, 0),
+        EvaluationScore(48, -14),
+    ],
+    [
+        EvaluationScore(-43, -29),
+        EvaluationScore(-42, -14),
+        EvaluationScore(-29, -4),
+        EvaluationScore(-13, -13),
+        EvaluationScore(-16, -12),
+        EvaluationScore(0, -6),
+        EvaluationScore(-33, -20),
+        EvaluationScore(-12, -26),
+    ],
+    [
+        EvaluationScore(-54, -28),
+        EvaluationScore(-30, -15),
+        EvaluationScore(-18, -20),
+        EvaluationScore(-45, -19),
+        EvaluationScore(-40, -23),
+        EvaluationScore(-23, -19),
+        EvaluationScore(-17, -23),
+        EvaluationScore(-70, -44),
+    ],
 ];
-pub const PSQT_QUEEN_MG: [[i16; 8]; 8] = [
-    [2, 0, 3, 10, 12, -13, 10, 2],
-    [-2, 5, 11, 15, 17, 24, 24, 24],
-    [-3, 6, 5, -2, 4, 12, 36, 18],
-    [-3, -13, -10, -4, 4, 2, 17, 21],
-    [-29, -6, -12, -15, -7, 1, 4, -9],
-    [-19, -3, 0, 22, 16, 41, 34, 48],
-    [-43, -42, -29, -13, -16, 0, -33, -12],
-    [-54, -30, -18, -45, -40, -23, -17, -70],
-];
-pub const PSQT_QUEEN_EG: [[i16; 8]; 8] = [
-    [-37, -39, -22, -5, -10, -10, -27, -31],
-    [-28, -21, -17, 1, -1, -16, -11, -43],
-    [-15, 17, 21, 12, 19, 35, 17, -3],
-    [3, 5, 19, 21, 12, 14, 11, -14],
-    [-2, 9, 1, 19, 5, -1, 0, 0],
-    [-11, -7, 3, -12, -3, 11, 0, -14],
-    [-29, -14, -4, -13, -12, -6, -20, -26],
-    [-28, -15, -20, -19, -23, -19, -23, -44],
-];
-pub const PSQT_KING_MG: [[i16; 8]; 8] = [
-    [64, 101, 88, -21, 50, -4, 76, 78],
-    [84, 66, 37, -8, -12, 24, 80, 78],
-    [-37, -14, -66, -88, -90, -65, -6, -41],
-    [-64, -85, -73, -104, -107, -87, -96, -86],
-    [-70, -86, -84, -104, -103, -87, -92, -74],
-    [-60, -80, -80, -100, -100, -80, -80, -61],
-    [-60, -80, -80, -100, -100, -80, -80, -60],
-    [-60, -80, -80, -100, -100, -80, -80, -60],
-];
-pub const PSQT_KING_EG: [[i16; 8]; 8] = [
-    [-130, -95, -70, -69, -96, -66, -89, -148],
-    [-75, -40, -22, -17, -14, -24, -50, -88],
-    [-60, -13, 8, 19, 18, 3, -17, -56],
-    [-49, 3, 40, 54, 44, 24, -3, -68],
-    [-43, 33, 61, 80, 78, 62, 34, -41],
-    [-26, 60, 71, 84, 82, 77, 70, -24],
-    [-36, 32, 52, 30, 40, 55, 45, -30],
-    [-81, -53, -42, -22, -19, -24, -46, -67],
+pub const PSQT_KING: [[EvaluationScore; 8]; 8] = [
+    [
+        EvaluationScore(64, -130),
+        EvaluationScore(101, -95),
+        EvaluationScore(88, -70),
+        EvaluationScore(-21, -69),
+        EvaluationScore(50, -96),
+        EvaluationScore(-4, -66),
+        EvaluationScore(76, -89),
+        EvaluationScore(78, -148),
+    ],
+    [
+        EvaluationScore(84, -75),
+        EvaluationScore(66, -40),
+        EvaluationScore(37, -22),
+        EvaluationScore(-8, -17),
+        EvaluationScore(-12, -14),
+        EvaluationScore(24, -24),
+        EvaluationScore(80, -50),
+        EvaluationScore(78, -88),
+    ],
+    [
+        EvaluationScore(-37, -60),
+        EvaluationScore(-14, -13),
+        EvaluationScore(-66, 8),
+        EvaluationScore(-88, 19),
+        EvaluationScore(-90, 18),
+        EvaluationScore(-65, 3),
+        EvaluationScore(-6, -17),
+        EvaluationScore(-41, -56),
+    ],
+    [
+        EvaluationScore(-64, -49),
+        EvaluationScore(-85, 3),
+        EvaluationScore(-73, 40),
+        EvaluationScore(-104, 54),
+        EvaluationScore(-107, 44),
+        EvaluationScore(-87, 24),
+        EvaluationScore(-96, -3),
+        EvaluationScore(-86, -68),
+    ],
+    [
+        EvaluationScore(-70, -43),
+        EvaluationScore(-86, 33),
+        EvaluationScore(-84, 61),
+        EvaluationScore(-104, 80),
+        EvaluationScore(-103, 78),
+        EvaluationScore(-87, 62),
+        EvaluationScore(-92, 34),
+        EvaluationScore(-74, -41),
+    ],
+    [
+        EvaluationScore(-60, -26),
+        EvaluationScore(-80, 60),
+        EvaluationScore(-80, 71),
+        EvaluationScore(-100, 84),
+        EvaluationScore(-100, 82),
+        EvaluationScore(-80, 77),
+        EvaluationScore(-80, 70),
+        EvaluationScore(-61, -24),
+    ],
+    [
+        EvaluationScore(-60, -36),
+        EvaluationScore(-80, 32),
+        EvaluationScore(-80, 52),
+        EvaluationScore(-100, 30),
+        EvaluationScore(-100, 40),
+        EvaluationScore(-80, 55),
+        EvaluationScore(-80, 45),
+        EvaluationScore(-60, -30),
+    ],
+    [
+        EvaluationScore(-60, -81),
+        EvaluationScore(-80, -53),
+        EvaluationScore(-80, -42),
+        EvaluationScore(-100, -22),
+        EvaluationScore(-100, -19),
+        EvaluationScore(-80, -24),
+        EvaluationScore(-80, -46),
+        EvaluationScore(-60, -67),
+    ],
 ];

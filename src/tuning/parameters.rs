@@ -110,192 +110,156 @@ pub fn apply_gradient_psqt(
         }
     }
 }
-
+pub fn arrays_to_evalstring(array1: &[f64], array2: &[f64]) -> String {
+    let mut res_str = String::new();
+    res_str.push_str("[");
+    for (index, x) in array1.iter().enumerate() {
+        res_str.push_str(&format!(
+            "EvaluationScore({}, {}), ",
+            x.round() as isize,
+            array2[index].round() as isize
+        ));
+    }
+    res_str.push_str("]");
+    res_str
+}
+pub fn psqts_to_evalstring(psqt1: &[[f64; 8]; 8], psqt2: &[[f64; 8]; 8]) -> String {
+    let mut res_str = String::new();
+    res_str.push_str("[");
+    for (index, x) in psqt1.iter().enumerate() {
+        res_str.push_str(&format!("{}, ", arrays_to_evalstring(x, &psqt2[index])));
+    }
+    res_str.push_str("]");
+    res_str
+}
 impl Display for Parameters {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
         res_str.push_str(&format!(
-            "pub const TEMPO_BONUS_MG: i16 = {};\n",
-            self.tempo_bonus[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const TEMPO_BONUS_EG: i16 = {};\n",
+            "pub const TEMPO_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
+            self.tempo_bonus[MG].round() as isize,
             self.tempo_bonus[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const SHIELDING_PAWN_MISSING_MG: [i16;4] = {};\n",
-            array_to_string(&self.shielding_pawn_missing[MG])
+            "pub const SHIELDING_PAWN_MISSING: [EvaluationScore;4] = {};\n",
+            arrays_to_evalstring(
+                &self.shielding_pawn_missing[MG],
+                &self.shielding_pawn_missing[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const SHIELDING_PAWN_MISSING_EG: [i16;4] = {};\n",
-            array_to_string(&self.shielding_pawn_missing[EG])
+            "pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: [EvaluationScore;4] = {};\n",
+            arrays_to_evalstring(
+                &self.shielding_pawn_onopen_missing[MG],
+                &self.shielding_pawn_onopen_missing[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG: [i16;4] = {};\n",
-            array_to_string(&self.shielding_pawn_onopen_missing[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG: [i16;4] = {};\n",
-            array_to_string(&self.shielding_pawn_onopen_missing[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_DOUBLED_VALUE_MG: i16 = {};\n",
-            self.pawn_doubled[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_DOUBLED_VALUE_EG: i16 = {};\n",
+            "pub const PAWN_DOUBLED_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_doubled[MG].round() as isize,
             self.pawn_doubled[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_ISOLATED_VALUE_MG: i16 = {};\n",
-            self.pawn_isolated[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_ISOLATED_VALUE_EG: i16 = {};\n",
+            "pub const PAWN_ISOLATED_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_isolated[MG].round() as isize,
             self.pawn_isolated[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_BACKWARD_VALUE_MG: i16 = {};\n",
-            self.pawn_backward[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_BACKWARD_VALUE_EG: i16 = {};\n",
+            "pub const PAWN_BACKWARD_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_backward[MG].round() as isize,
             self.pawn_backward[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_SUPPORTED_VALUE_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.pawn_supported[MG])
+            "pub const PAWN_SUPPORTED_VALUE: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.pawn_supported[MG], &self.pawn_supported[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_SUPPORTED_VALUE_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.pawn_supported[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_ATTACK_CENTER_MG: i16 = {};\n",
-            self.pawn_attack_center[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_ATTACK_CENTER_EG: i16 = {};\n",
+            "pub const PAWN_ATTACK_CENTER: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_attack_center[MG].round() as isize,
             self.pawn_attack_center[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_MOBILITY_MG: i16 = {};\n",
-            self.pawn_mobility[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_MOBILITY_EG: i16 = {};\n",
+            "pub const PAWN_MOBILITY: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_mobility[MG].round() as isize,
             self.pawn_mobility[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_PASSED_VALUES_MG: [i16;7] = {};\n",
-            array_to_string(&self.pawn_passed[MG])
+            "pub const PAWN_PASSED_VALUES: [EvaluationScore;7] = {};\n",
+            arrays_to_evalstring(&self.pawn_passed[MG], &self.pawn_passed[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_PASSED_VALUES_EG: [i16;7] = {};\n",
-            array_to_string(&self.pawn_passed[EG])
+            "pub const PAWN_PASSED_NOT_BLOCKED_VALUES: [EvaluationScore;7] = {};\n",
+            arrays_to_evalstring(
+                &self.pawn_passed_notblocked[MG],
+                &self.pawn_passed_notblocked[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_PASSED_NOT_BLOCKED_VALUES_MG: [i16;7] = {};\n",
-            array_to_string(&self.pawn_passed_notblocked[MG])
+            "pub const PASSED_KING_DISTANCE: [EvaluationScore;7] = {};\n",
+            arrays_to_evalstring(
+                &self.pawn_passed_kingdistance[MG],
+                &self.pawn_passed_kingdistance[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_PASSED_NOT_BLOCKED_VALUES_EG: [i16;7] = {};\n",
-            array_to_string(&self.pawn_passed_notblocked[EG])
+            "pub const PASSED_ENEMY_KING_DISTANCE: [EvaluationScore;7] = {};\n",
+            arrays_to_evalstring(
+                &self.pawn_passed_enemykingdistance[MG],
+                &self.pawn_passed_enemykingdistance[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const PASSED_KING_DISTANCE_MG: [i16; 7] = {};\n",
-            array_to_string(&self.pawn_passed_kingdistance[MG])
+            "pub const PASSED_SUBTRACT_DISTANCE: [EvaluationScore;13] = {};\n",
+            arrays_to_evalstring(
+                &self.pawn_passed_subdistance[MG],
+                &self.pawn_passed_subdistance[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const PASSED_KING_DISTANCE_EG: [i16; 7] = {};\n",
-            array_to_string(&self.pawn_passed_kingdistance[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PASSED_ENEMY_KING_DISTANCE_MG: [i16; 7] = {};\n",
-            array_to_string(&self.pawn_passed_enemykingdistance[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PASSED_ENEMY_KING_DISTANCE_EG: [i16; 7] = {};\n",
-            array_to_string(&self.pawn_passed_enemykingdistance[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PASSED_SUBTRACT_DISTANCE_MG: [i16; 13] = {};\n",
-            array_to_string(&self.pawn_passed_subdistance[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PASSED_SUBTRACT_DISTANCE_EG: [i16; 13] = {};\n",
-            array_to_string(&self.pawn_passed_subdistance[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_BEHIND_SUPPORT_PASSER_MG: i16 = {};\n",
-            self.rook_behind_support_passer[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_BEHIND_SUPPORT_PASSER_EG: i16 = {};\n",
+            "pub const ROOK_BEHIND_SUPPORT_PASSER: EvaluationScore = EvaluationScore({}, {});\n",
+            self.rook_behind_support_passer[MG].round() as isize,
             self.rook_behind_support_passer[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_BEHIND_ENEMY_PASSER_MG: i16 = {};\n",
-            self.rook_behind_enemy_passer[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_BEHIND_ENEMY_PASSER_EG: i16 = {};\n",
+            "pub const ROOK_BEHIND_ENEMY_PASSER: EvaluationScore = EvaluationScore({}, {});\n",
+            self.rook_behind_enemy_passer[MG].round() as isize,
             self.rook_behind_enemy_passer[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_PASSED_WEAK_MG: i16 = {};\n",
-            self.pawn_passed_weak[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_PASSED_WEAK_EG: i16 = {};\n",
+            "pub const PAWN_PASSED_WEAK: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_passed_weak[MG].round() as isize,
             self.pawn_passed_weak[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_SUPPORTED_BY_PAWN_MG: i16 = {};\n",
-            self.knight_supported[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const KNIGHT_SUPPORTED_BY_PAWN_EG: i16 = {};\n",
+            "pub const KNIGHT_SUPPORTED_BY_PAWN: EvaluationScore = EvaluationScore({}, {});\n",
+            self.knight_supported[MG].round() as isize,
             self.knight_supported[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_OUTPOST_MG_TABLE: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.knight_outpost_table[MG])
+            "pub const KNIGHT_OUTPOST_TABLE: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(
+                &self.knight_outpost_table[MG],
+                &self.knight_outpost_table[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_OUTPOST_EG_TABLE: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.knight_outpost_table[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_ON_OPEN_FILE_BONUS_MG: i16 = {};\n",
+            "pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
             self.rook_on_open[MG].round() as isize,
+            self.rook_on_open[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_ON_OPEN_FILE_BONUS_EG: i16 = {};\n",
-            self.rook_on_open[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_ON_SEVENTH_MG: i16 = {};\n",
-            self.rook_on_seventh[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_ON_SEVENTH_EG: i16 = {};\n",
+            "pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore({}, {});\n",
+            self.rook_on_seventh[MG].round() as isize,
             self.rook_on_seventh[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PAWN_PIECE_VALUE_MG: i16 = {};\n",
-            self.pawn_piece_value[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const PAWN_PIECE_VALUE_EG: i16 = {};\n",
+            "pub const PAWN_PIECE_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.pawn_piece_value[MG].round() as isize,
             self.pawn_piece_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_PIECE_VALUE_MG: i16 = {};\n",
-            self.knight_piece_value[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const KNIGHT_PIECE_VALUE_EG: i16 = {};\n",
+            "pub const KNIGHT_PIECE_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.knight_piece_value[MG].round() as isize,
             self.knight_piece_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
@@ -303,204 +267,122 @@ impl Display for Parameters {
             array_to_string(&self.knight_value_with_pawns)
         ));
         res_str.push_str(&format!(
-            "pub const BISHOP_PIECE_VALUE_MG: i16 = {};\n",
-            self.bishop_piece_value[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_PIECE_VALUE_EG: i16 = {};\n",
+            "pub const BISHOP_PIECE_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.bishop_piece_value[MG].round() as isize,
             self.bishop_piece_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const BISHOP_PAIR_BONUS_MG: i16 = {};\n",
-            self.bishop_pair[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_PAIR_BONUS_EG: i16 = {};\n",
+            "pub const BISHOP_PAIR_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
+            self.bishop_pair[MG].round() as isize,
             self.bishop_pair[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_PIECE_VALUE_MG: i16 = {};\n",
-            self.rook_piece_value[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_PIECE_VALUE_EG: i16 = {};\n",
+            "pub const ROOK_PIECE_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.rook_piece_value[MG].round() as isize,
             self.rook_piece_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const QUEEN_PIECE_VALUE_MG: i16 = {};\n",
-            self.queen_piece_value[MG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_PIECE_VALUE_EG: i16 = {};\n",
+            "pub const QUEEN_PIECE_VALUE: EvaluationScore = EvaluationScore({}, {});\n",
+            self.queen_piece_value[MG].round() as isize,
             self.queen_piece_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG: [i16;5] = {};\n",
-            array_to_string(&self.diagonally_adjacent_squares_withpawns[MG])
+            "pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS: [EvaluationScore;5] = {};\n",
+            arrays_to_evalstring(
+                &self.diagonally_adjacent_squares_withpawns[MG],
+                &self.diagonally_adjacent_squares_withpawns[EG]
+            )
         ));
         res_str.push_str(&format!(
-            "pub const DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG: [i16;5] = {};\n",
-            array_to_string(&self.diagonally_adjacent_squares_withpawns[EG])
+            "pub const KNIGHT_MOBILITY_BONUS: [EvaluationScore;9] = {};\n",
+            arrays_to_evalstring(&self.knight_mobility[MG], &self.knight_mobility[EG])
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_MOBILITY_BONUS_MG: [i16;9] = {};\n",
-            array_to_string(&self.knight_mobility[MG])
+            "pub const BISHOP_MOBILITY_BONUS: [EvaluationScore;14] = {};\n",
+            arrays_to_evalstring(&self.bishop_mobility[MG], &self.bishop_mobility[EG])
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_MOBILITY_BONUS_EG: [i16;9] = {};\n",
-            array_to_string(&self.knight_mobility[EG])
+            "pub const ROOK_MOBILITY_BONUS: [EvaluationScore;15] = {};\n",
+            arrays_to_evalstring(&self.rook_mobility[MG], &self.rook_mobility[EG])
         ));
         res_str.push_str(&format!(
-            "pub const BISHOP_MOBILITY_BONUS_MG: [i16;14] = {};\n",
-            array_to_string(&self.bishop_mobility[MG])
+            "pub const QUEEN_MOBILITY_BONUS: [EvaluationScore;28] = {};\n",
+            arrays_to_evalstring(&self.queen_mobility[MG], &self.queen_mobility[EG])
         ));
         res_str.push_str(&format!(
-            "pub const BISHOP_MOBILITY_BONUS_EG: [i16;14] = {};\n",
-            array_to_string(&self.bishop_mobility[EG])
+            "pub const ATTACK_WEIGHT: [EvaluationScore;8] = {};\n",
+            arrays_to_evalstring(&self.attack_weight[MG], &self.attack_weight[EG])
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_MOBILITY_BONUS_MG: [i16;15] = {};\n",
-            array_to_string(&self.rook_mobility[MG])
+            "pub const SAFETY_TABLE: [EvaluationScore;100] = {};\n",
+            arrays_to_evalstring(
+                &self.safety_table[MG].safety_table,
+                &self.safety_table[EG].safety_table
+            )
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_MOBILITY_BONUS_EG: [i16;15] = {};\n",
-            array_to_string(&self.rook_mobility[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_MOBILITY_BONUS_MG: [i16;28] = {};\n",
-            array_to_string(&self.queen_mobility[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_MOBILITY_BONUS_EG: [i16;28] = {};\n",
-            array_to_string(&self.queen_mobility[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const ATTACK_WEIGHT_MG: [i16;8] = {};\n",
-            array_to_string(&self.attack_weight[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const SAFETY_TABLE_MG: [i16;100] = {};\n",
-            array_to_string(&self.safety_table[MG].safety_table)
-        ));
-        res_str.push_str(&format!(
-            "pub const ATTACK_WEIGHT_EG: [i16;8] = {};\n",
-            array_to_string(&self.attack_weight[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const SAFETY_TABLE_EG: [i16;100] = {};\n",
-            array_to_string(&self.safety_table[EG].safety_table)
-        ));
-        res_str.push_str(&format!(
-            "pub const KNIGHT_ATTACK_WORTH_MG: i16 = {};\n",
+            "pub const KNIGHT_ATTACK_WORTH: EvaluationScore = EvaluationScore({}, {});\n",
             self.knight_attack_value[MG].round() as isize,
+            self.knight_attack_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_ATTACK_WORTH_EG: i16 = {};\n",
-            self.knight_attack_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_ATTACK_WORTH_MG: i16 = {};\n",
+            "pub const BISHOP_ATTACK_WORTH: EvaluationScore = EvaluationScore({}, {});\n",
             self.bishop_attack_value[MG].round() as isize,
+            self.bishop_attack_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const BISHOP_ATTACK_WORTH_EG: i16 = {};\n",
-            self.bishop_attack_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_ATTACK_WORTH_MG: i16 = {};\n",
+            "pub const ROOK_ATTACK_WORTH: EvaluationScore = EvaluationScore({}, {});\n",
             self.rook_attack_value[MG].round() as isize,
+            self.rook_attack_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_ATTACK_WORTH_EG: i16 = {};\n",
-            self.rook_attack_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_ATTACK_WORTH_MG: i16 = {};\n",
+            "pub const QUEEN_ATTACK_WORTH: EvaluationScore = EvaluationScore({}, {});\n",
             self.queen_attack_value[MG].round() as isize,
+            self.queen_attack_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const QUEEN_ATTACK_WORTH_EG: i16 = {};\n",
-            self.queen_attack_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const KNIGHT_SAFE_CHECK_MG: i16 = {};\n",
+            "pub const KNIGHT_SAFE_CHECK: EvaluationScore = EvaluationScore({}, {});\n",
             self.knight_check_value[MG].round() as isize,
+            self.knight_check_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_SAFE_CHECK_EG: i16 = {};\n",
-            self.knight_check_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_SAFE_CHECK_MG: i16 = {};\n",
+            "pub const BISHOP_SAFE_CHECK: EvaluationScore = EvaluationScore({}, {});\n",
             self.bishop_check_value[MG].round() as isize,
+            self.bishop_check_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const BISHOP_SAFE_CHECK_EG: i16 = {};\n",
-            self.bishop_check_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_SAFE_CHECK_MG: i16 = {};\n",
+            "pub const ROOK_SAFE_CHECK: EvaluationScore = EvaluationScore({}, {});\n",
             self.rook_check_value[MG].round() as isize,
+            self.rook_check_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const ROOK_SAFE_CHECK_EG: i16 = {};\n",
-            self.rook_check_value[EG].round() as isize,
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_SAFE_CHECK_MG: i16 = {};\n",
+            "pub const QUEEN_SAFE_CHECK: EvaluationScore = EvaluationScore({}, {});\n",
             self.queen_check_value[MG].round() as isize,
+            self.queen_check_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const QUEEN_SAFE_CHECK_EG: i16 = {};\n",
-            self.queen_check_value[EG].round() as isize,
+            "pub const PSQT_PAWN: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.psqt_pawn[MG], &self.psqt_pawn[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PSQT_PAWN_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_pawn[MG])
+            "pub const PSQT_KNIGHT: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.psqt_knight[MG], &self.psqt_knight[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PSQT_PAWN_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_pawn[EG])
+            "pub const PSQT_BISHOP: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.psqt_bishop[MG], &self.psqt_bishop[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PSQT_KNIGHT_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_knight[MG])
+            "pub const PSQT_ROOK: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.psqt_rook[MG], &self.psqt_rook[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PSQT_KNIGHT_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_knight[EG])
+            "pub const PSQT_QUEEN: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.psqt_queen[MG], &self.psqt_queen[EG])
         ));
         res_str.push_str(&format!(
-            "pub const PSQT_BISHOP_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_bishop[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_BISHOP_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_bishop[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_ROOK_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_rook[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_ROOK_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_rook[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_QUEEN_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_queen[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_QUEEN_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_queen[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_KING_MG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_king[MG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_KING_EG: [[i16;8];8] = {};\n",
-            psqt_to_string(&self.psqt_king[EG])
+            "pub const PSQT_KING: [[EvaluationScore;8];8] = {};\n",
+            psqts_to_evalstring(&self.psqt_king[MG], &self.psqt_king[EG])
         ));
         write!(formatter, "{}", res_str)
     }
@@ -513,46 +395,46 @@ impl Parameters {
     pub fn default() -> Self {
         let mut shielding_pawn_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
-            shielding_pawn_missing[MG][i] = f64::from(SHIELDING_PAWN_MISSING_MG[i]);
-            shielding_pawn_missing[EG][i] = f64::from(SHIELDING_PAWN_MISSING_EG[i]);
+            shielding_pawn_missing[MG][i] = f64::from(SHIELDING_PAWN_MISSING[i].0);
+            shielding_pawn_missing[EG][i] = f64::from(SHIELDING_PAWN_MISSING[i].1);
         }
         let mut shielding_pawn_onopen_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
             shielding_pawn_onopen_missing[MG][i] =
-                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE_MG[i]);
+                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE[i].0);
             shielding_pawn_onopen_missing[EG][i] =
-                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE_EG[i]);
+                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE[i].1);
         }
         let mut pawn_passed: [[f64; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed[MG][i] = f64::from(PAWN_PASSED_VALUES_MG[i]);
-            pawn_passed[EG][i] = f64::from(PAWN_PASSED_VALUES_EG[i]);
+            pawn_passed[MG][i] = f64::from(PAWN_PASSED_VALUES[i].0);
+            pawn_passed[EG][i] = f64::from(PAWN_PASSED_VALUES[i].1);
         }
         let mut pawn_passed_notblocked: [[f64; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_notblocked[MG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES_MG[i]);
-            pawn_passed_notblocked[EG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES_EG[i]);
+            pawn_passed_notblocked[MG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES[i].0);
+            pawn_passed_notblocked[EG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES[i].1);
         }
         let mut pawn_passed_kingdistance: [[f64; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_kingdistance[MG][i] = f64::from(PASSED_KING_DISTANCE_MG[i]);
-            pawn_passed_kingdistance[EG][i] = f64::from(PASSED_KING_DISTANCE_EG[i]);
+            pawn_passed_kingdistance[MG][i] = f64::from(PASSED_KING_DISTANCE[i].0);
+            pawn_passed_kingdistance[EG][i] = f64::from(PASSED_KING_DISTANCE[i].1);
         }
         let mut pawn_passed_enemykingdistance: [[f64; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_enemykingdistance[MG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE_MG[i]);
-            pawn_passed_enemykingdistance[EG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE_EG[i]);
+            pawn_passed_enemykingdistance[MG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE[i].0);
+            pawn_passed_enemykingdistance[EG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE[i].1);
         }
         let mut pawn_passed_subdistance: [[f64; 13]; 2] = [[0.; 13]; 2];
         for i in 0..13 {
-            pawn_passed_subdistance[MG][i] = f64::from(PASSED_SUBTRACT_DISTANCE_MG[i]);
-            pawn_passed_subdistance[EG][i] = f64::from(PASSED_SUBTRACT_DISTANCE_EG[i]);
+            pawn_passed_subdistance[MG][i] = f64::from(PASSED_SUBTRACT_DISTANCE[i].0);
+            pawn_passed_subdistance[EG][i] = f64::from(PASSED_SUBTRACT_DISTANCE[i].1);
         }
         let mut knight_outpost_table: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                knight_outpost_table[MG][i][j] = f64::from(KNIGHT_OUTPOST_MG_TABLE[i][j]);
-                knight_outpost_table[EG][i][j] = f64::from(KNIGHT_OUTPOST_EG_TABLE[i][j]);
+                knight_outpost_table[MG][i][j] = f64::from(KNIGHT_OUTPOST_TABLE[i][j].0);
+                knight_outpost_table[EG][i][j] = f64::from(KNIGHT_OUTPOST_TABLE[i][j].1);
             }
         }
         let mut knight_value_with_pawns: [f64; 17] = [0.; 17];
@@ -562,34 +444,34 @@ impl Parameters {
         let mut diagonally_adjacent_squares_withpawns: [[f64; 5]; 2] = [[0.; 5]; 2];
         for i in 0..5 {
             diagonally_adjacent_squares_withpawns[MG][i] =
-                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_MG[i]);
+                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[i].0);
             diagonally_adjacent_squares_withpawns[EG][i] =
-                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS_EG[i]);
+                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[i].1);
         }
         let mut knight_mobility: [[f64; 9]; 2] = [[0.; 9]; 2];
         for i in 0..9 {
-            knight_mobility[MG][i] = f64::from(KNIGHT_MOBILITY_BONUS_MG[i]);
-            knight_mobility[EG][i] = f64::from(KNIGHT_MOBILITY_BONUS_EG[i]);
+            knight_mobility[MG][i] = f64::from(KNIGHT_MOBILITY_BONUS[i].0);
+            knight_mobility[EG][i] = f64::from(KNIGHT_MOBILITY_BONUS[i].1);
         }
         let mut bishop_mobility: [[f64; 14]; 2] = [[0.; 14]; 2];
         for i in 0..14 {
-            bishop_mobility[MG][i] = f64::from(BISHOP_MOBILITY_BONUS_MG[i]);
-            bishop_mobility[EG][i] = f64::from(BISHOP_MOBILITY_BONUS_EG[i]);
+            bishop_mobility[MG][i] = f64::from(BISHOP_MOBILITY_BONUS[i].0);
+            bishop_mobility[EG][i] = f64::from(BISHOP_MOBILITY_BONUS[i].1);
         }
         let mut rook_mobility: [[f64; 15]; 2] = [[0.; 15]; 2];
         for i in 0..15 {
-            rook_mobility[MG][i] = f64::from(ROOK_MOBILITY_BONUS_MG[i]);
-            rook_mobility[EG][i] = f64::from(ROOK_MOBILITY_BONUS_EG[i]);
+            rook_mobility[MG][i] = f64::from(ROOK_MOBILITY_BONUS[i].0);
+            rook_mobility[EG][i] = f64::from(ROOK_MOBILITY_BONUS[i].1);
         }
         let mut queen_mobility: [[f64; 28]; 2] = [[0.; 28]; 2];
         for i in 0..28 {
-            queen_mobility[MG][i] = f64::from(QUEEN_MOBILITY_BONUS_MG[i]);
-            queen_mobility[EG][i] = f64::from(QUEEN_MOBILITY_BONUS_EG[i]);
+            queen_mobility[MG][i] = f64::from(QUEEN_MOBILITY_BONUS[i].0);
+            queen_mobility[EG][i] = f64::from(QUEEN_MOBILITY_BONUS[i].1);
         }
         let mut attack_weight: [[f64; 8]; 2] = [[0.; 8]; 2];
         for i in 0..8 {
-            attack_weight[MG][i] = f64::from(ATTACK_WEIGHT_MG[i]);
-            attack_weight[EG][i] = f64::from(ATTACK_WEIGHT_EG[i]);
+            attack_weight[MG][i] = f64::from(ATTACK_WEIGHT[i].0);
+            attack_weight[EG][i] = f64::from(ATTACK_WEIGHT[i].1);
         }
         let mut safety_table: [SafetyTable; 2] = [
             SafetyTable {
@@ -600,162 +482,150 @@ impl Parameters {
             },
         ];
         for i in 0..100 {
-            safety_table[MG].safety_table[i] = f64::from(SAFETY_TABLE_MG[i]);
-            safety_table[EG].safety_table[i] = f64::from(SAFETY_TABLE_EG[i]);
+            safety_table[MG].safety_table[i] = f64::from(SAFETY_TABLE[i].0);
+            safety_table[EG].safety_table[i] = f64::from(SAFETY_TABLE[i].1);
         }
 
         let mut psqt_pawn: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_pawn[MG][i][j] = f64::from(PSQT_PAWN_MG[i][j]);
-                psqt_pawn[EG][i][j] = f64::from(PSQT_PAWN_EG[i][j]);
+                psqt_pawn[MG][i][j] = f64::from(PSQT_PAWN[i][j].0);
+                psqt_pawn[EG][i][j] = f64::from(PSQT_PAWN[i][j].1);
             }
         }
         let mut psqt_knight: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_knight[MG][i][j] = f64::from(PSQT_KNIGHT_MG[i][j]);
-                psqt_knight[EG][i][j] = f64::from(PSQT_KNIGHT_EG[i][j]);
+                psqt_knight[MG][i][j] = f64::from(PSQT_KNIGHT[i][j].0);
+                psqt_knight[EG][i][j] = f64::from(PSQT_KNIGHT[i][j].1);
             }
         }
         let mut psqt_bishop: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_bishop[MG][i][j] = f64::from(PSQT_BISHOP_MG[i][j]);
-                psqt_bishop[EG][i][j] = f64::from(PSQT_BISHOP_EG[i][j]);
+                psqt_bishop[MG][i][j] = f64::from(PSQT_BISHOP[i][j].0);
+                psqt_bishop[EG][i][j] = f64::from(PSQT_BISHOP[i][j].1);
             }
         }
         let mut psqt_rook: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_rook[MG][i][j] = f64::from(PSQT_ROOK_MG[i][j]);
-                psqt_rook[EG][i][j] = f64::from(PSQT_ROOK_EG[i][j]);
+                psqt_rook[MG][i][j] = f64::from(PSQT_ROOK[i][j].0);
+                psqt_rook[EG][i][j] = f64::from(PSQT_ROOK[i][j].1);
             }
         }
         let mut psqt_queen: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_queen[MG][i][j] = f64::from(PSQT_QUEEN_MG[i][j]);
-                psqt_queen[EG][i][j] = f64::from(PSQT_QUEEN_EG[i][j]);
+                psqt_queen[MG][i][j] = f64::from(PSQT_QUEEN[i][j].0);
+                psqt_queen[EG][i][j] = f64::from(PSQT_QUEEN[i][j].1);
             }
         }
         let mut psqt_king: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_king[MG][i][j] = f64::from(PSQT_KING_MG[i][j]);
-                psqt_king[EG][i][j] = f64::from(PSQT_KING_EG[i][j]);
+                psqt_king[MG][i][j] = f64::from(PSQT_KING[i][j].0);
+                psqt_king[EG][i][j] = f64::from(PSQT_KING[i][j].1);
             }
         }
         let mut psqt_pawn_supported: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_pawn_supported[MG][i][j] = f64::from(PAWN_SUPPORTED_VALUE_MG[i][j]);
-                psqt_pawn_supported[EG][i][j] = f64::from(PAWN_SUPPORTED_VALUE_EG[i][j]);
+                psqt_pawn_supported[MG][i][j] = f64::from(PAWN_SUPPORTED_VALUE[i][j].0);
+                psqt_pawn_supported[EG][i][j] = f64::from(PAWN_SUPPORTED_VALUE[i][j].1);
             }
         }
         Parameters {
-            tempo_bonus: [f64::from(TEMPO_BONUS_MG), f64::from(TEMPO_BONUS_EG)],
+            tempo_bonus: [f64::from(TEMPO_BONUS.0), f64::from(TEMPO_BONUS.1)],
             shielding_pawn_missing,
             shielding_pawn_onopen_missing,
             pawn_doubled: [
-                f64::from(PAWN_DOUBLED_VALUE_MG),
-                f64::from(PAWN_DOUBLED_VALUE_EG),
+                f64::from(PAWN_DOUBLED_VALUE.0),
+                f64::from(PAWN_DOUBLED_VALUE.1),
             ],
             pawn_isolated: [
-                f64::from(PAWN_ISOLATED_VALUE_MG),
-                f64::from(PAWN_ISOLATED_VALUE_EG),
+                f64::from(PAWN_ISOLATED_VALUE.0),
+                f64::from(PAWN_ISOLATED_VALUE.1),
             ],
             pawn_backward: [
-                f64::from(PAWN_BACKWARD_VALUE_MG),
-                f64::from(PAWN_BACKWARD_VALUE_EG),
+                f64::from(PAWN_BACKWARD_VALUE.0),
+                f64::from(PAWN_BACKWARD_VALUE.1),
             ],
             pawn_supported: psqt_pawn_supported,
             pawn_attack_center: [
-                f64::from(PAWN_ATTACK_CENTER_MG),
-                f64::from(PAWN_ATTACK_CENTER_EG),
+                f64::from(PAWN_ATTACK_CENTER.0),
+                f64::from(PAWN_ATTACK_CENTER.1),
             ],
-            pawn_mobility: [f64::from(PAWN_MOBILITY_MG), f64::from(PAWN_MOBILITY_EG)],
+            pawn_mobility: [f64::from(PAWN_MOBILITY.0), f64::from(PAWN_MOBILITY.1)],
             pawn_passed,
             pawn_passed_notblocked,
             pawn_passed_kingdistance,
             pawn_passed_enemykingdistance,
             pawn_passed_subdistance,
             rook_behind_support_passer: [
-                f64::from(ROOK_BEHIND_SUPPORT_PASSER_MG),
-                f64::from(ROOK_BEHIND_SUPPORT_PASSER_EG),
+                f64::from(ROOK_BEHIND_SUPPORT_PASSER.0),
+                f64::from(ROOK_BEHIND_SUPPORT_PASSER.1),
             ],
             rook_behind_enemy_passer: [
-                f64::from(ROOK_BEHIND_ENEMY_PASSER_MG),
-                f64::from(ROOK_BEHIND_ENEMY_PASSER_EG),
+                f64::from(ROOK_BEHIND_ENEMY_PASSER.0),
+                f64::from(ROOK_BEHIND_ENEMY_PASSER.1),
             ],
-            pawn_passed_weak: [
-                f64::from(PAWN_PASSED_WEAK_MG),
-                f64::from(PAWN_PASSED_WEAK_EG),
-            ],
+            pawn_passed_weak: [f64::from(PAWN_PASSED_WEAK.0), f64::from(PAWN_PASSED_WEAK.1)],
             knight_supported: [
-                f64::from(KNIGHT_SUPPORTED_BY_PAWN_MG),
-                f64::from(KNIGHT_SUPPORTED_BY_PAWN_EG),
+                f64::from(KNIGHT_SUPPORTED_BY_PAWN.0),
+                f64::from(KNIGHT_SUPPORTED_BY_PAWN.1),
             ],
             knight_outpost_table,
             rook_on_open: [
-                f64::from(ROOK_ON_OPEN_FILE_BONUS_MG),
-                f64::from(ROOK_ON_OPEN_FILE_BONUS_EG),
+                f64::from(ROOK_ON_OPEN_FILE_BONUS.0),
+                f64::from(ROOK_ON_OPEN_FILE_BONUS.1),
             ],
-            rook_on_seventh: [f64::from(ROOK_ON_SEVENTH_MG), f64::from(ROOK_ON_SEVENTH_EG)],
-            pawn_piece_value: [
-                f64::from(PAWN_PIECE_VALUE_MG),
-                f64::from(PAWN_PIECE_VALUE_EG),
-            ],
+            rook_on_seventh: [f64::from(ROOK_ON_SEVENTH.0), f64::from(ROOK_ON_SEVENTH.1)],
+            pawn_piece_value: [f64::from(PAWN_PIECE_VALUE.0), f64::from(PAWN_PIECE_VALUE.1)],
             knight_piece_value: [
-                f64::from(KNIGHT_PIECE_VALUE_MG),
-                f64::from(KNIGHT_PIECE_VALUE_EG),
+                f64::from(KNIGHT_PIECE_VALUE.0),
+                f64::from(KNIGHT_PIECE_VALUE.1),
             ],
             knight_value_with_pawns,
             bishop_piece_value: [
-                f64::from(BISHOP_PIECE_VALUE_MG),
-                f64::from(BISHOP_PIECE_VALUE_EG),
+                f64::from(BISHOP_PIECE_VALUE.0),
+                f64::from(BISHOP_PIECE_VALUE.1),
             ],
             bishop_pair: [
-                f64::from(BISHOP_PAIR_BONUS_MG),
-                f64::from(BISHOP_PAIR_BONUS_EG),
+                f64::from(BISHOP_PAIR_BONUS.0),
+                f64::from(BISHOP_PAIR_BONUS.1),
             ],
-            rook_piece_value: [
-                f64::from(ROOK_PIECE_VALUE_MG),
-                f64::from(ROOK_PIECE_VALUE_EG),
-            ],
+            rook_piece_value: [f64::from(ROOK_PIECE_VALUE.0), f64::from(ROOK_PIECE_VALUE.1)],
             queen_piece_value: [
-                f64::from(QUEEN_PIECE_VALUE_MG),
-                f64::from(QUEEN_PIECE_VALUE_EG),
+                f64::from(QUEEN_PIECE_VALUE.0),
+                f64::from(QUEEN_PIECE_VALUE.1),
             ],
             knight_attack_value: [
-                f64::from(KNIGHT_ATTACK_WORTH_MG),
-                f64::from(KNIGHT_ATTACK_WORTH_EG),
+                f64::from(KNIGHT_ATTACK_WORTH.0),
+                f64::from(KNIGHT_ATTACK_WORTH.1),
             ],
             bishop_attack_value: [
-                f64::from(BISHOP_ATTACK_WORTH_MG),
-                f64::from(BISHOP_ATTACK_WORTH_EG),
+                f64::from(BISHOP_ATTACK_WORTH.0),
+                f64::from(BISHOP_ATTACK_WORTH.1),
             ],
             rook_attack_value: [
-                f64::from(ROOK_ATTACK_WORTH_MG),
-                f64::from(ROOK_ATTACK_WORTH_EG),
+                f64::from(ROOK_ATTACK_WORTH.0),
+                f64::from(ROOK_ATTACK_WORTH.1),
             ],
             queen_attack_value: [
-                f64::from(QUEEN_ATTACK_WORTH_MG),
-                f64::from(QUEEN_ATTACK_WORTH_EG),
+                f64::from(QUEEN_ATTACK_WORTH.0),
+                f64::from(QUEEN_ATTACK_WORTH.1),
             ],
             knight_check_value: [
-                f64::from(KNIGHT_SAFE_CHECK_MG),
-                f64::from(KNIGHT_SAFE_CHECK_EG),
+                f64::from(KNIGHT_SAFE_CHECK.0),
+                f64::from(KNIGHT_SAFE_CHECK.1),
             ],
             bishop_check_value: [
-                f64::from(BISHOP_SAFE_CHECK_MG),
-                f64::from(BISHOP_SAFE_CHECK_EG),
+                f64::from(BISHOP_SAFE_CHECK.0),
+                f64::from(BISHOP_SAFE_CHECK.1),
             ],
-            rook_check_value: [f64::from(ROOK_SAFE_CHECK_MG), f64::from(ROOK_SAFE_CHECK_EG)],
-            queen_check_value: [
-                f64::from(QUEEN_SAFE_CHECK_MG),
-                f64::from(QUEEN_SAFE_CHECK_EG),
-            ],
+            rook_check_value: [f64::from(ROOK_SAFE_CHECK.0), f64::from(ROOK_SAFE_CHECK.1)],
+            queen_check_value: [f64::from(QUEEN_SAFE_CHECK.0), f64::from(QUEEN_SAFE_CHECK.1)],
             diagonally_adjacent_squares_withpawns,
             knight_mobility,
             bishop_mobility,
