@@ -38,7 +38,7 @@ pub fn load_openings_into_queue(
     mut db: Vec<GameState>,
     mut db_sequences: Vec<Vec<GameMove>>,
     gauntlet_engine: &Engine,
-    enemies: &Vec<Engine>,
+    enemies: &[Engine],
 ) -> ThreadSafeQueue<PlayTask> {
     let mut rng = rand::thread_rng();
     let mut res: Vec<PlayTask> = Vec::with_capacity(n);

@@ -22,7 +22,8 @@ fn main() {
 }
 
 pub fn make_benchmarking_positions() {
-    let mut states: Vec<GameState> = load_db_until(MAKE_BENCHMARKING_POSITIONS_FROM, LOAD_DB_UNTIL);
+    let mut states: Vec<GameState> =
+        load_db_until(MAKE_BENCHMARKING_POSITIONS_FROM, LOAD_DB_UNTIL).0;
     let mut rng = rand::thread_rng();
     let mut write_str = String::new();
     for _ in 0..BENCHMARKING_POSITIONS_AMOUNT {

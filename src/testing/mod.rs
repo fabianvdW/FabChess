@@ -157,10 +157,10 @@ impl Engine {
         )
     }
 
-    pub fn from_path(path: &String, id: usize, tc: TimeControl) -> Self {
+    pub fn from_path(path: &str, id: usize, tc: TimeControl) -> Self {
         let mut res = Engine {
             name: "".to_owned(),
-            path: path.clone(),
+            path: path.to_string(),
             id,
             wins: 0,
             draws: 0,
@@ -355,7 +355,7 @@ impl Engine {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn_async()
-            .expect(&format!("Failed to start engine {}!", self.path));
+            .unwrap_or_else(|_| panic!("Failed to start engine {}!", self.path));
         let input = process.stdin().take().unwrap();
         let output = process.stdout().take().unwrap();
         let stderr = process.stderr().take().unwrap();

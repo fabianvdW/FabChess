@@ -27,10 +27,11 @@ mod tests {
     use core::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core::evaluation::phase::Phase;
     use core::evaluation::psqt_evaluation::psqt;
-    use core::misc::{GameParser, PGNParser, KING_BASE_PATH};
+    use core::misc::KING_BASE_PATH;
     use core::move_generation::makemove::make_move;
     use core::move_generation::movegen;
     use core::perft;
+    use core::pgn::pgn_reader::{GameParser, PGNParser};
     use core::search::reserved_memory::ReservedAttackContainer;
     use core::search::reserved_memory::ReservedMoveList;
     use rand::Rng;

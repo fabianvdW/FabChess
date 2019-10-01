@@ -138,7 +138,7 @@ pub fn get_pgn_string(
             current_line.clear();
         }
         if index == contents.len() - 1 {
-            current_line.push_str(&format!("{}", content));
+            current_line.push_str(content);
         } else {
             current_line.push_str(&format!("{} ", content));
         }

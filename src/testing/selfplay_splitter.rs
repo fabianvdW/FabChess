@@ -95,7 +95,7 @@ pub fn start_self_play(config: Config) {
             other.sort_by(|a, b| {
                 if a.2 > b.2 {
                     Ordering::Less
-                } else if a.2 == b.2 {
+                } else if (a.2 - b.2).abs() < std::f64::EPSILON {
                     Ordering::Equal
                 } else {
                     Ordering::Greater
