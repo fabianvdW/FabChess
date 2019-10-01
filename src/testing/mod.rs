@@ -75,6 +75,7 @@ impl EngineStats {
             + other.avg_depth * other.moves_played as f64 / sum;
         self.avg_nps = self.avg_nps * self.moves_played as f64 / sum
             + other.avg_nps * other.moves_played as f64 / sum;
+        self.moves_played += other.moves_played;
     }
 }
 
@@ -107,9 +108,11 @@ impl Engine {
         let games = self.wins + self.draws + self.losses;
         let other_games = other.wins + other.draws + other.losses;
         self.stats.add(&other.stats);
-        self.stats.avg_timeleft = self.stats.avg_timeleft * games as f64
-            / (games + other_games) as f64
-            + other.stats.avg_timeleft * other_games as f64 / (games + other_games) as f64;
+        if games + other_games != 0 {
+            self.stats.avg_timeleft = self.stats.avg_timeleft * games as f64
+                / (games + other_games) as f64
+                + other.stats.avg_timeleft * other_games as f64 / (games + other_games) as f64;
+        }
         self.wins += other.wins;
         self.draws += other.draws;
         self.losses += other.losses;
@@ -143,7 +146,7 @@ impl Engine {
                     / (self.wins + self.draws + self.losses) as f64,
             ),
             format!(
-                "{}\tdisq {} dep {:.2} nps {:.0} time {:.0}",
+                "{}\t\tdisq {} dep {:.2} nps {:.0} time {:.0}",
                 self.name,
                 self.disqs,
                 self.stats.avg_depth,
@@ -473,6 +476,8 @@ impl TaskResult {
         } else {
             task.engine2.disqs += 1;
         }
+        task.engine1.stats.divide();
+        task.engine2.stats.divide();
         TaskResult {
             task,
             endcondition: None,
