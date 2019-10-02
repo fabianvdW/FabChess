@@ -198,16 +198,12 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     }
     #[cfg(feature = "display-eval")]
     {
-        let tempo_mg;
-        let tempo_eg;
-        if g.color_to_move == WHITE {
-            tempo_mg = TEMPO_BONUS_MG;
-            tempo_eg = TEMPO_BONUS_EG;
+        let tempo = if g.color_to_move == WHITE {
+            TEMPO_BONUS
         } else {
-            tempo_mg = -TEMPO_BONUS_MG;
-            tempo_eg = -TEMPO_BONUS_EG;
-        }
-        log(&format!("\nTempo:({} , {})\n", tempo_mg, tempo_eg,));
+            TEMPO_BONUS * -1
+        };
+        log(&format!("\nTempo:{}\n", tempo));
     }
     let mut eval: EvaluationScore = (knights_w + piecewise_w + king_w + pawns_w + pieces_w)
         - (knights_b + piecewise_b + king_b + pawns_b + pieces_b)
@@ -227,39 +223,24 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nMG Sum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
-            psqt_mg,
-            knights_w.0 - knights_b.0,
-            piecewise_w.0 - piecewise_b.0,
-            king_w.0 - king_b.0,
-            pawns_w.0 - pawns_b.0,
-            pieces_w.0 - pieces_b.0,
+            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
+            psqt_score,
+            knights_w - knights_b,
+            piecewise_w - piecewise_b,
+            king_w - king_b,
+            pawns_w - pawns_b,
+            pieces_w - pieces_b,
             if g.color_to_move == 0 {
-                TEMPO_BONUS_MG
+                TEMPO_BONUS
             } else {
-                -TEMPO_BONUS_MG
+                TEMPO_BONUS * -1
             },
-            mg_eval
-        ));
-        log(&format!(
-            "\nEG Sum: ({} + {} + {} + {} + {} + {} + {}) /1.5 -> {}\n",
-            psqt_eg,
-            knights_w.1 - knights_b.1,
-            piecewise_w.1 - piecewise_b.1,
-            king_w.1 - king_b.1,
-            pawns_w.1 - pawns_b.1,
-            pieces_w.1 - pieces_b.1,
-            if g.color_to_move == 0 {
-                TEMPO_BONUS_EG
-            } else {
-                -TEMPO_BONUS_EG
-            },
-            eg_eval
+            eval
         ));
         log(&format!("Phase: {}\n", phase));
         log(&format!(
             "\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}",
-            mg_eval, phase, eg_eval, phase, res,
+            eval.0, phase, eval.1, phase, res,
         ));
     }
     result.final_eval = res;
