@@ -3,8 +3,8 @@ use crate::board_representation::game_state::{GameMove, GameMoveType, GameState,
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
-use crate::search::cache::Cache;
 use crate::search::cache::CacheEntry;
+use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use crate::search::searcher::Search;
 use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
@@ -19,7 +19,7 @@ pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
     let stop = Arc::new(AtomicBool::new(false));
-    let cache: Arc<RwLock<Cache>> = Arc::new(RwLock::new(Cache::default()));
+    let mut cache: Option<Arc<RwLock<Cache>>> = None;
     let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
@@ -39,18 +39,23 @@ pub fn parse_loop() {
             "uci" => {
                 uci(&us);
             }
-            "setoption" => setoption(),
+            "setoption" => setoption(&arg[1..], &mut cache, &mut us),
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                (*cache).write().unwrap().clear();
+                if cache.is_some() {
+                    (cache.as_mut().unwrap()).write().unwrap().clear();
+                }
                 saved_time.store(0, Ordering::Relaxed);
                 last_score.store(0, Ordering::Relaxed);
             }
-            "isready" => isready(),
+            "isready" => isready(&us, &mut cache),
             "position" => {
                 history = position(&mut us, &arg[1..], &mut movelist, &mut attack_container);
             }
             "go" => {
+                if cache.is_none() {
+                    cache = Some(Arc::new(RwLock::new(Cache::with_size(us.hash_size))));
+                }
                 stop.store(false, Ordering::Relaxed);
                 let (tc, depth) = go(&us, &arg[1..]);
                 let mut new_history = vec![];
@@ -59,7 +64,7 @@ pub fn parse_loop() {
                 }
                 let new_state = us.internal_state.clone();
                 let cl = Arc::clone(&stop);
-                let cc = Arc::clone(&cache);
+                let cc = Arc::clone(cache.as_ref().unwrap());
                 let st = Arc::clone(&saved_time);
                 let ls = Arc::clone(&last_score);
                 thread::Builder::new()
@@ -274,16 +279,45 @@ pub fn scout_and_make_draftmove(
     panic!("Invalid move; not found in list!");
 }
 
-pub fn isready() {
+pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<RwLock<Cache>>>) {
+    if cache.is_none() {
+        *cache = Some(Arc::new(RwLock::new(Cache::with_size(us.hash_size))));
+    }
     println!("readyok");
 }
 
 pub fn uci(engine: &UCIEngine) {
     engine.id_command();
+    println!(
+        "option name Hash type spin default {} min {} max {}",
+        engine.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
+    );
+    println!("option name ClearHash type button");
     println!("uciok");
 }
 
-pub fn setoption() {}
+pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut UCIEngine) {
+    let mut index = 0;
+    while index < cmd.len() {
+        let arg = cmd[index];
+        match arg {
+            "Hash" => {
+                let num = cmd[index + 2].parse::<usize>().unwrap();
+                us.hash_size = num;
+                return;
+            }
+            "ClearHash" => {
+                if cache.is_some() {
+                    cache.as_ref().unwrap().write().unwrap().clear();
+                }
+                return;
+            }
+            _ => {
+                index += 1;
+            }
+        }
+    }
+}
 
 pub fn newgame(engine: &mut UCIEngine) {
     engine.internal_state = GameState::standard();

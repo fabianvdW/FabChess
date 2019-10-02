@@ -4,25 +4,33 @@ use crate::board_representation::game_state::{
 use crate::search::searcher::Search;
 use crate::search::{CombinedSearchParameters, SearchInstruction};
 
-pub const CACHE_ENTRYS: usize = 8 * 1_048_576;
-
 pub struct Cache {
+    pub entries: usize,
     pub cache: Vec<Option<CacheEntry>>,
 }
-
+pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
+pub const MIN_HASH_SIZE: usize = 0; //IN MB
+pub const MAX_HASH_SIZE: usize = 131072; //IN MB
 impl Default for Cache {
     fn default() -> Self {
+        let entries = DEFAULT_HASH_SIZE * 1024 * 1024 / 24;
         Cache {
-            cache: vec![None; CACHE_ENTRYS],
+            cache: vec![None; entries],
+            entries,
         }
     }
 }
 
 impl Cache {
-    pub fn clear(&mut self) {
-        for i in 0..self.cache.len() {
-            self.cache[i] = None;
+    pub fn with_size(mb_size: usize) -> Self {
+        let entries = 1024 * 1024 * mb_size / 24;
+        Cache {
+            cache: vec![None; entries],
+            entries,
         }
+    }
+    pub fn clear(&mut self) {
+        self.cache = vec![None; self.entries];
     }
 
     pub fn insert(
@@ -34,10 +42,13 @@ impl Cache {
         root_plies_played: usize,
         static_evaluation: Option<i16>,
     ) {
+        if self.entries == 0 {
+            return;
+        }
         let lower_bound = score >= p.beta;
         let upper_bound = score <= original_alpha;
         let pv_node = p.beta - p.alpha > 1;
-        let index = p.game_state.hash as usize % CACHE_ENTRYS;
+        let index = p.game_state.hash as usize % self.entries;
         let ce = &self.cache[index];
         if ce.is_none() {
             let new_entry = CacheEntry::new(
@@ -84,7 +95,10 @@ impl Cache {
         static_evaluation: &mut Option<i16>,
         tt_move: &mut Option<GameMove>,
     ) -> SearchInstruction {
-        let ce = &self.cache[p.game_state.hash as usize % CACHE_ENTRYS];
+        if self.entries == 0 {
+            return SearchInstruction::ContinueSearching;
+        }
+        let ce = &self.cache[p.game_state.hash as usize % self.entries];
         if let Some(ce) = ce {
             if ce.hash == p.game_state.hash {
                 search.search_statistics.add_cache_hit_ns();
@@ -117,7 +131,7 @@ pub struct CacheEntry {
     pub plies_played: u16,
     //16 bits
     pub score: i16,
-    //64 bits
+    //16 bits
     pub alpha: bool,
     //8 bits
     pub beta: bool,
@@ -126,7 +140,7 @@ pub struct CacheEntry {
     //16 bits
     pub static_evaluation: Option<i16>,
     //16 bits
-    pub pv_node: bool, //Summed 200 bits 25 bytes
+    pub pv_node: bool, //Summed 160 bits 20 bytes
 }
 
 impl CacheEntry {

@@ -4,14 +4,15 @@
 	"games": 2000,
 	"engine_path":"./target/release/fabchess.exe",
 	"enemies_paths":[
-			"./versions/FabChessv1.12.5.exe"
-				  ],
-	"placeholder": [
+			"./versions/FabChessv1.12.5.exe",
 			"C:/Users/Fabian/Desktop/EngineEnemys/2800/Asymptote/asymptote.exe",
 			"C:/Users/Fabian/Desktop/EngineEnemys/2800/ruy-1.1.9-windows.exe",
 			"C:/Users/Fabian/Desktop/EngineEnemys/Winter/Winter0.7.exe",
 			"C:/Users/Fabian/Desktop/EngineEnemys/Winter/Winter0.6.exe",
 			"C:/Users/Fabian/Desktop/EngineEnemys/2800/igel-x64_popcnt.exe"
+				  ],
+	"placeholder": [
+
 	],
 	"opening_databasess":["./KingBase/KingBase2019-A00-A39.pgn","./KingBase/KingBase2019-A40-A79.pgn","./KingBase/KingBase2019-A80-A99.pgn","./KingBase/KingBase2019-B00-B19.pgn","./KingBase/KingBase2019-B20-B49.pgn","./KingBase/KingBase2019-B50-B99.pgn","./KingBase/KingBase2019-C00-C19.pgn","./KingBase/KingBase2019-C20-C59.pgn","./KingBase/KingBase2019-C60-C99.pgn","./KingBase/KingBase2019-D00-D29.pgn","./KingBase/KingBase2019-D30-D69.pgn","./KingBase/KingBase2019-D70-D99.pgn","./KingBase/KingBase2019-E00-E19.pgn","./KingBase/KingBase2019-E20-E59.pgn","./KingBase/KingBase2019-E60-E99.pgn"],
 	"opening_databases":["./O-Deville/o-deville.pgn"],
