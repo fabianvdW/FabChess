@@ -18,14 +18,19 @@ pub fn start_self_play(config: Config) {
         config.timecontrol_engine_time,
         config.timecontrol_engine_inc,
     );
-    let mut gauntlet_engine = Engine::from_path(&config.engine_path, 999, tcp1);
+    let mut gauntlet_engine = Engine::from_path(
+        &config.engine_path.0,
+        999,
+        tcp1,
+        config.engine_path.1.clone(),
+    );
     let tcp2 = TimeControl::Incremental(
         config.timecontrol_enemies_time,
         config.timecontrol_enemies_inc,
     );
     let mut engines: Vec<Engine> = Vec::new();
-    for (index, path) in config.enemies_paths.iter().enumerate() {
-        engines.push(Engine::from_path(path, index, tcp2.clone()));
+    for (index, path) in config.enemies_paths.into_iter().enumerate() {
+        engines.push(Engine::from_path(&path.0, index, tcp2.clone(), path.1));
     }
     let mut db: Vec<GameState> = Vec::with_capacity(100_000);
     let mut db_sequences: Vec<Vec<GameMove>> = Vec::with_capacity(100_000);

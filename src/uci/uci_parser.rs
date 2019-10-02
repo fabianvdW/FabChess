@@ -40,6 +40,7 @@ pub fn parse_loop() {
                 uci(&us);
             }
             "setoption" => setoption(&arg[1..], &mut cache, &mut us),
+
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
                 if cache.is_some() {
@@ -300,13 +301,13 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut 
     let mut index = 0;
     while index < cmd.len() {
         let arg = cmd[index];
-        match arg {
-            "Hash" => {
+        match arg.to_lowercase().as_str() {
+            "hash" => {
                 let num = cmd[index + 2].parse::<usize>().unwrap();
                 us.hash_size = num;
                 return;
             }
-            "ClearHash" => {
+            "clearhash" => {
                 if cache.is_some() {
                     cache.as_ref().unwrap().write().unwrap().clear();
                 }

@@ -262,7 +262,7 @@ pub fn eval_game_state(
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
-            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {}\n",
+            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {} (EG/=1.5)\n",
             psqt_score,
             knights_w - knights_b,
             piecewise_w - piecewise_b,
@@ -279,7 +279,7 @@ pub fn eval_game_state(
         log(&format!("Phase: {}\n", phase));
         log(&format!(
             "\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}",
-            eval.0, phase, eval.1, phase, final_res,
+            res.0, phase, res.1, phase, final_res,
         ));
     }
     result.final_eval = final_res;

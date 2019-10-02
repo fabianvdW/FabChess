@@ -10,11 +10,11 @@ use crate::move_generation::movegen::MoveList;
 use crate::testing::async_communication::{
     expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
 };
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio_process::{Child, ChildStderr, ChildStdin, ChildStdout, CommandExt};
-
 pub enum EngineReaction<T> {
     ContinueGame(T),
     DisqualifyEngine,
@@ -101,6 +101,7 @@ pub struct Engine {
     pub disqs: usize,
     pub time_control: TimeControl,
     pub stats: EngineStats,
+    pub uci_options: HashMap<String, String>,
 }
 
 impl Engine {
@@ -157,7 +158,12 @@ impl Engine {
         )
     }
 
-    pub fn from_path(path: &str, id: usize, tc: TimeControl) -> Self {
+    pub fn from_path(
+        path: &str,
+        id: usize,
+        tc: TimeControl,
+        options: HashMap<String, String>,
+    ) -> Self {
         let mut res = Engine {
             name: "".to_owned(),
             path: path.to_string(),
@@ -168,6 +174,7 @@ impl Engine {
             disqs: 0,
             time_control: tc,
             stats: EngineStats::default(),
+            uci_options: options,
         };
         let (_child, input, output, _err) = res.get_handles();
         let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
@@ -335,7 +342,7 @@ impl Engine {
         task_id: usize,
         error_log: Arc<Logger>,
     ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr, Arc<Logger>)> {
-        let stdin = print_command(runtime, stdin, "uci\n".to_owned());
+        let mut stdin = print_command(runtime, stdin, "uci\n".to_owned());
         let output = expect_output("uciok".to_owned(), 10000, stdout, runtime);
         if output.0.is_none() {
             error_log.log(
@@ -346,6 +353,13 @@ impl Engine {
             return EngineReaction::DisqualifyEngine;
         }
         let stdout = output.1.unwrap();
+        for pair in &self.uci_options {
+            stdin = print_command(
+                runtime,
+                stdin,
+                format!("setoption name {} value {}\n", pair.0, pair.1),
+            );
+        }
         self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id, error_log)
     }
 

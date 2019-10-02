@@ -6,10 +6,12 @@ extern crate tokio_io;
 extern crate tokio_process;
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
+
 pub mod lct2;
 pub mod selfplay;
 pub mod selfplay_splitter;
@@ -39,8 +41,8 @@ pub struct Config {
     pub processors: usize,
     selfplaytests: bool,
     pub games: usize,
-    pub engine_path: String,
-    pub enemies_paths: Vec<String>,
+    pub engine_path: (String, HashMap<String, String>),
+    pub enemies_paths: Vec<(String, HashMap<String, String>)>,
     pub opening_databases: Vec<String>,
     pub opening_load_untilply: usize,
     pub timecontrol_engine_time: u64,
@@ -94,10 +96,10 @@ fn main() {
     if config.selfplaytests {
         selfplay_splitter::start_self_play(config);
     } else if config.lct2tests {
-        lct2::lct2(&config.engine_path, config.processors, &config.lct2_path);
+        lct2::lct2(&config.engine_path.0, config.processors, &config.lct2_path);
     } else if config.testsuitetests {
         suit::start_suit(
-            &config.engine_path,
+            &config.engine_path.0,
             config.processors,
             &config.suite_path,
             config.suite_movetime,
