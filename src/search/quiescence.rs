@@ -54,6 +54,8 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
             eval_game_state(
                 &p.game_state,
                 &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+                p.alpha * p.color,
+                p.beta * p.color,
             )
             .final_eval
                 * p.color,

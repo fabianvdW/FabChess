@@ -24,6 +24,8 @@ use std::ops;
 pub const MG: usize = 0;
 pub const EG: usize = 1;
 
+pub const FIRST_LAZY_MARGIN: i16 = 450;
+pub const SECOND_LAZY_MARGIN: i16 = 250;
 #[derive(Copy, Clone, PartialEq)]
 pub struct EvaluationScore(pub i16, pub i16);
 impl EvaluationScore {
@@ -101,10 +103,15 @@ pub struct EvaluationResult {
 
 pub fn eval_game_state_from_null(g: &GameState) -> EvaluationResult {
     let mgsac = GameStateAttackContainer::from_state(g);
-    eval_game_state(g, &mgsac)
+    eval_game_state(g, &mgsac, -16000, 16000)
 }
 
-pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> EvaluationResult {
+pub fn eval_game_state(
+    g: &GameState,
+    attacks: &GameStateAttackContainer,
+    alpha: i16,
+    beta: i16,
+) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
         log(&format!("Evaluating GameState fen: {}\n", g.to_fen()));
@@ -119,6 +126,27 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
     {
         result.trace.phase = phase;
     }
+    let mut res = EvaluationScore::default();
+
+    if g.color_to_move == WHITE {
+        res += TEMPO_BONUS;
+    } else {
+        res -= TEMPO_BONUS;
+    }
+    #[cfg(feature = "display-eval")]
+    {
+        let tempo = if g.color_to_move == WHITE {
+            TEMPO_BONUS
+        } else {
+            TEMPO_BONUS * -1
+        };
+        log(&format!("\nTempo:{}\n", tempo));
+    }
+    #[cfg(feature = "texel-tuning")]
+    {
+        result.trace.tempo_bonus = if g.color_to_move == WHITE { 1 } else { -1 };
+    }
+
     let psqt_score: EvaluationScore =
         if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
             let (psqt_w, psqt_b) = (
@@ -129,60 +157,12 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
         } else {
             g.psqt
         };
-
     #[cfg(feature = "display-eval")]
     {
         log(&format!("\nPSQT Sum: {}\n", psqt_score));
     }
-    let (knights_w, knights_b) = (
-        knights(true, g, &mut result, attacks),
-        knights(false, g, &mut result, attacks),
-    );
-    #[cfg(feature = "display-eval")]
-    {
-        log(&format!(
-            "\nKnights Sum: {} - {} -> {}\n",
-            knights_w,
-            knights_b,
-            knights_w - knights_b
-        ));
-    }
-    let (piecewise_w, piecewise_b) = (
-        piecewise(true, g, &mut result, attacks),
-        piecewise(false, g, &mut result, attacks),
-    );
-    #[cfg(feature = "display-eval")]
-    {
-        log(&format!(
-            "\nPiecewise Sum: {} - {} -> {}\n",
-            piecewise_w,
-            piecewise_b,
-            piecewise_w - piecewise_b
-        ));
-    }
-    let (king_w, king_b) = (king(true, g, &mut result), king(false, g, &mut result));
-    #[cfg(feature = "display-eval")]
-    {
-        log(&format!(
-            "\nKing Sum: {} - {} -> {}\n",
-            king_w,
-            king_b,
-            king_w - king_b
-        ));
-    }
-    let (pawns_w, pawns_b) = (
-        pawns(true, g, &mut result, attacks),
-        pawns(false, g, &mut result, attacks),
-    );
-    #[cfg(feature = "display-eval")]
-    {
-        log(&format!(
-            "\nPawn Sum: {} - {} -> {}\n",
-            pawns_w,
-            pawns_b,
-            pawns_w - pawns_b
-        ));
-    }
+    res += psqt_score;
+
     let (pieces_w, pieces_b) = (
         piece_values(true, g, &mut result),
         piece_values(false, g, &mut result),
@@ -196,30 +176,89 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
             pieces_w - pieces_b
         ));
     }
+    res += pieces_w - pieces_b;
+
+    /*let lazy_eval = EvaluationScore(res.0, (f64::from(res.1) / 1.5) as i16);
+    let lazy_eval = lazy_eval.interpolate(phase);
+
+    if lazy_eval + FIRST_LAZY_MARGIN < alpha {
+        result.final_eval = lazy_eval + FIRST_LAZY_MARGIN;
+        return result;
+    } else if lazy_eval - FIRST_LAZY_MARGIN > beta {
+        result.final_eval = lazy_eval - FIRST_LAZY_MARGIN;
+        return result;
+    }*/
+    let (pawns_w, pawns_b) = (
+        pawns(true, g, &mut result, attacks),
+        pawns(false, g, &mut result, attacks),
+    );
     #[cfg(feature = "display-eval")]
     {
-        let tempo = if g.color_to_move == WHITE {
-            TEMPO_BONUS
-        } else {
-            TEMPO_BONUS * -1
-        };
-        log(&format!("\nTempo:{}\n", tempo));
+        log(&format!(
+            "\nPawn Sum: {} - {} -> {}\n",
+            pawns_w,
+            pawns_b,
+            pawns_w - pawns_b
+        ));
     }
-    let mut eval: EvaluationScore = (knights_w + piecewise_w + king_w + pawns_w + pieces_w)
-        - (knights_b + piecewise_b + king_b + pawns_b + pieces_b)
-        + psqt_score;
-    if g.color_to_move == WHITE {
-        eval += TEMPO_BONUS;
-    } else {
-        eval -= TEMPO_BONUS;
-    }
-    #[cfg(feature = "texel-tuning")]
+    res += pawns_w - pawns_b;
+
+    /*let lazy_eval = EvaluationScore(res.0, (f64::from(res.1) / 1.5) as i16);
+    let lazy_eval = lazy_eval.interpolate(phase);
+
+    if lazy_eval + SECOND_LAZY_MARGIN < alpha {
+        result.final_eval = lazy_eval + SECOND_LAZY_MARGIN;
+        return result;
+    } else if lazy_eval - SECOND_LAZY_MARGIN > beta {
+        result.final_eval = lazy_eval - SECOND_LAZY_MARGIN;
+        return result;
+    }*/
+
+    let (knights_w, knights_b) = (
+        knights(true, g, &mut result, attacks),
+        knights(false, g, &mut result, attacks),
+    );
+    #[cfg(feature = "display-eval")]
     {
-        result.trace.tempo_bonus = if g.color_to_move == WHITE { 1 } else { -1 };
+        log(&format!(
+            "\nKnights Sum: {} - {} -> {}\n",
+            knights_w,
+            knights_b,
+            knights_w - knights_b
+        ));
     }
-    eval.1 = (f64::from(eval.1) / 1.5) as i16;
+    res += knights_w - knights_b;
+
+    let (piecewise_w, piecewise_b) = (
+        piecewise(true, g, &mut result, attacks),
+        piecewise(false, g, &mut result, attacks),
+    );
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nPiecewise Sum: {} - {} -> {}\n",
+            piecewise_w,
+            piecewise_b,
+            piecewise_w - piecewise_b
+        ));
+    }
+    res += piecewise_w - piecewise_b;
+
+    let (king_w, king_b) = (king(true, g, &mut result), king(false, g, &mut result));
+    #[cfg(feature = "display-eval")]
+    {
+        log(&format!(
+            "\nKing Sum: {} - {} -> {}\n",
+            king_w,
+            king_b,
+            king_w - king_b
+        ));
+    }
+    res += king_w - king_b;
+
+    res.1 = (f64::from(res.1) / 1.5) as i16;
     //Phasing is done the same way stockfish does it
-    let res = eval.interpolate(phase);
+    let final_res = res.interpolate(phase);
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
@@ -235,15 +274,15 @@ pub fn eval_game_state(g: &GameState, attacks: &GameStateAttackContainer) -> Eva
             } else {
                 TEMPO_BONUS * -1
             },
-            eval
+            res
         ));
         log(&format!("Phase: {}\n", phase));
         log(&format!(
             "\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}",
-            eval.0, phase, eval.1, phase, res,
+            eval.0, phase, eval.1, phase, final_res,
         ));
     }
-    result.final_eval = res;
+    result.final_eval = final_res;
     result
 }
 

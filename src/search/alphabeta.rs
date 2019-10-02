@@ -385,6 +385,8 @@ pub fn max_depth(p: &CombinedSearchParameters, su: &mut SearchUtils) -> SearchIn
             eval_game_state(
                 p.game_state,
                 &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+                p.alpha * p.color,
+                p.beta * p.color,
             )
             .final_eval
                 * p.color,
@@ -421,6 +423,8 @@ pub fn make_eval(
         let eval_res = eval_game_state(
             p.game_state,
             &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+            p.alpha * p.color,
+            p.beta * p.color,
         );
         *static_evaluation = Some(eval_res.final_eval);
         su.search.search_statistics.add_static_eval_node();
