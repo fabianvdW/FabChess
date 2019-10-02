@@ -11,7 +11,7 @@ pub struct UCIEngine<'a> {
 impl<'a> UCIEngine<'a> {
     pub fn standard() -> UCIEngine<'a> {
         UCIEngine {
-            name: &"FabChessDev v1.12.6",
+            name: &"FabChess v1.12.6",
             author: &"Fabian von der Warth, Contributor: Erik Imgrund",
             internal_state: GameState::standard(),
             hash_size: DEFAULT_HASH_SIZE,
