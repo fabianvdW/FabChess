@@ -1,7 +1,7 @@
 {
 	"processors":4,
 	"selfplaytests":true,
-	"games": 200,
+	"games": 2000,
 	"engine_path":"./target/release/fabchess.exe",
 	"enemies_paths":[
 			"./versions/FabChessv1.12.5.exe",
