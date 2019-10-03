@@ -4,12 +4,10 @@ use super::super::board_representation::game_state::{
 };
 use super::super::evaluation::{self, eval_game_state};
 use super::super::move_generation::movegen;
-use super::super::move_generation::movegen::{AdditionalGameStateInformation, MoveList};
+use super::super::move_generation::movegen::AdditionalGameStateInformation;
 use super::alphabeta::*;
-use super::searcher::{Search, SearchUtils};
 use super::*;
 use crate::bitboards;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 
 pub const DELTA_PRUNING: i16 = 100;
@@ -17,35 +15,34 @@ lazy_static! {
     pub static ref PIECE_VALUES: [i16; 6] = [100, 300, 310, 500, 900, 30000];
 }
 
-pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
+pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
-    su.search.search_statistics.add_q_node(p.current_depth);
-    clear_pv(p.current_depth, su.search);
+    thread.search_statistics.add_q_node(p.current_depth);
+    clear_pv(p.current_depth, thread);
 
     //Step 1. Stop flag set, return immediatly
-    if su.search.stop {
+    if thread.self_stop {
         return STANDARD_SCORE;
     }
 
     //Step 2. Max search-depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p, su) {
+    if let SearchInstruction::StopSearching(res) = max_depth(&p, thread) {
         return res;
     }
 
     //Step 3. Check for draw
-    if let SearchInstruction::StopSearching(res) = check_for_draw(p.game_state, su.history) {
+    if let SearchInstruction::StopSearching(res) = check_for_draw(p.game_state, &thread.history) {
         return res;
     }
 
     //Step 4. Attacks and in check  flag. Attacks are only recalculated when parent is also a qnode
     if p.depth_left < 0 {
         // Before dropping into qsearch we make sure we're not in check in pvs
-        su.thread_memory.reserved_attack_container.attack_containers[p.current_depth]
-            .write_state(p.game_state);
+        thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
     }
     let incheck = in_check(
         p.game_state,
-        &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+        &thread.attack_container.attack_containers[p.current_depth],
     );
 
     //Step 5. Get standing pat when not in check
@@ -53,7 +50,7 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
         Some(
             eval_game_state(
                 &p.game_state,
-                &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
+                &thread.attack_container.attack_containers[p.current_depth],
                 p.alpha * p.color,
                 p.beta * p.color,
             )
@@ -77,16 +74,22 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
     //Step 7. TT Lookup
     let mut tt_move: Option<GameMove> = None;
     if let SearchInstruction::StopSearching(res) =
-        su.cache.lookup(su.search, &p, &mut None, &mut tt_move)
+        thread.itcs.cache.lookup(&p, &mut None, &mut tt_move)
     {
+        thread.search_statistics.add_cache_hit_aj_replace_ns();
+        thread.pv_table[p.current_depth].pv[0] = tt_move;
         return res;
+    }
+    if tt_move.is_some() {
+        thread.search_statistics.add_cache_hit_ns();
     }
     //Only captures are valid tt moves (if not in check)
     if tt_move.is_some() && !incheck && !is_capture(tt_move.as_ref().unwrap()) {
         tt_move = None;
     }
 
-    su.history
+    thread
+        .history
         .push(p.game_state.hash, p.game_state.half_moves == 0);
 
     //Step 8. Iterate through moves
@@ -106,16 +109,7 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
         //Step 8.1. Staged movegen. Generate all moves after trying tt move
         if index == hash_move_counter && !has_generated_moves {
             has_generated_moves = true;
-            let (agsi, mvs) = make_and_evaluate_moves_qsearch(
-                p.game_state,
-                su.search,
-                &mut su.thread_memory.reserved_movelist.move_lists[p.current_depth],
-                &su.thread_memory.reserved_attack_container.attack_containers[p.current_depth],
-                p.game_state.phase.phase,
-                stand_pat,
-                p.alpha,
-                incheck,
-            );
+            let (agsi, mvs) = make_and_evaluate_moves_qsearch(thread, &p, stand_pat, incheck);
             has_legal_move = agsi.stm_haslegalmove;
             available_captures_in_movelist = mvs;
             continue;
@@ -123,7 +117,7 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
         //Step 8.2. Select the next move
         let capture_move: GameMove = select_next_move_qsearch(
             &p,
-            su,
+            thread,
             index,
             &tt_move,
             moves_from_movelist_tried,
@@ -150,19 +144,19 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
                 -p.color,
                 p.current_depth + 1,
             ),
-            su,
+            thread,
         );
 
         //Step 8.5 Move raises best moves score, so update pv and score
         if score > current_max_score {
             current_max_score = score;
-            su.search.pv_table[p.current_depth].pv[0] = Some(capture_move);
+            thread.pv_table[p.current_depth].pv[0] = Some(capture_move);
             has_pv = true;
             //Hang on following pv in theory
         }
         //Step 8.6 Beta cutoff, break
         if score >= p.beta {
-            su.search.search_statistics.add_q_beta_cutoff(index);
+            thread.search_statistics.add_q_beta_cutoff(index);
             break;
         }
 
@@ -173,26 +167,25 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
         index += 1;
     }
 
-    su.history.pop();
+    thread.history.pop();
     if current_max_score < p.beta && index > 0 {
-        su.search.search_statistics.add_q_beta_noncutoff();
+        thread.search_statistics.add_q_beta_noncutoff();
     }
     //Step 9. Evaluate leafs correctly
     let game_status = check_end_condition(p.game_state, has_legal_move, incheck);
     if game_status != GameResult::Ingame {
-        clear_pv(p.current_depth, su.search);
+        clear_pv(p.current_depth, thread);
         return leaf_score(game_status, p.color, p.current_depth as i16);
     }
 
     //Step 10. Make TT entry
-    if has_pv && p.depth_left == 0 && !su.search.stop {
-        su.cache.insert(
+    if has_pv && p.depth_left == 0 && !thread.self_stop {
+        thread.itcs.cache.insert(
             &p,
-            &su.search.pv_table[p.current_depth].pv[0]
-                .expect("Can't unwrap move for TT in qsearch!"),
+            &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
             current_max_score,
             p.alpha,
-            su.root_pliesplayed,
+            thread.root_plies_played,
             if incheck {
                 None
             } else {
@@ -208,7 +201,7 @@ pub fn q_search(mut p: CombinedSearchParameters, su: &mut SearchUtils) -> i16 {
 #[inline(always)]
 pub fn select_next_move_qsearch(
     p: &CombinedSearchParameters,
-    su: &mut SearchUtils,
+    thread: &mut Thread,
     index: usize,
     tt_move: &Option<GameMove>,
     moves_from_movelist_tried: usize,
@@ -218,13 +211,12 @@ pub fn select_next_move_qsearch(
         tt_move.expect("Couldn't unwrap tt move in qsearch")
     } else {
         let r = get_next_gm(
-            &mut su.thread_memory.reserved_movelist.move_lists[p.current_depth],
+            &mut thread.movelist.move_lists[p.current_depth],
             moves_from_movelist_tried,
             available_captures_in_movelist,
         )
         .0;
-        su.thread_memory.reserved_movelist.move_lists[p.current_depth].move_list[r]
-            .expect("Could not get next gm")
+        thread.movelist.move_lists[p.current_depth].move_list[r].expect("Could not get next gm")
     }
 }
 
@@ -251,31 +243,40 @@ pub fn delta_pruning(p: &CombinedSearchParameters, stand_pat: i16) -> SearchInst
 
 #[inline(always)]
 pub fn make_and_evaluate_moves_qsearch(
-    game_state: &GameState,
-    search: &mut Search,
-    move_list: &mut MoveList,
-    attack_container: &GameStateAttackContainer,
-    phase: f64,
+    thread: &mut Thread,
+    p: &CombinedSearchParameters,
     stand_pat: Option<i16>,
-    alpha: i16,
     incheck: bool,
 ) -> (AdditionalGameStateInformation, usize) {
-    let agsi = movegen::generate_moves(&game_state, !incheck, move_list, attack_container);
+    let agsi = movegen::generate_moves(
+        p.game_state,
+        !incheck,
+        &mut thread.movelist.move_lists[p.current_depth],
+        &thread.attack_container.attack_containers[p.current_depth],
+    );
+    let move_list = &mut thread.movelist.move_lists[p.current_depth];
     let (mut mv_index, mut capture_index) = (0, 0);
     while mv_index < move_list.counter {
         let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
         if let GameMoveType::EnPassant = mv.move_type {
             move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 99.0));
         } else {
-            if !incheck && !passes_delta_pruning(mv, phase, *stand_pat.as_ref().unwrap(), alpha) {
-                search.search_statistics.add_q_delta_cutoff();
+            if !incheck
+                && !passes_delta_pruning(
+                    mv,
+                    p.game_state.phase.phase,
+                    *stand_pat.as_ref().unwrap(),
+                    p.alpha,
+                )
+            {
+                thread.search_statistics.add_q_delta_cutoff();
                 mv_index += 1;
                 continue;
             }
             if !incheck || is_capture(&mv) {
-                let score = see(&game_state, mv, true, &mut search.see_buffer);
+                let score = see(p.game_state, mv, true, &mut thread.see_buffer);
                 if score < 0 && !incheck {
-                    search.search_statistics.add_q_see_cutoff();
+                    thread.search_statistics.add_q_see_cutoff();
                     mv_index += 1;
                     continue;
                 }
@@ -285,8 +286,8 @@ pub fn make_and_evaluate_moves_qsearch(
                 if !incheck {
                     panic!("Not in check but also not capture");
                 }
-                let score = search.hh_score[game_state.color_to_move][mv.from][mv.to] as f64
-                    / search.bf_score[game_state.color_to_move][mv.from][mv.to] as f64
+                let score = thread.hh_score[p.game_state.color_to_move][mv.from][mv.to] as f64
+                    / thread.bf_score[p.game_state.color_to_move][mv.from][mv.to] as f64
                     / 1000.0;
                 move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, score));
             }

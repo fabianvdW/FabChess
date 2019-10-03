@@ -4,15 +4,15 @@ use crate::board_representation::game_state_attack_container::GameStateAttackCon
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
-use crate::search::cache::{CacheEntry, DEFAULT_HASH_SIZE, DEFAULT_LOCKS, MAX_LOCKS, MIN_LOCKS};
-use crate::search::searcher::{Search, DEFAULT_THREADS, MAX_THREADS, MIN_THREADS};
-use crate::search::timecontrol::{TimeControl, TimeControlInformation};
+use crate::search::cache::{DEFAULT_HASH_SIZE, DEFAULT_LOCKS, MAX_LOCKS, MIN_LOCKS};
+use crate::search::searcher::{search_move, DEFAULT_THREADS, MAX_THREADS, MIN_THREADS};
+use crate::search::timecontrol::TimeControl;
+use crate::search::MAX_SEARCH_DEPTH;
 use std::io;
 use std::sync::{atomic::AtomicBool, atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc};
 use std::thread;
 use std::time::Duration;
 use std::u64;
-use crate::search::MAX_SEARCH_DEPTH;
 
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
@@ -67,10 +67,11 @@ pub fn parse_loop() {
                 let cc = Arc::clone(cache.as_ref().unwrap());
                 let st = Arc::clone(&saved_time);
                 let ls = Arc::clone(&last_score);
+                let threads = us.threads;
                 thread::Builder::new()
                     .stack_size(2 * 1024 * 1024)
                     .spawn(move || {
-                        start_search(cl, new_state, new_history, tc, cc, depth, st, ls);
+                        start_search(cl, new_state, new_history, tc, cc, depth, st, ls, threads);
                     })
                     .expect("Couldn't start thread");
             }
@@ -112,27 +113,22 @@ pub fn start_search(
     depth: usize,
     saved_time: Arc<AtomicU64>,
     last_score: Arc<AtomicI16>,
+    threads: usize,
 ) {
-    let mut s = Search::new(
-        tc,
-        TimeControlInformation::new(saved_time.load(Ordering::Relaxed)),
-    );
-    let score = s.search(
+    let score = search_move(
         depth as i16,
-        game_state.clone(),
+        game_state,
         history,
         stop,
         cache,
         saved_time,
         last_score.load(Ordering::Relaxed),
+        threads,
+        tc,
     );
-    last_score.store(score, Ordering::Relaxed);
-    let bestmove = if let Some(mv) = s.pv_table[0].pv[0] {
-        mv
-    } else {
-        CacheEntry::u16_to_mv(s.principal_variation[0].as_ref().unwrap().mv, &game_state)
-    };
-    println!("bestmove {:?}", bestmove);
+    if let Some(score) = score {
+        last_score.store(score, Ordering::Relaxed);
+    }
 }
 
 pub fn print_internal_state(engine: &UCIEngine) {

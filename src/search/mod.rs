@@ -11,12 +11,11 @@ use crate::board_representation::game_state::*;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::MoveList;
+use crate::search::searcher::Thread;
+use crate::search::timecontrol::TimeControlInformation;
 use history::History;
-use searcher::Search;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter, Result};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 
 pub const MAX_SEARCH_DEPTH: usize = 100;
 pub const MATE_SCORE: i16 = 15000;
@@ -195,23 +194,23 @@ pub fn check_end_condition(
 }
 
 #[inline(always)]
-pub fn clear_pv(at_depth: usize, search: &mut Search) {
+pub fn clear_pv(at_depth: usize, thread: &mut Thread) {
     let mut index = 0;
-    while let Some(_) = search.pv_table[at_depth].pv[index].as_ref() {
-        search.pv_table[at_depth].pv[index] = None;
+    while let Some(_) = thread.pv_table[at_depth].pv[index].as_ref() {
+        thread.pv_table[at_depth].pv[index] = None;
         index += 1;
     }
 }
 
 #[inline(always)]
-pub fn concatenate_pv(at_depth: usize, search: &mut Search) {
+pub fn concatenate_pv(at_depth: usize, thread: &mut Thread) {
     let mut index = 0;
-    while let Some(mv) = search.pv_table[at_depth + 1].pv[index].as_ref() {
-        search.pv_table[at_depth].pv[index + 1] = Some(*mv);
+    while let Some(mv) = thread.pv_table[at_depth + 1].pv[index].as_ref() {
+        thread.pv_table[at_depth].pv[index + 1] = Some(*mv);
         index += 1;
     }
-    while let Some(_) = search.pv_table[at_depth].pv[index + 1].as_ref() {
-        search.pv_table[at_depth].pv[index + 1] = None;
+    while let Some(_) = thread.pv_table[at_depth].pv[index + 1].as_ref() {
+        thread.pv_table[at_depth].pv[index + 1] = None;
         index += 1;
     }
 }
@@ -229,15 +228,27 @@ pub fn in_check_slow(game_state: &GameState) -> bool {
 }
 
 #[inline(always)]
-pub fn checkup(search: &mut Search, stop: &Arc<AtomicBool>) {
-    search.search_statistics.refresh_time_elapsed();
-    if search.tc.time_over(
-        search.search_statistics.time_elapsed,
-        &search.tc_information,
-    ) || stop.load(std::sync::atomic::Ordering::Relaxed)
+pub fn checkup(thread: &mut Thread) {
+    if thread
+        .tc
+        .as_ref()
+        .expect("unable to unwrap tc in checkup")
+        .time_over(
+            thread.itcs.get_time_elapsed(),
+            &TimeControlInformation {
+                high_score_diff: false,
+                time_saved: thread.time_saved.unwrap(),
+                stable_pv: thread
+                    .itcs
+                    .stable_pv
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            },
+        )
+        || thread
+            .timeout_stop
+            .load(std::sync::atomic::Ordering::Relaxed)
     {
-        search.stop = true;
-        //println!("{}", search.search_statistics);
+        thread.self_stop = true;
     }
 }
 
