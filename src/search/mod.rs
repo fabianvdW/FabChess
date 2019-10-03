@@ -59,6 +59,23 @@ pub enum SearchInstruction {
     ContinueSearching,
     StopSearching(i16),
 }
+
+#[derive(Clone)]
+pub struct ScoredPrincipalVariation {
+    pub score: i16,
+    pub pv: PrincipalVariation,
+    pub depth: usize,
+}
+impl Default for ScoredPrincipalVariation {
+    fn default() -> Self {
+        ScoredPrincipalVariation {
+            score: 0,
+            pv: PrincipalVariation::new(0),
+            depth: 0,
+        }
+    }
+}
+#[derive(Clone)]
 pub struct PrincipalVariation {
     pub pv: Vec<Option<GameMove>>,
 }

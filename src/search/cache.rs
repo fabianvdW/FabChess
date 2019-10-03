@@ -14,8 +14,11 @@ pub struct Cache {
 }
 pub const DEFAULT_LOCKS: usize = 64;
 pub const MIN_LOCKS: usize = 1;
-pub const MAX_LOCKS: usize = 8192;
-pub const DEFAULT_HASH_SIZE: usize = 16; //IN MB
+pub const MAX_LOCKS: usize = 65536; // This is really the maximum!!!
+                                    // Else we would need to index by upper_index = (hash >> 47 or lower)
+                                    // Using a higher number will lead to the cache not being able to be used fully
+
+pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131072; //IN MB
 impl Default for Cache {
@@ -54,11 +57,13 @@ impl Cache {
             cache,
         }
     }
-    pub fn clear(&mut self) {
-        self.cache.clear();
-        for _ in 0..self.locks {
-            self.cache
-                .push(RwLock::new(vec![None; self.entries_per_lock]));
+    pub fn get_status(&self) -> f64 {
+        self.full.load(Ordering::Relaxed) as f64 / self.entries as f64 * 1000.
+    }
+    pub fn clear(&self) {
+        for bucket in &self.cache {
+            let mut lock = bucket.write().unwrap();
+            *lock = vec![None; self.entries_per_lock];
         }
         self.full.store(0, Ordering::Relaxed);
     }

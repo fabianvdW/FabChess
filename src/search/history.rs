@@ -1,6 +1,7 @@
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::GameState;
 
+#[derive(Clone)]
 pub struct History {
     pub hist: Vec<u64>,
     pub is_unique: Vec<bool>,

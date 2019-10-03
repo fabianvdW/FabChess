@@ -1,5 +1,6 @@
 use crate::board_representation::game_state::GameState;
 use crate::search::cache::{DEFAULT_HASH_SIZE, DEFAULT_LOCKS};
+use crate::search::searcher::DEFAULT_THREADS;
 
 pub struct UCIEngine<'a> {
     pub name: &'a str,
@@ -7,6 +8,7 @@ pub struct UCIEngine<'a> {
     pub internal_state: GameState,
     pub hash_size: usize,
     pub hash_locks: usize,
+    pub threads: usize,
 }
 
 impl<'a> UCIEngine<'a> {
@@ -17,6 +19,7 @@ impl<'a> UCIEngine<'a> {
             internal_state: GameState::standard(),
             hash_size: DEFAULT_HASH_SIZE,
             hash_locks: DEFAULT_LOCKS,
+            threads: DEFAULT_THREADS,
         }
     }
 

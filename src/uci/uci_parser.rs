@@ -5,21 +5,20 @@ use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use crate::search::cache::{CacheEntry, DEFAULT_HASH_SIZE, DEFAULT_LOCKS, MAX_LOCKS, MIN_LOCKS};
-use crate::search::searcher::Search;
+use crate::search::searcher::{Search, DEFAULT_THREADS, MAX_THREADS, MIN_THREADS};
 use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
-use std::sync::{
-    atomic::AtomicBool, atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc, RwLock,
-};
+use std::sync::{atomic::AtomicBool, atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc};
 use std::thread;
 use std::time::Duration;
 use std::u64;
+use crate::search::MAX_SEARCH_DEPTH;
 
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
     let stop = Arc::new(AtomicBool::new(false));
-    let mut cache: Option<Arc<RwLock<Cache>>> = None;
+    let mut cache: Option<Arc<Cache>> = None; //Needs to be in mutex because we can still clear it
     let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
@@ -44,7 +43,7 @@ pub fn parse_loop() {
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
                 if cache.is_some() {
-                    (cache.as_mut().unwrap()).write().unwrap().clear();
+                    cache.as_ref().unwrap().clear();
                 }
                 saved_time.store(0, Ordering::Relaxed);
                 last_score.store(0, Ordering::Relaxed);
@@ -55,10 +54,7 @@ pub fn parse_loop() {
             }
             "go" => {
                 if cache.is_none() {
-                    cache = Some(Arc::new(RwLock::new(Cache::with_size(
-                        us.hash_size,
-                        us.hash_locks,
-                    ))));
+                    cache = Some(Arc::new(Cache::with_size(us.hash_size, us.hash_locks)));
                 }
                 stop.store(false, Ordering::Relaxed);
                 let (tc, depth) = go(&us, &arg[1..]);
@@ -112,7 +108,7 @@ pub fn start_search(
     game_state: GameState,
     history: Vec<GameState>,
     tc: TimeControl,
-    cache: Arc<RwLock<Cache>>,
+    cache: Arc<Cache>,
     depth: usize,
     saved_time: Arc<AtomicU64>,
     last_score: Arc<AtomicI16>,
@@ -148,7 +144,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
     let mut btime: u64 = 0;
     let mut winc: u64 = 0;
     let mut binc: u64 = 0;
-    let mut depth = 100;
+    let mut depth = MAX_SEARCH_DEPTH;
     if cmd[0].to_lowercase() == "infinite" {
         return (TimeControl::Infinite, depth);
     } else if cmd[0].to_lowercase() == "depth" {
@@ -283,12 +279,9 @@ pub fn scout_and_make_draftmove(
     panic!("Invalid move; not found in list!");
 }
 
-pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<RwLock<Cache>>>) {
+pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<Cache>>) {
     if cache.is_none() {
-        *cache = Some(Arc::new(RwLock::new(Cache::with_size(
-            us.hash_size,
-            us.hash_locks,
-        ))));
+        *cache = Some(Arc::new(Cache::with_size(us.hash_size, us.hash_locks)));
     }
     println!("readyok");
 }
@@ -304,10 +297,14 @@ pub fn uci(engine: &UCIEngine) {
         "option name TT_locks type spin default {} min {} max {}",
         DEFAULT_LOCKS, MIN_LOCKS, MAX_LOCKS
     );
+    println!(
+        "option name Threads type spin default {} min {} max {}",
+        DEFAULT_THREADS, MIN_THREADS, MAX_THREADS
+    );
     println!("uciok");
 }
 
-pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut UCIEngine) {
+pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngine) {
     let mut index = 0;
     while index < cmd.len() {
         let arg = cmd[index];
@@ -321,8 +318,9 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut 
             }
             "clearhash" => {
                 if cache.is_some() {
-                    cache.as_ref().unwrap().write().unwrap().clear();
+                    cache.as_ref().unwrap().clear();
                 }
+                println!("info String Succesfully cleared hash!");
                 return;
             }
             "tt_locks" => {
@@ -330,6 +328,13 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut 
                     .parse::<usize>()
                     .expect("Invalid lock value!");
                 us.hash_locks = num;
+                return;
+            }
+            "threads" => {
+                let num = cmd[index + 2]
+                    .parse::<usize>()
+                    .expect("Invalid threads value!");
+                us.threads = num;
                 return;
             }
             _ => {
