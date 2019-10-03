@@ -3,8 +3,8 @@ use crate::board_representation::game_state::{GameMove, GameMoveType, GameState,
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
-use crate::search::cache::CacheEntry;
 use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
+use crate::search::cache::{CacheEntry, DEFAULT_HASH_SIZE, DEFAULT_LOCKS, MAX_LOCKS, MIN_LOCKS};
 use crate::search::searcher::Search;
 use crate::search::timecontrol::{TimeControl, TimeControlInformation};
 use std::io;
@@ -55,7 +55,10 @@ pub fn parse_loop() {
             }
             "go" => {
                 if cache.is_none() {
-                    cache = Some(Arc::new(RwLock::new(Cache::with_size(us.hash_size))));
+                    cache = Some(Arc::new(RwLock::new(Cache::with_size(
+                        us.hash_size,
+                        us.hash_locks,
+                    ))));
                 }
                 stop.store(false, Ordering::Relaxed);
                 let (tc, depth) = go(&us, &arg[1..]);
@@ -282,7 +285,10 @@ pub fn scout_and_make_draftmove(
 
 pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<RwLock<Cache>>>) {
     if cache.is_none() {
-        *cache = Some(Arc::new(RwLock::new(Cache::with_size(us.hash_size))));
+        *cache = Some(Arc::new(RwLock::new(Cache::with_size(
+            us.hash_size,
+            us.hash_locks,
+        ))));
     }
     println!("readyok");
 }
@@ -291,9 +297,13 @@ pub fn uci(engine: &UCIEngine) {
     engine.id_command();
     println!(
         "option name Hash type spin default {} min {} max {}",
-        engine.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
+        DEFAULT_HASH_SIZE, MIN_HASH_SIZE, MAX_HASH_SIZE
     );
     println!("option name ClearHash type button");
+    println!(
+        "option name TT_locks type spin default {} min {} max {}",
+        DEFAULT_LOCKS, MIN_LOCKS, MAX_LOCKS
+    );
     println!("uciok");
 }
 
@@ -303,7 +313,9 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut 
         let arg = cmd[index];
         match arg.to_lowercase().as_str() {
             "hash" => {
-                let num = cmd[index + 2].parse::<usize>().unwrap();
+                let num = cmd[index + 2]
+                    .parse::<usize>()
+                    .expect("Invalid hash value!");
                 us.hash_size = num;
                 return;
             }
@@ -311,6 +323,13 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<RwLock<Cache>>>, us: &mut 
                 if cache.is_some() {
                     cache.as_ref().unwrap().write().unwrap().clear();
                 }
+                return;
+            }
+            "tt_locks" => {
+                let num = cmd[index + 2]
+                    .parse::<usize>()
+                    .expect("Invalid lock value!");
+                us.hash_locks = num;
                 return;
             }
             _ => {

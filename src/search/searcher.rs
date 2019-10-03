@@ -241,12 +241,15 @@ impl Search {
             println!(
                 "{}",
                 format!(
-                    "info depth {} seldepth {} nodes {} nps {} time {} score cp {} multipv 1 pv {}",
+                    "info depth {} seldepth {} nodes {} nps {} time {} hashfull {:.0} score cp {} multipv 1 pv {}",
                     d,
                     self.search_statistics.seldepth,
                     self.search_statistics.nodes_searched,
                     nps,
                     self.search_statistics.time_elapsed,
+                    cache.full.load(std::sync::atomic::Ordering::Relaxed) as f64
+                        / cache.entries as f64
+                        * 1000.,
                     pv_score,
                     self.pv_table[0]
                 )

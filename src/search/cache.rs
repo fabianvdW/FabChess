@@ -3,38 +3,79 @@ use crate::board_representation::game_state::{
 };
 use crate::search::searcher::Search;
 use crate::search::{CombinedSearchParameters, SearchInstruction};
-
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::RwLock;
 pub struct Cache {
     pub entries: usize,
-    pub cache: Vec<Option<CacheEntry>>,
+    pub locks: usize,
+    pub entries_per_lock: usize,
+    pub full: AtomicUsize,
+    pub cache: Vec<RwLock<Vec<Option<CacheEntry>>>>,
 }
-pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
+pub const DEFAULT_LOCKS: usize = 64;
+pub const MIN_LOCKS: usize = 1;
+pub const MAX_LOCKS: usize = 8192;
+pub const DEFAULT_HASH_SIZE: usize = 16; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131072; //IN MB
 impl Default for Cache {
     fn default() -> Self {
-        let entries = DEFAULT_HASH_SIZE * 1024 * 1024 / 24;
+        let mut entries = DEFAULT_HASH_SIZE * 1024 * 1024 / 24;
+        let entries_per_lock = entries / DEFAULT_LOCKS;
+        entries = entries * DEFAULT_LOCKS;
+        let mut cache = Vec::with_capacity(DEFAULT_LOCKS);
+        for _ in 0..DEFAULT_LOCKS {
+            cache.push(RwLock::new(vec![None; entries_per_lock]));
+        }
         Cache {
-            cache: vec![None; entries],
             entries,
+            locks: DEFAULT_LOCKS,
+            entries_per_lock,
+            full: AtomicUsize::new(0),
+            cache,
         }
     }
 }
 
 impl Cache {
-    pub fn with_size(mb_size: usize) -> Self {
-        let entries = 1024 * 1024 * mb_size / 24;
+    pub fn with_size(mb_size: usize, locks: usize) -> Self {
+        let mut entries = 1024 * 1024 * mb_size / 24;
+        let entries_per_lock = entries / locks;
+        entries = entries_per_lock * locks;
+        let mut cache = Vec::with_capacity(locks);
+        for _ in 0..locks {
+            cache.push(RwLock::new(vec![None; entries_per_lock]));
+        }
         Cache {
-            cache: vec![None; entries],
             entries,
+            locks,
+            entries_per_lock,
+            full: AtomicUsize::new(0),
+            cache,
         }
     }
     pub fn clear(&mut self) {
-        self.cache = vec![None; self.entries];
+        self.cache.clear();
+        for _ in 0..self.locks {
+            self.cache
+                .push(RwLock::new(vec![None; self.entries_per_lock]));
+        }
+        self.full.store(0, Ordering::Relaxed);
+    }
+
+    pub fn get(&self, hash: u64) -> Option<CacheEntry> {
+        let upper_index = (hash >> 48) as usize % self.locks;
+        let lock = unsafe { self.cache.get_unchecked(upper_index) };
+        unsafe {
+            lock.read()
+                .unwrap()
+                .get_unchecked(hash as usize % self.entries_per_lock)
+                .clone()
+        }
     }
 
     pub fn insert(
-        &mut self,
+        &self,
         p: &CombinedSearchParameters,
         mv: &GameMove,
         score: i16,
@@ -48,8 +89,12 @@ impl Cache {
         let lower_bound = score >= p.beta;
         let upper_bound = score <= original_alpha;
         let pv_node = p.beta - p.alpha > 1;
-        let index = p.game_state.hash as usize % self.entries;
-        let ce = &self.cache[index];
+        let upper_index = (p.game_state.hash >> 48) as usize % self.locks;
+        let index = p.game_state.hash as usize % self.entries_per_lock;
+        //Aquire lock
+        let lock = unsafe { self.cache.get_unchecked(upper_index) };
+        let mut write = lock.write().unwrap();
+        let ce = unsafe { write.get_unchecked(index) };
         if ce.is_none() {
             let new_entry = CacheEntry::new(
                 p.game_state,
@@ -61,7 +106,9 @@ impl Cache {
                 static_evaluation,
                 pv_node,
             );
-            self.cache[index] = Some(new_entry);
+            self.full
+                .store(self.full.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
+            write[index] = Some(new_entry);
         } else {
             let new_entry_val = f64::from(p.depth_left) * if !pv_node { 0.7 } else { 1.0 };
             let old_entry = ce.as_ref().unwrap();
@@ -83,7 +130,7 @@ impl Cache {
                     static_evaluation,
                     pv_node,
                 );
-                self.cache[index] = Some(new_entry);
+                write[index] = Some(new_entry);
             }
         }
     }
@@ -98,7 +145,7 @@ impl Cache {
         if self.entries == 0 {
             return SearchInstruction::ContinueSearching;
         }
-        let ce = &self.cache[p.game_state.hash as usize % self.entries];
+        let ce = self.get(p.game_state.hash);
         if let Some(ce) = ce {
             if ce.hash == p.game_state.hash {
                 search.search_statistics.add_cache_hit_ns();

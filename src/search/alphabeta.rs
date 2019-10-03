@@ -643,12 +643,15 @@ pub fn uci_report_pv(p: &CombinedSearchParameters, su: &mut SearchUtils, followi
     if p.current_depth == 0 && su.search.search_statistics.time_elapsed > 1000 {
         let nps = su.search.search_statistics.getnps();
         println!(
-            "info depth {} nodes {} nps {} score cp {} lowerbound pv {}",
+            "info depth {} nodes {} nps {} hashfull {:.0} score cp {} lowerbound pv {}",
             p.depth_left,
             su.search.search_statistics.nodes_searched,
             nps,
+            su.cache.full.load(std::sync::atomic::Ordering::Relaxed) as f64
+                / su.cache.entries as f64
+                * 1000.,
             following_score,
-            su.search.pv_table[0]
+            su.search.pv_table[0],
         );
     }
 }
