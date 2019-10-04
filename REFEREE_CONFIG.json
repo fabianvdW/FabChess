@@ -1,15 +1,10 @@
 {
-	"processors":4,
+	"processors":1,
 	"selfplaytests":true,
 	"games": 2000,
-	"engine_path":["./versions/FabChessv1.12.6.exe", {"Hash":"256"}],
+	"engine_path":["./target/release/fabchess.exe", {"Hash":"256", "Threads":"4"}],
 	"enemies_paths":[
-			["./target/release/lmr90p.exe", {"Hash":"256"}],
-			["./target/release/lmr90.exe", {"Hash":"256"}],
-			["./target/release/lmr80p.exe", {"Hash":"256"}],
-			["./target/release/lmr80.exe", {"Hash":"256"}],
-			["./target/release/lmr70p.exe", {"Hash":"256"}],
-			["./target/release/lmr70.exe", {"Hash":"256"}]
+			["./versions/FabChessv1.12.6.exe", {"Hash":"256"}]
 				  ],
 	"placeholder": [
 			["C:/Users/Fabian/Desktop/EngineEnemys/2800/Asymptote/asymptote.exe", {"Hash":"256"}],

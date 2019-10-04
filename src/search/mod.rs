@@ -229,25 +229,31 @@ pub fn in_check_slow(game_state: &GameState) -> bool {
 
 #[inline(always)]
 pub fn checkup(thread: &mut Thread) {
-    if thread
-        .tc
-        .as_ref()
-        .expect("unable to unwrap tc in checkup")
-        .time_over(
-            thread.itcs.get_time_elapsed(),
-            &TimeControlInformation {
-                high_score_diff: false,
-                time_saved: thread.time_saved.unwrap(),
-                stable_pv: thread
-                    .itcs
-                    .stable_pv
-                    .load(std::sync::atomic::Ordering::Relaxed),
-            },
-        )
+    if (thread.id == 0
+        && thread
+            .tc
+            .as_ref()
+            .expect("unable to unwrap tc in checkup")
+            .time_over(
+                thread.itcs.get_time_elapsed(),
+                &TimeControlInformation {
+                    high_score_diff: false,
+                    time_saved: thread.time_saved.unwrap(),
+                    stable_pv: thread
+                        .itcs
+                        .stable_pv
+                        .load(std::sync::atomic::Ordering::Relaxed),
+                },
+            ))
         || thread
             .timeout_stop
             .load(std::sync::atomic::Ordering::Relaxed)
     {
+        if thread.id == 0 {
+            thread
+                .timeout_stop
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         thread.self_stop = true;
     }
 }

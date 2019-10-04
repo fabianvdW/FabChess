@@ -75,8 +75,10 @@ impl InterThreadCommunicationSystem {
             .store(curr_seldepth.max(seldepth), Ordering::Relaxed);
         let nodes_before = self.nodes_searched[thread_id].load(Ordering::Relaxed);
         self.nodes_searched[thread_id].store(nodes_searched, Ordering::Relaxed);
-        self.nodes_searched_sum
-            .store(nodes_searched - nodes_before, Ordering::Relaxed)
+        self.nodes_searched_sum.store(
+            self.nodes_searched_sum.load(Ordering::Relaxed) + nodes_searched - nodes_before,
+            Ordering::Relaxed,
+        )
     }
 
     pub fn register_pv(&self, scored_pv: &ScoredPrincipalVariation) {
@@ -308,6 +310,9 @@ impl Thread {
             "info String Thread {} stopping the search of state!",
             self.id
         );
+        if self.id == 0 {
+            self.timeout_stop.store(true, Ordering::Relaxed);
+        }
     }
 }
 
