@@ -118,8 +118,6 @@ pub fn stripped_q_search(
     let static_evaluation = eval_game_state(
         &game_state,
         &attack_container.attack_containers[current_depth],
-        -16000,
-        16000,
     );
     //Standing pat pruning
     let stand_pat = static_evaluation.final_eval * color;

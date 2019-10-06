@@ -4,7 +4,7 @@
 	"games": 2000,
 	"engine_path":["./target/release/fabchess.exe", {"Hash":"256", "Threads":"1"}],
 	"enemies_paths":[
-				["./versions/FabChessv1.12.7.exe", {"Hash":"256", "Threads":"1"}]
+				["./versions/FabChessv1.12.6.exe", {"Hash":"256"}]
 				  ],
 	"placeholder": [
 			["C:/Users/Fabian/Desktop/EngineEnemys/Winter/Winter0.7.exe", {"Hash":"256", "Threads":"1"}],

@@ -64,8 +64,7 @@ mod tests {
             let mut sum = 0;
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
                 attack_container.write_state(&states[i]);
-                sum += eval_game_state(&states[i], &attack_container, -16000, 16000).final_eval
-                    as isize;
+                sum += eval_game_state(&states[i], &attack_container).final_eval as isize;
             }
             sum
         });

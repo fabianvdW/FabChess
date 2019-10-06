@@ -48,7 +48,7 @@ pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
         res_str.push_str(&format!(
             "{} |{}\n",
             pos.game_state.to_fen(),
-            if (pos.label - 1.0).abs() < std::f64::EPSILON {
+            if pos.label - 1.0 < std::f64::EPSILON {
                 "White"
             } else if pos.label == 0.0 {
                 "Black"
