@@ -12,7 +12,7 @@ pub struct Cache {
     pub full: AtomicUsize,
     pub cache: Vec<RwLock<Vec<Option<CacheEntry>>>>,
 }
-pub const DEFAULT_LOCKS: usize = 64;
+pub const DEFAULT_LOCKS: usize = 1024;
 pub const MIN_LOCKS: usize = 1;
 pub const MAX_LOCKS: usize = 65536; // This is really the maximum!!!
                                     // Else we would need to index by upper_index = (hash >> 47 or lower)
@@ -217,7 +217,7 @@ impl CacheEntry {
 
     #[inline(always)]
     pub fn mv_to_u16(mv: &GameMove) -> u16 {
-        let mut res = 0usize;
+        let mut res = 0;
         res |= mv.from << 10;
         res |= mv.to << 4;
         res |= match &mv.move_type {

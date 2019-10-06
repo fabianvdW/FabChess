@@ -4,10 +4,13 @@ use crate::board_representation::game_state_attack_container::GameStateAttackCon
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
-use crate::search::cache::{DEFAULT_HASH_SIZE, DEFAULT_LOCKS, MAX_LOCKS, MIN_LOCKS};
-use crate::search::searcher::{search_move, DEFAULT_THREADS, MAX_THREADS, MIN_THREADS};
-use crate::search::timecontrol::TimeControl;
+use crate::search::cache::{MAX_LOCKS, MIN_LOCKS};
+use crate::search::searcher::{
+    search_move, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO, MIN_THREADS,
+};
+use crate::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHEAD};
 use crate::search::MAX_SEARCH_DEPTH;
+use crate::uci::uci_engine::UCIOptions;
 use std::io;
 use std::sync::{atomic::AtomicBool, atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc};
 use std::thread;
@@ -54,7 +57,10 @@ pub fn parse_loop() {
             }
             "go" => {
                 if cache.is_none() {
-                    cache = Some(Arc::new(Cache::with_size(us.hash_size, us.hash_locks)));
+                    cache = Some(Arc::new(Cache::with_size(
+                        us.options.hash_size,
+                        us.options.hash_locks,
+                    )));
                 }
                 stop.store(false, Ordering::Relaxed);
                 let (tc, depth) = go(&us, &arg[1..]);
@@ -67,11 +73,11 @@ pub fn parse_loop() {
                 let cc = Arc::clone(cache.as_ref().unwrap());
                 let st = Arc::clone(&saved_time);
                 let ls = Arc::clone(&last_score);
-                let threads = us.threads;
+                let options = us.options;
                 thread::Builder::new()
                     .stack_size(2 * 1024 * 1024)
                     .spawn(move || {
-                        start_search(cl, new_state, new_history, tc, cc, depth, st, ls, threads);
+                        start_search(cl, new_state, new_history, tc, cc, depth, st, ls, options);
                     })
                     .expect("Couldn't start thread");
             }
@@ -113,7 +119,7 @@ pub fn start_search(
     depth: usize,
     saved_time: Arc<AtomicU64>,
     last_score: Arc<AtomicI16>,
-    threads: usize,
+    uci_options: UCIOptions,
 ) {
     let score = search_move(
         depth as i16,
@@ -123,7 +129,7 @@ pub fn start_search(
         cache,
         saved_time,
         last_score.load(Ordering::Relaxed),
-        threads,
+        uci_options,
         tc,
     );
     if let Some(score) = score {
@@ -277,7 +283,10 @@ pub fn scout_and_make_draftmove(
 
 pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<Cache>>) {
     if cache.is_none() {
-        *cache = Some(Arc::new(Cache::with_size(us.hash_size, us.hash_locks)));
+        *cache = Some(Arc::new(Cache::with_size(
+            us.options.hash_size,
+            us.options.hash_locks,
+        )));
     }
     println!("readyok");
 }
@@ -286,16 +295,28 @@ pub fn uci(engine: &UCIEngine) {
     engine.id_command();
     println!(
         "option name Hash type spin default {} min {} max {}",
-        DEFAULT_HASH_SIZE, MIN_HASH_SIZE, MAX_HASH_SIZE
+        engine.options.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
     );
     println!("option name ClearHash type button");
     println!(
         "option name TT_locks type spin default {} min {} max {}",
-        DEFAULT_LOCKS, MIN_LOCKS, MAX_LOCKS
+        engine.options.hash_locks, MIN_LOCKS, MAX_LOCKS
     );
     println!(
         "option name Threads type spin default {} min {} max {}",
-        DEFAULT_THREADS, MIN_THREADS, MAX_THREADS
+        engine.options.threads, MIN_THREADS, MAX_THREADS
+    );
+    println!(
+        "option name MoveOverhead type spin default {} min {} max {}",
+        engine.options.move_overhead, MIN_MOVE_OVERHEAD, MAX_MOVE_OVERHEAD
+    );
+    println!(
+        "option name DebugSMPPrint type check default {}",
+        engine.options.debug_print
+    );
+    println!(
+        "option name SMPSkipRatio type spin default {} min {} max {}",
+        engine.options.skip_ratio, MIN_SKIP_RATIO, MAX_SKIP_RATIO
     );
     println!("uciok");
 }
@@ -308,8 +329,9 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
             "hash" => {
                 let num = cmd[index + 2]
                     .parse::<usize>()
-                    .expect("Invalid hash value!");
-                us.hash_size = num;
+                    .expect("Invalid Hash value!");
+                us.options.hash_size = num;
+                println!("info String Succesfully set Hash to {}", num);
                 return;
             }
             "clearhash" => {
@@ -322,15 +344,41 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
             "tt_locks" => {
                 let num = cmd[index + 2]
                     .parse::<usize>()
-                    .expect("Invalid lock value!");
-                us.hash_locks = num;
+                    .expect("Invalid TT_locks value!");
+                us.options.hash_locks = num;
+                println!("info String Succesfully set TT_locks to {}", num);
                 return;
             }
             "threads" => {
                 let num = cmd[index + 2]
                     .parse::<usize>()
-                    .expect("Invalid threads value!");
-                us.threads = num;
+                    .expect("Invalid Threads value!");
+                us.options.threads = num;
+                println!("info String Succesfully set Threads to {}", num);
+                return;
+            }
+            "moveoverhead" => {
+                let num = cmd[index + 2]
+                    .parse::<u64>()
+                    .expect("Invalid MoveOverhead value!");
+                us.options.move_overhead = num;
+                println!("info String Succesfully set MoveOverhad to {}", num);
+                return;
+            }
+            "debugsmpprint" => {
+                let val = cmd[index + 2]
+                    .parse::<bool>()
+                    .expect("Invalid DebugSMPPrint value!");
+                us.options.debug_print = val;
+                println!("info String Succesfully set DebugSMPPrint to {}", val);
+                return;
+            }
+            "smpskipratio" => {
+                let num = cmd[index + 2]
+                    .parse::<usize>()
+                    .expect("Invalid SMPSkipRatio value!");
+                us.options.skip_ratio = num;
+                println!("info String Succesfully set SMPSkipRatio to {}", num);
                 return;
             }
             _ => {

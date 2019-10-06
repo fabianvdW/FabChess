@@ -14,6 +14,7 @@ use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{generate_moves, MoveList};
 use crate::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
 use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation};
+use crate::uci::uci_engine::UCIOptions;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
@@ -21,6 +22,10 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
+
+pub const DEFAULT_SKIP_RATIO: usize = 2;
+pub const MIN_SKIP_RATIO: usize = 1;
+pub const MAX_SKIP_RATIO: usize = 1024;
 
 pub const DEFAULT_THREADS: usize = 4;
 pub const MAX_THREADS: usize = 65536;
@@ -33,7 +38,7 @@ pub enum DepthInformation {
     UnSearched,
 }
 pub struct InterThreadCommunicationSystem {
-    pub threads: usize,
+    pub uci_options: UCIOptions,
     pub best_pv: Mutex<ScoredPrincipalVariation>,
     pub stable_pv: AtomicBool,
     pub depth_info: Mutex<[DepthInformation; MAX_SEARCH_DEPTH]>,
@@ -45,13 +50,13 @@ pub struct InterThreadCommunicationSystem {
 }
 
 impl InterThreadCommunicationSystem {
-    pub fn new(threads: usize, cache: Arc<Cache>) -> Self {
-        let mut nodes_searched = Vec::with_capacity(threads);
-        for _ in 0..threads {
+    pub fn new(options: UCIOptions, cache: Arc<Cache>) -> Self {
+        let mut nodes_searched = Vec::with_capacity(options.threads);
+        for _ in 0..options.threads {
             nodes_searched.push(AtomicU64::new(0));
         }
         InterThreadCommunicationSystem {
-            threads,
+            uci_options: options,
             best_pv: Mutex::new(ScoredPrincipalVariation::default()),
             stable_pv: AtomicBool::new(false),
             depth_info: Mutex::new([DepthInformation::UnSearched; MAX_SEARCH_DEPTH]),
@@ -136,7 +141,9 @@ impl InterThreadCommunicationSystem {
                     next_depth += 1;
                 }
                 DepthInformation::CurrentlySearchedBy(other_thread) => {
-                    if other_thread as f64 >= self.threads as f64 / 2. {
+                    if other_thread as f64
+                        >= self.uci_options.threads as f64 / self.uci_options.skip_ratio as f64
+                    {
                         next_depth += 1;
                     } else {
                         depth_info[next_depth] =
@@ -237,10 +244,12 @@ impl Thread {
     }
 
     fn search(&mut self, max_depth: i16, state: GameState) {
-        println!(
-            "info String Thread {} starting the search of state!",
-            self.id
-        );
+        if self.itcs.uci_options.debug_print {
+            println!(
+                "info String Thread {} starting the search of state!",
+                self.id
+            );
+        }
         let mut curr_depth = 0;
         loop {
             let temp = self.itcs.get_next_depth(curr_depth);
@@ -250,10 +259,12 @@ impl Thread {
                 break;
             }
             //Start Aspiration Window
-            println!(
-                "info String Thread {} starting aspiration window with depth {}",
-                self.id, curr_depth
-            );
+            if self.itcs.uci_options.debug_print {
+                println!(
+                    "info String Thread {} starting aspiration window with depth {}",
+                    self.id, curr_depth
+                );
+            }
             let mut delta = 40;
             let mut alpha = if curr_depth == 1 {
                 -16000
@@ -306,10 +317,12 @@ impl Thread {
                 break;
             }
         }
-        println!(
-            "info String Thread {} stopping the search of state!",
-            self.id
-        );
+        if self.itcs.uci_options.debug_print {
+            println!(
+                "info String Thread {} stopping the search of state!",
+                self.id
+            );
+        }
         if self.id == 0 {
             self.timeout_stop.store(true, Ordering::Relaxed);
         }
@@ -324,7 +337,7 @@ pub fn search_move(
     cache: Arc<Cache>,
     saved_time: Arc<AtomicU64>,
     _last_score: i16,
-    threads: usize,
+    uci_options: UCIOptions,
     tc: TimeControl,
 ) -> Option<i16> {
     let time_saved_before = saved_time.load(Ordering::Relaxed);
@@ -346,8 +359,9 @@ pub fn search_move(
                 .expect("Can't unwrap move although there is one")
         );
 
-        let new_timesaved: u64 =
-            (time_saved_before as i64 + tc.time_saved(0, time_saved_before)).max(0) as u64;
+        let new_timesaved: u64 = (time_saved_before as i64
+            + tc.time_saved(0, time_saved_before, uci_options.move_overhead))
+        .max(0) as u64;
         saved_time.store(new_timesaved, Ordering::Relaxed);
         return None;
     }
@@ -366,7 +380,7 @@ pub fn search_move(
     }
     let root_plies_played = (game_state.full_moves - 1) * 2 + game_state.color_to_move;
     let itcs = Arc::new(InterThreadCommunicationSystem::new(
-        threads,
+        uci_options,
         Arc::clone(&cache),
     ));
 
@@ -381,7 +395,7 @@ pub fn search_move(
         Arc::clone(&stop_ref),
     );
     let mut childs = Vec::new();
-    for id in 1..threads {
+    for id in 1..uci_options.threads {
         let itcs_clone = Arc::clone(&itcs);
         let hist_clone = hist.clone();
         let state_clone = game_state.clone();
@@ -407,8 +421,9 @@ pub fn search_move(
     itcs.report_bestmove();
     //Store new saved time
     let elapsed_time = itcs.get_time_elapsed();
-    let new_timesaved: u64 =
-        (time_saved_before as i64 + tc.time_saved(elapsed_time, time_saved_before)).max(0) as u64;
+    let new_timesaved: u64 = (time_saved_before as i64
+        + tc.time_saved(elapsed_time, time_saved_before, uci_options.move_overhead))
+    .max(0) as u64;
     saved_time.store(new_timesaved, Ordering::Relaxed);
     //And return
     let best_pv = itcs.best_pv.lock().unwrap();

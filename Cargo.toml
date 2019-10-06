@@ -1,6 +1,6 @@
 [package]
 name = "FabChess"
-version = "1.12.6"
+version = "1.12.7"
 authors = ["fabianvdW"]
 edition = "2018"
 default-run="fabchess"

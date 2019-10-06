@@ -1,15 +1,15 @@
 {
-	"processors":1,
+	"processors":4,
 	"selfplaytests":true,
 	"games": 2000,
-	"engine_path":["./target/release/fabchess.exe", {"Hash":"256", "Threads":"4"}],
+	"engine_path":["./target/release/fabchess.exe", {"Hash":"256", "Threads":"1"}],
 	"enemies_paths":[
-			["./versions/FabChessv1.12.6.exe", {"Hash":"256"}]
+				["./versions/FabChessv1.12.6.exe", {"Hash":"256"}]
 				  ],
 	"placeholder": [
+			["C:/Users/Fabian/Desktop/EngineEnemys/Winter/Winter0.7.exe", {"Hash":"256", "Threads":"1"}],
 			["C:/Users/Fabian/Desktop/EngineEnemys/2800/Asymptote/asymptote.exe", {"Hash":"256"}],
 			["C:/Users/Fabian/Desktop/EngineEnemys/2800/ruy-1.1.9-windows.exe", {"Hash":"256"}],
-			["C:/Users/Fabian/Desktop/EngineEnemys/Winter/Winter0.7.exe", {"Hash":"256"}],
 			["C:/Users/Fabian/Desktop/EngineEnemys/Winter/Winter0.6.exe", {"Hash":"256"}],
 			["C:/Users/Fabian/Desktop/EngineEnemys/2800/igel-x64_popcnt.exe", {"Hash":"256"}]
 	],
