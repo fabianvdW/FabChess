@@ -33,8 +33,8 @@ pub const TUNE_ROOKS: bool = false;
 pub const TUNE_PIECE_VALUES: bool = false;
 pub const TUNE_MOBILITY: bool = false;
 
-pub const TUNE_ATTACK: bool = false;
-pub const TUNE_ATTACK_INDEX: bool = false;
+pub const TUNE_ATTACK: bool = true;
+pub const TUNE_ATTACK_INDEX: bool = true;
 pub const TUNE_PSQT: bool = false;
 
 //const BATCH_SIZE: usize = 2500000;
