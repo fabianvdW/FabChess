@@ -108,7 +108,7 @@ impl InterThreadCommunicationSystem {
                 scored_pv.depth,
                 self.seldepth.load(Ordering::Relaxed),
                 searched_nodes,
-                (searched_nodes as f64 / (elapsed_time as f64 / 1000.0)) as u64,
+                (searched_nodes as f64 / (elapsed_time.max(1) as f64 / 1000.0)) as u64,
                 self.cache.get_status(),
                 self.get_time_elapsed(),
                 scored_pv.score,
