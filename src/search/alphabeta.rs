@@ -10,7 +10,7 @@ use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::searcher::Thread;
 
 pub const FUTILITY_MARGIN: i16 = 90;
-pub const FUTILITY_DEPTH: i16 = 8;
+pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
 pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
 pub const NULL_MOVE_PRUNING_DEPTH: i16 = 3;
@@ -628,7 +628,8 @@ pub fn compute_lmr_reduction(
     iscp: bool,
     next_state: &GameState,
 ) -> i16 {
-    let mut reduction = (f64::from(p.depth_left - 1).sqrt() + ((index - 1) as f64).sqrt()) as i16;
+    let mut reduction = ((f64::from(p.depth_left) / 2. - 1.).max(0.).sqrt()
+        + (index as f64 / 2.0 - 1.).max(0.).sqrt()) as i16;
     if iscp {
         reduction /= 2;
     }
