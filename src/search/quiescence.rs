@@ -289,8 +289,10 @@ pub fn make_and_evaluate_moves_qsearch(
                 if !incheck {
                     panic!("Not in check but also not capture");
                 }
-                let score = thread.hh_score[p.game_state.color_to_move][mv.from][mv.to] as f64
-                    / thread.bf_score[p.game_state.color_to_move][mv.from][mv.to] as f64
+                let score = thread.hh_score[p.game_state.color_to_move][mv.from as usize]
+                    [mv.to as usize] as f64
+                    / thread.bf_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize]
+                        as f64
                     / 1000.0;
                 move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, score));
             }
@@ -363,7 +365,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool, gain: &mut Vec<i1
         | game_state.pieces[QUEEN][BLACK];
     let mut from_set = 1u64 << mv.from;
     let mut occ = game_state.get_all_pieces();
-    let mut attadef = attacks_to(&game_state, mv.to, occ);
+    let mut attadef = attacks_to(&game_state, mv.to as usize, occ);
     gain[0] = capture_value(&mv);
     let mut color_to_move = game_state.color_to_move;
     let mut attacked_piece = match mv.piece_type {
@@ -387,8 +389,8 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool, gain: &mut Vec<i1
         occ ^= from_set;
         if from_set & may_xray != 0u64 {
             //Recalculate rays
-            attadef |=
-                recalculate_sliders(&game_state, color_to_move, mv.to, occ) & (!deleted_pieces);
+            attadef |= recalculate_sliders(&game_state, color_to_move, mv.to as usize, occ)
+                & (!deleted_pieces);
         }
         color_to_move = 1 - color_to_move;
         let res = least_valuable_piece(attadef, color_to_move, &game_state);

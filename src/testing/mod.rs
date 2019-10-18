@@ -386,7 +386,7 @@ pub fn find_move(
     let mut index = 0;
     while index < move_list.counter {
         let mv = move_list.move_list[index].unwrap();
-        if mv.from == from && mv.to == to {
+        if mv.from as usize == from && mv.to as usize == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {
                     Some(piece) => {

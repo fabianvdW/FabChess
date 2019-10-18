@@ -207,7 +207,8 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && !isp
             && !incheck
             && current_max_score > MATED_IN_MAX
-            && thread.history_score[p.game_state.color_to_move][mv.from][mv.to] < 0
+            && thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize]
+                < 0
         {
             thread.search_statistics.add_history_pruned();
             continue;
@@ -310,7 +311,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             //Step 14.12 Move does not cause beta cutoff, add to quiet moves tried and update butterfly heuristic
             thread.quiets_tried[p.current_depth][quiets_tried] = Some(mv);
             quiets_tried += 1;
-            thread.bf_score[p.game_state.color_to_move][mv.from][mv.to] +=
+            thread.bf_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
                 p.depth_left as usize * p.depth_left as usize;
             //TODO: Update bf should maybe also be done in decrement history quiets
         }
@@ -639,7 +640,7 @@ pub fn compute_lmr_reduction(
     if in_check_slow(&next_state) {
         reduction -= 1;
     }
-    if thread.history_score[p.game_state.color_to_move][mv.from][mv.to] > 0 {
+    if thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] > 0 {
         reduction -= 1;
     }
     reduction = reduction.min(p.depth_left - 1);
@@ -667,9 +668,9 @@ pub fn update_quiet_cutoff(
     mv: &GameMove,
     quiets_tried: usize,
 ) {
-    thread.hh_score[p.game_state.color_to_move][mv.from][mv.to] +=
+    thread.hh_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
         p.depth_left as usize * p.depth_left as usize;
-    thread.history_score[p.game_state.color_to_move][mv.from][mv.to] +=
+    thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
         p.depth_left as isize * p.depth_left as isize;
     decrement_history_quiets(
         thread,
@@ -703,7 +704,8 @@ pub fn decrement_history_quiets(
 ) {
     for i in 0..quiets_tried {
         let mv = thread.quiets_tried[current_depth][i].as_ref().unwrap();
-        thread.history_score[side_to_move][mv.from][mv.to] -= depth_left * depth_left;
+        thread.history_score[side_to_move][mv.from as usize][mv.to as usize] -=
+            depth_left * depth_left;
     }
 }
 
@@ -740,8 +742,10 @@ pub fn make_and_evaluate_moves(game_state: &GameState, thread: &mut Thread, curr
             }
         } else {
             //Assing history score
-            let score = thread.hh_score[game_state.color_to_move][mv.from][mv.to] as f64
-                / thread.bf_score[game_state.color_to_move][mv.from][mv.to] as f64
+            let score = thread.hh_score[game_state.color_to_move][mv.from as usize][mv.to as usize]
+                as f64
+                / thread.bf_score[game_state.color_to_move][mv.from as usize][mv.to as usize]
+                    as f64
                 / 1000.0;
             move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, score));
         }

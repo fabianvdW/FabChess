@@ -5,17 +5,17 @@ use crate::board_representation::game_state::{
 use crate::evaluation::psqt_evaluation::psqt_toggle_piece;
 
 #[inline(always)]
-pub fn toggle_piece(pieces: &mut [[u64; 2]; 6], piece: PieceType, square: usize, color: usize) {
+pub fn toggle_piece(pieces: &mut [[u64; 2]; 6], piece: PieceType, square: u8, color: usize) {
     pieces[piece.to_index()][color] ^= 1u64 << square;
 }
 
 #[inline(always)]
-pub fn toggle_hash(piece: PieceType, square: usize, color: usize, hash: &mut u64) {
+pub fn toggle_hash(piece: PieceType, square: u8, color: usize, hash: &mut u64) {
     *hash ^= if color == WHITE {
         piece.to_zobrist_key().0
     } else {
         piece.to_zobrist_key().1
-    }[square];
+    }[square as usize];
 }
 #[inline(always)]
 pub fn enpassant_hash(old: u64, new: u64, hash: &mut u64) {
@@ -74,7 +74,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
 }
 
 #[inline(always)]
-pub fn rook_castling(to: usize) -> (usize, usize) {
+pub fn rook_castling(to: u8) -> (u8, u8) {
     if to == 58 {
         (56, 59)
     } else if to == 2 {
@@ -103,7 +103,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
     psqt_toggle_piece(
         &mut pieces,
         mv.piece_type,
-        mv.from,
+        mv.from as usize,
         g.color_to_move,
         &mut psqt,
     );
@@ -132,7 +132,13 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         };
         toggle_piece(&mut pieces, piece, square, color_to_move);
         toggle_hash(piece, square, color_to_move, &mut hash);
-        psqt_toggle_piece(&mut pieces, piece, square, color_to_move, &mut psqt);
+        psqt_toggle_piece(
+            &mut pieces,
+            piece,
+            square as usize,
+            color_to_move,
+            &mut psqt,
+        );
         phase.delete_piece(piece);
     }
     //Move rook for castling
@@ -142,7 +148,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         psqt_toggle_piece(
             &mut pieces,
             mv.piece_type,
-            mv.to,
+            mv.to as usize,
             g.color_to_move,
             &mut psqt,
         );
@@ -152,7 +158,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         psqt_toggle_piece(
             &mut pieces,
             PieceType::Rook,
-            rook_from,
+            rook_from as usize,
             g.color_to_move,
             &mut psqt,
         );
@@ -161,7 +167,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         psqt_toggle_piece(
             &mut pieces,
             PieceType::Rook,
-            rook_to,
+            rook_to as usize,
             g.color_to_move,
             &mut psqt,
         );
@@ -169,7 +175,13 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         //If promotion, add promotion piece
         toggle_piece(&mut pieces, promo_piece, mv.to, g.color_to_move);
         toggle_hash(promo_piece, mv.to, g.color_to_move, &mut hash);
-        psqt_toggle_piece(&mut pieces, promo_piece, mv.to, g.color_to_move, &mut psqt);
+        psqt_toggle_piece(
+            &mut pieces,
+            promo_piece,
+            mv.to as usize,
+            g.color_to_move,
+            &mut psqt,
+        );
         phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
@@ -178,7 +190,7 @@ pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
         psqt_toggle_piece(
             &mut pieces,
             mv.piece_type,
-            mv.to,
+            mv.to as usize,
             g.color_to_move,
             &mut psqt,
         );

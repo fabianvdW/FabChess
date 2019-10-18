@@ -259,7 +259,7 @@ pub fn scout_and_make_draftmove(
     let mut index = 0;
     while index < movelist.counter {
         let mv = movelist.move_list[index].as_ref().unwrap();
-        if mv.from == from && mv.to == to {
+        if mv.from as usize == from && mv.to as usize == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {
                     Some(piece) => {

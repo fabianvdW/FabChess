@@ -116,8 +116,8 @@ impl PieceType {
 
 #[derive(Copy, PartialEq)]
 pub struct GameMove {
-    pub from: usize,
-    pub to: usize,
+    pub from: u8,
+    pub to: u8,
     pub move_type: GameMoveType,
     pub piece_type: PieceType,
 }
@@ -215,18 +215,18 @@ impl GameMove {
                 index += 1;
             }
             if file_needed {
-                res_str.push_str(file_to_string(self.from % 8));
+                res_str.push_str(file_to_string((self.from % 8) as usize));
             }
             if rank_needed {
                 res_str.push_str(&format!("{}", self.from / 8 + 1))
             };
             if is_capture(self) {
                 if self.piece_type == PieceType::Pawn && !file_needed {
-                    res_str.push_str(file_to_string(self.from % 8));
+                    res_str.push_str(file_to_string((self.from % 8) as usize));
                 }
                 res_str.push_str("x");
             }
-            res_str.push_str(file_to_string(self.to % 8));
+            res_str.push_str(file_to_string((self.to % 8) as usize));
             res_str.push_str(&format!("{}", self.to / 8 + 1));
             if let GameMoveType::Promotion(promo_piece, _) = self.move_type {
                 res_str.push_str(&format!(
@@ -258,9 +258,9 @@ impl Debug for GameMove {
         let mut res_str: String = String::new();
         res_str.push_str(&format!(
             "{}{}{}{}",
-            file_to_string(self.from % 8),
+            file_to_string((self.from % 8) as usize),
             self.from / 8 + 1,
-            file_to_string(self.to % 8),
+            file_to_string((self.to % 8) as usize),
             self.to / 8 + 1
         ));
         if let GameMoveType::Promotion(s, _) = &self.move_type {

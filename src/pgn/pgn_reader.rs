@@ -179,10 +179,10 @@ impl MoveSpecification {
     }
 
     pub fn matches(&self, mv: &GameMove) -> bool {
-        mv.to == self.target_square
-            && (self.from_square.is_none() || self.from_square.unwrap() == mv.from)
-            && (self.from_file.is_none() || self.from_file.unwrap() == mv.from % 8)
-            && (self.from_rank.is_none() || self.from_rank.unwrap() == mv.from / 8)
+        mv.to as usize == self.target_square
+            && (self.from_square.is_none() || self.from_square.unwrap() == mv.from as usize)
+            && (self.from_file.is_none() || self.from_file.unwrap() == mv.from as usize % 8)
+            && (self.from_rank.is_none() || self.from_rank.unwrap() == mv.from as usize / 8)
             && (mv.piece_type == self.moving_piece_type || self.from_square.is_some())
             && (self.promotion_piece
                 == match mv.move_type {

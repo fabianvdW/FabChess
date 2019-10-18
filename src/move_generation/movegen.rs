@@ -435,8 +435,8 @@ pub fn add_move_to_movelist(
     move_type: GameMoveType,
 ) {
     legal_moves.add_move(GameMove {
-        from: from_square,
-        to: to_square,
+        from: from_square as u8,
+        to: to_square as u8,
         move_type,
         piece_type,
     });
@@ -1031,8 +1031,8 @@ pub fn generate_moves(
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
-                        from: g.king_square(side),
-                        to: 6usize,
+                        from: g.king_square(side) as u8,
+                        to: 6,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });
@@ -1047,8 +1047,8 @@ pub fn generate_moves(
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
-                        from: g.king_square(side),
-                        to: 2usize,
+                        from: g.king_square(side) as u8,
+                        to: 2,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });
@@ -1063,8 +1063,8 @@ pub fn generate_moves(
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
-                        from: g.king_square(side),
-                        to: 62usize,
+                        from: g.king_square(side) as u8,
+                        to: 62,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });
@@ -1079,8 +1079,8 @@ pub fn generate_moves(
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
-                        from: g.king_square(side),
-                        to: 58usize,
+                        from: g.king_square(side) as u8,
+                        to: 58,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });

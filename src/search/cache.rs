@@ -237,8 +237,8 @@ impl CacheEntry {
     #[inline(always)]
     pub fn mv_to_u16(mv: &GameMove) -> u16 {
         let mut res = 0;
-        res |= mv.from << 10;
-        res |= mv.to << 4;
+        res |= (mv.from as usize) << 10;
+        res |= (mv.to as usize) << 4;
         res |= match &mv.move_type {
             GameMoveType::Quiet => 1,
             GameMoveType::Castle => 2,
@@ -258,9 +258,9 @@ impl CacheEntry {
     #[inline(always)]
     pub fn u16_to_mv(mv: u16, game_state: &GameState) -> GameMove {
         let typ = mv & 15;
-        let from = ((mv & 0xFC00) >> 10) as usize;
+        let from = ((mv & 0xFC00) >> 10) as u8;
         let from_board = 1u64 << from;
-        let to = ((mv & 0x03F0) >> 4) as usize;
+        let to = ((mv & 0x03F0) >> 4) as u8;
         let to_board = 1u64 << to;
         let color_to_move = game_state.color_to_move;
         let enemy_color = 1 - color_to_move;
