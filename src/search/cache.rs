@@ -68,6 +68,18 @@ impl Cache {
         self.full.store(0, Ordering::Relaxed);
     }
 
+    pub fn age_entry(&self, hash: u64, new_age: u16) {
+        let upper_index = (hash >> 48) as usize % self.locks;
+        let lock = unsafe { self.cache.get_unchecked(upper_index) };
+        unsafe {
+            lock.write()
+                .unwrap()
+                .get_unchecked_mut(hash as usize % self.entries_per_lock)
+                .as_mut()
+                .unwrap()
+                .plies_played = new_age;
+        }
+    }
     pub fn get(&self, hash: u64) -> Option<CacheEntry> {
         let upper_index = (hash >> 48) as usize % self.locks;
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
@@ -110,6 +122,7 @@ impl Cache {
                 mv,
                 static_evaluation,
                 pv_node,
+                root_plies_played as u16,
             );
             self.full
                 .store(self.full.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
@@ -134,6 +147,7 @@ impl Cache {
                     mv,
                     static_evaluation,
                     pv_node,
+                    root_plies_played as u16,
                 );
                 write[index] = Some(new_entry);
             }
@@ -145,6 +159,7 @@ impl Cache {
         p: &CombinedSearchParameters,
         static_evaluation: &mut Option<i16>,
         tt_move: &mut Option<GameMove>,
+        root_plies: usize,
     ) -> SearchInstruction {
         if self.entries == 0 {
             return SearchInstruction::ContinueSearching;
@@ -164,6 +179,9 @@ impl Cache {
                 *static_evaluation = ce.static_evaluation;
                 let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
                 *tt_move = Some(mv);
+                if ce.plies_played != root_plies as u16 {
+                    self.age_entry(p.game_state.hash, root_plies as u16);
+                }
             }
         }
         SearchInstruction::ContinueSearching
@@ -201,11 +219,12 @@ impl CacheEntry {
         mv: &GameMove,
         static_evaluation: Option<i16>,
         pv_node: bool,
+        root_plies: u16,
     ) -> CacheEntry {
         CacheEntry {
             hash: game_state.hash,
             depth: depth_left as i8,
-            plies_played: ((game_state.full_moves - 1) * 2 + game_state.color_to_move) as u16,
+            plies_played: root_plies,
             score,
             alpha,
             beta,

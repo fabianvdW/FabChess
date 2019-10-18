@@ -79,12 +79,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     //Step 8. TT Lookup
     let mut static_evaluation = None;
     let mut tt_move: Option<GameMove> = None;
-    if let SearchInstruction::StopSearching(res) =
-        thread
-            .itcs
-            .cache
-            .lookup(&p, &mut static_evaluation, &mut tt_move)
-    {
+    if let SearchInstruction::StopSearching(res) = thread.itcs.cache.lookup(
+        &p,
+        &mut static_evaluation,
+        &mut tt_move,
+        thread.root_plies_played,
+    ) {
         thread.search_statistics.add_cache_hit_aj_replace_ns();
         thread.pv_table[p.current_depth].pv[0] = tt_move;
         return res;
