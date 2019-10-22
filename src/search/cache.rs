@@ -177,7 +177,7 @@ impl CacheBucket {
         };
         let renew_entry = |cache_entry: &mut CacheEntry| -> bool {
             if cache_entry.plies_played < root_plies_played as u16
-                || cache_entry.depth <= p.depth_left as i8
+                || cache_entry.get_score() <= p.depth_left as f64 * if pv_node { 1. } else { 0.7 }
             {
                 write_entry(cache_entry);
                 true
