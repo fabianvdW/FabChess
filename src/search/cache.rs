@@ -5,54 +5,43 @@ use crate::search::{CombinedSearchParameters, SearchInstruction};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::RwLock;
 
-pub struct Cache {
-    pub entries: usize,
-    pub locks: usize,
-    pub entries_per_lock: usize,
-    pub full: AtomicUsize,
-    pub cache: Vec<RwLock<Vec<Option<CacheEntry>>>>,
-}
+pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_LOCKS: usize = 1024;
 pub const MIN_LOCKS: usize = 1;
 pub const MAX_LOCKS: usize = 65536; // This is really the maximum!!!
                                     // Else we would need to index by upper_index = (hash >> 47 or lower)
                                     // Using a higher number will lead to the cache not being able to be used fully
-
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131072; //IN MB
+
+pub struct Cache {
+    pub entries: usize,
+    pub locks: usize,
+    pub buckets_per_lock: usize,
+    pub full: AtomicUsize,
+    pub cache: Vec<RwLock<Vec<CacheBucket>>>,
+}
+
 impl Default for Cache {
     fn default() -> Self {
-        let mut entries = DEFAULT_HASH_SIZE * 1024 * 1024 / 24;
-        let entries_per_lock = entries / DEFAULT_LOCKS;
-        entries = entries * DEFAULT_LOCKS;
-        let mut cache = Vec::with_capacity(DEFAULT_LOCKS);
-        for _ in 0..DEFAULT_LOCKS {
-            cache.push(RwLock::new(vec![None; entries_per_lock]));
-        }
-        Cache {
-            entries,
-            locks: DEFAULT_LOCKS,
-            entries_per_lock,
-            full: AtomicUsize::new(0),
-            cache,
-        }
+        Cache::with_size(DEFAULT_HASH_SIZE, DEFAULT_LOCKS)
     }
 }
 
 impl Cache {
     pub fn with_size(mb_size: usize, locks: usize) -> Self {
-        let mut entries = 1024 * 1024 * mb_size / 24;
-        let entries_per_lock = entries / locks;
-        entries = entries_per_lock * locks;
+        let buckets = 1024 * 1024 * mb_size / 64;
+        let buckets_per_lock = buckets / locks;
+        let entries = buckets_per_lock * locks * 3;
         let mut cache = Vec::with_capacity(locks);
         for _ in 0..locks {
-            cache.push(RwLock::new(vec![None; entries_per_lock]));
+            cache.push(RwLock::new(vec![CacheBucket::default(); buckets_per_lock]));
         }
         Cache {
             entries,
             locks,
-            entries_per_lock,
+            buckets_per_lock,
             full: AtomicUsize::new(0),
             cache,
         }
@@ -63,7 +52,7 @@ impl Cache {
     pub fn clear(&self) {
         for bucket in &self.cache {
             let mut lock = bucket.write().unwrap();
-            *lock = vec![None; self.entries_per_lock];
+            *lock = vec![CacheBucket::default(); self.buckets_per_lock];
         }
         self.full.store(0, Ordering::Relaxed);
     }
@@ -74,19 +63,18 @@ impl Cache {
         unsafe {
             lock.write()
                 .unwrap()
-                .get_unchecked_mut(hash as usize % self.entries_per_lock)
-                .as_mut()
-                .unwrap()
-                .plies_played = new_age;
+                .get_unchecked_mut(hash as usize % self.buckets_per_lock)
+                .age_entry(hash, new_age);
         }
     }
-    pub fn get(&self, hash: u64) -> Option<CacheEntry> {
+
+    pub fn get(&self, hash: u64) -> CacheBucket {
         let upper_index = (hash >> 48) as usize % self.locks;
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
         unsafe {
             lock.read()
                 .unwrap()
-                .get_unchecked(hash as usize % self.entries_per_lock)
+                .get_unchecked(hash as usize % self.buckets_per_lock)
                 .clone()
         }
     }
@@ -103,55 +91,24 @@ impl Cache {
         if self.entries == 0 {
             return;
         }
-        let lower_bound = score >= p.beta;
-        let upper_bound = score <= original_alpha;
-        let pv_node = p.beta - p.alpha > 1;
         let upper_index = (p.game_state.hash >> 48) as usize % self.locks;
-        let index = p.game_state.hash as usize % self.entries_per_lock;
+        let index = p.game_state.hash as usize % self.buckets_per_lock;
         //Aquire lock
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
         let mut write = lock.write().unwrap();
-        let ce = unsafe { write.get_unchecked(index) };
-        if ce.is_none() {
-            let new_entry = CacheEntry::new(
-                p.game_state,
-                p.depth_left,
-                score,
-                upper_bound,
-                lower_bound,
+        unsafe {
+            if write.get_unchecked_mut(index).replace_entry(
+                p,
                 mv,
+                score,
+                original_alpha,
+                root_plies_played,
                 static_evaluation,
-                pv_node,
-                root_plies_played as u16,
-            );
-            self.full
-                .store(self.full.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
-            write[index] = Some(new_entry);
-        } else {
-            let new_entry_val = f64::from(p.depth_left) * if !pv_node { 0.7 } else { 1.0 };
-            let old_entry = ce.as_ref().unwrap();
-
-            let old_entry_val = if old_entry.plies_played < root_plies_played as u16 {
-                -1.0
-            } else {
-                f64::from(old_entry.depth) * if !old_entry.pv_node { 0.7 } else { 1.0 }
-            };
-            let state_plies_played = (p.game_state.full_moves - 1) * 2 + p.game_state.color_to_move;
-            if state_plies_played == root_plies_played || old_entry_val <= new_entry_val {
-                let new_entry = CacheEntry::new(
-                    p.game_state,
-                    p.depth_left,
-                    score,
-                    upper_bound,
-                    lower_bound,
-                    mv,
-                    static_evaluation,
-                    pv_node,
-                    root_plies_played as u16,
-                );
-                write[index] = Some(new_entry);
+            ) {
+                self.full
+                    .store(self.full.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
             }
-        }
+        };
     }
 
     pub fn lookup(
@@ -164,74 +121,211 @@ impl Cache {
         if self.entries == 0 {
             return SearchInstruction::ContinueSearching;
         }
-        let ce = self.get(p.game_state.hash);
+        let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
         if let Some(ce) = ce {
-            if ce.hash == p.game_state.hash {
-                if ce.depth >= p.depth_left as i8
-                    && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
-                    && (!ce.alpha && !ce.beta
-                        || ce.beta && ce.score >= p.beta
-                        || ce.alpha && ce.score <= p.alpha)
-                {
-                    *tt_move = Some(CacheEntry::u16_to_mv(ce.mv, p.game_state));
-                    return SearchInstruction::StopSearching(ce.score);
-                }
-                *static_evaluation = ce.static_evaluation;
-                let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
-                *tt_move = Some(mv);
-                if ce.plies_played != root_plies as u16 {
-                    self.age_entry(p.game_state.hash, root_plies as u16);
-                }
+            if ce.depth >= p.depth_left as i8
+                && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
+                && (!ce.alpha && !ce.beta
+                    || ce.beta && ce.score >= p.beta
+                    || ce.alpha && ce.score <= p.alpha)
+            {
+                *tt_move = Some(CacheEntry::u16_to_mv(ce.mv, p.game_state));
+                return SearchInstruction::StopSearching(ce.score);
+            }
+            if ce.static_evaluation != INVALID_STATIC_EVALUATION {
+                *static_evaluation = Some(ce.static_evaluation);
+            }
+            let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
+            *tt_move = Some(mv);
+            if ce.plies_played != root_plies as u16 {
+                self.age_entry(p.game_state.hash, root_plies as u16);
             }
         }
         SearchInstruction::ContinueSearching
     }
 }
 
+#[repr(align(64))]
+#[derive(Copy, Clone)]
+pub struct CacheBucket([CacheEntry; 3]);
+
+impl CacheBucket {
+    pub fn replace_entry(
+        &mut self,
+        p: &CombinedSearchParameters,
+        mv: &GameMove,
+        score: i16,
+        original_alpha: i16,
+        root_plies_played: usize,
+        static_evaluation: Option<i16>,
+    ) -> bool {
+        let lower_bound = score >= p.beta;
+        let upper_bound = score <= original_alpha;
+        let pv_node = p.beta - p.alpha > 1;
+        let write_entry = |cache_entry: &mut CacheEntry| {
+            cache_entry.write(
+                p.game_state.hash,
+                p.depth_left,
+                root_plies_played as u16,
+                score,
+                static_evaluation,
+                pv_node,
+                upper_bound,
+                lower_bound,
+                &mv,
+            )
+        };
+        let renew_entry = |cache_entry: &mut CacheEntry| -> bool {
+            if cache_entry.plies_played < root_plies_played as u16
+                || cache_entry.depth <= p.depth_left as i8
+            {
+                write_entry(cache_entry);
+                true
+            } else {
+                false
+            }
+        };
+
+        if self.0[0].is_invalid()
+            || self.0[0].plies_played < root_plies_played as u16
+            || self.0[0].validate_hash(p.game_state.hash)
+        {
+            let res = self.0[0].is_invalid();
+            renew_entry(&mut self.0[0]);
+            return res;
+        } else if self.0[1].is_invalid()
+            || self.0[1].plies_played < root_plies_played as u16
+            || self.0[1].validate_hash(p.game_state.hash)
+        {
+            let res = self.0[1].is_invalid();
+            renew_entry(&mut self.0[1]);
+            self.0.swap(0, 1);
+            return res;
+        } else if self.0[2].is_invalid()
+            || self.0[2].plies_played < root_plies_played as u16
+            || self.0[2].validate_hash(p.game_state.hash)
+        {
+            let res = self.0[2].is_invalid();
+            renew_entry(&mut self.0[2]);
+            self.0.swap(0, 2);
+            self.0.swap(1, 2);
+            return res;
+        }
+        let mut min_score = self.0[2].get_score();
+        let mut min_entry = 2;
+
+        if self.0[1].get_score() < min_score {
+            min_score = self.0[1].get_score();
+            min_entry = 1;
+        }
+        if self.0[0].get_score() < min_score {
+            min_score = self.0[0].get_score();
+            min_entry = 0;
+        }
+        let new_score = p.depth_left as f64 * if pv_node { 1. } else { 0.7 };
+        if new_score >= min_score {
+            write_entry(&mut self.0[min_entry]);
+        }
+        false
+    }
+
+    pub fn probe(&self, hash: u64) -> Option<CacheEntry> {
+        if hash == 0u64 {
+            return None;
+        }
+        if self.0[0].validate_hash(hash) {
+            return Some(self.0[0]);
+        } else if self.0[1].validate_hash(hash) {
+            return Some(self.0[1]);
+        } else if self.0[2].validate_hash(hash) {
+            return Some(self.0[2]);
+        }
+        None
+    }
+
+    pub fn age_entry(&mut self, hash: u64, new_age: u16) {
+        if self.0[0].validate_hash(hash) {
+            self.0[0].plies_played = new_age;
+        } else if self.0[1].validate_hash(hash) {
+            self.0[1].plies_played = new_age;
+        } else if self.0[2].validate_hash(hash) {
+            self.0[2].plies_played = new_age;
+        }
+    }
+}
+impl Default for CacheBucket {
+    fn default() -> Self {
+        CacheBucket([CacheEntry::invalid(); 3])
+    }
+}
+
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct CacheEntry {
-    pub hash: u64,
-    //64 bits
-    pub depth: i8,
-    //8 bits
-    pub plies_played: u16,
-    //16 bits
-    pub score: i16,
-    //16 bits
     pub alpha: bool,
-    //8 bits
     pub beta: bool,
-    //8 bits
+    pub pv_node: bool,
+    pub depth: i8,
+    pub plies_played: u16,
+    pub score: i16,
+    pub upper_hash: u32,
+    pub lower_hash: u32,
     pub mv: u16,
-    //16 bits
-    pub static_evaluation: Option<i16>,
-    //16 bits
-    pub pv_node: bool, //Summed 160 bits 20 bytes
+    pub static_evaluation: i16,
 }
 
 impl CacheEntry {
-    pub fn new(
-        game_state: &GameState,
-        depth_left: i16,
+    pub fn get_score(&self) -> f64 {
+        self.depth as f64 * if self.pv_node { 1. } else { 0.7 }
+    }
+
+    pub fn validate_hash(&self, hash: u64) -> bool {
+        self.upper_hash as u64 == (hash >> 32) && self.lower_hash as u64 == (hash & 0xFFFFFFFF)
+    }
+    //I know this is not idiomatic, but it saves memory...
+    pub fn is_invalid(&self) -> bool {
+        self.mv == 0u16
+    }
+    pub fn invalid() -> CacheEntry {
+        CacheEntry {
+            upper_hash: 0,
+            lower_hash: 0,
+            depth: 0,
+            plies_played: 0,
+            score: 0,
+            alpha: false,
+            beta: false,
+            mv: 0,
+            static_evaluation: INVALID_STATIC_EVALUATION,
+            pv_node: false,
+        }
+    }
+    pub fn write(
+        &mut self,
+        hash: u64,
+        depth: i16,
+        plies_played: u16,
         score: i16,
+        static_evaluation: Option<i16>,
+        pv_node: bool,
         alpha: bool,
         beta: bool,
         mv: &GameMove,
-        static_evaluation: Option<i16>,
-        pv_node: bool,
-        root_plies: u16,
-    ) -> CacheEntry {
-        CacheEntry {
-            hash: game_state.hash,
-            depth: depth_left as i8,
-            plies_played: root_plies,
-            score,
-            alpha,
-            beta,
-            mv: CacheEntry::mv_to_u16(&mv),
-            static_evaluation,
-            pv_node,
-        }
+    ) {
+        self.upper_hash = (hash >> 32) as u32;
+        self.lower_hash = (hash & 0xFFFFFFFF) as u32;
+        self.depth = depth as i8;
+        self.plies_played = plies_played;
+        self.score = score;
+        self.alpha = alpha;
+        self.beta = beta;
+        self.pv_node = pv_node;
+        self.mv = CacheEntry::mv_to_u16(mv);
+        self.static_evaluation = if static_evaluation.is_some() {
+            static_evaluation.unwrap()
+        } else {
+            INVALID_STATIC_EVALUATION
+        };
     }
 
     #[inline(always)]
