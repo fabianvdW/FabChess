@@ -33,15 +33,15 @@ pub const TUNE_ROOKS: bool = false;
 pub const TUNE_PIECE_VALUES: bool = false;
 pub const TUNE_MOBILITY: bool = false;
 
-pub const TUNE_ATTACK: bool = false;
-pub const TUNE_ATTACK_INDEX: bool = false;
+pub const TUNE_ATTACK: bool = true;
+pub const TUNE_ATTACK_INDEX: bool = true;
 pub const TUNE_PSQT: bool = false;
 
 const OPTIMIZE_K: bool = false;
 const BATCH_SIZE: usize = 100_000;
-const START_LEARNING_RATE: f64 = 1.;
+const START_LEARNING_RATE: f64 = 40.;
 const L1_REGULARIZATION: f64 = 0.;
-const L2_REGULARIZATION: f64 = 0.001 * 1. / 1000.;
+const L2_REGULARIZATION: f64 = 0.;
 
 pub fn main() {
     if !cfg!(feature = "texel-tuning") {

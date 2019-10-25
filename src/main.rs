@@ -17,11 +17,6 @@ fn main() {
         new_now.duration_since(now).as_secs() * 1000
             + u64::from(new_now.duration_since(now).subsec_millis())
     ));
-    println!("{}", std::mem::size_of::<core::search::cache::CacheEntry>());
-    println!(
-        "{}",
-        std::mem::size_of::<core::search::cache::CacheBucket>()
-    );
     core::uci::uci_parser::parse_loop();
 }
 

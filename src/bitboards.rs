@@ -59,7 +59,12 @@ pub fn initialize_king_zone_black() -> [u64; 64] {
     let mut res = [0u64; 64];
     for king_sq in 0..64 {
         let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
-        res[king_sq] = zone | south_one(zone);
+        res[king_sq] = zone | south_one(zone) | north_one(zone);
+        if king_sq % 8 == 0 {
+            res[king_sq] |= east_one(res[king_sq]);
+        } else if king_sq % 8 == 7 {
+            res[king_sq] |= west_one(res[king_sq]);
+        }
     }
     res
 }
@@ -68,7 +73,12 @@ pub fn initialize_king_zone_white() -> [u64; 64] {
     let mut res = [0u64; 64];
     for king_sq in 0..64 {
         let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
-        res[king_sq] = zone | north_one(zone);
+        res[king_sq] = zone | north_one(zone) | south_one(zone);
+        if king_sq % 8 == 0 {
+            res[king_sq] |= east_one(res[king_sq]);
+        } else if king_sq % 8 == 7 {
+            res[king_sq] |= west_one(res[king_sq]);
+        }
     }
     res
 }
