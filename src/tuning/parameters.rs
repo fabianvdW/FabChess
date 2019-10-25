@@ -702,8 +702,96 @@ impl Parameters {
             psqt_king: [[[0.; 8]; 8]; 2],
         }
     }
+    pub fn calculate_norm(&self) -> f64 {
+        //Norm gradient
+        let mut norm: f64 = 0.;
+        for i in 0..2 {
+            norm += self.tempo_bonus[i].powf(2.);
+            for j in 0..4 {
+                norm += self.shielding_pawn_missing[i][j].powf(2.);
+                norm += self.shielding_pawn_onopen_missing[i][j].powf(2.);
+            }
+            norm += self.pawn_doubled[i].powf(2.);
+            norm += self.pawn_isolated[i].powf(2.);
+            norm += self.pawn_backward[i].powf(2.);
+            norm += self.pawn_attack_center[i].powf(2.);
+            norm += self.pawn_mobility[i].powf(2.);
+            for j in 0..7 {
+                norm += self.pawn_passed[i][j].powf(2.);
+                norm += self.pawn_passed_notblocked[i][j].powf(2.);
+                norm += self.pawn_passed_kingdistance[i][j].powf(2.);
+                norm += self.pawn_passed_enemykingdistance[i][j].powf(2.);
+            }
+            for j in 0..13 {
+                norm += self.pawn_passed_subdistance[i][j].powf(2.);
+            }
+            norm += self.rook_behind_support_passer[i].powf(2.);
+            norm += self.rook_behind_enemy_passer[i].powf(2.);
+            norm += self.pawn_passed_weak[i].powf(2.);
+            norm += self.knight_supported[i].powf(2.);
+            for j in 0..8 {
+                for k in 0..8 {
+                    norm += self.pawn_supported[i][j][k].powf(2.);
+                    norm += self.knight_outpost_table[i][j][k].powf(2.);
+                    norm += self.psqt_pawn[i][j][k].powf(2.);
+                    norm += self.psqt_knight[i][j][k].powf(2.);
+                    norm += self.psqt_bishop[i][j][k].powf(2.);
+                    norm += self.psqt_rook[i][j][k].powf(2.);
+                    norm += self.psqt_queen[i][j][k].powf(2.);
+                    norm += self.psqt_king[i][j][k].powf(2.);
+                }
+            }
+            norm += self.rook_on_open[i].powf(2.);
+            norm += self.rook_on_seventh[i].powf(2.);
+            norm += self.pawn_piece_value[i].powf(2.);
+            norm += self.knight_piece_value[i].powf(2.);
+            norm += self.bishop_piece_value[i].powf(2.);
+            norm += self.bishop_pair[i].powf(2.);
+            norm += self.rook_piece_value[i].powf(2.);
+            norm += self.queen_piece_value[i].powf(2.);
+            for j in 0..5 {
+                norm += self.diagonally_adjacent_squares_withpawns[i][j].powf(2.);
+            }
+            for j in 0..9 {
+                norm += self.knight_mobility[i][j].powf(2.);
+            }
+            for j in 0..14 {
+                norm += self.bishop_mobility[i][j].powf(2.);
+            }
+            for j in 0..15 {
+                norm += self.rook_mobility[i][j].powf(2.);
+            }
+            for j in 0..28 {
+                norm += self.queen_mobility[i][j].powf(2.);
+            }
+        }
+        for i in 0..17 {
+            norm += self.knight_value_with_pawns[i].powf(2.);
+        }
+        for i in 0..2 {
+            norm += self.knight_attack_value[i].powf(2.);
+            norm += self.bishop_attack_value[i].powf(2.);
+            norm += self.rook_attack_value[i].powf(2.);
+            norm += self.queen_attack_value[i].powf(2.);
+            norm += self.knight_check_value[i].powf(2.);
+            norm += self.bishop_check_value[i].powf(2.);
+            norm += self.rook_check_value[i].powf(2.);
+            norm += self.queen_check_value[i].powf(2.);
+            for j in 0..8 {
+                norm += self.attack_weight[i][j].powf(2.);
+            }
+        }
+        for i in 0..2 {
+            for j in 0..100 {
+                norm += self.safety_table[i].safety_table[j].powf(2.);
+            }
+        }
+        norm = norm.sqrt();
+        norm
+    }
 
-    pub fn apply_gradient(&mut self, gradient: &Parameters, norm: f64) {
+    pub fn apply_gradient(&mut self, gradient: &Parameters, lr: f64) {
+        let norm = gradient.calculate_norm() / lr;
         for i in 0..2 {
             apply_gradient_arr(
                 &mut self.shielding_pawn_missing[i],
