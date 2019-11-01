@@ -271,4 +271,5 @@ FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 - Stockfish
 - Ethereal
 - Asymptote
+
 Special thanks to Andrew Grant for writing [OpenBench](https://github.com/AndyGrant/OpenBench), which is used for selfplay testing lately.
