@@ -2,8 +2,7 @@ use crate::logging::log;
 use rand::prelude::*;
 use std::u64;
 
-pub fn rand_u64() -> u64 {
-    let mut rng = rand::thread_rng();
+pub fn rand_u64(rng: &mut StdRng) -> u64 {
     let res: u64 = rng.gen();
     res
 }
@@ -15,42 +14,44 @@ pub fn init_at_program_start() {
     log("Initialized Zobrist Keys!");
 }
 
-pub fn rand_array_64() -> [u64; 64] {
+pub fn rand_array_64(rng: &mut StdRng) -> [u64; 64] {
     let mut res = [0u64; 64];
     for item in res.iter_mut() {
-        *item = rand_u64();
+        *item = rand_u64(rng);
     }
     res
 }
 
-pub fn rand_array_8() -> [u64; 8] {
+pub fn rand_array_8(rng: &mut StdRng) -> [u64; 8] {
     let mut res = [0u64; 8];
     for item in res.iter_mut() {
-        *item = rand_u64();
+        *item = rand_u64(rng);
     }
     res
 }
 
 pub fn init_zobrist() -> Zobrist {
+    let mut generator: StdRng = SeedableRng::from_seed([42; 32]);
+
     Zobrist {
-        w_pawns: rand_array_64(),
-        w_knights: rand_array_64(),
-        w_bishops: rand_array_64(),
-        w_rooks: rand_array_64(),
-        w_queens: rand_array_64(),
-        w_king: rand_array_64(),
-        b_pawns: rand_array_64(),
-        b_knights: rand_array_64(),
-        b_bishops: rand_array_64(),
-        b_rooks: rand_array_64(),
-        b_queens: rand_array_64(),
-        b_king: rand_array_64(),
-        side_to_move: rand_u64(),
-        castle_w_kingside: rand_u64(),
-        castle_w_queenside: rand_u64(),
-        castle_b_kingside: rand_u64(),
-        castle_b_queenside: rand_u64(),
-        en_passant: rand_array_8(),
+        w_pawns: rand_array_64(&mut generator),
+        w_knights: rand_array_64(&mut generator),
+        w_bishops: rand_array_64(&mut generator),
+        w_rooks: rand_array_64(&mut generator),
+        w_queens: rand_array_64(&mut generator),
+        w_king: rand_array_64(&mut generator),
+        b_pawns: rand_array_64(&mut generator),
+        b_knights: rand_array_64(&mut generator),
+        b_bishops: rand_array_64(&mut generator),
+        b_rooks: rand_array_64(&mut generator),
+        b_queens: rand_array_64(&mut generator),
+        b_king: rand_array_64(&mut generator),
+        side_to_move: rand_u64(&mut generator),
+        castle_w_kingside: rand_u64(&mut generator),
+        castle_w_queenside: rand_u64(&mut generator),
+        castle_b_kingside: rand_u64(&mut generator),
+        castle_b_queenside: rand_u64(&mut generator),
+        en_passant: rand_array_8(&mut generator),
     }
 }
 
