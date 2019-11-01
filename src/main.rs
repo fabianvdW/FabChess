@@ -27,8 +27,9 @@ fn main() {
                 .and_then(|depth| depth.parse::<usize>().ok())
                 .unwrap_or(13),
         );
+    } else {
+        core::uci::uci_parser::parse_loop();
     }
-    core::uci::uci_parser::parse_loop();
 }
 //TAKEN FROM ETHEREAL
 const BENCHMARKING_POSITIONS: [&str; 50] = [
