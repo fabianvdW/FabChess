@@ -323,6 +323,12 @@ impl Thread {
                 self.id
             );
         }
+        //Report nodes in the end
+        self.itcs.update(
+            self.id,
+            self.search_statistics.nodes_searched,
+            self.search_statistics.seldepth,
+        );
         if self.id == 0 {
             self.timeout_stop.store(true, Ordering::Relaxed);
         }
@@ -339,7 +345,7 @@ pub fn search_move(
     _last_score: i16,
     uci_options: UCIOptions,
     tc: TimeControl,
-) -> Option<i16> {
+) -> (Option<i16>, Option<Arc<InterThreadCommunicationSystem>>) {
     let time_saved_before = saved_time.load(Ordering::Relaxed);
     //Step 1. Check how many legal moves there are
     let mut movelist = MoveList::default();
@@ -363,7 +369,7 @@ pub fn search_move(
             + tc.time_saved(0, time_saved_before, uci_options.move_overhead))
         .max(0) as u64;
         saved_time.store(new_timesaved, Ordering::Relaxed);
-        return None;
+        return (None, None);
     }
 
     //Step 2. Prepare threads
@@ -426,6 +432,6 @@ pub fn search_move(
     .max(0) as u64;
     saved_time.store(new_timesaved, Ordering::Relaxed);
     //And return
-    let best_pv = itcs.best_pv.lock().unwrap();
-    Some(best_pv.score)
+    let best_score = itcs.best_pv.lock().unwrap().score;
+    (Some(best_score), Some(itcs))
 }

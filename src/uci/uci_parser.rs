@@ -131,7 +131,8 @@ pub fn start_search(
         last_score.load(Ordering::Relaxed),
         uci_options,
         tc,
-    );
+    )
+    .0;
     if let Some(score) = score {
         last_score.store(score, Ordering::Relaxed);
     }

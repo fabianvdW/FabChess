@@ -47,6 +47,9 @@ impl Cache {
         }
     }
     pub fn get_status(&self) -> f64 {
+        if self.entries == 0 {
+            return 1000.;
+        }
         self.full.load(Ordering::Relaxed) as f64 / self.entries as f64 * 1000.
     }
     pub fn clear(&self) {
