@@ -39,7 +39,13 @@ pub struct Parameters {
     pub pawn_passed_weak: [f64; 2],
     pub knight_supported: [f64; 2],
     pub knight_outpost_table: [[[f64; 8]; 8]; 2],
+    pub bishop_xray_king: [f64; 2],
+    pub rook_xray_king: [f64; 2],
+    pub queen_xray_king: [f64; 2],
     pub rook_on_open: [f64; 2],
+    pub rook_on_semi_open: [f64; 2],
+    pub queen_on_open: [f64; 2],
+    pub queen_on_semi_open: [f64; 2],
     pub rook_on_seventh: [f64; 2],
     pub pawn_piece_value: [f64; 2],
     pub knight_piece_value: [f64; 2],
@@ -243,9 +249,39 @@ impl Display for Parameters {
             )
         ));
         res_str.push_str(&format!(
+            "pub const BISHOP_XRAY_KING: EvaluationScore = EvaluationScore({}, {});\n",
+            self.bishop_xray_king[MG].round() as isize,
+            self.bishop_xray_king[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_XRAY_KING: EvaluationScore = EvaluationScore({}, {});\n",
+            self.rook_xray_king[MG].round() as isize,
+            self.rook_xray_king[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_XRAY_KING: EvaluationScore = EvaluationScore({}, {});\n",
+            self.queen_xray_king[MG].round() as isize,
+            self.queen_xray_king[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
             "pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
             self.rook_on_open[MG].round() as isize,
             self.rook_on_open[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const ROOK_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
+            self.rook_on_semi_open[MG].round() as isize,
+            self.rook_on_semi_open[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
+            self.queen_on_open[MG].round() as isize,
+            self.queen_on_open[EG].round() as isize
+        ));
+        res_str.push_str(&format!(
+            "pub const QUEEN_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
+            self.queen_on_semi_open[MG].round() as isize,
+            self.queen_on_semi_open[EG].round() as isize
         ));
         res_str.push_str(&format!(
             "pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore({}, {});\n",
@@ -576,9 +612,24 @@ impl Parameters {
                 f64::from(KNIGHT_SUPPORTED_BY_PAWN.1),
             ],
             knight_outpost_table,
+            bishop_xray_king: [f64::from(BISHOP_XRAY_KING.0), f64::from(BISHOP_XRAY_KING.1)],
+            rook_xray_king: [f64::from(ROOK_XRAY_KING.0), f64::from(ROOK_XRAY_KING.1)],
+            queen_xray_king: [f64::from(QUEEN_XRAY_KING.0), f64::from(QUEEN_XRAY_KING.1)],
             rook_on_open: [
                 f64::from(ROOK_ON_OPEN_FILE_BONUS.0),
                 f64::from(ROOK_ON_OPEN_FILE_BONUS.1),
+            ],
+            rook_on_semi_open: [
+                f64::from(ROOK_ON_SEMI_OPEN_FILE_BONUS.0),
+                f64::from(ROOK_ON_SEMI_OPEN_FILE_BONUS.1),
+            ],
+            queen_on_open: [
+                f64::from(QUEEN_ON_OPEN_FILE_BONUS.0),
+                f64::from(QUEEN_ON_OPEN_FILE_BONUS.1),
+            ],
+            queen_on_semi_open: [
+                f64::from(QUEEN_ON_SEMI_OPEN_FILE_BONUS.0),
+                f64::from(QUEEN_ON_SEMI_OPEN_FILE_BONUS.1),
             ],
             rook_on_seventh: [f64::from(ROOK_ON_SEVENTH.0), f64::from(ROOK_ON_SEVENTH.1)],
             pawn_piece_value: [f64::from(PAWN_PIECE_VALUE.0), f64::from(PAWN_PIECE_VALUE.1)],
@@ -663,7 +714,13 @@ impl Parameters {
             pawn_passed_weak: [0.; 2],
             knight_supported: [0.; 2],
             knight_outpost_table: [[[0.; 8]; 8]; 2],
+            bishop_xray_king: [0.; 2],
+            rook_xray_king: [0.; 2],
+            queen_xray_king: [0.; 2],
             rook_on_open: [0.; 2],
+            rook_on_semi_open: [0.; 2],
+            queen_on_open: [0.; 2],
+            queen_on_semi_open: [0.; 2],
             rook_on_seventh: [0.; 2],
             pawn_piece_value: [0.; 2],
             knight_piece_value: [0.; 2],
@@ -741,7 +798,13 @@ impl Parameters {
                     norm += self.psqt_king[i][j][k].powf(2.);
                 }
             }
+            norm += self.bishop_xray_king[i].powf(2.);
+            norm += self.rook_xray_king[i].powf(2.);
+            norm += self.queen_xray_king[i].powf(2.);
             norm += self.rook_on_open[i].powf(2.);
+            norm += self.rook_on_semi_open[i].powf(2.);
+            norm += self.queen_on_open[i].powf(2.);
+            norm += self.queen_on_semi_open[i].powf(2.);
             norm += self.rook_on_seventh[i].powf(2.);
             norm += self.pawn_piece_value[i].powf(2.);
             norm += self.knight_piece_value[i].powf(2.);
@@ -816,7 +879,13 @@ impl Parameters {
             self.rook_behind_enemy_passer[i] += gradient.rook_behind_enemy_passer[i] / norm;
             self.pawn_passed_weak[i] += gradient.pawn_passed_weak[i] / norm;
             self.knight_supported[i] += gradient.knight_supported[i] / norm;
+            self.bishop_xray_king[i] += gradient.bishop_xray_king[i] / norm;
+            self.rook_xray_king[i] += gradient.rook_xray_king[i] / norm;
+            self.queen_xray_king[i] += gradient.queen_xray_king[i] / norm;
             self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
+            self.rook_on_semi_open[i] += gradient.rook_on_semi_open[i] / norm;
+            self.queen_on_open[i] += gradient.queen_on_open[i] / norm;
+            self.queen_on_semi_open[i] += gradient.queen_on_semi_open[i] / norm;
             self.rook_on_seventh[i] += gradient.rook_on_seventh[i] / norm;
             self.pawn_piece_value[i] += gradient.pawn_piece_value[i] / norm;
             self.knight_piece_value[i] += gradient.knight_piece_value[i] / norm;

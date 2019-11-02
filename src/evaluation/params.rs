@@ -236,8 +236,14 @@ pub const KNIGHT_OUTPOST_TABLE: [[EvaluationScore; 8]; 8] = [
         EvaluationScore(0, 0),
     ],
 ];
-pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(41, 29);
-pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore(24, 53);
+pub const BISHOP_XRAY_KING: EvaluationScore = EvaluationScore(16, 56);
+pub const ROOK_XRAY_KING: EvaluationScore = EvaluationScore(53, -1);
+pub const QUEEN_XRAY_KING: EvaluationScore = EvaluationScore(14, 28);
+pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(41, 34);
+pub const ROOK_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(20, 15);
+pub const QUEEN_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(-23, 34);
+pub const QUEEN_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(4, 18);
+pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore(24, 52);
 pub const PAWN_PIECE_VALUE: EvaluationScore = EvaluationScore(104, 194);
 pub const KNIGHT_PIECE_VALUE: EvaluationScore = EvaluationScore(429, 745);
 pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [

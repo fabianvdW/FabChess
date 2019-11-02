@@ -381,12 +381,9 @@ pub fn piecewise(
     while knights != 0u64 {
         let idx = knights.trailing_zeros() as usize;
         let targets = attack_container.attack[MGSA_KNIGHT][side][index] & !my_pieces;
+
         let mobility = targets.count_ones() as usize;
         mk += KNIGHT_MOBILITY_BONUS[mobility];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.knight_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-        }
 
         let has_safe_check = (targets & knight_checks & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
@@ -399,6 +396,7 @@ pub fn piecewise(
         }
         #[cfg(feature = "texel-tuning")]
         {
+            _eval.trace.knight_mobility[mobility] += if side == WHITE { 1 } else { -1 };
             _eval.trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 _eval.trace.knight_safe_check[side] += 1;
@@ -410,26 +408,31 @@ pub fn piecewise(
     //Bishops
     let mut bishop_attackers: i16 = 0;
     let mut bishop_attacker_values = EvaluationScore::default();
+    let mut bishop_xray_king: i16 = 0;
     let (mut mb, mut mb_diag) = (EvaluationScore::default(), EvaluationScore::default());
     let mut bishops = g.pieces[BISHOP][side];
     let mut index = 0;
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
+        if (bitboards::FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+            && (movegen::xray_bishop_attacks(
+                attack_container.attack[MGSA_BISHOP][side][index],
+                all_pieces,
+                all_pieces,
+                idx,
+            ) & g.pieces[KING][1 - side])
+                != 0u64
+        {
+            bishop_xray_king += 1;
+        }
         let diagonally_adjacent_pawns =
             (bitboards::DIAGONALLY_ADJACENT[idx] & g.pieces[PAWN][side]).count_ones() as usize;
         mb_diag += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[diagonally_adjacent_pawns];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.diagonally_adjacent_squares_withpawns[diagonally_adjacent_pawns] +=
-                if side == WHITE { 1 } else { -1 };
-        }
+
         let targets = attack_container.attack[MGSA_BISHOP][side][index] & !my_pieces;
         let mobility = targets.count_ones() as usize;
         mb += BISHOP_MOBILITY_BONUS[mobility];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.bishop_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-        }
+
         let has_safe_check = (targets & bishop_checks & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
         if has_safe_check || enemy_king_attacks != 0u64 {
@@ -441,6 +444,9 @@ pub fn piecewise(
         }
         #[cfg(feature = "texel-tuning")]
         {
+            _eval.trace.diagonally_adjacent_squares_withpawns[diagonally_adjacent_pawns] +=
+                if side == WHITE { 1 } else { -1 };
+            _eval.trace.bishop_mobility[mobility] += if side == WHITE { 1 } else { -1 };
             _eval.trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 _eval.trace.bishop_safe_check[side] += 1;
@@ -449,28 +455,43 @@ pub fn piecewise(
         bishops ^= 1u64 << idx;
         index += 1;
     }
-
     //Rooks
     let mut rook_attackers: i16 = 0;
     let mut rook_attacker_values = EvaluationScore::default();
-    let (mut mr, mut rooks_onopen, mut rooks_onseventh) = (EvaluationScore::default(), 0i16, 0i16);
+    let mut rook_xray_king: i16 = 0;
+    let (mut mr, mut rooks_onopen, mut rooks_on_semi_open, mut rooks_onseventh) =
+        (EvaluationScore::default(), 0i16, 0i16, 0i16);
     let mut rooks = g.pieces[ROOK][side];
     let mut index = 0;
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
+        if (bitboards::FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+            && (movegen::xray_rook_attacks(
+                attack_container.attack[MGSA_ROOKS][side][index],
+                all_pieces,
+                all_pieces,
+                idx,
+            ) & g.pieces[KING][1 - side])
+                != 0u64
+        {
+            rook_xray_king += 1;
+        }
         if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
             rooks_onseventh += 1;
         }
         if bitboards::FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
             rooks_onopen += 1;
+        } else if (bitboards::FILES[idx % 8] & g.pieces[PAWN][1 - side]).count_ones() == 1
+            && (bitboards::FILES[idx % 8] & g.pieces[PAWN][side]) == 0u64
+        {
+            rooks_on_semi_open += 1;
         }
+
         let targets = attack_container.attack[MGSA_ROOKS][side][index] & !my_pieces;
+
         let mobility = targets.count_ones() as usize;
         mr += ROOK_MOBILITY_BONUS[mobility];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.rook_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-        }
+
         let has_safe_check = (targets & rook_checks & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
         if has_safe_check || enemy_king_attacks != 0u64 {
@@ -482,6 +503,7 @@ pub fn piecewise(
         }
         #[cfg(feature = "texel-tuning")]
         {
+            _eval.trace.rook_mobility[mobility] += if side == WHITE { 1 } else { -1 };
             _eval.trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 _eval.trace.rook_safe_check[side] += 1;
@@ -490,26 +512,54 @@ pub fn piecewise(
         rooks ^= 1u64 << idx;
         index += 1;
     }
-    #[cfg(feature = "texel-tuning")]
-    {
-        _eval.trace.rook_on_open += rooks_onopen as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.rook_on_seventh += rooks_onseventh as i8 * if side == WHITE { 1 } else { -1 };
-    }
+
     //Queens
     let mut queen_attackers: i16 = 0;
     let mut queen_attacker_values = EvaluationScore::default();
+    let mut queen_xray_king: i16 = 0;
+    let (mut queens_onopen, mut queens_on_semi_open) = (0i16, 0i16);
     let mut mq = EvaluationScore::default();
     let mut queens = g.pieces[QUEEN][side];
     let mut index = 0;
     while queens != 0u64 {
         let idx = queens.trailing_zeros() as usize;
+        if (bitboards::FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+            && (movegen::xray_bishop_attacks(
+                attack_container.attack[MGSA_QUEEN][side][index]
+                    & bitboards::FREEFIELD_BISHOP_ATTACKS[idx],
+                all_pieces,
+                all_pieces,
+                idx,
+            ) & g.pieces[KING][1 - side])
+                != 0u64
+        {
+            queen_xray_king += 1;
+        } else if (bitboards::FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+            && (movegen::xray_rook_attacks(
+                attack_container.attack[MGSA_QUEEN][side][index]
+                    & bitboards::FREEFIELD_ROOK_ATTACKS[idx],
+                all_pieces,
+                all_pieces,
+                idx,
+            ) & g.pieces[KING][1 - side])
+                != 0u64
+        {
+            queen_xray_king += 1;
+        }
+
+        if bitboards::FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
+            queens_onopen += 1;
+        } else if (bitboards::FILES[idx % 8] & g.pieces[PAWN][1 - side]).count_ones() == 1
+            && (bitboards::FILES[idx % 8] & g.pieces[PAWN][side]) == 0u64
+        {
+            queens_on_semi_open += 1;
+        }
+
         let targets = attack_container.attack[MGSA_QUEEN][side][index] & !my_pieces;
+
         let mobility = targets.count_ones() as usize;
         mq += QUEEN_MOBILITY_BONUS[mobility];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.queen_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-        }
+
         let has_safe_check = (targets & (bishop_checks | rook_checks) & !defended_squares) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
         if has_safe_check || enemy_king_attacks != 0u64 {
@@ -519,8 +569,10 @@ pub fn piecewise(
         if has_safe_check {
             queen_attacker_values += QUEEN_SAFE_CHECK;
         }
+
         #[cfg(feature = "texel-tuning")]
         {
+            _eval.trace.queen_mobility[mobility] += if side == WHITE { 1 } else { -1 };
             _eval.trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 _eval.trace.queen_safe_check[side] += 1;
@@ -529,6 +581,20 @@ pub fn piecewise(
         queens ^= 1u64 << idx;
         index += 1;
     }
+    #[cfg(feature = "texel-tuning")]
+    {
+        _eval.trace.rook_on_open += rooks_onopen as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.rook_on_semi_open +=
+            rooks_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.rook_on_seventh += rooks_onseventh as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.queen_on_open += queens_onopen as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.queen_on_semi_open +=
+            queens_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.bishop_xray_king += bishop_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.rook_xray_king += rook_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+        _eval.trace.queen_xray_king += queen_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+    }
+
     let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0
         + bishop_attacker_values.0
         + rook_attacker_values.0
@@ -561,8 +627,15 @@ pub fn piecewise(
         + mq
         + mb_diag
         + ROOK_ON_OPEN_FILE_BONUS * rooks_onopen
+        + ROOK_ON_SEMI_OPEN_FILE_BONUS * rooks_on_semi_open
         + ROOK_ON_SEVENTH * rooks_onseventh
+        + QUEEN_ON_OPEN_FILE_BONUS * queens_onopen
+        + QUEEN_ON_SEMI_OPEN_FILE_BONUS * queens_on_semi_open
+        + BISHOP_XRAY_KING * bishop_xray_king
+        + ROOK_XRAY_KING * rook_xray_king
+        + QUEEN_XRAY_KING * queen_xray_king
         + attack;
+
     #[cfg(feature = "display-eval")]
     {
         log(&format!(
