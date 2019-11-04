@@ -193,6 +193,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && is_quiet_move
             && current_max_score > MATED_IN_MAX
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
+            && !in_check_slow(&next_state)
         {
             //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
             if futil_margin <= p.alpha {
