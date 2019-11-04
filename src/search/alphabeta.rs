@@ -98,7 +98,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
-    make_eval(&p, thread, &mut static_evaluation, prunable, incheck);
+    make_eval(&p, thread, &mut static_evaluation, prunable);
 
     //Step 10. Prunings
     if prunable {
@@ -134,7 +134,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     };
 
     //Step 12. Futil Pruning and margin preparation
-    let futil_margin = prepare_futility_pruning(&p, incheck, static_evaluation);
+    let futil_margin = prepare_futility_pruning(&p, static_evaluation);
     //Step 13. Prepare staged movegen
     let hash_and_pv_move_counter =
         prepare_staged_movegen(&p, thread, has_generated_moves, &pv_table_move, &tt_move);
@@ -419,12 +419,11 @@ pub fn make_eval(
     thread: &mut Thread,
     static_evaluation: &mut Option<i16>,
     prunable: bool,
-    incheck: bool,
 ) {
     if static_evaluation.is_none()
         && (prunable
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
-            || !incheck && p.depth_left <= FUTILITY_DEPTH)
+            || p.depth_left <= FUTILITY_DEPTH)
     {
         let eval_res = eval_game_state(
             p.game_state,
@@ -522,7 +521,6 @@ pub fn internal_iterative_deepening(
 #[inline(always)]
 pub fn prepare_futility_pruning(
     p: &CombinedSearchParameters,
-    incheck: bool,
     static_evaluation: Option<i16>,
 ) -> (i16) {
     let futil_pruning = p.depth_left <= FUTILITY_DEPTH && p.current_depth > 0;
