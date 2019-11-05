@@ -98,7 +98,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
-    make_eval(&p, thread, &mut static_evaluation, prunable, incheck);
+    make_eval(&p, thread, &mut static_evaluation, prunable);
 
     //Step 10. Prunings
     if prunable {
@@ -134,7 +134,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     };
 
     //Step 12. Futil Pruning and margin preparation
-    let futil_margin = prepare_futility_pruning(&p, incheck, static_evaluation);
+    let futil_margin = prepare_futility_pruning(&p, static_evaluation);
     //Step 13. Prepare staged movegen
     let hash_and_pv_move_counter =
         prepare_staged_movegen(&p, thread, has_generated_moves, &pv_table_move, &tt_move);
@@ -186,32 +186,31 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         } else {
             false
         };
+        let is_quiet_move = !isc && !isp;
         let next_state = make_move(p.game_state, &mv);
 
-        //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
-        if !isc
-            && !isp
-            && current_max_score > MATED_IN_MAX
-            && !in_check_slow(&next_state)
-            && futil_margin <= p.alpha
-            && quiets_tried > 0
-        {
-            thread.search_statistics.add_futil_pruning();
-            continue;
-        }
-
-        //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
         if !root
-            && p.depth_left <= 2
-            && !isc
-            && !isp
-            && !incheck
+            && is_quiet_move
             && current_max_score > MATED_IN_MAX
-            && thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize]
-                < 0
+            && p.game_state.has_non_pawns(p.game_state.color_to_move)
+            && !in_check_slow(&next_state)
         {
-            thread.search_statistics.add_history_pruned();
-            continue;
+            //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
+            if futil_margin <= p.alpha {
+                thread.search_statistics.add_futil_pruning();
+                index += 1;
+                continue;
+            }
+            //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
+            if p.depth_left <= 2
+                && thread.history_score[p.game_state.color_to_move][mv.from as usize]
+                    [mv.to as usize]
+                    < 0
+            {
+                thread.search_statistics.add_history_pruned();
+                index += 1;
+                continue;
+            }
         }
 
         //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
@@ -421,12 +420,11 @@ pub fn make_eval(
     thread: &mut Thread,
     static_evaluation: &mut Option<i16>,
     prunable: bool,
-    incheck: bool,
 ) {
     if static_evaluation.is_none()
         && (prunable
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
-            || !incheck && p.depth_left <= FUTILITY_DEPTH)
+            || p.depth_left <= FUTILITY_DEPTH)
     {
         let eval_res = eval_game_state(
             p.game_state,
@@ -468,7 +466,7 @@ pub fn null_move_pruning(
     static_evaluation: Option<i16>,
 ) -> SearchInstruction {
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
-        && p.game_state.phase.phase > 0.
+        && p.game_state.has_non_pawns(p.game_state.color_to_move)
         && static_evaluation.expect("null move static") * p.color >= p.beta
     {
         let nextgs = make_nullmove(p.game_state);
@@ -524,10 +522,9 @@ pub fn internal_iterative_deepening(
 #[inline(always)]
 pub fn prepare_futility_pruning(
     p: &CombinedSearchParameters,
-    incheck: bool,
     static_evaluation: Option<i16>,
 ) -> (i16) {
-    let futil_pruning = p.depth_left <= FUTILITY_DEPTH && !incheck && p.current_depth > 0;
+    let futil_pruning = p.depth_left <= FUTILITY_DEPTH && p.current_depth > 0;
     if futil_pruning {
         static_evaluation.expect("Futil pruning") * p.color + p.depth_left * FUTILITY_MARGIN
     } else {

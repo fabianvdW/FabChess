@@ -865,6 +865,14 @@ impl GameState {
     pub fn king_square(&self, side: usize) -> usize {
         self.pieces[KING][side].trailing_zeros() as usize
     }
+
+    #[inline(always)]
+    pub fn has_non_pawns(&self, side: usize) -> bool {
+        self.pieces[BISHOP][side] != 0u64
+            || self.pieces[KNIGHT][side] != 0u64
+            || self.pieces[ROOK][side] != 0u64
+            || self.pieces[QUEEN][side] != 0u64
+    }
 }
 
 impl Clone for GameState {
