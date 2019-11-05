@@ -12,12 +12,12 @@ use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
-//pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
-pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
+pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
+//pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 
 //Override for all others if true
-pub const TUNE_ALL: bool = false;
+pub const TUNE_ALL: bool = true;
 
 pub const TUNE_TEMPO_BONUS: bool = false;
 pub const TUNE_SHIELDING_PAWNS: bool = false;
@@ -34,8 +34,8 @@ pub const TUNE_XRAY: bool = true;
 pub const TUNE_PIECE_VALUES: bool = false;
 pub const TUNE_MOBILITY: bool = false;
 
-pub const TUNE_ATTACK: bool = false;
-pub const TUNE_ATTACK_INDEX: bool = false;
+pub const TUNE_ATTACK: bool = true;
+pub const TUNE_ATTACK_INDEX: bool = true;
 pub const TUNE_PSQT: bool = false;
 
 const OPTIMIZE_K: bool = false;
