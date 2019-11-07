@@ -504,8 +504,8 @@ mod tests {
             see(
                 &GameState::from_fen("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
                 &GameMove {
-                    from: 4usize,
-                    to: 36usize,
+                    from: 4,
+                    to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Rook,
                 },
@@ -518,8 +518,8 @@ mod tests {
             see(
                 &GameState::from_fen("1k2r3/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
                 &GameMove {
-                    from: 4usize,
-                    to: 36usize,
+                    from: 4,
+                    to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
                     piece_type: PieceType::Rook,
                 },

@@ -22,7 +22,13 @@ pub struct Trace {
     pub pawn_passed_weak: i8,
     pub knight_supported: i8,
     pub knight_outpost_table: [[i8; 8]; 8],
+    pub bishop_xray_king: i8,
+    pub rook_xray_king: i8,
+    pub queen_xray_king: i8,
     pub rook_on_open: i8,
+    pub rook_on_semi_open: i8,
+    pub queen_on_open: i8,
+    pub queen_on_semi_open: i8,
     pub rook_on_seventh: i8,
     pub pawns: i8,
     pub knights: i8,
@@ -143,7 +149,37 @@ impl Trace {
                 params.queen_mobility[EG][i],
             );
         }
+        evaluate_single(
+            &mut piecewise_res,
+            self.bishop_xray_king,
+            &params.bishop_xray_king,
+        );
+        evaluate_single(
+            &mut piecewise_res,
+            self.rook_xray_king,
+            &params.rook_xray_king,
+        );
+        evaluate_single(
+            &mut piecewise_res,
+            self.queen_xray_king,
+            &params.queen_xray_king,
+        );
         evaluate_single(&mut piecewise_res, self.rook_on_open, &params.rook_on_open);
+        evaluate_single(
+            &mut piecewise_res,
+            self.rook_on_semi_open,
+            &params.rook_on_semi_open,
+        );
+        evaluate_single(
+            &mut piecewise_res,
+            self.queen_on_open,
+            &params.queen_on_open,
+        );
+        evaluate_single(
+            &mut piecewise_res,
+            self.queen_on_semi_open,
+            &params.queen_on_semi_open,
+        );
         evaluate_single(
             &mut piecewise_res,
             self.rook_on_seventh,
@@ -361,7 +397,13 @@ impl Trace {
             pawn_passed_weak: 0,
             knight_supported: 0,
             knight_outpost_table: [[0; 8]; 8],
+            bishop_xray_king: 0,
+            rook_xray_king: 0,
+            queen_xray_king: 0,
             rook_on_open: 0,
+            rook_on_semi_open: 0,
+            queen_on_open: 0,
+            queen_on_semi_open: 0,
             rook_on_seventh: 0,
             pawns: 0,
             knights: 0,

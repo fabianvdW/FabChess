@@ -12,12 +12,12 @@ use core::tuning::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
-//pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
-pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
+pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
+//pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
 pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
 
 //Override for all others if true
-pub const TUNE_ALL: bool = false;
+pub const TUNE_ALL: bool = true;
 
 pub const TUNE_TEMPO_BONUS: bool = false;
 pub const TUNE_SHIELDING_PAWNS: bool = false;
@@ -28,18 +28,19 @@ pub const TUNE_PASSED_PAWN: bool = false;
 pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
 
 pub const TUNE_KNIGHTS: bool = false;
-pub const TUNE_ROOKS: bool = false;
+pub const TUNE_FILES: bool = true;
+pub const TUNE_XRAY: bool = true;
 
-pub const TUNE_PIECE_VALUES: bool = true;
+pub const TUNE_PIECE_VALUES: bool = false;
 pub const TUNE_MOBILITY: bool = false;
 
-pub const TUNE_ATTACK: bool = false;
-pub const TUNE_ATTACK_INDEX: bool = false;
+pub const TUNE_ATTACK: bool = true;
+pub const TUNE_ATTACK_INDEX: bool = true;
 pub const TUNE_PSQT: bool = false;
 
 const OPTIMIZE_K: bool = false;
 const BATCH_SIZE: usize = 100_000;
-const START_LEARNING_RATE: f64 = 5.;
+const START_LEARNING_RATE: f64 = 10.;
 const L1_REGULARIZATION: f64 = 0.;
 const L2_REGULARIZATION: f64 = 0.;
 
@@ -353,8 +354,8 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
             }
         }
 
-        //Rook
-        if TUNE_ROOKS || TUNE_ALL {
+        //On open File / semi open file
+        if TUNE_FILES || TUNE_ALL {
             add_gradient(
                 &tuner.params.rook_on_open,
                 portion,
@@ -364,10 +365,60 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                 phase,
             );
             add_gradient(
+                &tuner.params.rook_on_semi_open,
+                portion,
+                &mut gradient.rook_on_semi_open,
+                pos.trace.rook_on_open,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &tuner.params.queen_on_open,
+                portion,
+                &mut gradient.queen_on_open,
+                pos.trace.queen_on_open,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &tuner.params.queen_on_semi_open,
+                portion,
+                &mut gradient.queen_on_semi_open,
+                pos.trace.queen_on_semi_open,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
                 &tuner.params.rook_on_seventh,
                 portion,
                 &mut gradient.rook_on_seventh,
                 pos.trace.rook_on_seventh,
+                start_of_gradient,
+                phase,
+            );
+        }
+        if TUNE_XRAY || TUNE_ALL {
+            add_gradient(
+                &tuner.params.bishop_xray_king,
+                portion,
+                &mut gradient.bishop_xray_king,
+                pos.trace.bishop_xray_king,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &tuner.params.rook_xray_king,
+                portion,
+                &mut gradient.rook_xray_king,
+                pos.trace.rook_xray_king,
+                start_of_gradient,
+                phase,
+            );
+            add_gradient(
+                &tuner.params.queen_xray_king,
+                portion,
+                &mut gradient.queen_xray_king,
+                pos.trace.queen_xray_king,
                 start_of_gradient,
                 phase,
             );
