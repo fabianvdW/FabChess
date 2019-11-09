@@ -192,6 +192,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         if !root
             && is_quiet_move
             && current_max_score > MATED_IN_MAX
+            && (futil_margin <= p.alpha
+                || p.depth_left <= 2
+                    && thread.history_score[p.game_state.color_to_move][mv.from as usize]
+                        [mv.to as usize]
+                        < 0)
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
             && !in_check_slow(&next_state)
         {
@@ -214,14 +219,13 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         } else if !root
             && isc
             && current_max_score > MATED_IN_MAX
+            && p.depth_left <= 4
+            && move_score < -28. * p.depth_left as f64 * p.depth_left as f64
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
             && !in_check_slow(&next_state)
-            && p.depth_left <= 4
         {
-            if move_score < -28. * p.depth_left as f64 * p.depth_left as f64 {
-                index += 1;
-                continue;
-            }
+            index += 1;
+            continue;
         }
 
         //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
