@@ -14,6 +14,10 @@ pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
 pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
 pub const NULL_MOVE_PRUNING_DEPTH: i16 = 3;
+pub const HISTORY_PRUNING_DEPTH: i16 = 2;
+pub const HISTORY_PRUNING_THRESHOLD: isize = 0;
+pub const SEE_PRUNING_DEPTH: i16 = 4;
+pub const SEE_PRUNING_CAPTURE_MULT: f64 = -28.;
 
 pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
@@ -193,10 +197,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && is_quiet_move
             && current_max_score > MATED_IN_MAX
             && (futil_margin <= p.alpha
-                || p.depth_left <= 2
+                || p.depth_left <= HISTORY_PRUNING_DEPTH
                     && thread.history_score[p.game_state.color_to_move][mv.from as usize]
                         [mv.to as usize]
-                        < 0)
+                        < HISTORY_PRUNING_THRESHOLD)
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
             && !in_check_slow(&next_state)
         {
@@ -207,10 +211,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 continue;
             }
             //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
-            if p.depth_left <= 2
+            if p.depth_left <= HISTORY_PRUNING_DEPTH
                 && thread.history_score[p.game_state.color_to_move][mv.from as usize]
                     [mv.to as usize]
-                    < 0
+                    < HISTORY_PRUNING_THRESHOLD
             {
                 thread.search_statistics.add_history_pruned();
                 index += 1;
@@ -219,8 +223,8 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         } else if !root
             && isc
             && current_max_score > MATED_IN_MAX
-            && p.depth_left <= 4
-            && move_score < -28. * p.depth_left as f64 * p.depth_left as f64
+            && p.depth_left <= SEE_PRUNING_DEPTH
+            && move_score < SEE_PRUNING_CAPTURE_MULT * p.depth_left as f64 * p.depth_left as f64
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
             && !in_check_slow(&next_state)
         {
