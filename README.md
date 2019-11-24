@@ -47,7 +47,7 @@ Use `static` to get a static evaluation of the position
 ```
 > position startpos
 > static
-< cp 32
+< cp 10
 ```
 ### Display evaluation
 If you compile FabChess with an extra flag, it will also write a detailed overview of the evaluation to a logfile.
@@ -57,28 +57,83 @@ If you compile FabChess with an extra flag, it will also write a detailed overvi
 > cargo run --features "display-eval"
 > position startpos
 > static
-< cp 32
+< cp 10
 ```
 Logfile called `log.txt`:
 ```
 Evaluating GameState fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
+Tempo:(10 , 15)
+
 PSQT for White:
-	Pawns  : (-243 , -174)
-	Knights: (-93 , -92)
-	Bishops: (-31 , -38)
-	King   : (32 , -97)
-Sum: (-335 , -401)
+	Pawns  : (-225 , -216)
+	Knights: (-67 , -93)
+	Bishops: (-23 , -35)
+	Rooks: (24 , -56)
+	Queens: (22 , -5)
+	King   : (47 , -88)
+Sum: (-222 , -493)
 
 PSQT for Black:
-	Pawns  : (-243 , -174)
-	Knights: (-93 , -92)
-	Bishops: (-31 , -38)
-	King   : (32 , -97)
-Sum: (-335 , -401)
+	Pawns  : (-225 , -216)
+	Knights: (-67 , -93)
+	Bishops: (-23 , -35)
+	Rooks: (24 , -56)
+	Queens: (22 , -5)
+	King   : (47 , -88)
+Sum: (-222 , -493)
 
-MG PSQT Sum: 0
-EG PSQT Sum: 0
+PSQT Sum: (0 , 0)
+
+Piece values for White
+	Pawns: 8 -> (888 , 1472)
+	Knights: 2 -> (1018 , 1588)
+	Bishops: 2 -> (992 , 1422)
+	Bishop-Pair: 1 -> (41 , 111)
+	Rooks: 2 -> (1310 , 2596)
+	Queens: 1 -> (1541 , 2449)
+Sum: (5790 , 9638)
+
+Piece values for Black
+	Pawns: 8 -> (888 , 1472)
+	Knights: 2 -> (1018 , 1588)
+	Bishops: 2 -> (992 , 1422)
+	Bishop-Pair: 1 -> (41 , 111)
+	Rooks: 2 -> (1310 , 2596)
+	Queens: 1 -> (1541 , 2449)
+Sum: (5790 , 9638)
+
+Piece value Sum: (5790 , 9638) - (5790 , 9638) -> (0 , 0)
+
+Pawns for White:
+	Doubled: 0 -> (0 , 0)
+	Isolated: 0 -> (0 , 0)
+	Backward: 0 -> (0 , 0)
+	Supported: 0 -> (0 , 0)
+	Attack Center: 0 -> (0 , 0)
+	Mobility: 30 -> (270 , 360)
+	Passer Blocked/Not Blocked: 0 , 0 -> (0 , 0)
+	Rook behind passer: 0 -> (0 , 0)
+	Enemy Rook behind passer: 0 -> (0 , 0)
+	Weak passer: 0 -> (0 , 0)
+	Passers distance to kings -> (0 , 0)
+Sum: (270 , 360)
+
+Pawns for Black:
+	Doubled: 0 -> (0 , 0)
+	Isolated: 0 -> (0 , 0)
+	Backward: 0 -> (0 , 0)
+	Supported: 0 -> (0 , 0)
+	Attack Center: 0 -> (0 , 0)
+	Mobility: 30 -> (270 , 360)
+	Passer Blocked/Not Blocked: 0 , 0 -> (0 , 0)
+	Rook behind passer: 0 -> (0 , 0)
+	Enemy Rook behind passer: 0 -> (0 , 0)
+	Weak passer: 0 -> (0 , 0)
+	Passers distance to kings -> (0 , 0)
+Sum: (270 , 360)
+
+Pawn Sum: (270 , 360) - (270 , 360) -> (0 , 0)
 
 Knights for White:
 	Supported by pawns: 0 -> (0 , 0)
@@ -90,115 +145,72 @@ Knights for Black:
 	Outposts: 0 -> (0 , 0)
 Sum: (0 , 0)
 
-MG Knight Sum: 0 - 0 -> 0
-EG Knight Sum: 0 - 0 -> 0
+Knights Sum: (0 , 0) - (0 , 0) -> (0 , 0)
 
 Piecewise for White:
-	Mobility Knight: (-14 , 0)
-	Mobility Bishop: (-18 , -58)
-	Bishop Diagonally Adj: (-52 , 48)
-	Mobility Rook  : (-50 , -60)
-	Mobility Queen : (-22 , -40)
+	Mobility Knight: (-10 , 22)
+	Mobility Bishop: (-6 , -62)
+	Bishop Diagonally Adj: (-54 , 106)
+	Mobility Rook  : (-48 , -52)
+	Mobility Queen : (-12 , -40)
+	BishopXrayKing : 0 -> (0 , 0)
+	RookXrayKing : 0 -> (0 , 0)
+	QueenXrayKing : 0 -> (0 , 0)
 	Rooks on open  : 0 -> (0 , 0)
+	Rooks on semi-open  : 0 -> (0 , 0)
+	Queens on open  : 0 -> (0 , 0)
+	Queens on semi-open  : 0 -> (0 , 0)
 	Rooks on seventh: 0 -> (0 , 0)
-	Knight Attackers/Value: (0 , 0)
-	Bishop Attackers/Value: (0 , 0)
-	Rook Attackers/Value: (0 , 0)
-	Queen Attackers/Value: (0 , 0)
-	Sum Attackers/Value: (0 , 0)
+	Knight Attackers: Num: 0 , Val: (0 , 0)
+	Bishop Attackers: Num: 0 , Val: (0 , 0)
+	Rook Attackers: Num: 0 , Val: (0 , 0)
+	Queen Attackers: Num: 0 , Val: (0 , 0)
+	Sum Attackers: (Num: 0 , Val: (0 , 0)
 	Attack MG value: 0 * 0 / 100.0 -> 0
-	Attack EG value: 0 * 0 / 100.0 -> 0
-Sum: (-156 , -110)
+	Attack EG value: 0 * -1 / 100.0 -> 0
+Sum: (-130 , -26)
 
 Piecewise for Black:
-	Mobility Knight: (-14 , 0)
-	Mobility Bishop: (-18 , -58)
-	Bishop Diagonally Adj: (-52 , 48)
-	Mobility Rook  : (-50 , -60)
-	Mobility Queen : (-22 , -40)
+	Mobility Knight: (-10 , 22)
+	Mobility Bishop: (-6 , -62)
+	Bishop Diagonally Adj: (-54 , 106)
+	Mobility Rook  : (-48 , -52)
+	Mobility Queen : (-12 , -40)
+	BishopXrayKing : 0 -> (0 , 0)
+	RookXrayKing : 0 -> (0 , 0)
+	QueenXrayKing : 0 -> (0 , 0)
 	Rooks on open  : 0 -> (0 , 0)
+	Rooks on semi-open  : 0 -> (0 , 0)
+	Queens on open  : 0 -> (0 , 0)
+	Queens on semi-open  : 0 -> (0 , 0)
 	Rooks on seventh: 0 -> (0 , 0)
-	Knight Attackers/Value: (0 , 0)
-	Bishop Attackers/Value: (0 , 0)
-	Rook Attackers/Value: (0 , 0)
-	Queen Attackers/Value: (0 , 0)
-	Sum Attackers/Value: (0 , 0)
+	Knight Attackers: Num: 0 , Val: (0 , 0)
+	Bishop Attackers: Num: 0 , Val: (0 , 0)
+	Rook Attackers: Num: 0 , Val: (0 , 0)
+	Queen Attackers: Num: 0 , Val: (0 , 0)
+	Sum Attackers: (Num: 0 , Val: (0 , 0)
 	Attack MG value: 0 * 0 / 100.0 -> 0
-	Attack EG value: 0 * 0 / 100.0 -> 0
-Sum: (-156 , -110)
+	Attack EG value: 0 * -1 / 100.0 -> 0
+Sum: (-130 , -26)
 
-MG Piecewise Sum: -156 - -156 -> 0
-EG Piecewise Sum: -110 - -110 -> 0
+Piecewise Sum: (-130 , -26) - (-130 , -26) -> (0 , 0)
 
 King for White:
-	Shield pawn missing: 0 -> (6 , -8)
-	Shield pawn on open file missing: 0 -> (-38 , -10)
-Sum: (-32 , -18)
+	Shield pawn missing: 0 -> (5 , -16)
+	Shield pawn on open file missing: 0 -> (2 , 7)
+Sum: (7 , -9)
 
 King for Black:
-	Shield pawn missing: 0 -> (6 , -8)
-	Shield pawn on open file missing: 0 -> (-38 , -10)
-Sum: (-32 , -18)
+	Shield pawn missing: 0 -> (5 , -16)
+	Shield pawn on open file missing: 0 -> (2 , 7)
+Sum: (7 , -9)
 
-MG King Sum: -32 - -32 -> 0
-EG King Sum: -18 - -18 -> 0
+King Sum: (7 , -9) - (7 , -9) -> (0 , 0)
 
-Pawns for White:
-	Doubled: 0 -> (0 , 0)
-	Isolated: 0 -> (0 , 0)
-	Backward: 0 -> (0 , 0)
-	Supported: 0 -> (0 , 0)
-	Attack Center: 0 -> (0 , 0)
-	Mobility: 30 -> (210 , 360)
-	Passer Blocked/Not Blocked: 0 , 0 -> MG/EG(0 , 0)
-	Rook behind passer: 0 -> (0 , 0)
-	Enemy Rook behind passer: 0 -> (0 , 0)
-Sum: (210 , 360)
-
-Pawns for Black:
-	Doubled: 0 -> (0 , 0)
-	Isolated: 0 -> (0 , 0)
-	Backward: 0 -> (0 , 0)
-	Supported: 0 -> (0 , 0)
-	Attack Center: 0 -> (0 , 0)
-	Mobility: 30 -> (210 , 360)
-	Passer Blocked/Not Blocked: 0 , 0 -> MG/EG(0 , 0)
-	Rook behind passer: 0 -> (0 , 0)
-	Enemy Rook behind passer: 0 -> (0 , 0)
-Sum: (210 , 360)
-
-MG Pawn Sum: 210 - 210 -> 0
-EG Pawn Sum: 360 - 360 -> 0
-
-Piece values for White
-	Pawns: 8 -> (848 , 1488)
-	Knights: 2 -> (976 , 1416)
-	Bishops: 2 -> (968 , 1300)
-	Bishop-Pair: 1 -> (34 , 107)
-	Rooks: 2 -> (1334 , 2286)
-	Queens: 1 -> (1515 , 2137)
-Sum: (5675 , 8734)
-
-Piece values for Black
-	Pawns: 8 -> (848 , 1488)
-	Knights: 2 -> (976 , 1416)
-	Bishops: 2 -> (968 , 1300)
-	Bishop-Pair: 1 -> (34 , 107)
-	Rooks: 2 -> (1334 , 2286)
-	Queens: 1 -> (1515 , 2137)
-Sum: (5675 , 8734)
-
-MG Piece value Sum: 5675 - 5675 -> 0
-EG Piece value Sum: 8734 - 8734 -> 0
-
-Tempo:(32 , 42)
-
-MG Sum: 0 + 0 + 0 + 0 + 0 + 0 + 32 -> 32
-
-EG Sum: (0 + 0 + 0 + 0 + 0 + 0 + 42) /1.5 -> 28
+Sum: (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (10 , 15) -> (10 , 10) (EG/=1.5)
 Phase: 128
 
-Final Result: (32 * 128 + 28 * (128.0 - 128))/128.0 -> 32
+Final Result: (10 * 128 + 10 * (128.0 - 128))/128.0 -> 10
 ```
 ### Perft
 You can run perft on an arbitrary position. Note that if there is no king on the board for either side or the position is otherwise illegal, FabChess will crash (intended).
@@ -261,7 +273,7 @@ En Passant Possible: 0
 Half-Counter: 0
 Full-Counter: 1
 Side to Move: 0
-Hash: 7954168898935982804
+Hash: 6214150092099736431
 
 FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 ```
@@ -272,4 +284,4 @@ FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 - Ethereal
 - Asymptote
 
-Special thanks to Andrew Grant for writing [OpenBench](https://github.com/AndyGrant/OpenBench), which is used for selfplay testing lately.
+Special thanks to Andrew Grant for writing [OpenBench](https://github.com/AndyGrant/OpenBench), which is used for selfplay testing, in order to incrementally improve on the last versions.
