@@ -109,8 +109,8 @@ pub fn eval_game_state_from_null(g: &GameState) -> EvaluationResult {
 pub fn eval_game_state(
     g: &GameState,
     attacks: &GameStateAttackContainer,
-    alpha: i16,
-    beta: i16,
+    _alpha: i16, //Lazy Eval components, unneeded currently
+    _beta: i16,
 ) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
@@ -648,9 +648,39 @@ pub fn piecewise(
         log(&format!("\tMobility Rook  : {}\n", mr));
         log(&format!("\tMobility Queen : {}\n", mq));
         log(&format!(
+            "\tBishopXrayKing : {} -> {}\n",
+            bishop_xray_king,
+            BISHOP_XRAY_KING * bishop_xray_king,
+        ));
+        log(&format!(
+            "\tRookXrayKing : {} -> {}\n",
+            rook_xray_king,
+            ROOK_XRAY_KING * rook_xray_king,
+        ));
+        log(&format!(
+            "\tQueenXrayKing : {} -> {}\n",
+            queen_xray_king,
+            QUEEN_XRAY_KING * queen_xray_king,
+        ));
+        log(&format!(
             "\tRooks on open  : {} -> {}\n",
             rooks_onopen,
             ROOK_ON_OPEN_FILE_BONUS * rooks_onopen,
+        ));
+        log(&format!(
+            "\tRooks on semi-open  : {} -> {}\n",
+            rooks_on_semi_open,
+            ROOK_ON_SEMI_OPEN_FILE_BONUS * rooks_on_semi_open,
+        ));
+        log(&format!(
+            "\tQueens on open  : {} -> {}\n",
+            queens_onopen,
+            QUEEN_ON_OPEN_FILE_BONUS * queens_onopen,
+        ));
+        log(&format!(
+            "\tQueens on semi-open  : {} -> {}\n",
+            queens_on_semi_open,
+            QUEEN_ON_SEMI_OPEN_FILE_BONUS * queens_on_semi_open,
         ));
         log(&format!(
             "\tRooks on seventh: {} -> {}\n",
