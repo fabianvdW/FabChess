@@ -251,6 +251,7 @@ impl Thread {
             );
         }
         let mut curr_depth = 0;
+        let mut previous_score: Option<i16> = None;
         loop {
             let temp = self.itcs.get_next_depth(curr_depth);
             curr_depth = temp.0;
@@ -265,7 +266,11 @@ impl Thread {
                     self.id, curr_depth
                 );
             }
-            let mut delta = 40;
+            let mut delta = if previous_score.is_some() {
+                previous_score.unwrap().abs() / 50
+            } else {
+                0
+            } + 14;
             let mut alpha = if curr_depth == 1 {
                 -16000
             } else {
@@ -300,6 +305,7 @@ impl Thread {
                         alpha = -16000;
                         beta = 16000;
                     } else {
+                        beta = (alpha + beta) / 2;
                         alpha -= delta;
                     }
                 }
@@ -313,6 +319,7 @@ impl Thread {
                 }
                 delta = (f64::from(delta) * 1.5) as i16;
             }
+            previous_score = Some(self.current_pv.score);
             if self.self_stop {
                 break;
             }
