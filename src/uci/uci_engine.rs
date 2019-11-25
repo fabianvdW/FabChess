@@ -22,7 +22,7 @@ pub struct UCIEngine<'a> {
 impl<'a> UCIEngine<'a> {
     pub fn standard() -> UCIEngine<'a> {
         UCIEngine {
-            name: &"FabChessDev v1.13",
+            name: &"FabChessDev v1.13.1",
             author: &"Fabian von der Warth, Contributor: Erik Imgrund",
             internal_state: GameState::standard(),
             options: UCIOptions {
