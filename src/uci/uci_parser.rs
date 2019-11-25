@@ -159,23 +159,23 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
     while index < cmd.len() {
         match cmd[index] {
             "wtime" => {
-                wtime = cmd[index + 1].parse::<u64>().unwrap();
+                wtime = cmd[index + 1].parse::<u64>().unwrap_or(0);
             }
             "btime" => {
-                btime = cmd[index + 1].parse::<u64>().unwrap();
+                btime = cmd[index + 1].parse::<u64>().unwrap_or(0);
             }
             "winc" => {
-                winc = cmd[index + 1].parse::<u64>().unwrap();
+                winc = cmd[index + 1].parse::<u64>().unwrap_or(0);
             }
             "binc" => {
-                binc = cmd[index + 1].parse::<u64>().unwrap();
+                binc = cmd[index + 1].parse::<u64>().unwrap_or(0);
             }
             "movetime" => {
-                let mvtime = cmd[index + 1].parse::<u64>().unwrap();
+                let mvtime = cmd[index + 1].parse::<u64>().unwrap_or(0);
                 return (TimeControl::MoveTime(mvtime), depth);
             }
-            "movestogo" => movestogo = Some(cmd[index + 1].parse::<usize>().unwrap()),
-            _ => panic!("Invalid go command"),
+            "movestogo" => movestogo = Some(cmd[index + 1].parse::<usize>().unwrap_or(1)),
+            _ => println!("Some parts of the go command weren't recognized well."),
         };
         index += 2;
     }
