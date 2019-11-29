@@ -8,9 +8,9 @@ use std::sync::RwLock;
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_LOCKS: usize = 1024;
 pub const MIN_LOCKS: usize = 1;
-pub const MAX_LOCKS: usize = 65536; // This is really the maximum!!!
-                                    // Else we would need to index by upper_index = (hash >> 47 or lower)
-                                    // Using a higher number will lead to the cache not being able to be used fully
+pub const MAX_LOCKS: usize = 65536 * 16; // This is really the maximum!!!
+                                         // Else we would need to index by upper_index = (hash >> 47 or lower)
+                                         // Using a higher number will lead to the cache not being able to be used fully
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131072; //IN MB
@@ -61,7 +61,7 @@ impl Cache {
     }
 
     pub fn age_entry(&self, hash: u64, new_age: u16) {
-        let upper_index = (hash >> 48) as usize % self.locks;
+        let upper_index = (hash >> 44) as usize % self.locks;
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
         unsafe {
             lock.write()
@@ -72,7 +72,7 @@ impl Cache {
     }
 
     pub fn get(&self, hash: u64) -> CacheBucket {
-        let upper_index = (hash >> 48) as usize % self.locks;
+        let upper_index = (hash >> 44) as usize % self.locks;
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
         unsafe {
             lock.read()
@@ -94,7 +94,7 @@ impl Cache {
         if self.entries == 0 {
             return;
         }
-        let upper_index = (p.game_state.hash >> 48) as usize % self.locks;
+        let upper_index = (p.game_state.hash >> 44) as usize % self.locks;
         let index = p.game_state.hash as usize % self.buckets_per_lock;
         //Aquire lock
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
