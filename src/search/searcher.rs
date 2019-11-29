@@ -27,7 +27,7 @@ pub const DEFAULT_SKIP_RATIO: usize = 2;
 pub const MIN_SKIP_RATIO: usize = 1;
 pub const MAX_SKIP_RATIO: usize = 1024;
 
-pub const DEFAULT_THREADS: usize = 4;
+pub const DEFAULT_THREADS: usize = 1;
 pub const MAX_THREADS: usize = 65536;
 pub const MIN_THREADS: usize = 1;
 
@@ -86,20 +86,21 @@ impl InterThreadCommunicationSystem {
         )
     }
 
-    pub fn register_pv(&self, scored_pv: &ScoredPrincipalVariation) {
+    pub fn register_pv(&self, scored_pv: &ScoredPrincipalVariation, no_fail: bool) {
         let mut curr_best = self.best_pv.lock().unwrap();
+        self.stable_pv.store(false, Ordering::Relaxed);
+        //Update pv stability
+        if let Some(other_mv) = curr_best.pv.pv[0] {
+            if other_mv == scored_pv.pv.pv[0].unwrap() && no_fail {
+                self.stable_pv.store(true, Ordering::Relaxed);
+            }
+        }
         if curr_best.depth < scored_pv.depth
             || (curr_best.depth == scored_pv.depth && curr_best.score < scored_pv.score)
         {
-            //Update pv stability
-            if let Some(other_mv) = curr_best.pv.pv[0] {
-                if other_mv == scored_pv.pv.pv[0].unwrap() {
-                    self.stable_pv.store(true, Ordering::Relaxed);
-                } else {
-                    self.stable_pv.store(false, Ordering::Relaxed);
-                }
+            if no_fail {
+                *curr_best = scored_pv.clone();
             }
-            *curr_best = scored_pv.clone();
             //Report to UCI
             let searched_nodes = self.nodes_searched_sum.load(Ordering::Relaxed);
             let elapsed_time = self.get_time_elapsed();
@@ -186,8 +187,13 @@ pub struct Thread {
     pub main_thread_in_depth: bool,
 }
 impl Thread {
-    pub fn replace_current_pv(&mut self, root: &GameState, scored_pv: ScoredPrincipalVariation) {
-        self.itcs.register_pv(&scored_pv);
+    pub fn replace_current_pv(
+        &mut self,
+        root: &GameState,
+        scored_pv: ScoredPrincipalVariation,
+        no_fail: bool,
+    ) {
+        self.itcs.register_pv(&scored_pv, no_fail);
         self.current_pv = scored_pv;
         self.pv_applicable.clear();
         self.pv_applicable.push(root.hash);

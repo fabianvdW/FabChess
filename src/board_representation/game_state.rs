@@ -5,7 +5,6 @@ use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{generate_moves, MoveList};
-use crate::search::quiescence::is_capture;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -134,6 +133,19 @@ impl Clone for GameMove {
 }
 
 impl GameMove {
+    #[inline(always)]
+    pub fn is_capture(&self) -> bool {
+        match self.move_type {
+            GameMoveType::Capture(_) => true,
+            GameMoveType::Promotion(_, s) => match s {
+                Some(_) => true,
+                _ => false,
+            },
+            GameMoveType::EnPassant => true,
+            _ => false,
+        }
+    }
+
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
         let from_file = match chars.nth(0) {
@@ -220,7 +232,7 @@ impl GameMove {
             if rank_needed {
                 res_str.push_str(&format!("{}", self.from / 8 + 1))
             };
-            if is_capture(self) {
+            if self.is_capture() {
                 if self.piece_type == PieceType::Pawn && !file_needed {
                     res_str.push_str(file_to_string((self.from % 8) as usize));
                 }

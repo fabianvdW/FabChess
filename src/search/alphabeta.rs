@@ -1,7 +1,7 @@
 use super::super::board_representation::game_state::*;
 use super::super::movegen;
 use super::super::GameState;
-use super::quiescence::{is_capture, q_search, see};
+use super::quiescence::{q_search, see};
 use super::GradedMove;
 use super::*;
 use super::{MATED_IN_MAX, MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
@@ -16,9 +16,9 @@ pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
 pub const NULL_MOVE_PRUNING_DEPTH: i16 = 3;
 pub const HISTORY_PRUNING_DEPTH: i16 = 2;
 pub const HISTORY_PRUNING_THRESHOLD: isize = 0;
-pub const SEE_PRUNING_DEPTH: i16 = 4;
-pub const SEE_PRUNING_CAPTURE_MULT: f64 = -28.;
-
+pub const SEE_PRUNING_DEPTH: i16 = 6;
+pub const SEE_PRUNING_CAPTURE_MULT: f64 = -23.;
+pub const SEE_PRUNING_QUIET_MULT: f64 = -23.;
 pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
     thread.search_statistics.add_normal_node(p.current_depth);
@@ -184,7 +184,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         //Step 14.4. UCI Reporting at root
         //uci_report_move(&p, su, &mv, index);
 
-        let isc = is_capture(&mv);
+        let isc = mv.is_capture();
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
             true
         } else {
@@ -219,6 +219,14 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 thread.search_statistics.add_history_pruned();
                 index += 1;
                 continue;
+            }
+            //Step 14.7 SEE Pruning. Skip quiet moves which have negative SEE Score on low depths
+            if p.depth_left <= SEE_PRUNING_DEPTH && false {
+                let see_value = 0.;
+                if see_value < SEE_PRUNING_QUIET_MULT * (p.depth_left as f64 + 3.) {
+                    index += 1;
+                    continue;
+                }
             }
         } else if !root
             && isc
@@ -310,7 +318,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             thread.pv_table[p.current_depth].pv[0] = Some(mv);
             current_max_score = following_score;
             concatenate_pv(p.current_depth, thread);
-            uci_report_pv(&p, thread, following_score);
+            uci_report_pv(
+                &p,
+                thread,
+                following_score,
+                following_score > original_alpha,
+            );
         }
 
         //Step 14.10. Update alpha if score raises alpha
@@ -664,7 +677,12 @@ pub fn compute_lmr_reduction(
 }
 
 #[inline(always)]
-pub fn uci_report_pv(p: &CombinedSearchParameters, thread: &mut Thread, following_score: i16) {
+pub fn uci_report_pv(
+    p: &CombinedSearchParameters,
+    thread: &mut Thread,
+    following_score: i16,
+    no_fail: bool,
+) {
     if p.current_depth == 0 {
         thread.replace_current_pv(
             p.game_state,
@@ -673,6 +691,7 @@ pub fn uci_report_pv(p: &CombinedSearchParameters, thread: &mut Thread, followin
                 score: following_score,
                 depth: p.depth_left as usize,
             },
+            no_fail,
         );
     }
 }
@@ -746,7 +765,7 @@ pub fn make_and_evaluate_moves(game_state: &GameState, thread: &mut Thread, curr
     let move_list = &mut thread.movelist.move_lists[current_depth];
     while mv_index < move_list.counter {
         let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
-        if is_capture(mv) {
+        if mv.is_capture() {
             if GameMoveType::EnPassant == mv.move_type {
                 move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, 9999.0));
             } else {

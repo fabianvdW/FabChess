@@ -4,7 +4,7 @@ pub mod psqt_evaluation;
 
 use super::bitboards;
 use super::board_representation::game_state::{
-    GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
+    GameState, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
 #[cfg(feature = "display-eval")]
 use super::logging::log;
@@ -1132,8 +1132,4 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
         log(&format!("Sum: {}\n", res));
     }
     res
-}
-
-pub fn piece_value(piece_type: PieceType, phase: f64) -> i16 {
-    piece_type.to_piece_score().interpolate(phase)
 }
