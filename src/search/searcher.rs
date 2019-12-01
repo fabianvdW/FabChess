@@ -47,6 +47,8 @@ pub struct InterThreadCommunicationSystem {
     pub nodes_searched_sum: AtomicU64,  // Only used for reporting
     pub seldepth: AtomicUsize,          // Only used for reporting
     pub cache: Arc<Cache>,              //Only used for reporting
+    pub cache_status: AtomicUsize,
+    pub last_cache_status: Mutex<Option<Instant>>,
 }
 
 impl InterThreadCommunicationSystem {
@@ -64,6 +66,8 @@ impl InterThreadCommunicationSystem {
             nodes_searched_sum: AtomicU64::new(0),
             seldepth: AtomicUsize::new(0),
             start_time: Instant::now(),
+            last_cache_status: Mutex::new(None),
+            cache_status: AtomicUsize::new(0),
             cache,
         }
     }
@@ -103,13 +107,27 @@ impl InterThreadCommunicationSystem {
             //Report to UCI
             let searched_nodes = self.nodes_searched_sum.load(Ordering::Relaxed);
             let elapsed_time = self.get_time_elapsed();
+            let mut cache_status = self.last_cache_status.lock().unwrap();
+            let fill_status = if cache_status.is_none()
+                || Instant::now()
+                    .duration_since(cache_status.unwrap())
+                    .as_millis()
+                    > 200
+            {
+                *cache_status = Some(Instant::now());
+                self.cache_status
+                    .store(self.cache.fill_status(), Ordering::Relaxed);
+                self.cache_status.load(Ordering::Relaxed)
+            } else {
+                self.cache_status.load(Ordering::Relaxed)
+            };
             println!(
                 "info depth {} seldepth {} nodes {} nps {} hashfull {:.0} time {} score cp {} pv {}",
                 scored_pv.depth,
                 self.seldepth.load(Ordering::Relaxed),
                 searched_nodes,
                 (searched_nodes as f64 / (elapsed_time.max(1) as f64 / 1000.0)) as u64,
-                self.cache.get_status(),
+                fill_status,
                 self.get_time_elapsed(),
                 scored_pv.score,
                 scored_pv.pv

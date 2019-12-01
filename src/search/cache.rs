@@ -2,7 +2,6 @@ use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BISHOP, KNIGHT, PAWN, QUEEN, ROOK,
 };
 use crate::search::{CombinedSearchParameters, SearchInstruction};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::RwLock;
 
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
@@ -19,7 +18,6 @@ pub struct Cache {
     pub entries: usize,
     pub locks: usize,
     pub buckets_per_lock: usize,
-    pub full: AtomicUsize,
     pub cache: Vec<RwLock<Vec<CacheBucket>>>,
 }
 
@@ -42,22 +40,57 @@ impl Cache {
             entries,
             locks,
             buckets_per_lock,
-            full: AtomicUsize::new(0),
             cache,
         }
     }
-    pub fn get_status(&self) -> f64 {
-        if self.entries == 0 {
-            return 1000.;
+    pub fn fill_status(&self) -> usize {
+        if self.entries < 1000 {
+            return 1000;
         }
-        self.full.load(Ordering::Relaxed) as f64 / self.entries as f64 * 1000.
+        //Count bottom 500 entries
+        let mut counted_entries = 0;
+        let mut full = 0;
+        let mut curr_lock = 0;
+        while counted_entries < 500 && curr_lock < self.cache.len() {
+            let lock_line = self.cache.get(curr_lock).unwrap().read().unwrap();
+            let mut index = 0;
+            while index < lock_line.len() && counted_entries < 500 {
+                let bucket = lock_line.get(index).unwrap();
+                index += 1;
+                full += bucket.fill_status();
+                counted_entries += 3;
+            }
+            curr_lock += 1;
+        }
+        //Count upper 500 entries
+        curr_lock = self.cache.len() - 1;
+        while counted_entries < 1000 {
+            let lock_line = self.cache.get(curr_lock).unwrap().read().unwrap();
+            let mut index = lock_line.len() - 1;
+            while counted_entries < 1000 {
+                let bucket = lock_line.get(index).unwrap();
+                debug_assert!(index > 0);
+                full += bucket.fill_status();
+                counted_entries += 3;
+                if index == 0 {
+                    break;
+                }
+                index -= 1;
+            }
+            if curr_lock == 0 {
+                debug_assert!(false);
+                break;
+            }
+            curr_lock -= 1;
+        }
+        (full as f64 / counted_entries as f64 * 1000.0) as usize
     }
+
     pub fn clear(&self) {
         for bucket in &self.cache {
             let mut lock = bucket.write().unwrap();
             *lock = vec![CacheBucket::default(); self.buckets_per_lock];
         }
-        self.full.store(0, Ordering::Relaxed);
     }
 
     pub fn age_entry(&self, hash: u64, new_age: u16) {
@@ -100,17 +133,14 @@ impl Cache {
         let lock = unsafe { self.cache.get_unchecked(upper_index) };
         let mut write = lock.write().unwrap();
         unsafe {
-            if write.get_unchecked_mut(index).replace_entry(
+            write.get_unchecked_mut(index).replace_entry(
                 p,
                 mv,
                 score,
                 original_alpha,
                 root_plies_played,
                 static_evaluation,
-            ) {
-                self.full
-                    .store(self.full.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
-            }
+            );
         };
     }
 
@@ -254,6 +284,12 @@ impl CacheBucket {
         } else if self.0[2].validate_hash(hash) {
             self.0[2].plies_played = new_age;
         }
+    }
+
+    pub fn fill_status(&self) -> usize {
+        (if self.0[0].is_invalid() { 0 } else { 1 })
+            + (if self.0[1].is_invalid() { 0 } else { 1 })
+            + (if self.0[2].is_invalid() { 0 } else { 1 })
     }
 }
 impl Default for CacheBucket {
