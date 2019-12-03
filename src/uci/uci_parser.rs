@@ -58,8 +58,7 @@ pub fn parse_loop() {
             "go" => {
                 if cache.is_none() {
                     cache = Some(Arc::new(Cache::with_size(
-                        us.options.hash_size,
-                        us.options.hash_locks,
+                        us.options.hash_size
                     )));
                 }
                 stop.store(false, Ordering::Relaxed);
@@ -285,8 +284,7 @@ pub fn scout_and_make_draftmove(
 pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<Cache>>) {
     if cache.is_none() {
         *cache = Some(Arc::new(Cache::with_size(
-            us.options.hash_size,
-            us.options.hash_locks,
+            us.options.hash_size
         )));
     }
     println!("readyok");
