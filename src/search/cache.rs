@@ -290,7 +290,7 @@ impl CacheEntry {
     }
 
     pub fn validate_hash(&self, hash: u64) -> bool {
-        self.upper_hash as u64 == (hash >> 32) && self.lower_hash as u64 == (hash & 0xFFFFFFFF)
+        self.upper_hash as u64 == (hash >> 32) && (self.lower_hash ^ self.mv as u32) as u64 == (hash & 0xFFFFFFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
@@ -322,15 +322,16 @@ impl CacheEntry {
         beta: bool,
         mv: &GameMove,
     ) {
+        let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
-        self.lower_hash = (hash & 0xFFFFFFFF) as u32;
+        self.lower_hash = (hash & 0xFFFFFFFF) as u32 ^ mv as u32;
         self.depth = depth as i8;
         self.plies_played = plies_played;
         self.score = score;
         self.alpha = alpha;
         self.beta = beta;
         self.pv_node = pv_node;
-        self.mv = CacheEntry::mv_to_u16(mv);
+        self.mv = mv;
         self.static_evaluation = if static_evaluation.is_some() {
             static_evaluation.unwrap()
         } else {
