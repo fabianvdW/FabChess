@@ -2,7 +2,7 @@ use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BISHOP, KNIGHT, PAWN, QUEEN, ROOK,
 };
 use crate::search::{CombinedSearchParameters, SearchInstruction};
-use std::sync::RwLock;
+use std::cell::UnsafeCell;
 
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_LOCKS: usize = 1024;
@@ -16,30 +16,26 @@ pub const MAX_HASH_SIZE: usize = 131072; //IN MB
 
 pub struct Cache {
     pub entries: usize,
-    pub locks: usize,
-    pub buckets_per_lock: usize,
-    pub cache: Vec<RwLock<Vec<CacheBucket>>>,
+    pub buckets: usize,
+    pub cache: UnsafeCell<Vec<CacheBucket>>,
 }
+
+unsafe impl std::marker::Sync for Cache {}
 
 impl Default for Cache {
     fn default() -> Self {
-        Cache::with_size(DEFAULT_HASH_SIZE, DEFAULT_LOCKS)
+        Cache::with_size(DEFAULT_HASH_SIZE)
     }
 }
 
 impl Cache {
-    pub fn with_size(mb_size: usize, locks: usize) -> Self {
+    pub fn with_size(mb_size: usize) -> Self {
         let buckets = 1024 * 1024 * mb_size / 64;
-        let buckets_per_lock = buckets / locks;
-        let entries = buckets_per_lock * locks * 3;
-        let mut cache = Vec::with_capacity(locks);
-        for _ in 0..locks {
-            cache.push(RwLock::new(vec![CacheBucket::default(); buckets_per_lock]));
-        }
+        let entries = buckets * 3;
+        let cache = UnsafeCell::new(vec![CacheBucket::default(); buckets]);
         Cache {
             entries,
-            locks,
-            buckets_per_lock,
+            buckets,
             cache,
         }
     }
@@ -50,67 +46,46 @@ impl Cache {
         //Count bottom 500 entries
         let mut counted_entries = 0;
         let mut full = 0;
-        let mut curr_lock = 0;
-        while counted_entries < 500 && curr_lock < self.cache.len() {
-            let lock_line = self.cache.get(curr_lock).unwrap().read().unwrap();
-            let mut index = 0;
-            while index < lock_line.len() && counted_entries < 500 {
-                let bucket = lock_line.get(index).unwrap();
-                index += 1;
-                full += bucket.fill_status();
-                counted_entries += 3;
-            }
-            curr_lock += 1;
+
+        let mut index = 0;
+        while index < unsafe { (&mut *self.cache.get()).len() } && counted_entries < 500 {
+            let bucket = unsafe { (&mut *self.cache.get()).get(index).unwrap() };
+            index += 1;
+            full += bucket.fill_status();
+            counted_entries += 3;
         }
         //Count upper 500 entries
-        curr_lock = self.cache.len() - 1;
+        let mut index = unsafe { (&mut *self.cache.get()).len() - 1 };
         while counted_entries < 1000 {
-            let lock_line = self.cache.get(curr_lock).unwrap().read().unwrap();
-            let mut index = lock_line.len() - 1;
-            while counted_entries < 1000 {
-                let bucket = lock_line.get(index).unwrap();
-                debug_assert!(index > 0);
-                full += bucket.fill_status();
-                counted_entries += 3;
-                if index == 0 {
-                    break;
-                }
-                index -= 1;
-            }
-            if curr_lock == 0 {
-                debug_assert!(false);
+            let bucket = unsafe { (&mut *self.cache.get()).get(index).unwrap() };
+            debug_assert!(index > 0);
+            full += bucket.fill_status();
+            counted_entries += 3;
+            if index == 0 {
                 break;
             }
-            curr_lock -= 1;
+            index -= 1;
         }
         (full as f64 / counted_entries as f64 * 1000.0) as usize
     }
 
     pub fn clear(&self) {
-        for bucket in &self.cache {
-            let mut lock = bucket.write().unwrap();
-            *lock = vec![CacheBucket::default(); self.buckets_per_lock];
+        unsafe {
+            *self.cache.get() = vec![CacheBucket::default(); self.buckets];
         }
     }
 
     pub fn age_entry(&self, hash: u64, new_age: u16) {
-        let upper_index = (hash >> 44) as usize % self.locks;
-        let lock = unsafe { self.cache.get_unchecked(upper_index) };
         unsafe {
-            lock.write()
-                .unwrap()
-                .get_unchecked_mut(hash as usize % self.buckets_per_lock)
+            (&mut *self.cache.get()).get_unchecked_mut(hash as usize % self.buckets)
                 .age_entry(hash, new_age);
         }
     }
 
     pub fn get(&self, hash: u64) -> CacheBucket {
-        let upper_index = (hash >> 44) as usize % self.locks;
-        let lock = unsafe { self.cache.get_unchecked(upper_index) };
         unsafe {
-            lock.read()
-                .unwrap()
-                .get_unchecked(hash as usize % self.buckets_per_lock)
+            (&mut *self.cache.get())
+                .get_unchecked(hash as usize % self.buckets)
                 .clone()
         }
     }
@@ -127,13 +102,9 @@ impl Cache {
         if self.entries == 0 {
             return;
         }
-        let upper_index = (p.game_state.hash >> 44) as usize % self.locks;
-        let index = p.game_state.hash as usize % self.buckets_per_lock;
-        //Aquire lock
-        let lock = unsafe { self.cache.get_unchecked(upper_index) };
-        let mut write = lock.write().unwrap();
+        let index = p.game_state.hash as usize % self.buckets;
         unsafe {
-            write.get_unchecked_mut(index).replace_entry(
+            (&mut *self.cache.get()).get_unchecked_mut(index).replace_entry(
                 p,
                 mv,
                 score,
@@ -156,19 +127,19 @@ impl Cache {
         }
         let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
         if let Some(ce) = ce {
+            let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
                 && (!ce.alpha && !ce.beta
                     || ce.beta && ce.score >= p.beta
                     || ce.alpha && ce.score <= p.alpha)
             {
-                *tt_move = Some(CacheEntry::u16_to_mv(ce.mv, p.game_state));
+                *tt_move = Some(mv);
                 return SearchInstruction::StopSearching(ce.score);
             }
             if ce.static_evaluation != INVALID_STATIC_EVALUATION {
                 *static_evaluation = Some(ce.static_evaluation);
             }
-            let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
             *tt_move = Some(mv);
             if ce.plies_played != root_plies as u16 {
                 self.age_entry(p.game_state.hash, root_plies as u16);
@@ -319,7 +290,7 @@ impl CacheEntry {
     }
 
     pub fn validate_hash(&self, hash: u64) -> bool {
-        self.upper_hash as u64 == (hash >> 32) && self.lower_hash as u64 == (hash & 0xFFFFFFFF)
+        self.upper_hash as u64 == (hash >> 32) && (self.lower_hash ^ self.mv as u32) as u64 == (hash & 0xFFFFFFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
@@ -351,15 +322,16 @@ impl CacheEntry {
         beta: bool,
         mv: &GameMove,
     ) {
+        let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
-        self.lower_hash = (hash & 0xFFFFFFFF) as u32;
+        self.lower_hash = (hash & 0xFFFFFFFF) as u32 ^ mv as u32;
         self.depth = depth as i8;
         self.plies_played = plies_played;
         self.score = score;
         self.alpha = alpha;
         self.beta = beta;
         self.pv_node = pv_node;
-        self.mv = CacheEntry::mv_to_u16(mv);
+        self.mv = mv;
         self.static_evaluation = if static_evaluation.is_some() {
             static_evaluation.unwrap()
         } else {

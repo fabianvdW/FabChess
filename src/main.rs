@@ -85,7 +85,7 @@ const BENCHMARKING_POSITIONS: [&str; 50] = [
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 ];
 fn bench(depth: usize) {
-    let cache = Arc::new(core::search::cache::Cache::with_size(8, 1));
+    let cache = Arc::new(core::search::cache::Cache::with_size(8));
     let before_time = Instant::now();
     let mut nodes = 0;
     for position in BENCHMARKING_POSITIONS.iter() {
