@@ -2,7 +2,7 @@ use super::super::board_representation::game_state::{
     GameMove, GameMoveType, GameResult, GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN,
     QUEEN, ROOK, WHITE,
 };
-use super::super::evaluation::{self, eval_game_state};
+use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
 use super::super::move_generation::movegen::AdditionalGameStateInformation;
 use super::alphabeta::*;
@@ -12,7 +12,7 @@ use crate::move_generation::makemove::make_move;
 
 pub const DELTA_PRUNING: i16 = 100;
 lazy_static! {
-    pub static ref PIECE_VALUES: [i16; 6] = [100, 300, 310, 500, 900, 30000];
+    pub static ref PIECE_VALUES: [i16; 6] = [100, 400, 400, 650, 1100, 30000];
 }
 
 pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
@@ -87,7 +87,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         thread.search_statistics.add_cache_hit_ns();
     }
     //Only captures are valid tt moves (if not in check)
-    if tt_move.is_some() && !incheck && !is_capture(tt_move.as_ref().unwrap()) {
+    if tt_move.is_some() && !incheck && !tt_move.as_ref().unwrap().is_capture() {
         tt_move = None;
     }
 
@@ -126,7 +126,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             moves_from_movelist_tried,
             available_captures_in_movelist,
         );
-        debug_assert!(incheck || is_capture(&capture_move));
+        debug_assert!(incheck || capture_move.is_capture());
         //Step 8.3. If the move is from the movelist, make sure we haven't searched it already as tt move
         if index >= hash_move_counter {
             moves_from_movelist_tried += 1;
@@ -276,7 +276,7 @@ pub fn make_and_evaluate_moves_qsearch(
                 mv_index += 1;
                 continue;
             }
-            if !incheck || is_capture(&mv) {
+            if !incheck || mv.is_capture() {
                 let score = see(p.game_state, mv, true, &mut thread.see_buffer);
                 if score < 0 && !incheck {
                     thread.search_statistics.add_q_see_cutoff();
@@ -301,19 +301,6 @@ pub fn make_and_evaluate_moves_qsearch(
         capture_index += 1;
     }
     (agsi, capture_index)
-}
-
-#[inline(always)]
-pub fn is_capture(mv: &GameMove) -> bool {
-    match &mv.move_type {
-        GameMoveType::Capture(_) => true,
-        GameMoveType::Promotion(_, s) => match s {
-            Some(_) => true,
-            _ => false,
-        },
-        GameMoveType::EnPassant => true,
-        _ => false,
-    }
 }
 
 #[inline(always)]
@@ -350,7 +337,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: i16, alph
         GameMoveType::EnPassant => &PieceType::Pawn,
         _ => panic!("No capture!"),
     };
-    eval + evaluation::piece_value(*captured_piece, phase) + DELTA_PRUNING >= alpha
+    eval + captured_piece.to_piece_score().interpolate(phase) + DELTA_PRUNING >= alpha
 }
 
 #[inline(always)]
@@ -464,14 +451,7 @@ pub fn capture_value(mv: &GameMove) -> i16 {
 
 #[inline(always)]
 pub fn piece_value(piece_type: PieceType) -> i16 {
-    match piece_type {
-        PieceType::Pawn => PIECE_VALUES[PAWN],
-        PieceType::Knight => PIECE_VALUES[KNIGHT],
-        PieceType::Bishop => PIECE_VALUES[BISHOP],
-        PieceType::Rook => PIECE_VALUES[ROOK],
-        PieceType::Queen => PIECE_VALUES[QUEEN],
-        PieceType::King => PIECE_VALUES[KING],
-    }
+    PIECE_VALUES[piece_type.to_index()]
 }
 
 #[inline(always)]
