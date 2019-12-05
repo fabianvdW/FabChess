@@ -71,41 +71,20 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         }
     }
 
-    //Step 7. TT Lookup
-    let mut tt_move: Option<GameMove> = None;
-    if let SearchInstruction::StopSearching(res) =
-        thread
-            .itcs
-            .cache
-            .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
-    {
-        thread.search_statistics.add_cache_hit_aj_replace_ns();
-        thread.pv_table[p.current_depth].pv[0] = tt_move;
-        return res;
-    }
-    if tt_move.is_some() {
-        thread.search_statistics.add_cache_hit_ns();
-    }
-    //Only captures are valid tt moves (if not in check)
-    if tt_move.is_some() && !incheck && !tt_move.as_ref().unwrap().is_capture() {
-        tt_move = None;
-    }
-
     thread
         .history
         .push(p.game_state.hash, p.game_state.half_moves == 0);
 
     //Step 8. Iterate through moves
-    let hash_move_counter = if tt_move.is_some() { 1 } else { 0 };
+    let hash_move_counter = 0;
     let mut has_legal_move = false;
     let mut current_max_score = if incheck {
         STANDARD_SCORE
     } else {
         *stand_pat.as_ref().unwrap()
     };
-    let mut has_pv = false;
+    let mut moves_from_movelist_tried = 0;
     let mut index = 0;
-    let mut moves_from_movelist_tried: usize = 0;
     let mut has_generated_moves = false;
     let mut available_captures_in_movelist = 0;
     while index < available_captures_in_movelist + hash_move_counter || !has_generated_moves {
@@ -121,20 +100,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         let capture_move: GameMove = select_next_move_qsearch(
             &p,
             thread,
-            index,
-            &tt_move,
             moves_from_movelist_tried,
             available_captures_in_movelist,
         );
+        moves_from_movelist_tried += 1;
         debug_assert!(incheck || capture_move.is_capture());
-        //Step 8.3. If the move is from the movelist, make sure we haven't searched it already as tt move
-        if index >= hash_move_counter {
-            moves_from_movelist_tried += 1;
-            if let SearchInstruction::SkipMove = is_duplicate(&capture_move, &None, &tt_move) {
-                index += 1;
-                continue;
-            }
-        }
 
         let next_g = make_move(p.game_state, &capture_move);
         //Step 8.4. Search move
@@ -154,7 +124,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         if score > current_max_score {
             current_max_score = score;
             thread.pv_table[p.current_depth].pv[0] = Some(capture_move);
-            has_pv = true;
             //Hang on following pv in theory
         }
         //Step 8.6 Beta cutoff, break
@@ -181,23 +150,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         return leaf_score(game_status, p.color, p.current_depth as i16);
     }
 
-    //Step 10. Make TT entry
-    if has_pv && p.depth_left == 0 && !thread.self_stop {
-        thread.itcs.cache.insert(
-            &p,
-            &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
-            current_max_score,
-            p.alpha,
-            thread.root_plies_played,
-            if incheck {
-                None
-            } else {
-                Some(*stand_pat.as_ref().unwrap() * p.color)
-            },
-        );
-    }
-
-    //Step 11. Return
+    //Step 10. Return
     current_max_score
 }
 
@@ -205,22 +158,16 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 pub fn select_next_move_qsearch(
     p: &CombinedSearchParameters,
     thread: &mut Thread,
-    index: usize,
-    tt_move: &Option<GameMove>,
     moves_from_movelist_tried: usize,
     available_captures_in_movelist: usize,
 ) -> GameMove {
-    if index == 0 && tt_move.is_some() {
-        tt_move.expect("Couldn't unwrap tt move in qsearch")
-    } else {
-        let r = get_next_gm(
-            &mut thread.movelist.move_lists[p.current_depth],
-            moves_from_movelist_tried,
-            available_captures_in_movelist,
-        )
-        .0;
-        thread.movelist.move_lists[p.current_depth].move_list[r].expect("Could not get next gm")
-    }
+    let r = get_next_gm(
+        &mut thread.movelist.move_lists[p.current_depth],
+        moves_from_movelist_tried,
+        available_captures_in_movelist,
+    )
+    .0;
+    thread.movelist.move_lists[p.current_depth].move_list[r].expect("Could not get next gm")
 }
 
 #[inline(always)]
