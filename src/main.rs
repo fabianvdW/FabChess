@@ -100,7 +100,6 @@ fn bench(depth: usize) {
             0,
             core::uci::uci_engine::UCIOptions {
                 hash_size: 8,
-                hash_locks: 1,
                 threads: 1,
                 move_overhead: 0,
                 debug_print: false,

@@ -4,7 +4,6 @@ use crate::board_representation::game_state_attack_container::GameStateAttackCon
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
-use crate::search::cache::{MAX_LOCKS, MIN_LOCKS};
 use crate::search::searcher::{
     search_move, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO, MIN_THREADS,
 };
@@ -57,9 +56,7 @@ pub fn parse_loop() {
             }
             "go" => {
                 if cache.is_none() {
-                    cache = Some(Arc::new(Cache::with_size(
-                        us.options.hash_size
-                    )));
+                    cache = Some(Arc::new(Cache::with_size(us.options.hash_size)));
                 }
                 stop.store(false, Ordering::Relaxed);
                 let (tc, depth) = go(&us, &arg[1..]);
@@ -283,9 +280,7 @@ pub fn scout_and_make_draftmove(
 
 pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<Cache>>) {
     if cache.is_none() {
-        *cache = Some(Arc::new(Cache::with_size(
-            us.options.hash_size
-        )));
+        *cache = Some(Arc::new(Cache::with_size(us.options.hash_size)));
     }
     println!("readyok");
 }
@@ -297,10 +292,6 @@ pub fn uci(engine: &UCIEngine) {
         engine.options.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
     );
     println!("option name ClearHash type button");
-    println!(
-        "option name TT_locks type spin default {} min {} max {}",
-        engine.options.hash_locks, MIN_LOCKS, MAX_LOCKS
-    );
     println!(
         "option name Threads type spin default {} min {} max {}",
         engine.options.threads, MIN_THREADS, MAX_THREADS
@@ -338,14 +329,6 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
                     cache.as_ref().unwrap().clear();
                 }
                 println!("info String Succesfully cleared hash!");
-                return;
-            }
-            "tt_locks" => {
-                let num = cmd[index + 2]
-                    .parse::<usize>()
-                    .expect("Invalid TT_locks value!");
-                us.options.hash_locks = num;
-                println!("info String Succesfully set TT_locks to {}", num);
                 return;
             }
             "threads" => {

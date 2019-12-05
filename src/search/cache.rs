@@ -5,11 +5,6 @@ use crate::search::{CombinedSearchParameters, SearchInstruction};
 use std::cell::UnsafeCell;
 
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
-pub const DEFAULT_LOCKS: usize = 1024;
-pub const MIN_LOCKS: usize = 1;
-pub const MAX_LOCKS: usize = 65536 * 16; // This is really the maximum!!!
-                                         // Else we would need to index by upper_index = (hash >> 47 or lower)
-                                         // Using a higher number will lead to the cache not being able to be used fully
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131072; //IN MB
@@ -77,7 +72,8 @@ impl Cache {
 
     pub fn age_entry(&self, hash: u64, new_age: u16) {
         unsafe {
-            (&mut *self.cache.get()).get_unchecked_mut(hash as usize % self.buckets)
+            (&mut *self.cache.get())
+                .get_unchecked_mut(hash as usize % self.buckets)
                 .age_entry(hash, new_age);
         }
     }
@@ -104,14 +100,16 @@ impl Cache {
         }
         let index = p.game_state.hash as usize % self.buckets;
         unsafe {
-            (&mut *self.cache.get()).get_unchecked_mut(index).replace_entry(
-                p,
-                mv,
-                score,
-                original_alpha,
-                root_plies_played,
-                static_evaluation,
-            );
+            (&mut *self.cache.get())
+                .get_unchecked_mut(index)
+                .replace_entry(
+                    p,
+                    mv,
+                    score,
+                    original_alpha,
+                    root_plies_played,
+                    static_evaluation,
+                );
         };
     }
 
@@ -290,7 +288,8 @@ impl CacheEntry {
     }
 
     pub fn validate_hash(&self, hash: u64) -> bool {
-        self.upper_hash as u64 == (hash >> 32) && (self.lower_hash ^ self.mv as u32) as u64 == (hash & 0xFFFFFFFF)
+        self.upper_hash as u64 == (hash >> 32)
+            && (self.lower_hash ^ self.mv as u32) as u64 == (hash & 0xFFFFFFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
