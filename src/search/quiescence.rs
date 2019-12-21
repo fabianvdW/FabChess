@@ -73,15 +73,17 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 
     //Step 7. TT Lookup
     let mut tt_move: Option<GameMove> = None;
-    if let SearchInstruction::StopSearching(res) =
-        thread
-            .itcs
-            .cache
-            .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
-    {
-        thread.search_statistics.add_cache_hit_aj_replace_ns();
-        thread.pv_table[p.current_depth].pv[0] = tt_move;
-        return res;
+    if p.depth_left == 0 {
+        if let SearchInstruction::StopSearching(res) =
+            thread
+                .itcs
+                .cache
+                .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
+        {
+            thread.search_statistics.add_cache_hit_aj_replace_ns();
+            thread.pv_table[p.current_depth].pv[0] = tt_move;
+            return res;
+        }
     }
     if tt_move.is_some() {
         thread.search_statistics.add_cache_hit_ns();
