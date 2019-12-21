@@ -9,7 +9,6 @@ pub mod timecontrol;
 
 use crate::board_representation::game_state::*;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
-use crate::move_generation::movegen;
 use crate::move_generation::movegen::MoveList;
 use crate::search::searcher::Thread;
 use crate::search::timecontrol::TimeControlInformation;
@@ -220,11 +219,6 @@ pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContai
     (game_state.pieces[KING][game_state.color_to_move]
         & attack_container.attacks_sum[1 - game_state.color_to_move])
         != 0u64
-}
-
-#[inline(always)]
-pub fn in_check_slow(game_state: &GameState) -> bool {
-    movegen::get_checkers(game_state, true).count_ones() > 0
 }
 
 #[inline(always)]

@@ -4,7 +4,7 @@ use super::super::GameState;
 use super::quiescence::{q_search, see};
 use super::GradedMove;
 use super::*;
-use super::{MATED_IN_MAX, MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
+use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::searcher::Thread;
@@ -191,7 +191,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             false
         };
         let is_quiet_move = !isc && !isp;
-        let next_state = make_move(p.game_state, &mv);
+        let gives_check = p.game_state.gives_check(&mv);
 
         if !root
             && is_quiet_move
@@ -202,7 +202,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                         [mv.to as usize]
                         < HISTORY_PRUNING_THRESHOLD)
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
-            && !in_check_slow(&next_state)
+            && !gives_check
         {
             //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
             if futil_margin <= p.alpha {
@@ -234,12 +234,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && p.depth_left <= SEE_PRUNING_DEPTH
             && move_score < SEE_PRUNING_CAPTURE_MULT * p.depth_left as f64 * p.depth_left as f64
             && p.game_state.has_non_pawns(p.game_state.color_to_move)
-            && !in_check_slow(&next_state)
+            && !gives_check
         {
             index += 1;
             continue;
         }
-
         //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
         let reduction = if p.depth_left > 2
             && !incheck
@@ -247,11 +246,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && index >= 2
             && (!root || index >= 5)
         {
-            compute_lmr_reduction(&p, thread, &mv, index, isc || isp, &next_state)
+            compute_lmr_reduction(&p, thread, &mv, index, isc || isp, gives_check)
         } else {
             0
         };
 
+        let next_state = make_move(p.game_state, &mv);
         //Step 14.8. Search the moves
         let mut following_score: i16;
         if p.depth_left <= 2 || !is_pv_node || index == 0 {
@@ -555,7 +555,7 @@ pub fn internal_iterative_deepening(
 pub fn prepare_futility_pruning(
     p: &CombinedSearchParameters,
     static_evaluation: Option<i16>,
-) -> (i16) {
+) -> i16 {
     let futil_pruning = p.depth_left <= FUTILITY_DEPTH && p.current_depth > 0;
     if futil_pruning {
         static_evaluation.expect("Futil pruning") * p.color + p.depth_left * FUTILITY_MARGIN
@@ -656,7 +656,7 @@ pub fn compute_lmr_reduction(
     mv: &GameMove,
     index: usize,
     iscp: bool,
-    next_state: &GameState,
+    gives_check: bool,
 ) -> i16 {
     let mut reduction = ((f64::from(p.depth_left) / 2. - 1.).max(0.).sqrt()
         + (index as f64 / 2.0 - 1.).max(0.).sqrt()) as i16;
@@ -666,7 +666,7 @@ pub fn compute_lmr_reduction(
     if p.beta - p.alpha > 1 {
         reduction = (f64::from(reduction) * 0.66) as i16;
     }
-    if in_check_slow(&next_state) {
+    if gives_check {
         reduction -= 1;
     }
     if thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] > 0 {
