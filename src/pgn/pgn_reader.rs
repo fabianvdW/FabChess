@@ -292,7 +292,7 @@ pub struct PGNParser {
 }
 
 impl Iterator for PGNParser {
-    type Item = (String);
+    type Item = String;
 
     fn next(&mut self) -> Option<String> {
         let mut res_str = String::new();

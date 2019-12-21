@@ -4,7 +4,10 @@ use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
-use crate::move_generation::movegen::{generate_moves, MoveList};
+use crate::move_generation::movegen::{
+    b_pawn_east_targets, b_pawn_west_targets, bishop_attack, generate_moves, knight_attack,
+    rook_attack, w_pawn_east_targets, w_pawn_west_targets, MoveList,
+};
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -884,6 +887,59 @@ impl GameState {
             || self.pieces[KNIGHT][side] != 0u64
             || self.pieces[ROOK][side] != 0u64
             || self.pieces[QUEEN][side] != 0u64
+    }
+
+    pub fn gives_check(&self, mv: &GameMove) -> bool {
+        if mv.move_type == GameMoveType::Castle {
+            return false; // In theory a castle move can give_check, but it is too much hasssle to compute that
+        }
+        //We also ignore en passant discovered checks here
+        let mut occ_board = self.get_all_pieces();
+        occ_board ^= 1u64 << mv.from;
+        occ_board |= 1u64 << mv.to;
+        let king_position = self.king_square(1 - self.color_to_move);
+        let bishop_like_attack = bishop_attack(king_position, occ_board);
+        let rook_like_attack = rook_attack(king_position, occ_board);
+        //CHeck discovered check
+        if bishop_like_attack
+            & (self.pieces[BISHOP][self.color_to_move] | self.pieces[QUEEN][self.color_to_move])
+            != 0u64
+            || rook_like_attack
+                & (self.pieces[ROOK][self.color_to_move] | self.pieces[QUEEN][self.color_to_move])
+                != 0u64
+        {
+            return true;
+        }
+        match mv.piece_type {
+            PieceType::King => false,
+            PieceType::Queen => (bishop_like_attack | rook_like_attack) & (1u64 << mv.to) != 0u64,
+            PieceType::Knight => knight_attack(king_position) & (1u64 << mv.to) != 0u64,
+            PieceType::Bishop => bishop_like_attack & (1u64 << mv.to) != 0u64,
+            PieceType::Rook => rook_like_attack & (1u64 << mv.to) != 0u64,
+            PieceType::Pawn => match mv.move_type {
+                GameMoveType::Quiet | GameMoveType::Capture(_) | GameMoveType::EnPassant => {
+                    if self.color_to_move == WHITE {
+                        (w_pawn_east_targets(1u64 << mv.to) | w_pawn_west_targets(1u64 << mv.to))
+                            & (1u64 << king_position)
+                            != 0u64
+                    } else {
+                        (b_pawn_east_targets(1u64 << mv.to) | b_pawn_west_targets(1u64 << mv.to))
+                            & (1u64 << king_position)
+                            != 0u64
+                    }
+                }
+                GameMoveType::Promotion(p, _) => match p {
+                    PieceType::Rook => rook_like_attack & (1u64 << mv.to) != 0u64,
+                    PieceType::Queen => {
+                        (bishop_like_attack | rook_like_attack) & (1u64 << mv.to) != 0u64
+                    }
+                    PieceType::Bishop => bishop_like_attack & (1u64 << mv.to) != 0u64,
+                    PieceType::Knight => knight_attack(king_position) & (1u64 << mv.to) != 0u64,
+                    _ => panic!("Not a valid promotion piece. Game_state.rs #1"),
+                },
+                _ => panic!("Not a valid pawn move. Game_state.rs #2"),
+            },
+        }
     }
 }
 
