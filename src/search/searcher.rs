@@ -13,7 +13,7 @@ use crate::board_representation::game_state_attack_container::GameStateAttackCon
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{generate_moves, MoveList};
 use crate::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
-use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation};
+use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation, MATE_SCORE};
 use crate::uci::uci_engine::UCIOptions;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
@@ -122,15 +122,21 @@ impl InterThreadCommunicationSystem {
             } else {
                 self.cache_status.load(Ordering::Relaxed)
             };
+            let score_string = if scored_pv.score.abs() > MATE_SCORE - 200{
+                let dtm  = if scored_pv.score > 0  { (MATE_SCORE - scored_pv.score)/2 +1}else{
+                    (-MATE_SCORE - scored_pv.score)/2
+                };
+                format!("score mate {}", dtm)
+            }else{format!("score cp {}", scored_pv.score)};
             println!(
-                "info depth {} seldepth {} nodes {} nps {} hashfull {:.0} time {} score cp {} pv {}",
+                "info depth {} seldepth {} nodes {} nps {} hashfull {:.0} time {} {} pv {}",
                 scored_pv.depth,
                 self.seldepth.load(Ordering::Relaxed),
                 searched_nodes,
                 (searched_nodes as f64 / (elapsed_time.max(1) as f64 / 1000.0)) as u64,
                 fill_status,
                 self.get_time_elapsed(),
-                scored_pv.score,
+                score_string,
                 scored_pv.pv
             );
         }
