@@ -19,6 +19,7 @@ pub const HISTORY_PRUNING_THRESHOLD: isize = 0;
 pub const SEE_PRUNING_DEPTH: i16 = 6;
 pub const SEE_PRUNING_CAPTURE_MULT: f64 = -23.;
 pub const SEE_PRUNING_QUIET_MULT: f64 = -23.;
+
 pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
     thread.search_statistics.add_normal_node(p.current_depth);
@@ -170,6 +171,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             &tt_move,
             &pv_table_move,
         );
+        if mv.is_none() {
+            //Invalid tt move detected
+            moves_tried += 1;
+            continue;
+        }
+        let mv = mv.unwrap();
 
         //Step 14.3. If the move is from the movelist, make sure we haven't searched it already as tt move or pv table move
         if moves_tried >= hash_and_pv_move_counter {
@@ -624,17 +631,34 @@ pub fn select_next_move(
     hash_and_pv_move_counter: usize,
     tt_move: &Option<GameMove>,
     pv_table_move: &Option<GameMove>,
-) -> (GameMove, f64) {
+) -> (Option<GameMove>, f64) {
     let mut move_score = 0.;
-    let mv: GameMove = if moves_tried < hash_and_pv_move_counter {
+    let mv: Option<GameMove> = if moves_tried < hash_and_pv_move_counter {
         if moves_tried == 0 {
             if let Some(pvmv) = pv_table_move {
-                *pvmv
+                Some(*pvmv)
             } else {
-                tt_move.expect("Moves tried ==0 and no pv move, couldn't unwrap even tt move")
+                let tt_move =
+                    tt_move.expect("Moves tried ==0 and no pv move, couldn't unwrap even tt move");
+                if p.game_state.is_valid_tt_move(
+                    &tt_move,
+                    &thread.attack_container.attack_containers[p.current_depth],
+                ) {
+                    Some(tt_move)
+                } else {
+                    None
+                }
             }
         } else {
-            tt_move.expect("Moves tried >0 and no tt move")
+            let tt_move = tt_move.expect("Moves tried >0 and no tt move");
+            if p.game_state.is_valid_tt_move(
+                &tt_move,
+                &thread.attack_container.attack_containers[p.current_depth],
+            ) {
+                Some(tt_move)
+            } else {
+                None
+            }
         }
     } else {
         let available_moves = thread.movelist.move_lists[p.current_depth].counter;
@@ -644,7 +668,15 @@ pub fn select_next_move(
             available_moves,
         );
         move_score = r.1;
-        thread.movelist.move_lists[p.current_depth].move_list[r.0].unwrap()
+
+        debug_assert!(p.game_state.is_valid_tt_move(
+            &thread.movelist.move_lists[p.current_depth].move_list[r.0].unwrap(),
+            &thread.attack_container.attack_containers[p.current_depth]
+        ));
+        Some(
+            thread.movelist.move_lists[p.current_depth].move_list[r.0]
+                .expect("Expecting move in movelist"),
+        )
     };
     (mv, move_score)
 }

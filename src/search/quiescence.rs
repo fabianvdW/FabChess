@@ -120,7 +120,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             continue;
         }
         //Step 8.2. Select the next move
-        let capture_move: GameMove = select_next_move_qsearch(
+        let capture_move: Option<GameMove> = select_next_move_qsearch(
             &p,
             thread,
             index,
@@ -128,6 +128,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             moves_from_movelist_tried,
             available_captures_in_movelist,
         );
+        if capture_move.is_none(){ //Invalid tt move
+            index += 1;
+            continue;
+        }
+        let capture_move = capture_move.unwrap();
         debug_assert!(incheck || capture_move.is_capture());
         //Step 8.3. If the move is from the movelist, make sure we haven't searched it already as tt move
         if index >= hash_move_counter {
@@ -211,9 +216,14 @@ pub fn select_next_move_qsearch(
     tt_move: &Option<GameMove>,
     moves_from_movelist_tried: usize,
     available_captures_in_movelist: usize,
-) -> GameMove {
+) -> Option<GameMove> {
     if index == 0 && tt_move.is_some() {
-        tt_move.expect("Couldn't unwrap tt move in qsearch")
+        let tt_move = tt_move.expect("Couldn't unwrap tt move in qsearch");
+        if p.game_state.is_valid_tt_move(&tt_move, &thread.attack_container.attack_containers[p.current_depth]){
+            Some(tt_move)
+        }else{
+            None
+        }
     } else {
         let r = get_next_gm(
             &mut thread.movelist.move_lists[p.current_depth],
@@ -221,7 +231,7 @@ pub fn select_next_move_qsearch(
             available_captures_in_movelist,
         )
         .0;
-        thread.movelist.move_lists[p.current_depth].move_list[r].expect("Could not get next gm")
+        Some(thread.movelist.move_lists[p.current_depth].move_list[r].expect("Could not get next gm"))
     }
 }
 

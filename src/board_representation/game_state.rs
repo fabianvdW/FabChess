@@ -941,6 +941,85 @@ impl GameState {
             },
         }
     }
+
+    pub fn is_valid_tt_move(&self, mv: &GameMove, attack_container: &GameStateAttackContainer) -> bool{
+        //println!("{}",self.to_fen());
+        //println!("{:?}", mv);
+        if self.pieces[mv.piece_type.to_index()][self.color_to_move] & (1u64 << mv.from) == 0u64{
+            return false;
+        }
+        if mv.move_type == GameMoveType::EnPassant{
+            if (self.en_passant & (1u64 << mv.to)) == 0u64{
+                return false;
+            }
+        }else if mv.move_type == GameMoveType::Castle{
+            let all_piece = self.get_all_pieces();
+            let blocked = all_piece| attack_container.attacks_sum[1-self.color_to_move];
+            if mv.to == 6 && (!self.castle_white_kingside ||
+                blocked & (1u64 << 5 | 1u64<<6) != 0u64){
+                return false;
+            }else if mv.to == 2 && (!self.castle_white_queenside ||
+                blocked & (1u64 << 2|1u64<<3)!=0u64 || all_piece & (1u64<<1) !=0u64){
+                return false;
+            }else if mv.to == 62 && (!self.castle_black_kingside ||
+                blocked &(1u64 << 61 | 1u64 << 62) !=0u64){
+                return false;
+            }else if mv.to == 58 && (!self.castle_black_queenside || blocked & (1u64<<58 | 1u64<<59) !=0u64 || all_piece & (1u64<<57) !=0u64){
+                    return false;
+            }
+        }else{
+            let captured_piece = match mv.move_type {
+                GameMoveType::Capture(p) => Some(p),
+                GameMoveType::Promotion(_, p) => p,
+                _ => None
+            };
+            if captured_piece.is_none(){
+                if self.get_all_pieces() & (1u64 << mv.to) != 0u64{
+                   return false;
+                }
+            }else{
+                if self.pieces[captured_piece.unwrap().to_index()][1-self.color_to_move] & (1u64 << mv.to) == 0u64{
+                    return false;
+                }
+            }
+        }
+        let mut all_pieces = self.get_all_pieces();
+        match mv.piece_type{
+            PieceType::King =>{
+                if 1u64 << mv.to & (attack_container.attacks_sum[1-self.color_to_move]) !=0u64{
+                    return false;
+                }
+            }
+            PieceType::Bishop => {
+                if 1u64 << mv.to & (bishop_attack(mv.from as usize, all_pieces)) == 0u64{
+                    return false;
+                }
+            }
+            PieceType::Rook => {
+                if 1u64 << mv.to & (rook_attack(mv.from as usize, all_pieces)) == 0u64{
+                    return false;
+                }
+            }
+            PieceType::Queen => {
+                if 1u64 << mv.to & (bishop_attack(mv.from as usize, all_pieces) | rook_attack(mv.from as usize, all_pieces)) == 0u64{
+                    return false;
+                }
+            }
+            _=>{}
+        }
+        if mv.move_type != GameMoveType::Castle && mv.move_type != GameMoveType::EnPassant{
+            all_pieces ^= 1u64 << mv.from;
+            all_pieces |= 1u64 << mv.to;
+            let king_square = if mv.piece_type == PieceType::King{mv.to as usize}else{self.king_square(self.color_to_move)};
+            if bishop_attack(king_square, all_pieces) & (self.pieces[BISHOP][1-self.color_to_move]|self.pieces[QUEEN][1-self.color_to_move]) & !(1u64 << mv.to) != 0u64{
+                return false;
+            }
+            if rook_attack(king_square, all_pieces) & (self.pieces[ROOK][1-self.color_to_move]| self.pieces[QUEEN][1-self.color_to_move]) & !(1u64 << mv.to) !=0u64{
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl Clone for GameState {
