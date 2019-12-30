@@ -81,7 +81,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
                 .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
         {
             thread.search_statistics.add_cache_hit_aj_replace_ns();
-            thread.pv_table[p.current_depth].pv[0] = tt_move;
             return res;
         }
     }

@@ -1,7 +1,5 @@
 use super::super::board_representation::zobrist_hashing::ZOBRIST_KEYS;
-use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, WHITE,
-};
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType, WHITE};
 use crate::evaluation::psqt_evaluation::psqt_toggle_piece;
 
 #[inline(always)]

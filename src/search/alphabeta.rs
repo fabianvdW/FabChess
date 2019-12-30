@@ -91,7 +91,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         thread.root_plies_played,
     ) {
         thread.search_statistics.add_cache_hit_aj_replace_ns();
-        thread.pv_table[p.current_depth].pv[0] = tt_move;
         return res;
     }
     if tt_move.is_some() {
@@ -360,7 +359,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     thread.history.pop();
 
     //Step 15. Evaluate leafs correctly
-    let game_status = check_end_condition(p.game_state, moves_tried > 0, incheck);
+    let game_status = check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
     if game_status != GameResult::Ingame {
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, p.color, p.current_depth as i16);
@@ -668,7 +667,6 @@ pub fn select_next_move(
             available_moves,
         );
         move_score = r.1;
-
         debug_assert!(p.game_state.is_valid_tt_move(
             &thread.movelist.move_lists[p.current_depth].move_list[r.0].unwrap(),
             &thread.attack_container.attack_containers[p.current_depth]

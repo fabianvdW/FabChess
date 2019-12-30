@@ -288,8 +288,8 @@ impl CacheEntry {
     }
 
     pub fn validate_hash(&self, hash: u64) -> bool {
-        self.upper_hash as u64 == (hash >> 32)
-            && (self.lower_hash ^ self.mv as u32) as u64 == (hash & 0xFFFFFFFF)
+        (self.upper_hash as u64)  == (hash >> 32)
+            && ((self.lower_hash ^ self.mv as u32) as u64)  == (hash & 0xFFFFFFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
@@ -389,7 +389,7 @@ impl CacheEntry {
                 move_type: GameMoveType::Quiet,
             }
         } else if typ == 2 {
-            debug_assert_eq!(piece_type, PieceType::King);
+            //debug_assert_eq!(piece_type, PieceType::King); //We literally expect TRASH in here.
             GameMove {
                 from,
                 to,
