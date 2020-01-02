@@ -125,16 +125,15 @@ impl Cache {
         }
         let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
         if let Some(ce) = ce {
-            let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
                 && (!ce.alpha && !ce.beta
                     || ce.beta && ce.score >= p.beta
                     || ce.alpha && ce.score <= p.alpha)
             {
-                *tt_move = Some(mv);
                 return SearchInstruction::StopSearching(ce.score);
             }
+            let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
             if ce.static_evaluation != INVALID_STATIC_EVALUATION {
                 *static_evaluation = Some(ce.static_evaluation);
             }
@@ -288,8 +287,8 @@ impl CacheEntry {
     }
 
     pub fn validate_hash(&self, hash: u64) -> bool {
-        (self.upper_hash as u64)  == (hash >> 32)
-            && ((self.lower_hash ^ self.mv as u32) as u64)  == (hash & 0xFFFFFFFF)
+        (self.upper_hash as u64) == (hash >> 32)
+            && ((self.lower_hash ^ self.mv as u32) as u64) == (hash & 0xFFFFFFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
