@@ -122,12 +122,16 @@ impl InterThreadCommunicationSystem {
             } else {
                 self.cache_status.load(Ordering::Relaxed)
             };
-            let score_string = if scored_pv.score.abs() > MATE_SCORE - 200{
-                let dtm  = if scored_pv.score > 0  { (MATE_SCORE - scored_pv.score)/2 +1}else{
-                    (-MATE_SCORE - scored_pv.score)/2
+            let score_string = if scored_pv.score.abs() > MATE_SCORE - 200 {
+                let dtm = if scored_pv.score > 0 {
+                    (MATE_SCORE - scored_pv.score) / 2 + 1
+                } else {
+                    (-MATE_SCORE - scored_pv.score) / 2
                 };
                 format!("score mate {}", dtm)
-            }else{format!("score cp {}", scored_pv.score)};
+            } else {
+                format!("score cp {}", scored_pv.score)
+            };
             println!(
                 "info depth {} seldepth {} nodes {} nps {} hashfull {:.0} time {} {} pv {}",
                 scored_pv.depth,

@@ -90,11 +90,17 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         &mut tt_move,
         thread.root_plies_played,
     ) {
-        thread.search_statistics.add_cache_hit_aj_replace_ns();
+        #[cfg(feature = "search-statistics")]
+        {
+            thread.search_statistics.add_cache_hit_aj_replace_ns();
+        }
         return res;
     }
-    if tt_move.is_some() {
-        thread.search_statistics.add_cache_hit_ns();
+    #[cfg(feature = "search-statistics")]
+    {
+        if tt_move.is_some() {
+            thread.search_statistics.add_cache_hit_ns();
+        }
     }
     thread
         .history
@@ -212,7 +218,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         {
             //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
             if futil_margin <= p.alpha {
-                thread.search_statistics.add_futil_pruning();
+                #[cfg(feature = "search-statistics")]
+                {
+                    thread.search_statistics.add_futil_pruning();
+                }
                 index += 1;
                 continue;
             }
@@ -222,7 +231,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                     [mv.to as usize]
                     < HISTORY_PRUNING_THRESHOLD
             {
-                thread.search_statistics.add_history_pruned();
+                #[cfg(feature = "search-statistics")]
+                {
+                    thread.search_statistics.add_history_pruned();
+                }
                 index += 1;
                 continue;
             }
@@ -350,7 +362,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
         //Step 14.11. Beta cutoff: update several history statistics, and killer moves, then break
         if p.alpha >= p.beta {
-            thread.search_statistics.add_normal_node_beta_cutoff(index);
+            #[cfg(feature = "search-statistics")]
+            {
+                thread.search_statistics.add_normal_node_beta_cutoff(index);
+            }
             if !isc {
                 update_quiet_cutoff(&p, thread, &mv, quiets_tried);
             }
@@ -376,9 +391,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, p.color, p.current_depth as i16);
     }
-
-    if p.alpha < p.beta {
-        thread.search_statistics.add_normal_node_non_beta_cutoff();
+    #[cfg(feature = "search-statistics")]
+    {
+        if p.alpha < p.beta {
+            thread.search_statistics.add_normal_node_non_beta_cutoff();
+        }
     }
 
     //Step 16. Make TT Entry
@@ -483,7 +500,10 @@ pub fn make_eval(
             p.beta * p.color,
         );
         *static_evaluation = Some(eval_res.final_eval);
-        thread.search_statistics.add_static_eval_node();
+        #[cfg(feature = "search-statistics")]
+        {
+            thread.search_statistics.add_static_eval_node();
+        }
     }
 }
 
@@ -499,7 +519,10 @@ pub fn static_null_move_pruning(
             >= p.beta
     {
         thread.history.pop();
-        thread.search_statistics.add_static_null_move_node();
+        #[cfg(feature = "search-statistics")]
+        {
+            thread.search_statistics.add_static_null_move_node();
+        }
         SearchInstruction::StopSearching(
             static_evaluation.expect("Static null move 2") * p.color
                 - STATIC_NULL_MOVE_DEPTH * p.depth_left,
@@ -532,7 +555,10 @@ pub fn null_move_pruning(
             thread,
         );
         if rat >= p.beta {
-            thread.search_statistics.add_nm_pruning();
+            #[cfg(feature = "search-statistics")]
+            {
+                thread.search_statistics.add_nm_pruning();
+            }
             thread.history.pop();
             return SearchInstruction::StopSearching(rat);
         }
@@ -558,7 +584,10 @@ pub fn internal_iterative_deepening(
         ),
         thread,
     );
-    thread.search_statistics.add_iid_node();
+    #[cfg(feature = "search-statistics")]
+    {
+        thread.search_statistics.add_iid_node();
+    }
     if thread.self_stop {
         return SearchInstruction::StopSearching(STANDARD_SCORE);
     }
