@@ -11,7 +11,7 @@ use crate::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHE
 use crate::search::MAX_SEARCH_DEPTH;
 use crate::uci::uci_engine::UCIOptions;
 use std::io;
-use std::sync::{atomic::AtomicBool, atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc};
+use std::sync::{atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::u64;
@@ -19,7 +19,7 @@ use std::u64;
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
     let mut us = UCIEngine::standard();
-    let stop = Arc::new(AtomicBool::new(false));
+    let stop = Arc::new(RwLock::new(false));
     let mut cache: Option<Arc<Cache>> = None; //Needs to be in mutex because we can still clear it
     let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
     let mut movelist = movegen::MoveList::default();
@@ -58,7 +58,7 @@ pub fn parse_loop() {
                 if cache.is_none() {
                     cache = Some(Arc::new(Cache::with_size(us.options.hash_size)));
                 }
-                stop.store(false, Ordering::Relaxed);
+                *stop.write().unwrap() = false;
                 let (tc, depth) = go(&us, &arg[1..]);
                 let mut new_history = vec![];
                 for gs in &history {
@@ -78,7 +78,7 @@ pub fn parse_loop() {
                     .expect("Couldn't start thread");
             }
             "stop" => {
-                stop.store(true, Ordering::Relaxed);
+                *stop.write().unwrap() = true;
                 thread::sleep(Duration::from_millis(5));
             }
             "quit" => {
@@ -107,7 +107,7 @@ pub fn perft(game_state: &GameState, cmd: &[&str]) {
 }
 
 pub fn start_search(
-    stop: Arc<AtomicBool>,
+    stop: Arc<RwLock<bool>>,
     game_state: GameState,
     history: Vec<GameState>,
     tc: TimeControl,

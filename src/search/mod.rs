@@ -240,14 +240,18 @@ pub fn checkup(thread: &mut Thread) {
                 },
                 thread.itcs.uci_options.move_overhead,
             ))
-        || thread
-            .timeout_stop
-            .load(std::sync::atomic::Ordering::Relaxed)
+        || *thread
+            .itcs
+            .timeout_flag
+            .read()
+            .expect("Reading posioned timeoutflag")
     {
         if thread.id == 0 {
-            thread
-                .timeout_stop
-                .store(true, std::sync::atomic::Ordering::Relaxed);
+            *thread
+                .itcs
+                .timeout_flag
+                .write()
+                .expect("Writing poisoned timeoutflag") = true;
         }
         thread.self_stop = true;
     }

@@ -2,8 +2,7 @@ extern crate core;
 
 use core::logging::log;
 use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 fn main() {
@@ -94,7 +93,7 @@ fn bench(depth: usize) {
             depth as i16,
             state,
             Vec::new(),
-            Arc::new(AtomicBool::new(false)),
+            Arc::new(RwLock::new(false)),
             Arc::clone(&cache),
             Arc::new(AtomicU64::new(0)),
             0,
@@ -109,8 +108,7 @@ fn bench(depth: usize) {
         )
         .1
         .expect("Invalid benchmark!")
-        .nodes_searched_sum
-        .load(Ordering::Relaxed) as i32;
+        .get_nodes_sum();
         cache.clear();
     }
     let dur = Instant::now().duration_since(before_time).as_millis();

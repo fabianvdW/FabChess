@@ -19,7 +19,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -44,15 +44,15 @@ pub struct InterThreadCommunicationSystem {
     pub depth_info: Mutex<[DepthInformation; MAX_SEARCH_DEPTH]>,
     pub start_time: Instant,            //Only used for reporting
     pub nodes_searched: Vec<AtomicU64>, // Only used for reporting
-    pub nodes_searched_sum: AtomicU64,  // Only used for reporting
     pub seldepth: AtomicUsize,          // Only used for reporting
     pub cache: Arc<Cache>,              //Only used for reporting
     pub cache_status: AtomicUsize,
     pub last_cache_status: Mutex<Option<Instant>>,
+    pub timeout_flag: Arc<RwLock<bool>>,
 }
 
 impl InterThreadCommunicationSystem {
-    pub fn new(options: UCIOptions, cache: Arc<Cache>) -> Self {
+    pub fn new(options: UCIOptions, cache: Arc<Cache>, timeout_flag: Arc<RwLock<bool>>) -> Self {
         let mut nodes_searched = Vec::with_capacity(options.threads);
         for _ in 0..options.threads {
             nodes_searched.push(AtomicU64::new(0));
@@ -63,12 +63,12 @@ impl InterThreadCommunicationSystem {
             stable_pv: AtomicBool::new(false),
             depth_info: Mutex::new([DepthInformation::UnSearched; MAX_SEARCH_DEPTH]),
             nodes_searched,
-            nodes_searched_sum: AtomicU64::new(0),
             seldepth: AtomicUsize::new(0),
             start_time: Instant::now(),
             last_cache_status: Mutex::new(None),
             cache_status: AtomicUsize::new(0),
             cache,
+            timeout_flag,
         }
     }
 
@@ -82,12 +82,14 @@ impl InterThreadCommunicationSystem {
         let curr_seldepth = self.seldepth.load(Ordering::Relaxed);
         self.seldepth
             .store(curr_seldepth.max(seldepth), Ordering::Relaxed);
-        let nodes_before = self.nodes_searched[thread_id].load(Ordering::Relaxed);
         self.nodes_searched[thread_id].store(nodes_searched, Ordering::Relaxed);
-        self.nodes_searched_sum.store(
-            self.nodes_searched_sum.load(Ordering::Relaxed) + nodes_searched - nodes_before,
-            Ordering::Relaxed,
-        )
+    }
+
+    pub fn get_nodes_sum(&self) -> u64 {
+        self.nodes_searched
+            .iter()
+            .map(|x| x.load(Ordering::Relaxed))
+            .sum()
     }
 
     pub fn register_pv(&self, scored_pv: &ScoredPrincipalVariation, no_fail: bool) {
@@ -106,7 +108,7 @@ impl InterThreadCommunicationSystem {
                 *curr_best = scored_pv.clone();
             }
             //Report to UCI
-            let searched_nodes = self.nodes_searched_sum.load(Ordering::Relaxed);
+            let searched_nodes: u64 = self.get_nodes_sum();
             let elapsed_time = self.get_time_elapsed();
             let mut cache_status = self.last_cache_status.lock().unwrap();
             let fill_status = if cache_status.is_none()
@@ -208,7 +210,6 @@ pub struct Thread {
     pub search_statistics: SearchStatistics,
     pub tc: Option<TimeControl>,
     pub time_saved: Option<u64>,
-    pub timeout_stop: Arc<AtomicBool>,
     pub self_stop: bool, //This is set when timeout_stop is set(timeout_stop isn't always polled)
     pub current_pv: ScoredPrincipalVariation,
     pub pv_applicable: Vec<u64>, //Hashes of gamestates the pv plays along
@@ -246,7 +247,6 @@ impl Thread {
         history: History,
         tc: Option<TimeControl>,
         time_saved: Option<u64>,
-        stop: Arc<AtomicBool>,
     ) -> Self {
         let mut pv_table = Vec::with_capacity(MAX_SEARCH_DEPTH);
         for i in 0..MAX_SEARCH_DEPTH {
@@ -269,7 +269,6 @@ impl Thread {
             search_statistics: SearchStatistics::default(),
             tc,
             time_saved,
-            timeout_stop: stop,
             self_stop: false,
             current_pv: ScoredPrincipalVariation::default(),
             pv_applicable: Vec::with_capacity(MAX_SEARCH_DEPTH),
@@ -371,7 +370,11 @@ impl Thread {
             self.search_statistics.seldepth,
         );
         if self.id == 0 {
-            self.timeout_stop.store(true, Ordering::Relaxed);
+            *self
+                .itcs
+                .timeout_flag
+                .write()
+                .expect("Couldn't write to timeout flag") = true;
         }
     }
 }
@@ -380,7 +383,7 @@ pub fn search_move(
     max_depth: i16,
     game_state: GameState,
     history: Vec<GameState>,
-    stop_ref: Arc<AtomicBool>,
+    stop_ref: Arc<RwLock<bool>>,
     cache: Arc<Cache>,
     saved_time: Arc<AtomicU64>,
     _last_score: i16,
@@ -429,6 +432,7 @@ pub fn search_move(
     let itcs = Arc::new(InterThreadCommunicationSystem::new(
         uci_options,
         Arc::clone(&cache),
+        stop_ref,
     ));
 
     //the only special thing about the main thread is that it takes care of the timecontrol
@@ -439,24 +443,14 @@ pub fn search_move(
         hist.clone(),
         Some(tc.clone()),
         Some(time_saved_before),
-        Arc::clone(&stop_ref),
     );
     let mut childs = Vec::new();
     for id in 1..uci_options.threads {
         let itcs_clone = Arc::clone(&itcs);
         let hist_clone = hist.clone();
         let state_clone = game_state.clone();
-        let stop_clone = Arc::clone(&stop_ref);
         childs.push(thread::spawn(move || {
-            let mut thread = Thread::new(
-                id,
-                itcs_clone,
-                root_plies_played,
-                hist_clone,
-                None,
-                None,
-                stop_clone,
-            );
+            let mut thread = Thread::new(id, itcs_clone, root_plies_played, hist_clone, None, None);
             thread.search(max_depth, state_clone);
         }));
     }
