@@ -1037,22 +1037,23 @@ impl GameState {
         if mv.move_type != GameMoveType::Castle{
             all_pieces ^= 1u64 << mv.from;
             all_pieces |= 1u64 << mv.to;
+            let cap_piece = if mv.move_type == GameMoveType::EnPassant{1u64<<(if self.color_to_move==WHITE{mv.to-8}else{mv.to+8})}else{1u64<<mv.to};
             let king_square = if mv.piece_type == PieceType::King{mv.to as usize}else{self.king_square(self.color_to_move)};
-            if bishop_attack(king_square, all_pieces) & (self.pieces[BISHOP][1-self.color_to_move]|self.pieces[QUEEN][1-self.color_to_move]) & !(1u64 << mv.to) != 0u64{
+            if bishop_attack(king_square, all_pieces) & (self.pieces[BISHOP][1-self.color_to_move]|self.pieces[QUEEN][1-self.color_to_move]) & !cap_piece != 0u64{
                 return false;
             }
-            if rook_attack(king_square, all_pieces) & (self.pieces[ROOK][1-self.color_to_move]| self.pieces[QUEEN][1-self.color_to_move]) & !(1u64 << mv.to) !=0u64{
+            if rook_attack(king_square, all_pieces) & (self.pieces[ROOK][1-self.color_to_move]| self.pieces[QUEEN][1-self.color_to_move]) & !cap_piece !=0u64{
                 return false;
             }
-            if knight_attack(king_square) & (self.pieces[KNIGHT][1-self.color_to_move]) & !(1u64<<mv.to) !=0u64{
+            if knight_attack(king_square) & (self.pieces[KNIGHT][1-self.color_to_move]) & !cap_piece !=0u64{
                 return false;
             }
             if self.color_to_move == WHITE{
-                if (w_pawn_east_targets(1u64<<king_square)|w_pawn_west_targets(1u64<<king_square)) & (self.pieces[PAWN][1-self.color_to_move]) & !(1u64<<mv.to) !=0u64{
+                if (w_pawn_east_targets(1u64<<king_square)|w_pawn_west_targets(1u64<<king_square)) & (self.pieces[PAWN][1-self.color_to_move]) & !cap_piece !=0u64{
                     return false;
                 }
             }else{
-                if (b_pawn_east_targets(1u64<<king_square)|b_pawn_west_targets(1u64<<king_square)) & (self.pieces[PAWN][1-self.color_to_move]) & !(1u64<<mv.to) !=0u64{
+                if (b_pawn_east_targets(1u64<<king_square)|b_pawn_west_targets(1u64<<king_square)) & (self.pieces[PAWN][1-self.color_to_move]) & !cap_piece !=0u64{
                     return false;
                 }
             }
