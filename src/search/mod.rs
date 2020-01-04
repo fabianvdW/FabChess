@@ -234,7 +234,7 @@ pub fn checkup(thread: &mut Thread) {
                     .stable_pv
                     .load(std::sync::atomic::Ordering::Relaxed),
             },
-            thread.itcs.uci_options.read().unwrap().move_overhead,
+            thread.itcs.uci_options().move_overhead,
         ))
         || *thread
             .itcs

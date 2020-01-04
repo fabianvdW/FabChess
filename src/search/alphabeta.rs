@@ -84,14 +84,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     //Step 8. TT Lookup
     let mut static_evaluation = None;
     let mut tt_move: Option<GameMove> = None;
-    if let SearchInstruction::StopSearching(res) =
-        thread.itcs.cache.read().unwrap().as_ref().unwrap().lookup(
-            &p,
-            &mut static_evaluation,
-            &mut tt_move,
-            thread.root_plies_played,
-        )
-    {
+    if let SearchInstruction::StopSearching(res) = thread.itcs.cache().lookup(
+        &p,
+        &mut static_evaluation,
+        &mut tt_move,
+        thread.root_plies_played,
+    ) {
         #[cfg(feature = "search-statistics")]
         {
             thread.search_statistics.add_cache_hit_aj_replace_ns();
@@ -402,7 +400,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     //Step 16. Make TT Entry
     if !thread.self_stop {
-        thread.itcs.cache.read().unwrap().as_ref().unwrap().insert(
+        thread.itcs.cache().insert(
             &p,
             &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
             current_max_score,

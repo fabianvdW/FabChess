@@ -86,7 +86,7 @@ const BENCHMARKING_POSITIONS: [&str; 50] = [
 fn bench(depth: usize) {
     let itcs = Arc::new(InterThreadCommunicationSystem::new());
     InterThreadCommunicationSystem::update_thread_count(&itcs, 1);
-    *itcs.cache.write().unwrap() = Some(core::search::cache::Cache::with_size(8));
+    *itcs.cache() = core::search::cache::Cache::with_size(8);
     let before_time = Instant::now();
     let mut nodes = 0;
     for position in BENCHMARKING_POSITIONS.iter() {
@@ -99,7 +99,7 @@ fn bench(depth: usize) {
             core::search::timecontrol::TimeControl::Infinite,
         );
         nodes += itcs.get_nodes_sum();
-        itcs.cache.read().unwrap().as_ref().unwrap().clear();
+        itcs.cache().clear();
     }
     let dur = Instant::now().duration_since(before_time).as_millis();
     println!("Time: {}ms", dur);

@@ -22,6 +22,7 @@ pub fn parse_loop() {
     let mut us = UCIEngine::standard();
 
     let itcs = Arc::new(InterThreadCommunicationSystem::new());
+    *itcs.cache() = Cache::with_size(itcs.uci_options().hash_size);
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
 
@@ -44,9 +45,7 @@ pub fn parse_loop() {
 
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                if itcs.cache.read().unwrap().is_some() {
-                    itcs.cache.read().unwrap().as_ref().unwrap().clear();
-                }
+                itcs.cache().clear();
                 itcs.saved_time.store(0, Ordering::Relaxed);
             }
             "isready" => isready(&itcs, true),
@@ -243,12 +242,8 @@ pub fn scout_and_make_draftmove(
 }
 
 pub fn isready(itcs: &Arc<InterThreadCommunicationSystem>, print_rdy: bool) {
-    if itcs.cache.read().unwrap().is_none() {
-        *itcs.cache.write().unwrap() =
-            Some(Cache::with_size(itcs.uci_options.read().unwrap().hash_size));
-    }
     if itcs.tx.read().unwrap().len() == 0 {
-        let threads = itcs.uci_options.read().unwrap().threads;
+        let threads = itcs.uci_options().threads;
         InterThreadCommunicationSystem::update_thread_count(itcs, threads);
     }
     if print_rdy {
@@ -260,30 +255,30 @@ pub fn uci(engine: &UCIEngine, itcs: &InterThreadCommunicationSystem) {
     engine.id_command();
     println!(
         "option name Hash type spin default {} min {} max {}",
-        itcs.uci_options.read().unwrap().hash_size,
+        itcs.uci_options().hash_size,
         MIN_HASH_SIZE,
         MAX_HASH_SIZE
     );
     println!("option name ClearHash type button");
     println!(
         "option name Threads type spin default {} min {} max {}",
-        itcs.uci_options.read().unwrap().threads,
+        itcs.uci_options().threads,
         MIN_THREADS,
         MAX_THREADS
     );
     println!(
         "option name MoveOverhead type spin default {} min {} max {}",
-        itcs.uci_options.read().unwrap().move_overhead,
+        itcs.uci_options().move_overhead,
         MIN_MOVE_OVERHEAD,
         MAX_MOVE_OVERHEAD
     );
     println!(
         "option name DebugSMPPrint type check default {}",
-        itcs.uci_options.read().unwrap().debug_print
+        itcs.uci_options().debug_print
     );
     println!(
         "option name SMPSkipRatio type spin default {} min {} max {}",
-        itcs.uci_options.read().unwrap().skip_ratio,
+        itcs.uci_options().skip_ratio,
         MIN_SKIP_RATIO,
         MAX_SKIP_RATIO
     );
@@ -299,14 +294,13 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid Hash value!");
-                itcs.uci_options.write().unwrap().hash_size = num;
+                itcs.uci_options().hash_size = num;
+                *itcs.cache() = Cache::with_size(num);
                 println!("info String Succesfully set Hash to {}", num);
                 return;
             }
             "clearhash" => {
-                if itcs.cache.read().unwrap().is_some() {
-                    itcs.cache.read().unwrap().as_ref().unwrap().clear();
-                }
+                itcs.cache().clear();
                 println!("info String Succesfully cleared hash!");
                 return;
             }
@@ -322,7 +316,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2]
                     .parse::<u64>()
                     .expect("Invalid MoveOverhead value!");
-                itcs.uci_options.write().unwrap().move_overhead = num;
+                itcs.uci_options().move_overhead = num;
                 println!("info String Succesfully set MoveOverhad to {}", num);
                 return;
             }
@@ -330,7 +324,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let val = cmd[index + 2]
                     .parse::<bool>()
                     .expect("Invalid DebugSMPPrint value!");
-                itcs.uci_options.write().unwrap().debug_print = val;
+                itcs.uci_options().debug_print = val;
                 println!("info String Succesfully set DebugSMPPrint to {}", val);
                 return;
             }
@@ -338,7 +332,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid SMPSkipRatio value!");
-                itcs.uci_options.write().unwrap().skip_ratio = num;
+                itcs.uci_options().skip_ratio = num;
                 println!("info String Succesfully set SMPSkipRatio to {}", num);
                 return;
             }

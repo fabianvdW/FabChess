@@ -15,6 +15,7 @@ use crate::move_generation::movegen::{generate_moves, MoveList};
 use crate::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
 use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation, MATE_SCORE};
 use crate::uci::uci_engine::UCIOptions;
+use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
@@ -39,14 +40,14 @@ pub enum DepthInformation {
     UnSearched,
 }
 pub struct InterThreadCommunicationSystem {
-    pub uci_options: RwLock<UCIOptions>,
+    pub uci_options: UnsafeCell<UCIOptions>,
     pub best_pv: Mutex<ScoredPrincipalVariation>,
     pub stable_pv: AtomicBool,
     pub depth_info: Mutex<[DepthInformation; MAX_SEARCH_DEPTH]>,
     pub start_time: RwLock<Instant>, //Only used for reporting
-    pub nodes_searched: RwLock<Vec<AtomicU64>>, // Only used for reporting
+    pub nodes_searched: UnsafeCell<Vec<AtomicU64>>, // Only used for reporting
     pub seldepth: AtomicUsize,       // Only used for reporting
-    pub cache: RwLock<Option<Cache>>, //Only used for reporting
+    pub cache: UnsafeCell<Cache>,    //Only used for reporting
     pub cache_status: AtomicUsize,
     pub last_cache_status: Mutex<Option<Instant>>,
     pub timeout_flag: RwLock<bool>,
@@ -57,19 +58,28 @@ pub struct InterThreadCommunicationSystem {
 }
 
 impl InterThreadCommunicationSystem {
+    pub fn cache(&self) -> &mut Cache {
+        unsafe { self.cache.get().as_mut().unwrap() }
+    }
+    pub fn uci_options(&self) -> &mut UCIOptions {
+        unsafe { self.uci_options.get().as_mut().unwrap() }
+    }
+    pub fn nodes_searched(&self) -> &mut Vec<AtomicU64> {
+        unsafe { self.nodes_searched.get().as_mut().unwrap() }
+    }
     pub fn new() -> Self {
         let (tx_f, rx_f) = channel();
         InterThreadCommunicationSystem {
-            uci_options: RwLock::new(UCIOptions::default()),
+            uci_options: UnsafeCell::new(UCIOptions::default()),
             best_pv: Mutex::new(ScoredPrincipalVariation::default()),
             stable_pv: AtomicBool::new(false),
             depth_info: Mutex::new([DepthInformation::UnSearched; MAX_SEARCH_DEPTH]),
-            nodes_searched: RwLock::new(Vec::new()),
+            nodes_searched: UnsafeCell::new(Vec::new()),
             seldepth: AtomicUsize::new(0),
             start_time: RwLock::new(Instant::now()),
             last_cache_status: Mutex::new(None),
             cache_status: AtomicUsize::new(0),
-            cache: RwLock::new(None),
+            cache: UnsafeCell::new(Cache::with_size(0)),
             timeout_flag: RwLock::new(false),
             saved_time: AtomicU64::new(0u64),
             tx: RwLock::new(Vec::new()),
@@ -89,9 +99,9 @@ impl InterThreadCommunicationSystem {
         for _ in 0..itcs.tx.read().unwrap().len() {
             itcs.rx_f.recv().expect("Couldn't receive exit flag!")
         }
-        itcs.uci_options.write().unwrap().threads = new_thread_count;
+        itcs.uci_options().threads = new_thread_count;
         let itcs_tx = &mut *itcs.tx.write().unwrap();
-        let itcs_nodes_searched = &mut *itcs.nodes_searched.write().unwrap();
+        let itcs_nodes_searched = itcs.nodes_searched();
         *itcs_tx = Vec::with_capacity(new_thread_count);
         *itcs_nodes_searched = Vec::with_capacity(new_thread_count);
         for id in 0..new_thread_count {
@@ -117,13 +127,11 @@ impl InterThreadCommunicationSystem {
         let curr_seldepth = self.seldepth.load(Ordering::Relaxed);
         self.seldepth
             .store(curr_seldepth.max(seldepth), Ordering::Relaxed);
-        self.nodes_searched.read().unwrap()[thread_id].store(nodes_searched, Ordering::Relaxed);
+        self.nodes_searched()[thread_id].store(nodes_searched, Ordering::Relaxed);
     }
 
     pub fn get_nodes_sum(&self) -> u64 {
-        self.nodes_searched
-            .read()
-            .unwrap()
+        self.nodes_searched()
             .iter()
             .map(|x| x.load(Ordering::Relaxed))
             .sum()
@@ -155,10 +163,8 @@ impl InterThreadCommunicationSystem {
                     > 200
             {
                 *cache_status = Some(Instant::now());
-                self.cache_status.store(
-                    self.cache.read().unwrap().as_ref().unwrap().fill_status(),
-                    Ordering::Relaxed,
-                );
+                self.cache_status
+                    .store(self.cache().fill_status(), Ordering::Relaxed);
                 self.cache_status.load(Ordering::Relaxed)
             } else {
                 self.cache_status.load(Ordering::Relaxed)
@@ -212,8 +218,7 @@ impl InterThreadCommunicationSystem {
                 }
                 DepthInformation::CurrentlySearchedBy(other_thread) => {
                     if other_thread as f64
-                        >= self.uci_options.read().unwrap().threads as f64
-                            / self.uci_options.read().unwrap().skip_ratio as f64
+                        >= self.uci_options().threads as f64 / self.uci_options().skip_ratio as f64
                     {
                         next_depth += 1;
                     } else {
@@ -355,7 +360,7 @@ impl Thread {
     }
 
     fn search(&mut self, max_depth: i16, state: GameState) {
-        if self.itcs.uci_options.read().unwrap().debug_print {
+        if self.itcs.uci_options().debug_print {
             println!(
                 "info String Thread {} starting the search of state!",
                 self.id
@@ -371,7 +376,7 @@ impl Thread {
                 break;
             }
             //Start Aspiration Window
-            if self.itcs.uci_options.read().unwrap().debug_print {
+            if self.itcs.uci_options().debug_print {
                 println!(
                     "info String Thread {} starting aspiration window with depth {}",
                     self.id, curr_depth
@@ -435,7 +440,7 @@ impl Thread {
                 break;
             }
         }
-        if self.itcs.uci_options.read().unwrap().debug_print {
+        if self.itcs.uci_options().debug_print {
             println!(
                 "info String Thread {} stopping the search of state!",
                 self.id
@@ -468,9 +473,7 @@ pub fn search_move(
     *itcs.best_pv.lock().unwrap() = ScoredPrincipalVariation::default();
     itcs.stable_pv.store(false, Ordering::Relaxed);
     *itcs.depth_info.lock().unwrap() = [DepthInformation::UnSearched; MAX_SEARCH_DEPTH];
-    itcs.nodes_searched
-        .read()
-        .unwrap()
+    itcs.nodes_searched()
         .iter()
         .for_each(|x| x.store(0u64, Ordering::Relaxed));
     itcs.seldepth.store(0, Ordering::Relaxed);
@@ -501,11 +504,7 @@ pub fn search_move(
         );
 
         let new_timesaved: u64 = (time_saved_before as i64
-            + tc.time_saved(
-                0,
-                time_saved_before,
-                itcs.uci_options.read().unwrap().move_overhead,
-            ))
+            + tc.time_saved(0, time_saved_before, itcs.uci_options().move_overhead))
         .max(0) as u64;
         itcs.saved_time.store(new_timesaved, Ordering::Relaxed);
         return None;
@@ -537,7 +536,7 @@ pub fn search_move(
     }
 
     //Step 5. Wait until every thread finished up
-    for _ in 0..itcs.uci_options.read().unwrap().threads {
+    for _ in 0..itcs.uci_options().threads {
         itcs.rx_f
             .recv()
             .expect("Could not receive finish flag from channel");
@@ -551,7 +550,7 @@ pub fn search_move(
         + tc.time_saved(
             elapsed_time,
             time_saved_before,
-            itcs.uci_options.read().unwrap().move_overhead,
+            itcs.uci_options().move_overhead,
         ))
     .max(0) as u64;
     itcs.saved_time.store(new_timesaved, Ordering::Relaxed);
