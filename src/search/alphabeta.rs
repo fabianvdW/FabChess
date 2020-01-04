@@ -270,17 +270,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         };
 
         let next_state = make_move(p.game_state, &mv);
-        if next_state.pieces[ROOK][WHITE].count_ones() > 3
-            || next_state.pieces[ROOK][BLACK].count_ones() > 3
-        {
-            println!(
-                "G: {} ;; Tt_mv : {:?} {:?} {:?}",
-                p.game_state.to_fen(),
-                mv,
-                mv.piece_type,
-                mv.move_type
-            );
-        }
         //Step 14.8. Search the moves
         let mut following_score: i16;
         if p.depth_left <= 2 || !is_pv_node || index == 0 {
