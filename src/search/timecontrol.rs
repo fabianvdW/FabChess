@@ -18,7 +18,7 @@ impl TimeControlInformation {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum TimeControl {
     Incremental(u64, u64),
     MoveTime(u64),

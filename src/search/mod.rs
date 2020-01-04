@@ -224,22 +224,18 @@ pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContai
 #[inline(always)]
 pub fn checkup(thread: &mut Thread) {
     if (thread.id == 0
-        && thread
-            .tc
-            .as_ref()
-            .expect("unable to unwrap tc in checkup")
-            .time_over(
-                thread.itcs.get_time_elapsed(),
-                &TimeControlInformation {
-                    high_score_diff: false,
-                    time_saved: thread.time_saved.unwrap(),
-                    stable_pv: thread
-                        .itcs
-                        .stable_pv
-                        .load(std::sync::atomic::Ordering::Relaxed),
-                },
-                thread.itcs.uci_options.move_overhead,
-            ))
+        && thread.tc.time_over(
+            thread.itcs.get_time_elapsed(),
+            &TimeControlInformation {
+                high_score_diff: false,
+                time_saved: thread.time_saved,
+                stable_pv: thread
+                    .itcs
+                    .stable_pv
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            },
+            thread.itcs.uci_options.read().unwrap().move_overhead,
+        ))
         || *thread
             .itcs
             .timeout_flag

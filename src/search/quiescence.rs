@@ -75,10 +75,12 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     let mut tt_move: Option<GameMove> = None;
     if p.depth_left == 0 {
         if let SearchInstruction::StopSearching(res) =
-            thread
-                .itcs
-                .cache
-                .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
+            thread.itcs.cache.read().unwrap().as_ref().unwrap().lookup(
+                &p,
+                &mut None,
+                &mut tt_move,
+                thread.root_plies_played,
+            )
         {
             #[cfg(feature = "search-statistics")]
             {
@@ -202,7 +204,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 
     //Step 10. Make TT entry
     if has_pv && p.depth_left == 0 && !thread.self_stop {
-        thread.itcs.cache.insert(
+        thread.itcs.cache.read().unwrap().as_ref().unwrap().insert(
             &p,
             &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
             current_max_score,

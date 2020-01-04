@@ -5,26 +5,26 @@ use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use crate::search::searcher::{
-    search_move, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO, MIN_THREADS,
+    search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO,
+    MIN_THREADS,
 };
 use crate::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHEAD};
 use crate::search::MAX_SEARCH_DEPTH;
-use crate::uci::uci_engine::UCIOptions;
 use std::io;
-use std::sync::{atomic::AtomicI16, atomic::AtomicU64, atomic::Ordering, Arc, RwLock};
+use std::sync::{atomic::Ordering, Arc};
 use std::thread;
 use std::time::Duration;
 use std::u64;
 
 pub fn parse_loop() {
     let mut history: Vec<GameState> = vec![];
+
     let mut us = UCIEngine::standard();
-    let stop = Arc::new(RwLock::new(false));
-    let mut cache: Option<Arc<Cache>> = None; //Needs to be in mutex because we can still clear it
-    let last_score: Arc<AtomicI16> = Arc::new(AtomicI16::new(0));
+
+    let itcs = Arc::new(InterThreadCommunicationSystem::new());
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
-    let saved_time = Arc::new(AtomicU64::new(0u64));
+
     let stdin = io::stdin();
     let mut line = String::new();
     loop {
@@ -38,47 +38,39 @@ pub fn parse_loop() {
         match cmd.trim() {
             "" => continue,
             "uci" => {
-                uci(&us);
+                uci(&us, &itcs);
             }
-            "setoption" => setoption(&arg[1..], &mut cache, &mut us),
+            "setoption" => setoption(&arg[1..], &itcs),
 
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                if cache.is_some() {
-                    cache.as_ref().unwrap().clear();
+                if itcs.cache.read().unwrap().is_some() {
+                    itcs.cache.read().unwrap().as_ref().unwrap().clear();
                 }
-                saved_time.store(0, Ordering::Relaxed);
-                last_score.store(0, Ordering::Relaxed);
+                itcs.saved_time.store(0, Ordering::Relaxed);
             }
-            "isready" => isready(&us, &mut cache),
+            "isready" => isready(&itcs, true),
             "position" => {
                 history = position(&mut us, &arg[1..], &mut movelist, &mut attack_container);
             }
             "go" => {
-                if cache.is_none() {
-                    cache = Some(Arc::new(Cache::with_size(us.options.hash_size)));
-                }
-                *stop.write().unwrap() = false;
+                isready(&itcs, false);
                 let (tc, depth) = go(&us, &arg[1..]);
                 let mut new_history = vec![];
                 for gs in &history {
                     new_history.push(gs.clone());
                 }
                 let new_state = us.internal_state.clone();
-                let cl = Arc::clone(&stop);
-                let cc = Arc::clone(cache.as_ref().unwrap());
-                let st = Arc::clone(&saved_time);
-                let ls = Arc::clone(&last_score);
-                let options = us.options;
+                let itcs = Arc::clone(&itcs);
                 thread::Builder::new()
                     .stack_size(2 * 1024 * 1024)
                     .spawn(move || {
-                        start_search(cl, new_state, new_history, tc, cc, depth, st, ls, options);
+                        search_move(itcs, depth as i16, new_state, new_history, tc);
                     })
                     .expect("Couldn't start thread");
             }
             "stop" => {
-                *stop.write().unwrap() = true;
+                *itcs.timeout_flag.write().unwrap() = true;
                 thread::sleep(Duration::from_millis(5));
             }
             "quit" => {
@@ -104,34 +96,6 @@ pub fn parse_loop() {
 pub fn perft(game_state: &GameState, cmd: &[&str]) {
     let depth = cmd[0].parse::<usize>().unwrap();
     crate::perft_div(&game_state, depth);
-}
-
-pub fn start_search(
-    stop: Arc<RwLock<bool>>,
-    game_state: GameState,
-    history: Vec<GameState>,
-    tc: TimeControl,
-    cache: Arc<Cache>,
-    depth: usize,
-    saved_time: Arc<AtomicU64>,
-    last_score: Arc<AtomicI16>,
-    uci_options: UCIOptions,
-) {
-    let score = search_move(
-        depth as i16,
-        game_state,
-        history,
-        stop,
-        cache,
-        saved_time,
-        last_score.load(Ordering::Relaxed),
-        uci_options,
-        tc,
-    )
-    .0;
-    if let Some(score) = score {
-        last_score.store(score, Ordering::Relaxed);
-    }
 }
 
 pub fn print_internal_state(engine: &UCIEngine) {
@@ -278,40 +242,55 @@ pub fn scout_and_make_draftmove(
     panic!("Invalid move; not found in list!");
 }
 
-pub fn isready(us: &UCIEngine, cache: &mut Option<Arc<Cache>>) {
-    if cache.is_none() {
-        *cache = Some(Arc::new(Cache::with_size(us.options.hash_size)));
+pub fn isready(itcs: &Arc<InterThreadCommunicationSystem>, print_rdy: bool) {
+    if itcs.cache.read().unwrap().is_none() {
+        *itcs.cache.write().unwrap() =
+            Some(Cache::with_size(itcs.uci_options.read().unwrap().hash_size));
     }
-    println!("readyok");
+    if itcs.tx.read().unwrap().len() == 0 {
+        let threads = itcs.uci_options.read().unwrap().threads;
+        InterThreadCommunicationSystem::update_thread_count(itcs, threads);
+    }
+    if print_rdy {
+        println!("readyok");
+    }
 }
 
-pub fn uci(engine: &UCIEngine) {
+pub fn uci(engine: &UCIEngine, itcs: &InterThreadCommunicationSystem) {
     engine.id_command();
     println!(
         "option name Hash type spin default {} min {} max {}",
-        engine.options.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
+        itcs.uci_options.read().unwrap().hash_size,
+        MIN_HASH_SIZE,
+        MAX_HASH_SIZE
     );
     println!("option name ClearHash type button");
     println!(
         "option name Threads type spin default {} min {} max {}",
-        engine.options.threads, MIN_THREADS, MAX_THREADS
+        itcs.uci_options.read().unwrap().threads,
+        MIN_THREADS,
+        MAX_THREADS
     );
     println!(
         "option name MoveOverhead type spin default {} min {} max {}",
-        engine.options.move_overhead, MIN_MOVE_OVERHEAD, MAX_MOVE_OVERHEAD
+        itcs.uci_options.read().unwrap().move_overhead,
+        MIN_MOVE_OVERHEAD,
+        MAX_MOVE_OVERHEAD
     );
     println!(
         "option name DebugSMPPrint type check default {}",
-        engine.options.debug_print
+        itcs.uci_options.read().unwrap().debug_print
     );
     println!(
         "option name SMPSkipRatio type spin default {} min {} max {}",
-        engine.options.skip_ratio, MIN_SKIP_RATIO, MAX_SKIP_RATIO
+        itcs.uci_options.read().unwrap().skip_ratio,
+        MIN_SKIP_RATIO,
+        MAX_SKIP_RATIO
     );
     println!("uciok");
 }
 
-pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngine) {
+pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
     let mut index = 0;
     while index < cmd.len() {
         let arg = cmd[index];
@@ -320,13 +299,13 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid Hash value!");
-                us.options.hash_size = num;
+                itcs.uci_options.write().unwrap().hash_size = num;
                 println!("info String Succesfully set Hash to {}", num);
                 return;
             }
             "clearhash" => {
-                if cache.is_some() {
-                    cache.as_ref().unwrap().clear();
+                if itcs.cache.read().unwrap().is_some() {
+                    itcs.cache.read().unwrap().as_ref().unwrap().clear();
                 }
                 println!("info String Succesfully cleared hash!");
                 return;
@@ -335,7 +314,7 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid Threads value!");
-                us.options.threads = num;
+                InterThreadCommunicationSystem::update_thread_count(&itcs, num);
                 println!("info String Succesfully set Threads to {}", num);
                 return;
             }
@@ -343,7 +322,7 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
                 let num = cmd[index + 2]
                     .parse::<u64>()
                     .expect("Invalid MoveOverhead value!");
-                us.options.move_overhead = num;
+                itcs.uci_options.write().unwrap().move_overhead = num;
                 println!("info String Succesfully set MoveOverhad to {}", num);
                 return;
             }
@@ -351,7 +330,7 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
                 let val = cmd[index + 2]
                     .parse::<bool>()
                     .expect("Invalid DebugSMPPrint value!");
-                us.options.debug_print = val;
+                itcs.uci_options.write().unwrap().debug_print = val;
                 println!("info String Succesfully set DebugSMPPrint to {}", val);
                 return;
             }
@@ -359,7 +338,7 @@ pub fn setoption(cmd: &[&str], cache: &mut Option<Arc<Cache>>, us: &mut UCIEngin
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid SMPSkipRatio value!");
-                us.options.skip_ratio = num;
+                itcs.uci_options.write().unwrap().skip_ratio = num;
                 println!("info String Succesfully set SMPSkipRatio to {}", num);
                 return;
             }
