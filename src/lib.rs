@@ -33,14 +33,13 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
         &mut movelist.move_lists[depth],
         &attack_container.attack_containers[depth],
     );
-    let mut index = 0;
-    while index < movelist.move_lists[depth].counter {
-        let mv = movelist.move_lists[depth].move_list[index].unwrap();
-        let next_g = make_move(&g, &mv);
+    let len = movelist.move_lists[depth].move_list.len();
+    for i in 0..len {
+        let gmv = movelist.move_lists[depth].move_list[i];
+        let next_g = make_move(&g, &gmv.0);
         let res = perft(&next_g, depth - 1, &mut movelist, &mut attack_container);
-        println!("{:?}: {}", mv, res);
+        println!("{:?}: {}", gmv.0, res);
         count += res;
-        index += 1;
     }
     println!("{}", count);
     let after = Instant::now();
@@ -67,7 +66,7 @@ pub fn perft(
             &mut movelist.move_lists[depth],
             &attack_container.attack_containers[depth],
         );
-        movelist.move_lists[depth].counter as u64
+        movelist.move_lists[depth].move_list.len() as u64
     } else {
         if depth == 0 {
             return 1;
@@ -79,13 +78,10 @@ pub fn perft(
             &mut movelist.move_lists[depth],
             &attack_container.attack_containers[depth],
         );
-        let mut index = 0;
-        while index < movelist.move_lists[depth].counter {
-            let mv = movelist.move_lists[depth].move_list[index]
-                .as_ref()
-                .unwrap();
+        let len = movelist.move_lists[depth].move_list.len();
+        for i in 0..len {
+            let mv = movelist.move_lists[depth].move_list[i].0;
             res += perft(&make_move(&g, &mv), depth - 1, movelist, attack_container);
-            index += 1;
         }
         res
     }

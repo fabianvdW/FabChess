@@ -2,7 +2,6 @@ pub const VERBOSE: bool = false;
 pub const LOG_FILE: &str = "log.txt";
 pub const LOG_TO_STDOUT: bool = false;
 
-use std::error::Error;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -12,7 +11,7 @@ lazy_static! {
 }
 pub fn init_log() -> File {
     match File::create(LOG_FILE) {
-        Err(why) => panic!("Couldn't create file, {}", why.description()),
+        Err(why) => panic!("Couldn't create file, {}", why),
         Ok(file) => file,
     }
 }
@@ -23,7 +22,7 @@ pub fn log(s: &str) {
     } else {
         let x = LOG.lock().unwrap().write(s.as_bytes());
         if let Err(why) = x {
-            panic!("Something went wrong, {}", why.description())
+            panic!("Something went wrong, {}", why)
         };
     }
 }

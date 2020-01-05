@@ -185,9 +185,9 @@ mod tests {
                 }
                 break;
             }
-            let mv = movelist.move_list[rng.gen_range(0, movelist.counter)].unwrap();
-            g = make_move(&g, &mv);
-            moves.push(mv);
+            let mv = movelist.move_list[rng.gen_range(0, movelist.move_list.len())];
+            g = make_move(&g, &mv.0);
+            moves.push(mv.0);
         }
         let mut metadata = PGNMetadata::default();
         metadata.fill_systemdata();

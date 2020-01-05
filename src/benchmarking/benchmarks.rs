@@ -80,7 +80,7 @@ mod tests {
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
                 attack_container.write_state(&states[i]);
                 movegen::generate_moves(&states[i], false, &mut movelist, &attack_container);
-                sum += movelist.counter;
+                sum += movelist.move_list.len();
             }
             sum
         });

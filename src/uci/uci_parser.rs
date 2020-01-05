@@ -216,27 +216,23 @@ pub fn scout_and_make_draftmove(
 ) -> GameState {
     attack_container.write_state(game_state);
     movegen::generate_moves(&game_state, false, movelist, attack_container);
-    let mut index = 0;
-    while index < movelist.counter {
-        let mv = movelist.move_list[index].as_ref().unwrap();
+    for gmv in movelist.move_list.iter() {
+        let mv = gmv.0;
         if mv.from as usize == from && mv.to as usize == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {
                     Some(piece) => {
                         if piece != ps {
-                            index += 1;
                             continue;
                         }
                     }
                     None => {
-                        index += 1;
                         continue;
                     }
                 }
             }
             return make_move(&game_state, &mv);
         }
-        index += 1;
     }
     panic!("Invalid move; not found in list!");
 }

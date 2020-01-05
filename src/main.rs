@@ -297,9 +297,7 @@ mod tests {
                 }
                 g = make_move(
                     &g,
-                    movelist.move_list[rng.gen_range(0, movelist.counter)]
-                        .as_ref()
-                        .unwrap(),
+                    &movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 )
             }
         }
@@ -323,9 +321,7 @@ mod tests {
                 }
                 g = make_move(
                     &g,
-                    movelist.move_list[rng.gen_range(0, movelist.counter)]
-                        .as_ref()
-                        .unwrap(),
+                    &movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
                 assert!(
                     (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
@@ -356,9 +352,7 @@ mod tests {
                 }
                 g = make_move(
                     &g,
-                    movelist.move_list[rng.gen_range(0, movelist.counter)]
-                        .as_ref()
-                        .unwrap(),
+                    &movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
                 let w_psqt = psqt(true, &g.pieces, &mut _eval);
                 let b_psqt = psqt(false, &g.pieces, &mut _eval);
@@ -373,7 +367,7 @@ mod tests {
         for path in &KING_BASE_PATH {
             let res = File::open(path);
             let file = match res {
-                Err(why) => panic!("{}", why.description()),
+                Err(why) => panic!("{}", why),
                 Ok(file) => file,
             };
             let reader = BufReader::new(file);

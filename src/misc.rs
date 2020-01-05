@@ -3,7 +3,6 @@ use crate::board_representation::game_state_attack_container::GameStateAttackCon
 use crate::logging::log;
 use crate::move_generation::movegen;
 use crate::pgn::pgn_reader::*;
-use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -50,7 +49,7 @@ pub fn parse_pgn_find_static_eval_mistakes() {
     for path in &KING_BASE_PATH {
         let res = File::open(path);
         let file = match res {
-            Err(why) => panic!("{}", why.description()),
+            Err(why) => panic!("{}", why),
             Ok(file) => file,
         };
         let reader = BufReader::new(file);

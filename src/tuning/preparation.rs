@@ -8,13 +8,11 @@ use core::evaluation::eval_game_state;
 use core::move_generation::makemove::make_move;
 use core::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
 use core::search::history::History;
-use core::search::quiescence::{
-    best_move_value, is_capture, passes_delta_pruning, see, DELTA_PRUNING,
-};
+use core::search::in_check;
+use core::search::quiescence::{best_move_value, passes_delta_pruning, see, DELTA_PRUNING};
 use core::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
-use core::search::GradedMove;
 use core::search::SearchInstruction;
-use core::search::{check_end_condition, check_for_draw, get_next_gm, in_check_slow, leaf_score};
+use core::search::{check_end_condition, check_for_draw, leaf_score};
 use core::search::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use core::tuning::loading::load_positions;
 use core::tuning::loading::{save_positions, FileFormatSupported, LabelledGameState, Statistics};
@@ -55,9 +53,6 @@ fn main() {
     for position in positions {
         let mut other = position.game_state.clone();
         other.color_to_move = 1 - other.color_to_move;
-        if in_check_slow(&other) {
-            continue;
-        }
         let (score, state) = stripped_q_search(
             -16000,
             16000,
@@ -113,8 +108,11 @@ pub fn stripped_q_search(
     if let SearchInstruction::StopSearching(res) = check_for_draw(&game_state, history) {
         return (res, game_state);
     }
-    let incheck = in_check_slow(&game_state);
     attack_container.attack_containers[current_depth].write_state(&game_state);
+    let incheck = in_check(
+        &game_state,
+        &attack_container.attack_containers[current_depth],
+    );
     let static_evaluation = eval_game_state(
         &game_state,
         &attack_container.attack_containers[current_depth],
@@ -135,7 +133,8 @@ pub fn stripped_q_search(
         return (stand_pat, game_state);
     }
     history.push(game_state.hash, game_state.half_moves == 0);
-    let (agsi, max_index) = make_moves(
+
+    let agsi = make_moves(
         &game_state,
         &mut move_list.move_lists[current_depth],
         &attack_container.attack_containers[current_depth],
@@ -145,16 +144,21 @@ pub fn stripped_q_search(
         see_buffer,
         incheck,
     );
-    let incheck = agsi.stm_incheck;
     let has_legal_move = agsi.stm_haslegalmove;
 
     let mut current_max_score = if incheck { STANDARD_SCORE } else { stand_pat };
     let mut current_best_state: Option<GameState> = None;
-    let mut index = 0;
-    while index < max_index {
-        let r = get_next_gm(&mut move_list.move_lists[current_depth], index, max_index).0;
-        let capture_move: GameMove =
-            move_list.move_lists[current_depth].move_list[r].expect("Could not get next gm");
+    loop {
+        let capture_move = move_list.move_lists[current_depth].highest_score();
+        if capture_move.is_none() {
+            break;
+        }
+        let (i, capture_move) = capture_move.unwrap();
+        if capture_move.1.unwrap() < 0. {
+            continue;
+        }
+        let capture_move = capture_move.0;
+        move_list.move_lists[current_depth].move_list.remove(i);
         let next_g = make_move(&game_state, &capture_move);
         let (score, other_state) = stripped_q_search(
             -beta,
@@ -176,7 +180,6 @@ pub fn stripped_q_search(
         if -score >= beta {
             break;
         }
-        index += 1;
     }
     history.pop();
     let game_status = check_end_condition(&game_state, has_legal_move, incheck);
@@ -201,32 +204,28 @@ pub fn make_moves(
     alpha: i16,
     see_buffer: &mut Vec<i16>,
     incheck: bool,
-) -> (AdditionalGameStateInformation, usize) {
+) -> AdditionalGameStateInformation {
     let agsi = movegen::generate_moves(&game_state, !incheck, move_list, attack_container);
-    let (mut mv_index, mut capture_index) = (0, 0);
-    while mv_index < move_list.counter {
-        let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
+    for gmv in move_list.move_list.iter_mut() {
+        let mv: GameMove = gmv.0;
         if let GameMoveType::EnPassant = mv.move_type {
-            move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 100.0));
+            gmv.1 = Some(100.0);
         } else {
-            if !incheck && !passes_delta_pruning(mv, phase, stand_pat, alpha) {
-                mv_index += 1;
+            if !incheck && !passes_delta_pruning(&mv, phase, stand_pat, alpha) {
+                gmv.1 = Some(-1.);
                 continue;
             }
-            if capture_index > 0 && is_capture(mv) || !incheck {
-                let score = see(&game_state, mv, true, see_buffer);
+            if !incheck {
+                let score = see(&game_state, &mv, true, see_buffer);
                 if score < 0 {
-                    mv_index += 1;
+                    gmv.1 = Some(-1.);
                     continue;
                 }
-                move_list.graded_moves[capture_index] =
-                    Some(GradedMove::new(mv_index, f64::from(score)));
+                gmv.1 = Some(f64::from(score));
             } else {
-                move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 0.));
+                gmv.1 = Some(0.);
             }
         }
-        mv_index += 1;
-        capture_index += 1;
     }
-    (agsi, capture_index)
+    agsi
 }
