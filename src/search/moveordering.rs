@@ -10,7 +10,7 @@ use crate::search::{CombinedSearchParameters, GradedMove};
 
 //For MVV-LVA calculation
 pub const ATTACKER_VALUE: [i16; 6] = [0, 1, 2, 3, 4, 5];
-pub const TARGET_VALUE: [i16; 5] = [100, 400, 401, 650, 1100];
+pub const TARGET_VALUE: [i16; 5] = [100, 400, 400, 650, 1100];
 
 pub fn mvvlva(mv: &GameMove) -> i16 {
     debug_assert!(mv.is_capture());
@@ -75,7 +75,7 @@ impl MoveOrderer {
             }
             MoveOrderingStage::TTMove => {
                 self.stage += 1;
-                if tt_move.is_some() {
+                if tt_move.is_some() && tt_move != pv_table_move {
                     return Some((tt_move.unwrap(), 0.));
                 } else {
                     return self.next(thread, p, pv_table_move, tt_move);
@@ -132,8 +132,12 @@ impl MoveOrderer {
                     {
                         return Some((graded_move.0, 0.));
                     } else {
-                        let see_value =
-                            see(p.game_state, &graded_move.0, true, &mut thread.see_buffer);
+                        let see_value = see(
+                            p.game_state,
+                            &graded_move.0,
+                            self.stages.len() == NORMAL_STAGES.len(),
+                            &mut thread.see_buffer,
+                        );
                         if see_value >= 0 {
                             return Some((graded_move.0, 0.));
                         } else {
@@ -183,7 +187,7 @@ impl MoveOrderer {
                     .move_list
                     .iter_mut()
                 {
-                    if mv.1 == None {
+                    if mv.1.is_none() {
                         debug_assert!(!mv.0.is_capture());
                         mv.1 = Some(
                             thread.hh_score[p.game_state.color_to_move][mv.0.from as usize]
