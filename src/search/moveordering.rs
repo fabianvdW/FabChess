@@ -1,4 +1,4 @@
-use crate::board_representation::game_state::{GameMove, GameMoveType};
+use crate::board_representation::game_state::{GameMove, GameMoveType, PieceType};
 use crate::move_generation::movegen;
 use crate::search::moveordering::MoveOrderingStage::{
     BadCapture, GoodCapture, GoodCaptureInitialization, Killer, PVMove, Quiet, QuietInitialization,
@@ -128,7 +128,7 @@ impl MoveOrderer {
                     if PIECE_VALUES[graded_move.0.get_captured_piece().to_index()]
                         - PIECE_VALUES[graded_move.0.piece_type.to_index()]
                         >= 0
-                        || graded_move.0.move_type == GameMoveType::EnPassant
+                        || graded_move.0.piece_type == PieceType::King
                     {
                         return Some((graded_move.0, 0.));
                     } else {
