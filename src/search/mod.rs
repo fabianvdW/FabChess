@@ -224,30 +224,30 @@ pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContai
 #[inline(always)]
 pub fn checkup(thread: &mut Thread) {
     if (thread.id == 0
-        && thread
-            .tc
-            .as_ref()
-            .expect("unable to unwrap tc in checkup")
-            .time_over(
-                thread.itcs.get_time_elapsed(),
-                &TimeControlInformation {
-                    high_score_diff: false,
-                    time_saved: thread.time_saved.unwrap(),
-                    stable_pv: thread
-                        .itcs
-                        .stable_pv
-                        .load(std::sync::atomic::Ordering::Relaxed),
-                },
-                thread.itcs.uci_options.move_overhead,
-            ))
-        || thread
-            .timeout_stop
-            .load(std::sync::atomic::Ordering::Relaxed)
+        && thread.tc.time_over(
+            thread.itcs.get_time_elapsed(),
+            &TimeControlInformation {
+                high_score_diff: false,
+                time_saved: thread.time_saved,
+                stable_pv: thread
+                    .itcs
+                    .stable_pv
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            },
+            thread.itcs.uci_options().move_overhead,
+        ))
+        || *thread
+            .itcs
+            .timeout_flag
+            .read()
+            .expect("Reading posioned timeoutflag")
     {
         if thread.id == 0 {
-            thread
-                .timeout_stop
-                .store(true, std::sync::atomic::Ordering::Relaxed);
+            *thread
+                .itcs
+                .timeout_flag
+                .write()
+                .expect("Writing poisoned timeoutflag") = true;
         }
         thread.self_stop = true;
     }

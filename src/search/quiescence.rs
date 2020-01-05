@@ -77,15 +77,21 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         if let SearchInstruction::StopSearching(res) =
             thread
                 .itcs
-                .cache
+                .cache()
                 .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
         {
-            thread.search_statistics.add_cache_hit_aj_replace_ns();
+            #[cfg(feature = "search-statistics")]
+            {
+                thread.search_statistics.add_cache_hit_aj_replace_ns();
+            }
             return res;
         }
     }
-    if tt_move.is_some() {
-        thread.search_statistics.add_cache_hit_ns();
+    #[cfg(feature = "search-statistics")]
+    {
+        if tt_move.is_some() {
+            thread.search_statistics.add_cache_hit_ns();
+        }
     }
     //Only captures are valid tt moves (if not in check)
     if tt_move.is_some() && !incheck && !tt_move.as_ref().unwrap().is_capture() {
@@ -127,7 +133,8 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             moves_from_movelist_tried,
             available_captures_in_movelist,
         );
-        if capture_move.is_none(){ //Invalid tt move
+        if capture_move.is_none() {
+            //Invalid tt move
             index += 1;
             continue;
         }
@@ -165,7 +172,10 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         }
         //Step 8.6 Beta cutoff, break
         if score >= p.beta {
-            thread.search_statistics.add_q_beta_cutoff(index);
+            #[cfg(feature = "search-statistics")]
+            {
+                thread.search_statistics.add_q_beta_cutoff(index);
+            }
             break;
         }
 
@@ -177,8 +187,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     thread.history.pop();
-    if current_max_score < p.beta && index > 0 {
-        thread.search_statistics.add_q_beta_noncutoff();
+    #[cfg(feature = "search-statistics")]
+    {
+        if current_max_score < p.beta && index > 0 {
+            thread.search_statistics.add_q_beta_noncutoff();
+        }
     }
     //Step 9. Evaluate leafs correctly
     let game_status = check_end_condition(p.game_state, has_legal_move, incheck);
@@ -189,7 +202,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 
     //Step 10. Make TT entry
     if has_pv && p.depth_left == 0 && !thread.self_stop {
-        thread.itcs.cache.insert(
+        thread.itcs.cache().insert(
             &p,
             &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
             current_max_score,
@@ -218,9 +231,12 @@ pub fn select_next_move_qsearch(
 ) -> Option<GameMove> {
     if index == 0 && tt_move.is_some() {
         let tt_move = tt_move.expect("Couldn't unwrap tt move in qsearch");
-        if p.game_state.is_valid_tt_move(&tt_move, &thread.attack_container.attack_containers[p.current_depth]){
+        if p.game_state.is_valid_tt_move(
+            &tt_move,
+            &thread.attack_container.attack_containers[p.current_depth],
+        ) {
             Some(tt_move)
-        }else{
+        } else {
             None
         }
     } else {
@@ -230,7 +246,10 @@ pub fn select_next_move_qsearch(
             available_captures_in_movelist,
         )
         .0;
-        Some(thread.movelist.move_lists[p.current_depth].move_list[r].expect("Could not get next gm"))
+        Some(
+            thread.movelist.move_lists[p.current_depth].move_list[r]
+                .expect("Could not get next gm"),
+        )
     }
 }
 
@@ -283,14 +302,20 @@ pub fn make_and_evaluate_moves_qsearch(
                     p.alpha,
                 )
             {
-                thread.search_statistics.add_q_delta_cutoff();
+                #[cfg(feature = "search-statistics")]
+                {
+                    thread.search_statistics.add_q_delta_cutoff();
+                }
                 mv_index += 1;
                 continue;
             }
             if !incheck || mv.is_capture() {
                 let score = see(p.game_state, mv, true, &mut thread.see_buffer);
                 if score < 0 && !incheck {
-                    thread.search_statistics.add_q_see_cutoff();
+                    #[cfg(feature = "search-statistics")]
+                    {
+                        thread.search_statistics.add_q_see_cutoff();
+                    }
                     mv_index += 1;
                     continue;
                 }

@@ -1,8 +1,7 @@
 extern crate core;
 
 use core::logging::log;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{AtomicBool, Ordering};
+use core::search::searcher::InterThreadCommunicationSystem;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -85,33 +84,22 @@ const BENCHMARKING_POSITIONS: [&str; 50] = [
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 ];
 fn bench(depth: usize) {
-    let cache = Arc::new(core::search::cache::Cache::with_size(8));
+    let itcs = Arc::new(InterThreadCommunicationSystem::new());
+    InterThreadCommunicationSystem::update_thread_count(&itcs, 1);
+    *itcs.cache() = core::search::cache::Cache::with_size(8);
     let before_time = Instant::now();
     let mut nodes = 0;
     for position in BENCHMARKING_POSITIONS.iter() {
         let state = core::board_representation::game_state::GameState::from_fen(position);
-        nodes += core::search::searcher::search_move(
+        core::search::searcher::search_move(
+            Arc::clone(&itcs),
             depth as i16,
             state,
             Vec::new(),
-            Arc::new(AtomicBool::new(false)),
-            Arc::clone(&cache),
-            Arc::new(AtomicU64::new(0)),
-            0,
-            core::uci::uci_engine::UCIOptions {
-                hash_size: 8,
-                threads: 1,
-                move_overhead: 0,
-                debug_print: false,
-                skip_ratio: core::search::searcher::DEFAULT_SKIP_RATIO,
-            },
             core::search::timecontrol::TimeControl::Infinite,
-        )
-        .1
-        .expect("Invalid benchmark!")
-        .nodes_searched_sum
-        .load(Ordering::Relaxed) as i32;
-        cache.clear();
+        );
+        nodes += itcs.get_nodes_sum();
+        itcs.cache().clear();
     }
     let dur = Instant::now().duration_since(before_time).as_millis();
     println!("Time: {}ms", dur);

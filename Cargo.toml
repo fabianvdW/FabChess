@@ -9,6 +9,7 @@ default-run="fabchess"
 default = []
 display-eval=[]
 texel-tuning=[]
+search-statistics=[]
 [dependencies]
 lazy_static = "1.2.0"
 hostname="0.1.5"

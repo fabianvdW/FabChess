@@ -11,11 +11,21 @@ pub struct UCIOptions {
     pub debug_print: bool,
     pub skip_ratio: usize,
 }
+impl Default for UCIOptions {
+    fn default() -> Self {
+        UCIOptions {
+            hash_size: DEFAULT_HASH_SIZE,
+            threads: DEFAULT_THREADS,
+            move_overhead: DEFAULT_MOVE_OVERHEAD,
+            debug_print: false,
+            skip_ratio: DEFAULT_SKIP_RATIO,
+        }
+    }
+}
 pub struct UCIEngine<'a> {
     pub name: &'a str,
     pub author: &'a str,
     pub internal_state: GameState,
-    pub options: UCIOptions,
 }
 
 impl<'a> UCIEngine<'a> {
@@ -24,13 +34,6 @@ impl<'a> UCIEngine<'a> {
             name: &"FabChessDev v1.13.5",
             author: &"Fabian von der Warth, Contributor: Erik Imgrund",
             internal_state: GameState::standard(),
-            options: UCIOptions {
-                hash_size: DEFAULT_HASH_SIZE,
-                threads: DEFAULT_THREADS,
-                move_overhead: DEFAULT_MOVE_OVERHEAD,
-                debug_print: false,
-                skip_ratio: DEFAULT_SKIP_RATIO,
-            },
         }
     }
 

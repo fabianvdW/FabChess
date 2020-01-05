@@ -4,7 +4,11 @@ use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
-use crate::move_generation::movegen::{b_pawn_east_targets, b_pawn_west_targets, bishop_attack, generate_moves, knight_attack, rook_attack, w_pawn_east_targets, w_pawn_west_targets, MoveList, pawn_west_targets, pawn_east_targets, single_push_pawn_targets, double_push_pawn_targets, king_attack};
+use crate::move_generation::movegen::{
+    b_pawn_east_targets, b_pawn_west_targets, bishop_attack, double_push_pawn_targets,
+    generate_moves, king_attack, knight_attack, pawn_east_targets, pawn_west_targets, rook_attack,
+    single_push_pawn_targets, w_pawn_east_targets, w_pawn_west_targets, MoveList,
+};
 use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const PAWN: usize = 0;
@@ -108,8 +112,7 @@ impl PieceType {
             PieceType::Bishop => 510,
             PieceType::Rook => 650,
             PieceType::Queen => 1500,
-            PieceType::King => {
-                panic!("King has no phase score")},
+            PieceType::King => panic!("King has no phase score"),
         }
     }
 }
@@ -940,120 +943,209 @@ impl GameState {
         }
     }
 
-    pub fn is_valid_tt_move(&self, mv: &GameMove, attack_container: &GameStateAttackContainer) -> bool{
+    pub fn is_valid_tt_move(
+        &self,
+        mv: &GameMove,
+        attack_container: &GameStateAttackContainer,
+    ) -> bool {
         //println!("{}",self.to_fen());
         //println!("{:?}", mv);
         if self.pieces[mv.piece_type.to_index()][self.color_to_move] & (1u64 << mv.from) == 0u64 {
             return false;
         }
-        if mv.piece_type == PieceType::Pawn && if self.color_to_move == WHITE { mv.to/8} else {7-mv.to/8} == 7{
-            if let GameMoveType::Promotion(_,_) = mv.move_type{
-
-            }else{
+        if mv.piece_type == PieceType::Pawn
+            && if self.color_to_move == WHITE {
+                mv.to / 8
+            } else {
+                7 - mv.to / 8
+            } == 7
+        {
+            if let GameMoveType::Promotion(_, _) = mv.move_type {
+            } else {
                 return false;
             }
-        }else if let GameMoveType::Promotion(_,_) = mv.move_type{
-            if mv.piece_type != PieceType::Pawn{
+        } else if let GameMoveType::Promotion(_, _) = mv.move_type {
+            if mv.piece_type != PieceType::Pawn
+                || if self.color_to_move == WHITE {
+                    mv.to / 8
+                } else {
+                    7 - mv.to / 8
+                } != 7
+            {
                 return false;
             }
         }
 
-        if mv.move_type == GameMoveType::EnPassant{
-            if (self.en_passant & (1u64 << mv.to)) == 0u64{
+        if mv.move_type == GameMoveType::EnPassant {
+            if (self.en_passant & (1u64 << mv.to)) == 0u64 {
                 return false;
             }
-        }else if mv.move_type == GameMoveType::Castle{
+        } else if mv.move_type == GameMoveType::Castle {
+            if mv.piece_type != PieceType::King {
+                return false;
+            }
             let all_piece = self.get_all_pieces();
-            let blocked = all_piece| attack_container.attacks_sum[1-self.color_to_move];
-            if mv.to == 6 && (!self.castle_white_kingside ||
-                blocked & (1u64 << 5 | 1u64<<6) != 0u64){
+            let blocked = all_piece | attack_container.attacks_sum[1 - self.color_to_move];
+            if mv.to != 6 && mv.to != 2 && mv.to != 62 && mv.to != 58
+                || attack_container.attacks_sum[1 - self.color_to_move] & (1u64 << mv.from) != 0u64
+            {
                 return false;
-            }else if mv.to == 2 && (!self.castle_white_queenside ||
-                blocked & (1u64 << 2|1u64<<3)!=0u64 || all_piece & (1u64<<1) !=0u64){
-                return false;
-            }else if mv.to == 62 && (!self.castle_black_kingside ||
-                blocked &(1u64 << 61 | 1u64 << 62) !=0u64){
-                return false;
-            }else if mv.to == 58 && (!self.castle_black_queenside || blocked & (1u64<<58 | 1u64<<59) !=0u64 || all_piece & (1u64<<57) !=0u64){
-                    return false;
             }
-        }else{
+            if mv.to == 6
+                && (!self.castle_white_kingside || blocked & (1u64 << 5 | 1u64 << 6) != 0u64)
+            {
+                return false;
+            } else if mv.to == 2
+                && (!self.castle_white_queenside
+                    || blocked & (1u64 << 2 | 1u64 << 3) != 0u64
+                    || all_piece & (1u64 << 1) != 0u64)
+            {
+                return false;
+            } else if mv.to == 62
+                && (!self.castle_black_kingside || blocked & (1u64 << 61 | 1u64 << 62) != 0u64)
+            {
+                return false;
+            } else if mv.to == 58
+                && (!self.castle_black_queenside
+                    || blocked & (1u64 << 58 | 1u64 << 59) != 0u64
+                    || all_piece & (1u64 << 57) != 0u64)
+            {
+                return false;
+            }
+        } else {
             let captured_piece = match mv.move_type {
                 GameMoveType::Capture(p) => Some(p),
                 GameMoveType::Promotion(_, p) => p,
-                _ => None
+                _ => None,
             };
-            if captured_piece.is_none(){
-                if self.get_all_pieces() & (1u64 << mv.to) != 0u64{
-                   return false;
+            if captured_piece.is_none() {
+                if self.get_all_pieces() & (1u64 << mv.to) != 0u64 {
+                    return false;
                 }
-            }else{
-                if self.pieces[captured_piece.unwrap().to_index()][1-self.color_to_move] & (1u64 << mv.to) == 0u64{
+            } else {
+                if self.pieces[captured_piece.unwrap().to_index()][1 - self.color_to_move]
+                    & (1u64 << mv.to)
+                    == 0u64
+                {
                     return false;
                 }
             }
         }
         let mut all_pieces = self.get_all_pieces();
-        match mv.piece_type{
-            PieceType::King =>{
-                if 1u64 << mv.to & (attack_container.attacks_sum[1-self.color_to_move]) !=0u64{
+        match mv.piece_type {
+            PieceType::King => {
+                if 1u64 << mv.to & (attack_container.attacks_sum[1 - self.color_to_move]) != 0u64 {
                     return false;
-                }else if mv.move_type != GameMoveType::Castle &&(1u64<< mv.to) & (king_attack(mv.from as usize)) == 0u64{
+                } else if mv.move_type != GameMoveType::Castle
+                    && (1u64 << mv.to) & (king_attack(mv.from as usize)) == 0u64
+                {
                     return false;
                 }
             }
             PieceType::Bishop => {
-                if 1u64 << mv.to & (bishop_attack(mv.from as usize, all_pieces)) == 0u64{
+                if 1u64 << mv.to & (bishop_attack(mv.from as usize, all_pieces)) == 0u64 {
                     return false;
                 }
             }
             PieceType::Rook => {
-                if 1u64 << mv.to & (rook_attack(mv.from as usize, all_pieces)) == 0u64{
+                if 1u64 << mv.to & (rook_attack(mv.from as usize, all_pieces)) == 0u64 {
                     return false;
                 }
             }
             PieceType::Queen => {
-                if 1u64 << mv.to & (bishop_attack(mv.from as usize, all_pieces) | rook_attack(mv.from as usize, all_pieces)) == 0u64{
+                if 1u64 << mv.to
+                    & (bishop_attack(mv.from as usize, all_pieces)
+                        | rook_attack(mv.from as usize, all_pieces))
+                    == 0u64
+                {
                     return false;
                 }
             }
             PieceType::Knight => {
-                if 1u64 << mv.to & (knight_attack(mv.from as usize)) == 0u64{
+                if 1u64 << mv.to & (knight_attack(mv.from as usize)) == 0u64 {
                     return false;
                 }
             }
             PieceType::Pawn => {
-                if mv.is_capture(){
-                    if (pawn_west_targets(self.color_to_move,1u64 << mv.from)|pawn_east_targets(self.color_to_move,1u64<<mv.from)) & 1u64<<mv.to == 0u64{
+                if mv.is_capture() {
+                    if (pawn_west_targets(self.color_to_move, 1u64 << mv.from)
+                        | pawn_east_targets(self.color_to_move, 1u64 << mv.from))
+                        & 1u64 << mv.to
+                        == 0u64
+                    {
                         return false;
                     }
-                }else{
-                    if (single_push_pawn_targets(self.color_to_move,1u64<<mv.from,!all_pieces)|double_push_pawn_targets(self.color_to_move,1u64<<mv.from,!all_pieces)) & 1u64<<mv.to == 0u64{
+                } else {
+                    if (single_push_pawn_targets(self.color_to_move, 1u64 << mv.from, !all_pieces)
+                        | double_push_pawn_targets(
+                            self.color_to_move,
+                            1u64 << mv.from,
+                            !all_pieces,
+                        ))
+                        & 1u64 << mv.to
+                        == 0u64
+                    {
                         return false;
                     }
                 }
             }
         }
-        if mv.move_type != GameMoveType::Castle{
+        if mv.move_type != GameMoveType::Castle {
             all_pieces ^= 1u64 << mv.from;
             all_pieces |= 1u64 << mv.to;
-            let cap_piece = if mv.move_type == GameMoveType::EnPassant{1u64<<(if self.color_to_move==WHITE{mv.to-8}else{mv.to+8})}else{1u64<<mv.to};
-            let king_square = if mv.piece_type == PieceType::King{mv.to as usize}else{self.king_square(self.color_to_move)};
-            if bishop_attack(king_square, all_pieces) & (self.pieces[BISHOP][1-self.color_to_move]|self.pieces[QUEEN][1-self.color_to_move]) & !cap_piece != 0u64{
+            let cap_piece = if mv.move_type == GameMoveType::EnPassant {
+                1u64 << (if self.color_to_move == WHITE {
+                    mv.to - 8
+                } else {
+                    mv.to + 8
+                })
+            } else {
+                1u64 << mv.to
+            };
+            let king_square = if mv.piece_type == PieceType::King {
+                mv.to as usize
+            } else {
+                self.king_square(self.color_to_move)
+            };
+            if bishop_attack(king_square, all_pieces)
+                & (self.pieces[BISHOP][1 - self.color_to_move]
+                    | self.pieces[QUEEN][1 - self.color_to_move])
+                & !cap_piece
+                != 0u64
+            {
                 return false;
             }
-            if rook_attack(king_square, all_pieces) & (self.pieces[ROOK][1-self.color_to_move]| self.pieces[QUEEN][1-self.color_to_move]) & !cap_piece !=0u64{
+            if rook_attack(king_square, all_pieces)
+                & (self.pieces[ROOK][1 - self.color_to_move]
+                    | self.pieces[QUEEN][1 - self.color_to_move])
+                & !cap_piece
+                != 0u64
+            {
                 return false;
             }
-            if knight_attack(king_square) & (self.pieces[KNIGHT][1-self.color_to_move]) & !cap_piece !=0u64{
+            if knight_attack(king_square)
+                & (self.pieces[KNIGHT][1 - self.color_to_move])
+                & !cap_piece
+                != 0u64
+            {
                 return false;
             }
-            if self.color_to_move == WHITE{
-                if (w_pawn_east_targets(1u64<<king_square)|w_pawn_west_targets(1u64<<king_square)) & (self.pieces[PAWN][1-self.color_to_move]) & !cap_piece !=0u64{
+            if self.color_to_move == WHITE {
+                if (w_pawn_east_targets(1u64 << king_square)
+                    | w_pawn_west_targets(1u64 << king_square))
+                    & (self.pieces[PAWN][1 - self.color_to_move])
+                    & !cap_piece
+                    != 0u64
+                {
                     return false;
                 }
-            }else{
-                if (b_pawn_east_targets(1u64<<king_square)|b_pawn_west_targets(1u64<<king_square)) & (self.pieces[PAWN][1-self.color_to_move]) & !cap_piece !=0u64{
+            } else {
+                if (b_pawn_east_targets(1u64 << king_square)
+                    | b_pawn_west_targets(1u64 << king_square))
+                    & (self.pieces[PAWN][1 - self.color_to_move])
+                    & !cap_piece
+                    != 0u64
+                {
                     return false;
                 }
             }
