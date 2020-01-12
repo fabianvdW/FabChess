@@ -476,31 +476,49 @@ pub struct AdditionalGameStateInformation {
 pub const MAX_MOVES: usize = 128;
 
 pub struct MoveList {
-    pub move_list: Vec<Option<GameMove>>,
-    pub graded_moves: Vec<Option<GradedMove>>,
-    pub counter: usize,
+    pub move_list: Vec<GradedMove>,
 }
-
 impl Default for MoveList {
     fn default() -> Self {
-        let mut move_list = Vec::with_capacity(MAX_MOVES);
-        let mut graded_moves = Vec::with_capacity(MAX_MOVES);
-        for _ in 0..MAX_MOVES {
-            move_list.push(None);
-            graded_moves.push(None);
-        }
-        MoveList {
-            move_list,
-            graded_moves,
-            counter: 0,
-        }
+        let move_list = Vec::with_capacity(MAX_MOVES);
+        MoveList { move_list }
     }
 }
 
 impl MoveList {
+    #[inline(always)]
     pub fn add_move(&mut self, mv: GameMove) {
-        self.move_list[self.counter] = Some(mv);
-        self.counter += 1;
+        self.move_list.push(GradedMove(mv, None));
+    }
+
+    #[inline(always)]
+    pub fn find_move(&self, mv: &GameMove, contains: bool) -> usize {
+        for (index, mvs) in self.move_list.iter().enumerate() {
+            if mvs.0 == *mv {
+                return index;
+            }
+        }
+        if contains {
+            panic!("Type 2 error")
+        }
+        self.move_list.len()
+    }
+
+    #[inline(always)]
+    pub fn highest_score(&mut self) -> Option<(usize, GradedMove)> {
+        let mut best_index = self.move_list.len();
+        let mut best_score = -1000000000.;
+        for (index, gmv) in self.move_list.iter().enumerate() {
+            if gmv.1.is_some() && gmv.1.unwrap() > best_score {
+                best_index = index;
+                best_score = gmv.1.unwrap();
+            }
+        }
+        if best_index == self.move_list.len() {
+            None
+        } else {
+            Some((best_index, self.move_list[best_index]))
+        }
     }
 }
 
@@ -513,7 +531,7 @@ pub fn generate_moves(
     //----------------------------------------------------------------------
     //**********************************************************************
     //1. General bitboards and variable initialization
-    movelist.counter = 0;
+    movelist.move_list.clear();
 
     let side = g.color_to_move;
     let enemy = 1 - side;

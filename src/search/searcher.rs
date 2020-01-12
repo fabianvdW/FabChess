@@ -493,15 +493,10 @@ pub fn search_move(
     );
 
     //Step2. Check legal moves
-    if movelist.counter == 0 {
+    if movelist.move_list.len() == 0 {
         panic!("The root position given does not have any legal move!");
-    } else if movelist.counter == 1 {
-        println!(
-            "bestmove {:?}",
-            movelist.move_list[0]
-                .as_ref()
-                .expect("Can't unwrap move although there is one")
-        );
+    } else if movelist.move_list.len() == 1 {
+        println!("bestmove {:?}", movelist.move_list[0].0);
 
         let new_timesaved: u64 = (time_saved_before as i64
             + tc.time_saved(0, time_saved_before, itcs.uci_options().move_overhead))

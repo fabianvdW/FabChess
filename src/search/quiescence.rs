@@ -4,16 +4,14 @@ use super::super::board_representation::game_state::{
 };
 use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
-use super::super::move_generation::movegen::AdditionalGameStateInformation;
 use super::alphabeta::*;
 use super::*;
 use crate::bitboards;
 use crate::move_generation::makemove::make_move;
+use crate::search::moveordering::{MoveOrderer, QUIESCENCE_IN_CHECK_STAGES, QUIESCENCE_STAGES};
 
 pub const DELTA_PRUNING: i16 = 100;
-lazy_static! {
-    pub static ref PIECE_VALUES: [i16; 6] = [100, 400, 400, 650, 1100, 30000];
-}
+pub const PIECE_VALUES: [i16; 6] = [100, 400, 400, 650, 1100, 30000];
 
 pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
@@ -103,52 +101,41 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         .push(p.game_state.hash, p.game_state.half_moves == 0);
 
     //Step 8. Iterate through moves
-    let hash_move_counter = if tt_move.is_some() { 1 } else { 0 };
-    let mut has_legal_move = false;
+
     let mut current_max_score = if incheck {
         STANDARD_SCORE
     } else {
         *stand_pat.as_ref().unwrap()
     };
     let mut has_pv = false;
-    let mut index = 0;
-    let mut moves_from_movelist_tried: usize = 0;
-    let mut has_generated_moves = false;
-    let mut available_captures_in_movelist = 0;
-    while index < available_captures_in_movelist + hash_move_counter || !has_generated_moves {
-        //Step 8.1. Staged movegen. Generate all moves after trying tt move
-        if index == hash_move_counter && !has_generated_moves {
-            has_generated_moves = true;
-            let (agsi, mvs) = make_and_evaluate_moves_qsearch(thread, &p, stand_pat, incheck);
-            has_legal_move = agsi.stm_haslegalmove;
-            available_captures_in_movelist = mvs;
-            continue;
-        }
-        //Step 8.2. Select the next move
-        let capture_move: Option<GameMove> = select_next_move_qsearch(
-            &p,
-            thread,
-            index,
-            &tt_move,
-            moves_from_movelist_tried,
-            available_captures_in_movelist,
-        );
-        if capture_move.is_none() {
-            //Invalid tt move
-            index += 1;
-            continue;
-        }
-        let capture_move = capture_move.unwrap();
-        debug_assert!(incheck || capture_move.is_capture());
-        //Step 8.3. If the move is from the movelist, make sure we haven't searched it already as tt move
-        if index >= hash_move_counter {
-            moves_from_movelist_tried += 1;
-            if let SearchInstruction::SkipMove = is_duplicate(&capture_move, &None, &tt_move) {
-                index += 1;
-                continue;
-            }
-        }
+    let mut move_orderer = MoveOrderer {
+        stage: 0,
+        stages: if incheck {
+            &QUIESCENCE_IN_CHECK_STAGES
+        } else {
+            &QUIESCENCE_STAGES
+        },
+        gen_only_captures: !incheck,
+        has_legal_move: false,
+    };
 
+    loop {
+        let mv = move_orderer.next(thread, &p, &None, &tt_move);
+        if mv.is_none() {
+            break;
+        }
+        let (capture_move, _) = mv.unwrap();
+        if !incheck
+            && !passes_delta_pruning(
+                &capture_move,
+                p.game_state.phase.phase,
+                *stand_pat.as_ref().unwrap(),
+                p.alpha,
+            )
+        {
+            continue;
+        }
+        debug_assert!(incheck || capture_move.is_capture());
         let next_g = make_move(p.game_state, &capture_move);
         //Step 8.4. Search move
         let score = -q_search(
@@ -183,18 +170,17 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         if score > p.alpha {
             p.alpha = score;
         }
-        index += 1;
     }
 
     thread.history.pop();
     #[cfg(feature = "search-statistics")]
     {
-        if current_max_score < p.beta && index > 0 {
+        if current_max_score < p.beta {
             thread.search_statistics.add_q_beta_noncutoff();
         }
     }
     //Step 9. Evaluate leafs correctly
-    let game_status = check_end_condition(p.game_state, has_legal_move, incheck);
+    let game_status = check_end_condition(p.game_state, move_orderer.has_legal_move, incheck);
     if game_status != GameResult::Ingame {
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, p.color, p.current_depth as i16);
@@ -221,39 +207,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 }
 
 #[inline(always)]
-pub fn select_next_move_qsearch(
-    p: &CombinedSearchParameters,
-    thread: &mut Thread,
-    index: usize,
-    tt_move: &Option<GameMove>,
-    moves_from_movelist_tried: usize,
-    available_captures_in_movelist: usize,
-) -> Option<GameMove> {
-    if index == 0 && tt_move.is_some() {
-        let tt_move = tt_move.expect("Couldn't unwrap tt move in qsearch");
-        if p.game_state.is_valid_tt_move(
-            &tt_move,
-            &thread.attack_container.attack_containers[p.current_depth],
-        ) {
-            Some(tt_move)
-        } else {
-            None
-        }
-    } else {
-        let r = get_next_gm(
-            &mut thread.movelist.move_lists[p.current_depth],
-            moves_from_movelist_tried,
-            available_captures_in_movelist,
-        )
-        .0;
-        Some(
-            thread.movelist.move_lists[p.current_depth].move_list[r]
-                .expect("Could not get next gm"),
-        )
-    }
-}
-
-#[inline(always)]
 pub fn adjust_standpat(p: &mut CombinedSearchParameters, stand_pat: i16) -> SearchInstruction {
     if stand_pat >= p.beta {
         return SearchInstruction::StopSearching(stand_pat);
@@ -272,71 +225,6 @@ pub fn delta_pruning(p: &CombinedSearchParameters, stand_pat: i16) -> SearchInst
     } else {
         SearchInstruction::ContinueSearching
     }
-}
-
-#[inline(always)]
-pub fn make_and_evaluate_moves_qsearch(
-    thread: &mut Thread,
-    p: &CombinedSearchParameters,
-    stand_pat: Option<i16>,
-    incheck: bool,
-) -> (AdditionalGameStateInformation, usize) {
-    let agsi = movegen::generate_moves(
-        p.game_state,
-        !incheck,
-        &mut thread.movelist.move_lists[p.current_depth],
-        &thread.attack_container.attack_containers[p.current_depth],
-    );
-    let move_list = &mut thread.movelist.move_lists[p.current_depth];
-    let (mut mv_index, mut capture_index) = (0, 0);
-    while mv_index < move_list.counter {
-        let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
-        if let GameMoveType::EnPassant = mv.move_type {
-            move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, 99.0));
-        } else {
-            if !incheck
-                && !passes_delta_pruning(
-                    mv,
-                    p.game_state.phase.phase,
-                    *stand_pat.as_ref().unwrap(),
-                    p.alpha,
-                )
-            {
-                #[cfg(feature = "search-statistics")]
-                {
-                    thread.search_statistics.add_q_delta_cutoff();
-                }
-                mv_index += 1;
-                continue;
-            }
-            if !incheck || mv.is_capture() {
-                let score = see(p.game_state, mv, true, &mut thread.see_buffer);
-                if score < 0 && !incheck {
-                    #[cfg(feature = "search-statistics")]
-                    {
-                        thread.search_statistics.add_q_see_cutoff();
-                    }
-                    mv_index += 1;
-                    continue;
-                }
-                move_list.graded_moves[capture_index] =
-                    Some(GradedMove::new(mv_index, f64::from(score)));
-            } else {
-                if !incheck {
-                    panic!("Not in check but also not capture");
-                }
-                let score = thread.hh_score[p.game_state.color_to_move][mv.from as usize]
-                    [mv.to as usize] as f64
-                    / thread.bf_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize]
-                        as f64
-                    / 1000.0;
-                move_list.graded_moves[capture_index] = Some(GradedMove::new(mv_index, score));
-            }
-        }
-        mv_index += 1;
-        capture_index += 1;
-    }
-    (agsi, capture_index)
 }
 
 #[inline(always)]

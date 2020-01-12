@@ -1,12 +1,10 @@
 use super::super::board_representation::game_state::*;
-use super::super::movegen;
-use super::super::GameState;
-use super::quiescence::{q_search, see};
-use super::GradedMove;
+use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
+use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::searcher::Thread;
 
 pub const FUTILITY_MARGIN: i16 = 90;
@@ -127,71 +125,33 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 11. Internal Iterative Deepening
-    let mut has_generated_moves = if is_pv_node
-        && !incheck
-        && pv_table_move.is_none()
-        && tt_move.is_none()
-        && p.depth_left > 6
-    {
+    if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
         if let SearchInstruction::StopSearching(res) =
             internal_iterative_deepening(&p, thread, &mut tt_move)
         {
             return res;
         }
-        true
-    } else {
-        false
-    };
+    }
 
     //Step 12. Futil Pruning and margin preparation
     let futil_margin = prepare_futility_pruning(&p, static_evaluation);
-    //Step 13. Prepare staged movegen
-    let hash_and_pv_move_counter =
-        prepare_staged_movegen(&p, thread, has_generated_moves, &pv_table_move, &tt_move);
 
     //Step 14. Iterate through all moves
     let mut current_max_score = STANDARD_SCORE;
     let mut index: usize = 0;
-    let mut moves_tried: usize = 0;
-    let mut moves_from_movelist_tried: usize = 0;
     let mut quiets_tried: usize = 0;
-    while moves_tried
-        < thread.movelist.move_lists[p.current_depth].counter + hash_and_pv_move_counter
-        || !has_generated_moves
-    {
-        //Step 14.1. If tt move and pv move have been tried, generate all moves
-        if moves_tried == hash_and_pv_move_counter && !has_generated_moves {
-            has_generated_moves = true;
-            make_and_evaluate_moves(p.game_state, thread, p.current_depth);
-            continue;
-        }
-
-        //Step 14.2. Select the next move
-        let (mv, move_score) = select_next_move(
-            &p,
-            thread,
-            moves_tried,
-            moves_from_movelist_tried,
-            hash_and_pv_move_counter,
-            &tt_move,
-            &pv_table_move,
-        );
+    let mut move_orderer = MoveOrderer {
+        stage: 0,
+        stages: &NORMAL_STAGES,
+        gen_only_captures: false,
+        has_legal_move: false,
+    };
+    loop {
+        let mv = move_orderer.next(thread, &p, &pv_table_move, &tt_move);
         if mv.is_none() {
-            //Invalid tt move detected
-            moves_tried += 1;
-            continue;
+            break;
         }
-        let mv = mv.unwrap();
-
-        //Step 14.3. If the move is from the movelist, make sure we haven't searched it already as tt move or pv table move
-        if moves_tried >= hash_and_pv_move_counter {
-            moves_from_movelist_tried += 1;
-            if let SearchInstruction::SkipMove = is_duplicate(&mv, &pv_table_move, &tt_move) {
-                moves_tried += 1;
-                continue;
-            }
-        }
-        moves_tried += 1;
+        let (mv, move_score) = mv.unwrap(); //Move score is only set for bad_capture
 
         //Step 14.4. UCI Reporting at root
         //uci_report_move(&p, su, &mv, index);
@@ -373,6 +333,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     thread.history.pop();
 
+    debug_assert!(!move_orderer.has_legal_move || current_max_score > STANDARD_SCORE);
     //Step 15. Evaluate leafs correctly
     let game_status =
         check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
@@ -601,115 +562,6 @@ pub fn prepare_futility_pruning(
 }
 
 #[inline(always)]
-pub fn prepare_staged_movegen(
-    p: &CombinedSearchParameters,
-    thread: &mut Thread,
-    has_generated_moves: bool,
-    pv_table_move: &Option<GameMove>,
-    tt_move: &Option<GameMove>,
-) -> usize {
-    if !has_generated_moves {
-        thread.movelist.move_lists[p.current_depth].counter = 0;
-    }
-    let mut hash_and_pv_move_counter = 0;
-    if pv_table_move.is_some() {
-        hash_and_pv_move_counter += 1;
-    }
-    if tt_move.is_some() && pv_table_move.is_none() {
-        hash_and_pv_move_counter += 1;
-    } else if tt_move.is_some() {
-        //Make sure that tt_move != pv_table_move
-        if *tt_move
-            .as_ref()
-            .expect("Couldn't unwrap tt move although we have one")
-            != *pv_table_move
-                .as_ref()
-                .expect("Couldn't unwrap pv move although we have one")
-        {
-            hash_and_pv_move_counter += 1;
-        }
-    }
-    hash_and_pv_move_counter
-}
-
-#[inline(always)]
-pub fn is_duplicate(
-    mv: &GameMove,
-    pv_table_move: &Option<GameMove>,
-    tt_move: &Option<GameMove>,
-) -> SearchInstruction {
-    if let Some(pv_move) = pv_table_move.as_ref() {
-        if *mv == *pv_move {
-            return SearchInstruction::SkipMove;
-        }
-    }
-    if let Some(tt_mv) = tt_move.as_ref() {
-        if *mv == *tt_mv {
-            return SearchInstruction::SkipMove;
-        }
-    }
-    SearchInstruction::ContinueSearching
-}
-
-#[inline(always)]
-pub fn select_next_move(
-    p: &CombinedSearchParameters,
-    thread: &mut Thread,
-    moves_tried: usize,
-    moves_from_movelist_tried: usize,
-    hash_and_pv_move_counter: usize,
-    tt_move: &Option<GameMove>,
-    pv_table_move: &Option<GameMove>,
-) -> (Option<GameMove>, f64) {
-    let mut move_score = 0.;
-    let mv: Option<GameMove> = if moves_tried < hash_and_pv_move_counter {
-        if moves_tried == 0 {
-            if let Some(pvmv) = pv_table_move {
-                Some(*pvmv)
-            } else {
-                let tt_move =
-                    tt_move.expect("Moves tried ==0 and no pv move, couldn't unwrap even tt move");
-                if p.game_state.is_valid_tt_move(
-                    &tt_move,
-                    &thread.attack_container.attack_containers[p.current_depth],
-                ) {
-                    Some(tt_move)
-                } else {
-                    None
-                }
-            }
-        } else {
-            let tt_move = tt_move.expect("Moves tried >0 and no tt move");
-            if p.game_state.is_valid_tt_move(
-                &tt_move,
-                &thread.attack_container.attack_containers[p.current_depth],
-            ) {
-                Some(tt_move)
-            } else {
-                None
-            }
-        }
-    } else {
-        let available_moves = thread.movelist.move_lists[p.current_depth].counter;
-        let r = get_next_gm(
-            &mut thread.movelist.move_lists[p.current_depth],
-            moves_from_movelist_tried,
-            available_moves,
-        );
-        move_score = r.1;
-        debug_assert!(p.game_state.is_valid_tt_move(
-            &thread.movelist.move_lists[p.current_depth].move_list[r.0].unwrap(),
-            &thread.attack_container.attack_containers[p.current_depth]
-        ));
-        Some(
-            thread.movelist.move_lists[p.current_depth].move_list[r.0]
-                .expect("Expecting move in movelist"),
-        )
-    };
-    (mv, move_score)
-}
-
-#[inline(always)]
 pub fn compute_lmr_reduction(
     p: &CombinedSearchParameters,
     thread: &Thread,
@@ -801,65 +653,5 @@ pub fn decrement_history_quiets(
         let mv = thread.quiets_tried[current_depth][i].as_ref().unwrap();
         thread.history_score[side_to_move][mv.from as usize][mv.to as usize] -=
             depth_left * depth_left;
-    }
-}
-
-#[inline(always)]
-pub fn make_and_evaluate_moves(game_state: &GameState, thread: &mut Thread, current_depth: usize) {
-    movegen::generate_moves(
-        &game_state,
-        false,
-        &mut thread.movelist.move_lists[current_depth],
-        &thread.attack_container.attack_containers[current_depth],
-    );
-    //Move Ordering
-    //1. PV-Move +30000
-    //2. Hash move + 29999
-    //if SEE>0
-    //3. Winning captures Sort by SEE + 10000
-    //4. Equal captures Sort by SEE+ 10000
-    //5. Killer moves + 5000
-    //6. Non captures (history heuristic) history heuristic score
-    //7. Losing captures (SEE<0) see score
-    let mut mv_index = 0;
-    let move_list = &mut thread.movelist.move_lists[current_depth];
-    while mv_index < move_list.counter {
-        let mv: &GameMove = move_list.move_list[mv_index].as_ref().unwrap();
-        if mv.is_capture() {
-            if GameMoveType::EnPassant == mv.move_type {
-                move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, 9999.0));
-            } else {
-                let mut sval = f64::from(see(&game_state, &mv, true, &mut thread.see_buffer));
-                if sval >= 0.0 {
-                    sval += 10000.0;
-                }
-                move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, sval));
-            }
-        } else {
-            //Assing history score
-            let score = thread.hh_score[game_state.color_to_move][mv.from as usize][mv.to as usize]
-                as f64
-                / thread.bf_score[game_state.color_to_move][mv.from as usize][mv.to as usize]
-                    as f64
-                / 1000.0;
-            move_list.graded_moves[mv_index] = Some(GradedMove::new(mv_index, score));
-        }
-        mv_index += 1;
-    }
-
-    {
-        //Killer moves
-        if let Some(s) = thread.killer_moves[current_depth][0] {
-            let mv_index = find_move(&s, move_list, false);
-            if mv_index < move_list.counter {
-                move_list.graded_moves[mv_index].as_mut().unwrap().score += 5000.0;
-            }
-        }
-        if let Some(s) = thread.killer_moves[current_depth][1] {
-            let mv_index = find_move(&s, move_list, false);
-            if mv_index < move_list.counter {
-                move_list.graded_moves[mv_index].as_mut().unwrap().score += 5000.0;
-            }
-        }
     }
 }

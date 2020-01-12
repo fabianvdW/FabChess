@@ -149,7 +149,16 @@ impl GameMove {
             _ => false,
         }
     }
-
+    #[inline(always)]
+    pub fn get_captured_piece(&self) -> PieceType {
+        debug_assert!(self.is_capture());
+        match self.move_type {
+            GameMoveType::Capture(p) => p,
+            GameMoveType::Promotion(_, Some(p)) => p,
+            GameMoveType::EnPassant => PieceType::Pawn,
+            _ => panic!("Captured piece type  called on a capture"),
+        }
+    }
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
         let from_file = match chars.nth(0) {
@@ -212,9 +221,8 @@ impl GameMove {
             //Check for disambiguities
             let mut file_needed = false;
             let mut rank_needed = false;
-            let mut index = 0;
-            while index < movelist.counter {
-                let other_mv = movelist.move_list[index].as_ref().unwrap();
+            for gmv in movelist.move_list.iter() {
+                let other_mv = gmv.0;
                 if other_mv.piece_type == self.piece_type
                     && other_mv.to == self.to
                     && other_mv.from != self.from
@@ -228,7 +236,6 @@ impl GameMove {
                         rank_needed = true;
                     }
                 }
-                index += 1;
             }
             if file_needed {
                 res_str.push_str(file_to_string((self.from % 8) as usize));

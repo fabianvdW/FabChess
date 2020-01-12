@@ -383,27 +383,23 @@ pub fn find_move(
     promo_pieces: Option<PieceType>,
     move_list: &MoveList,
 ) -> Option<GameMove> {
-    let mut index = 0;
-    while index < move_list.counter {
-        let mv = move_list.move_list[index].unwrap();
+    for gmv in move_list.move_list.iter() {
+        let mv = gmv.0;
         if mv.from as usize == from && mv.to as usize == to {
             if let GameMoveType::Promotion(ps, _) = mv.move_type {
                 match promo_pieces {
                     Some(piece) => {
                         if piece != ps {
-                            index += 1;
                             continue;
                         }
                     }
                     None => {
-                        index += 1;
                         continue;
                     }
                 }
             }
             return Some(mv);
         }
-        index += 1;
     }
     None
 }

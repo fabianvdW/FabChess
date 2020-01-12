@@ -2,7 +2,6 @@ use crate::board_representation::game_state::*;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
-use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -74,16 +73,14 @@ pub fn find_castle(
     g: &GameState,
     king_side: bool,
 ) -> Result<(GameMove, GameState), ()> {
-    let mut index = 0;
-    while index < movelist.counter {
-        let mv = movelist.move_list[index].as_ref().unwrap();
+    for gmv in movelist.move_list.iter() {
+        let mv = &gmv.0;
         if mv.move_type == GameMoveType::Castle
             && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 }
         {
             let state = make_move(g, mv);
             return Ok((*mv, state));
         }
-        index += 1;
     }
     Err(())
 }
@@ -93,11 +90,9 @@ pub fn find_move(
     g: &GameState,
     ms: MoveSpecification,
 ) -> Result<(GameMove, GameState), ()> {
-    let mut index = 0;
-    while index < movelist.counter {
-        let mv = movelist.move_list[index].as_ref().unwrap();
-        /*println!("Checking: {:?}", mv);
-        if &format!("{:?}", mv) == "e4d4" {
+    for gmv in movelist.move_list.iter() {
+        /*println!("Checking: {:?}", gmv.0);
+        if &format!("{:?}", gmv.0) == "e4d4" {
             println!("{:?} ", ms.target_square);
             println!("{:?} ", ms.from_square);
             println!("{:?} ", ms.from_file);
@@ -106,11 +101,10 @@ pub fn find_move(
             println!("{:?} ", ms.promotion_piece);
         }*/
 
-        if ms.matches(mv) {
-            let state = make_move(g, mv);
-            return Ok((*mv, state));
+        if ms.matches(&gmv.0) {
+            let state = make_move(g, &gmv.0);
+            return Ok((gmv.0, state));
         }
-        index += 1;
     }
     Err(())
 }
@@ -254,10 +248,8 @@ pub fn parse_move(
     println!("{}", my_string);
     println!("{}", g);
 
-    let mut index = 0;
-    while index < movelist.counter {
-        println!("{:?}", movelist.move_list[index].as_ref().unwrap());
-        index += 1;
+    for gmv in movelist.move_list.iter() {
+        println!("{:?}", gmv.0);
     }
     panic!("Shouldn't get here");
 }
@@ -322,9 +314,7 @@ impl Iterator for PGNParser {
             line = String::new();
             res = self.reader.read_line(&mut line);
             if let Err(e) = &res {
-                if e.description()
-                    .contains("stream did not contain valid UTF-8")
-                {
+                if e.to_string().contains("stream did not contain valid UTF-8") {
                     res = Ok(1);
                 }
             }
