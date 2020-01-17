@@ -291,7 +291,8 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                     .parse::<usize>()
                     .expect("Invalid Hash value!");
                 itcs.uci_options().hash_size = num;
-                *itcs.cache() = Cache::with_size(num);
+                let num_threads = itcs.uci_options().threads;
+                *itcs.cache() = Cache::with_size_threaded(num, num_threads);
                 println!("info String Succesfully set Hash to {}", num);
                 return;
             }
