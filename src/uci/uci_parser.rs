@@ -45,7 +45,7 @@ pub fn parse_loop() {
 
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                itcs.cache().clear();
+                itcs.cache().clear_threaded(itcs.uci_options().threads);
                 itcs.saved_time.store(0, Ordering::Relaxed);
             }
             "isready" => isready(&itcs, true),
@@ -297,7 +297,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 return;
             }
             "clearhash" => {
-                itcs.cache().clear();
+                itcs.cache().clear_threaded(itcs.uci_options().threads);
                 println!("info String Succesfully cleared hash!");
                 return;
             }

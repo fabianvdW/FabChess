@@ -30,7 +30,15 @@ impl Cache {
     pub fn with_size_threaded(mb_size: usize, num_threads: usize) -> Self {
         let buckets = 1024 * 1024 * mb_size / 64;
         let entries = buckets * 3;
-        // let cache = UnsafeCell::new(vec![CacheBucket::default(); buckets]);
+        let cache = UnsafeCell::new(Cache::get_init_cache(buckets, num_threads));
+        Cache {
+            entries,
+            buckets,
+            cache,
+        }
+    }
+
+    fn get_init_cache(buckets: usize, num_threads: usize) -> Vec<CacheBucket> {
         let mut cache_vec: Vec<CacheBucket> = Vec::with_capacity(buckets);
         unsafe {
             let mut ptr = cache_vec.as_mut_ptr().add(cache_vec.len());
@@ -67,13 +75,9 @@ impl Cache {
             }
             cache_vec.set_len(local_len);
         }
-        let cache = UnsafeCell::new(cache_vec);
-        Cache {
-            entries,
-            buckets,
-            cache,
-        }
+        return cache_vec;
     }
+
     pub fn fill_status(&self) -> usize {
         if self.entries < 1000 {
             return 1000;
@@ -105,8 +109,15 @@ impl Cache {
     }
 
     pub fn clear(&self) {
-        unsafe {
+        self.clear_threaded(1);
+    }
+
+    pub fn clear_threaded(&self, num_threads: usize) {
+        /*unsafe {
             *self.cache.get() = vec![CacheBucket::default(); self.buckets];
+        }*/
+        unsafe {
+            *self.cache.get() = Cache::get_init_cache(self.buckets, num_threads);
         }
     }
 
