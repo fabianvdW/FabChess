@@ -25,15 +25,59 @@ impl Default for Cache {
 
 impl Cache {
     pub fn with_size(mb_size: usize) -> Self {
+        Cache::with_size_threaded(mb_size, 1)
+    }
+    pub fn with_size_threaded(mb_size: usize, num_threads: usize) -> Self {
         let buckets = 1024 * 1024 * mb_size / 64;
         let entries = buckets * 3;
-        let cache = UnsafeCell::new(vec![CacheBucket::default(); buckets]);
+        let cache = UnsafeCell::new(Cache::get_init_cache(buckets, num_threads));
         Cache {
             entries,
             buckets,
             cache,
         }
     }
+
+    fn get_init_cache(buckets: usize, num_threads: usize) -> Vec<CacheBucket> {
+        let mut cache_vec: Vec<CacheBucket> = Vec::with_capacity(buckets);
+        unsafe {
+            let mut ptr = cache_vec.as_mut_ptr().add(cache_vec.len());
+            let mut local_len = cache_vec.len();
+            let chunksize = buckets / num_threads;
+            let mut handles = Vec::new();
+            
+            for _ in 0..num_threads {
+                let w = PtrWrapper{ p: ptr.clone() };
+                handles.push(std::thread::spawn(move || {
+                    let mut inner_ptr = w.p;
+                    let val = CacheBucket::default();
+                    for _ in 0..chunksize {
+                        std::ptr::write(inner_ptr, val.clone());
+                        inner_ptr = inner_ptr.offset(1);
+                    }
+                }));
+                ptr = ptr.offset(chunksize as isize);
+                local_len += chunksize;
+            }
+
+            for _ in 0..(buckets - chunksize*num_threads) {
+                std::ptr::write(ptr, CacheBucket::default());
+                ptr = ptr.offset(1);
+                local_len += 1;
+            }
+            for handle in handles {
+                match handle.join() {
+                    Ok(_) =>  {},
+                    Err(e) => {
+                        panic!(format!("{:?}", e));
+                    }
+                }
+            }
+            cache_vec.set_len(local_len);
+        }
+        return cache_vec;
+    }
+
     pub fn fill_status(&self) -> usize {
         if self.entries < 1000 {
             return 1000;
@@ -65,8 +109,15 @@ impl Cache {
     }
 
     pub fn clear(&self) {
-        unsafe {
+        self.clear_threaded(1);
+    }
+
+    pub fn clear_threaded(&self, num_threads: usize) {
+        /*unsafe {
             *self.cache.get() = vec![CacheBucket::default(); self.buckets];
+        }*/
+        unsafe {
+            *self.cache.get() = Cache::get_init_cache(self.buckets, num_threads);
         }
     }
 
@@ -484,6 +535,11 @@ impl CacheEntry {
         }
     }
 }
+
+struct PtrWrapper {
+    pub p: *mut CacheBucket
+}
+unsafe impl Send for PtrWrapper {}
 
 #[cfg(test)]
 mod tests {

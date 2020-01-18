@@ -45,7 +45,7 @@ pub fn parse_loop() {
 
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                itcs.cache().clear();
+                itcs.cache().clear_threaded(itcs.uci_options().threads);
                 itcs.saved_time.store(0, Ordering::Relaxed);
             }
             "isready" => isready(&itcs, true),
@@ -291,12 +291,13 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                     .parse::<usize>()
                     .expect("Invalid Hash value!");
                 itcs.uci_options().hash_size = num;
-                *itcs.cache() = Cache::with_size(num);
+                let num_threads = itcs.uci_options().threads;
+                *itcs.cache() = Cache::with_size_threaded(num, num_threads);
                 println!("info String Succesfully set Hash to {}", num);
                 return;
             }
             "clearhash" => {
-                itcs.cache().clear();
+                itcs.cache().clear_threaded(itcs.uci_options().threads);
                 println!("info String Succesfully cleared hash!");
                 return;
             }
