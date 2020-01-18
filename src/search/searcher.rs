@@ -79,7 +79,7 @@ impl InterThreadCommunicationSystem {
             start_time: RwLock::new(Instant::now()),
             last_cache_status: Mutex::new(None),
             cache_status: AtomicUsize::new(0),
-            cache: UnsafeCell::new(Cache::with_size(0)),
+            cache: UnsafeCell::new(Cache::with_size_threaded(0, 1)),
             timeout_flag: RwLock::new(false),
             saved_time: AtomicU64::new(0u64),
             tx: RwLock::new(Vec::new()),

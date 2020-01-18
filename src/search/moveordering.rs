@@ -1,4 +1,4 @@
-use crate::board_representation::game_state::{GameMove, GameMoveType, PieceType};
+use crate::board_representation::game_state::{GameMove, PieceType};
 use crate::move_generation::movegen;
 use crate::search::moveordering::MoveOrderingStage::{
     BadCapture, GoodCapture, GoodCaptureInitialization, Killer, PVMove, Quiet, QuietInitialization,

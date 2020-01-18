@@ -17,16 +17,7 @@ pub struct Cache {
 
 unsafe impl std::marker::Sync for Cache {}
 
-impl Default for Cache {
-    fn default() -> Self {
-        Cache::with_size(DEFAULT_HASH_SIZE)
-    }
-}
-
 impl Cache {
-    pub fn with_size(mb_size: usize) -> Self {
-        Cache::with_size_threaded(mb_size, 1)
-    }
     pub fn with_size_threaded(mb_size: usize, num_threads: usize) -> Self {
         let buckets = 1024 * 1024 * mb_size / 64;
         let entries = buckets * 3;
@@ -45,9 +36,9 @@ impl Cache {
             let mut local_len = cache_vec.len();
             let chunksize = buckets / num_threads;
             let mut handles = Vec::new();
-            
+
             for _ in 0..num_threads {
-                let w = PtrWrapper{ p: ptr.clone() };
+                let w = PtrWrapper { p: ptr.clone() };
                 handles.push(std::thread::spawn(move || {
                     let mut inner_ptr = w.p;
                     let val = CacheBucket::default();
@@ -59,19 +50,18 @@ impl Cache {
                 ptr = ptr.offset(chunksize as isize);
                 local_len += chunksize;
             }
-
-            for _ in 0..(buckets - chunksize*num_threads) {
-                std::ptr::write(ptr, CacheBucket::default());
-                ptr = ptr.offset(1);
-                local_len += 1;
-            }
             for handle in handles {
                 match handle.join() {
-                    Ok(_) =>  {},
+                    Ok(_) => {}
                     Err(e) => {
                         panic!(format!("{:?}", e));
                     }
                 }
+            }
+            for _ in 0..(buckets - chunksize * num_threads) {
+                std::ptr::write(ptr, CacheBucket::default());
+                ptr = ptr.offset(1);
+                local_len += 1;
             }
             cache_vec.set_len(local_len);
         }
@@ -108,14 +98,7 @@ impl Cache {
         (full as f64 / counted_entries as f64 * 1000.0) as usize
     }
 
-    pub fn clear(&self) {
-        self.clear_threaded(1);
-    }
-
     pub fn clear_threaded(&self, num_threads: usize) {
-        /*unsafe {
-            *self.cache.get() = vec![CacheBucket::default(); self.buckets];
-        }*/
         unsafe {
             *self.cache.get() = Cache::get_init_cache(self.buckets, num_threads);
         }
@@ -537,7 +520,7 @@ impl CacheEntry {
 }
 
 struct PtrWrapper {
-    pub p: *mut CacheBucket
+    pub p: *mut CacheBucket,
 }
 unsafe impl Send for PtrWrapper {}
 

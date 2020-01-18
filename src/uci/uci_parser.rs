@@ -22,7 +22,8 @@ pub fn parse_loop() {
     let mut us = UCIEngine::standard();
 
     let itcs = Arc::new(InterThreadCommunicationSystem::new());
-    *itcs.cache() = Cache::with_size(itcs.uci_options().hash_size);
+    *itcs.cache() =
+        Cache::with_size_threaded(itcs.uci_options().hash_size, itcs.uci_options().threads);
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
 
