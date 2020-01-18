@@ -430,7 +430,7 @@ mod tests {
                 true,
                 &mut see_buffer,
             ),
-            -400
+            -550
         );
         assert_eq!(
             see(
@@ -444,7 +444,7 @@ mod tests {
                 true,
                 &mut see_buffer,
             ),
-            -200
+            -300
         );
         assert_eq!(
             see(
@@ -472,7 +472,7 @@ mod tests {
                 true,
                 &mut see_buffer,
             ),
-            -90
+            -150
         );
         assert_eq!(
             see(
@@ -500,7 +500,7 @@ mod tests {
                 true,
                 &mut see_buffer,
             ),
-            500
+            650
         );
         assert_eq!(
             see(
@@ -514,7 +514,7 @@ mod tests {
                 true,
                 &mut see_buffer,
             ),
-            -400
+            -450
         );
         assert_eq!(
             see(

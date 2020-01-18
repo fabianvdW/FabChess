@@ -580,7 +580,10 @@ impl GameState {
         };
 
         let (half_moves, full_moves) = if vec.len() > 4 {
-            (vec[4].parse().unwrap(), vec[5].parse().unwrap())
+            (
+                vec[4].parse().expect("unable to parse half moves"),
+                vec[5].parse().expect("unable to parse full moves"),
+            )
         } else {
             (0, 1)
         };

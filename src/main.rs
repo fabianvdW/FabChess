@@ -120,7 +120,6 @@ mod tests {
     use core::search::reserved_memory::ReservedAttackContainer;
     use core::search::reserved_memory::ReservedMoveList;
     use rand::Rng;
-    use std::error::Error;
     use std::fs::File;
     use std::io::BufReader;
 
