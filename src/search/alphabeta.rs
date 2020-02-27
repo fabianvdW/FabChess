@@ -333,7 +333,9 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     thread.history.pop();
 
-    debug_assert!(!move_orderer.has_legal_move || current_max_score > STANDARD_SCORE);
+    debug_assert!(
+        !move_orderer.has_legal_move || current_max_score > STANDARD_SCORE || thread.self_stop
+    );
     //Step 15. Evaluate leafs correctly
     let game_status =
         check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
