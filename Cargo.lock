@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "FabChess"
-version = "1.13.0"
+version = "1.14.0"
 dependencies = [
  "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "hostname 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
