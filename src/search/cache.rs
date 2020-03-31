@@ -32,8 +32,8 @@ impl Cache {
     fn get_init_cache(buckets: usize, num_threads: usize) -> Vec<CacheBucket> {
         let mut cache_vec: Vec<CacheBucket> = Vec::with_capacity(buckets);
         unsafe {
-            let mut ptr = cache_vec.as_mut_ptr().add(cache_vec.len());
-            let mut local_len = cache_vec.len();
+            let mut ptr = cache_vec.as_mut_ptr();
+            let mut local_len = 0;
             let chunksize = buckets / num_threads;
             let mut handles = Vec::new();
 
