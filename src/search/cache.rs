@@ -3,6 +3,7 @@ use crate::board_representation::game_state::{
 };
 use crate::search::{CombinedSearchParameters, SearchInstruction};
 use std::cell::UnsafeCell;
+use std::cmp::min;
 
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
@@ -30,40 +31,38 @@ impl Cache {
     }
 
     fn get_init_cache(buckets: usize, num_threads: usize) -> Vec<CacheBucket> {
+        // The cache may be large so initialize it using multiple threads, if possible.
+        // This is relevant for events like TCEC, where huge memory is allocated (like 64GB),
+        // and a startup time of >1min is unacceptable.
         let mut cache_vec: Vec<CacheBucket> = Vec::with_capacity(buckets);
         unsafe {
+            cache_vec.set_len(buckets);
+            let chunksize = (buckets + num_threads - 1) / num_threads;
+
             let mut ptr = cache_vec.as_mut_ptr();
-            let mut local_len = 0;
-            let chunksize = buckets / num_threads;
             let mut handles = Vec::new();
 
-            for _ in 0..num_threads {
+            for t in 0..num_threads {
+                // The last chunk may be shorter.
+                let this_chunk = chunksize.min(buckets - t * chunksize);
+
+                // circumvent the fact that raw pointers are not Send
                 let w = PtrWrapper { p: ptr.clone() };
                 handles.push(std::thread::spawn(move || {
                     let mut inner_ptr = w.p;
-                    let val = CacheBucket::default();
-                    for _ in 0..chunksize {
-                        std::ptr::write(inner_ptr, val.clone());
+                    for _ in 0..this_chunk {
+                        *inner_ptr = CacheBucket::default();
                         inner_ptr = inner_ptr.offset(1);
                     }
                 }));
                 ptr = ptr.offset(chunksize as isize);
-                local_len += chunksize;
             }
+
             for handle in handles {
-                match handle.join() {
-                    Ok(_) => {}
-                    Err(e) => {
-                        panic!(format!("{:?}", e));
-                    }
-                }
+                handle
+                    .join()
+                    .expect("Could not unwrap handle while initializing the cache!");
             }
-            for _ in 0..(buckets - chunksize * num_threads) {
-                std::ptr::write(ptr, CacheBucket::default());
-                ptr = ptr.offset(1);
-                local_len += 1;
-            }
-            cache_vec.set_len(local_len);
         }
         return cache_vec;
     }
@@ -519,10 +518,10 @@ impl CacheEntry {
     }
 }
 
-struct PtrWrapper {
-    pub p: *mut CacheBucket,
+struct PtrWrapper<T> {
+    pub p: *mut T,
 }
-unsafe impl Send for PtrWrapper {}
+unsafe impl<T> Send for PtrWrapper<T> {}
 
 #[cfg(test)]
 mod tests {
