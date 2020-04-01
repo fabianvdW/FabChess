@@ -44,7 +44,7 @@ impl Cache {
 
             for t in 0..num_threads {
                 // The last chunk may be shorter.
-                let this_chunk = min(chunksize, buckets - t * chunksize);
+                let this_chunk = chunksize.min(buckets - t * chunksize);
 
                 // circumvent the fact that raw pointers are not Send
                 let w = PtrWrapper { p: ptr.clone() };
@@ -59,7 +59,9 @@ impl Cache {
             }
 
             for handle in handles {
-                handle.join().unwrap();
+                handle
+                    .join()
+                    .expect("Could not unwrap handle while initializing the cache!");
             }
         }
         return cache_vec;
