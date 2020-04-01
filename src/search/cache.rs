@@ -3,7 +3,6 @@ use crate::board_representation::game_state::{
 };
 use crate::search::{CombinedSearchParameters, SearchInstruction};
 use std::cell::UnsafeCell;
-use std::cmp::min;
 
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB

@@ -153,7 +153,7 @@ pub fn eval_game_state(
                 psqt(true, &g.pieces, &mut result),
                 psqt(false, &g.pieces, &mut result),
             );
-            (psqt_w - psqt_b)
+            psqt_w - psqt_b
         } else {
             g.psqt
         };

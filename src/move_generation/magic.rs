@@ -212,8 +212,8 @@ pub fn init_magics_rooks() -> Vec<Magic> {
 }
 
 pub fn occupancy_mask_rooks(square: usize) -> u64 {
-    (((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7])))
-        & NOT_SQUARES[square])
+    ((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7])))
+        & NOT_SQUARES[square]
 }
 
 pub fn rook_attacks_slow(square: usize, blocks: u64) -> u64 {
