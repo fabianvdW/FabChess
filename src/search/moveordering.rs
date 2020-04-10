@@ -67,7 +67,12 @@ impl MoveOrderer {
         match self.stages[self.stage] {
             MoveOrderingStage::PVMove => {
                 self.stage += 1;
-                if pv_table_move.is_some() {
+                if pv_table_move.is_some()
+                    && p.game_state.is_valid_tt_move(
+                        &pv_table_move.unwrap(),
+                        &thread.attack_container.attack_containers[p.current_depth],
+                    )
+                {
                     return Some((pv_table_move.unwrap(), 0.));
                 } else {
                     return self.next(thread, p, pv_table_move, tt_move);
@@ -75,7 +80,13 @@ impl MoveOrderer {
             }
             MoveOrderingStage::TTMove => {
                 self.stage += 1;
-                if tt_move.is_some() && tt_move != pv_table_move {
+                if tt_move.is_some()
+                    && tt_move != pv_table_move
+                    && p.game_state.is_valid_tt_move(
+                        &tt_move.unwrap(),
+                        &thread.attack_container.attack_containers[p.current_depth],
+                    )
+                {
                     return Some((tt_move.unwrap(), 0.));
                 } else {
                     return self.next(thread, p, pv_table_move, tt_move);
