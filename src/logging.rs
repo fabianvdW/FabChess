@@ -18,7 +18,7 @@ pub fn init_log() -> File {
 
 pub fn log(s: &str) {
     if LOG_TO_STDOUT {
-        print!("{}", s);
+        println!("{}", s);
     } else {
         let x = LOG.lock().unwrap().write(s.as_bytes());
         if let Err(why) = x {
