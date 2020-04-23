@@ -1,5 +1,3 @@
-extern crate core;
-
 use core_sdk::board_representation::game_state::{
     GameMove, GameMoveType, GameResult, GameState, WHITE,
 };
@@ -14,9 +12,10 @@ use core_sdk::search::reserved_memory::{ReservedAttackContainer, ReservedMoveLis
 use core_sdk::search::SearchInstruction;
 use core_sdk::search::{check_end_condition, check_for_draw, leaf_score};
 use core_sdk::search::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
-use crate::loading::load_positions;
-use crate::loading::{save_positions, FileFormatSupported, LabelledGameState, Statistics};
 use std::fs;
+use tuning::loading::{
+    load_positions, save_positions, FileFormatSupported, LabelledGameState, Statistics,
+};
 
 //const FEN_DIR: &str = "D:/FenCollection/Real";
 const FEN_DIR: &str = "D:/FenCollection/Lichess";

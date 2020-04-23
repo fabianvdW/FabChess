@@ -11,12 +11,12 @@ use crate::board_representation::game_state::{
 use crate::board_representation::game_state_attack_container::{
     GameStateAttackContainer, MGSA_BISHOP, MGSA_KNIGHT, MGSA_QUEEN, MGSA_ROOKS,
 };
+use crate::evaluation::trace::Trace;
 #[cfg(feature = "display-eval")]
 use crate::logging::log;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
 #[cfg(feature = "texel-tuning")]
-use crate::tuning::trace::Trace;
 use params::*;
 use psqt_evaluation::psqt;
 use psqt_evaluation::BLACK_INDEX;

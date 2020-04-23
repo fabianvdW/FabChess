@@ -229,9 +229,9 @@ mod tests {
         let mut attack_container = GameStateAttackContainer::default();
         let mut _eval = core_sdk::evaluation::EvaluationResult {
             final_eval: 0,
-            #[cfg(feature = "texel-tuning")]
             trace: core_sdk::evaluation::trace::Trace::default(),
         };
+
         for _i in 0..100_000 {
             let mut g = GameState::standard();
             let w_psqt = psqt(true, &g.pieces, &mut _eval);

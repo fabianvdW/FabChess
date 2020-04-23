@@ -9,3 +9,6 @@ members = [
     "benchmarking",
     "tests"
 ]
+[profile.release]
+opt-level = 3
+lto = true

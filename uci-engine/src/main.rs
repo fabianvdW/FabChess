@@ -1,7 +1,8 @@
 use core_sdk::logging::log;
 use std::time::Instant;
 
-pub mod uci;
+pub mod uci_engine;
+pub mod uci_parser;
 
 fn main() {
     let now = Instant::now();
@@ -25,6 +26,6 @@ fn main() {
                 .unwrap_or(13),
         );
     } else {
-        uci::uci_parser::parse_loop();
+        uci_parser::parse_loop();
     }
 }

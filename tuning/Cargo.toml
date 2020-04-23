@@ -5,7 +5,18 @@ authors = ["fabianvdW <fabianvonderwarth@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 rand = "0.7.3"
-core-sdk = {path = "../core-sdk"}
+[dependencies.core-sdk]
+path = "../core-sdk"
+default-features = false
+features = ["texel-tuning"]
+[lib]
+name = "tuning"
+path = "src/main.rs"
+[[bin]]
+name = "tuning"
+path = "src/main.rs"
+[[bin]]
+name = "preparation"
+path = "src/preparation.rs"

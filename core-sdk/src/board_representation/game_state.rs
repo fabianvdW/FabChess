@@ -599,7 +599,7 @@ impl GameState {
         let mut _eval = crate::evaluation::EvaluationResult {
             final_eval: 0,
             #[cfg(feature = "texel-tuning")]
-            trace: crate::tuning::trace::Trace::default(),
+            trace: crate::evaluation::trace::Trace::default(),
         };
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces_arr, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces_arr, &mut _eval);
@@ -734,7 +734,7 @@ impl GameState {
         let mut _eval = crate::evaluation::EvaluationResult {
             final_eval: 0,
             #[cfg(feature = "texel-tuning")]
-            trace: crate::tuning::trace::Trace::default(),
+            trace: crate::evaluation::trace::Trace::default(),
         };
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces, &mut _eval);

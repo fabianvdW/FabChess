@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "uci-engine"
-version = "0.1.0"
+version = "1.14.1"
 dependencies = [
  "core-sdk 0.1.0",
 ]
