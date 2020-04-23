@@ -1,0 +1,17 @@
+[package]
+name = "referee"
+version = "0.1.0"
+authors = ["fabianvdW <fabianvonderwarth@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+core-sdk = {path="../core-sdk"}
+extended-sdk = {path = "../extended-sdk"}
+rand = "0.7.3"
+tokio = "0.1.19"
+tokio-process="0.2"
+tokio-io="0.1.12"
+serde={version = "1.0.94", features= ["derive"]}
+serde_json = "1.0"
