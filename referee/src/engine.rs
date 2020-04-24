@@ -2,13 +2,12 @@ use crate::async_communication::{
     expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
 };
 use core_sdk::board_representation::game_state::*;
-use core_sdk::logging::Logger;
 use core_sdk::move_generation::movegen::MoveList;
 use core_sdk::search::timecontrol::TimeControl;
+use log::error;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 use tokio_process::{Child, ChildStderr, ChildStdin, ChildStdout, CommandExt};
 
 pub enum EngineReaction<T> {
@@ -132,7 +131,7 @@ impl Engine {
         };
         (
             format!(
-                "{}\t\t{:.2}   +/- {:.2}   +{}   ={}   -{}  sc {:.1}%",
+                "{:25}{:.2}   +/- {:.2}   +{}   ={}   -{}  sc {:.1}%",
                 self.name,
                 elo_gain,
                 elo_bounds,
@@ -143,7 +142,7 @@ impl Engine {
                     / (self.wins + self.draws + self.losses) as f64,
             ),
             format!(
-                "{}\t\tdisq {} dep {:.2} nps {:.0} time {:.0}",
+                "{:25}disq {} dep {:.2} nps {:.0} time {:.0}",
                 self.name,
                 self.disqs,
                 self.stats.avg_depth,
@@ -183,7 +182,11 @@ impl Engine {
             "id name".to_owned(),
         );
         if output.3.contains("id name") {
-            let name = output.3.replace("id name ", "");
+            let name = output
+                .3
+                .rsplit("id name")
+                .next()
+                .expect(&format!("Couldn't catch the name of engine {}", res.path));
             res.name = name[..name.len() - 1].to_owned();
         } else {
             panic!("Couldn't catch the name of engine {}", res.path);
@@ -198,28 +201,18 @@ impl Engine {
         mut stdin: ChildStdin,
         mut stdout: ChildStdout,
         mut stderr: ChildStderr,
-        mut error_log: Arc<Logger>,
         runtime: &mut tokio::runtime::Runtime,
         task_id: usize,
         movelist: &MoveList,
-    ) -> EngineReaction<(
-        GameMove,
-        ChildStdin,
-        ChildStdout,
-        ChildStderr,
-        Arc<Logger>,
-        EngineStatus,
-    )> {
+    ) -> EngineReaction<(GameMove, ChildStdin, ChildStdout, ChildStderr, EngineStatus)> {
         stdin = print_command(runtime, stdin, position_description);
-        let reaction =
-            self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id, error_log);
+        let reaction = self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id);
         match reaction {
             EngineReaction::DisqualifyEngine => return EngineReaction::DisqualifyEngine,
             EngineReaction::ContinueGame(temp) => {
                 stdin = temp.0;
                 stdout = temp.1;
                 stderr = temp.2;
-                error_log = temp.3;
             }
         }
         stdin = print_command(runtime, stdin, go_string);
@@ -231,21 +224,18 @@ impl Engine {
             "info".to_owned(),
         );
         if output.0.is_none() {
-            error_log.log(
-                &format!(
-                    "Engine {} didn't send bestmove in time in game {}! It had {}ms left!\n",
-                    self.name,
-                    task_id,
-                    self.time_control.time_left(),
-                ),
-                true,
+            error!(
+                "Engine {} didn't send bestmove in time in game {}! It had {}ms left!\n",
+                self.name,
+                task_id,
+                self.time_control.time_left(),
             );
-            write_stderr_to_log(error_log, stderr, runtime);
+            write_stderr_to_log(stderr, runtime);
             return EngineReaction::DisqualifyEngine;
         }
         stdout = output.1.unwrap();
         if output.2 as u64 > self.time_control.time_left() {
-            error_log.log(&format!("Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",self.time_control.time_left(),self.name ,task_id), true);
+            error!("Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",self.time_control.time_left(),self.name ,task_id);
             return EngineReaction::DisqualifyEngine;
         }
         self.time_control.update(output.2 as u64, None);
@@ -257,23 +247,20 @@ impl Engine {
             let mv = GameMove::string_to_move(split_line[1]);
             let found_move = find_move(mv.0, mv.1, mv.2, &movelist);
             if found_move.is_none() {
-                error_log.log(
-                    &format!(
-                        "Engine {} sent illegal move ({}) in game {}\n",
-                        self.name, line, task_id
-                    ),
-                    true,
+                error!(
+                    "Engine {} sent illegal move ({}) in game {}\n",
+                    self.name, line, task_id
                 );
-                write_stderr_to_log(error_log, stderr, runtime);
+                write_stderr_to_log(stderr, runtime);
                 return EngineReaction::DisqualifyEngine;
             }
             found_move.unwrap()
         } else {
-            error_log.log(&format!(
+            error!(
                 "Bestmove wasn't first argument after bestmove keyword! Disqualifiying engine {} in game {}\n",
                 self.name,task_id
-            ), true);
-            write_stderr_to_log(error_log, stderr, runtime);
+            );
+            write_stderr_to_log(stderr, runtime);
             return EngineReaction::DisqualifyEngine;
         };
 
@@ -304,7 +291,7 @@ impl Engine {
             self.stats.avg_nps += nps as f64;
         }
 
-        EngineReaction::ContinueGame((game_move, stdin, stdout, stderr, error_log, status))
+        EngineReaction::ContinueGame((game_move, stdin, stdout, stderr, status))
     }
 
     pub fn valid_isready_reaction(
@@ -314,20 +301,16 @@ impl Engine {
         stderr: ChildStderr,
         runtime: &mut tokio::runtime::Runtime,
         task_id: usize,
-        error_log: Arc<Logger>,
-    ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr, Arc<Logger>)> {
+    ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr)> {
         let stdin = print_command(runtime, stdin, "isready\n".to_owned());
         let output = expect_output("readyok".to_owned(), 10000, stdout, runtime);
         if output.0.is_none() {
-            error_log.log(
-                &format!("Engine {} didn't readyok in game {}!\n", self.name, task_id),
-                true,
-            );
-            write_stderr_to_log(error_log, stderr, runtime);
+            error!("Engine {} didn't readyok in game {}!\n", self.name, task_id);
+            write_stderr_to_log(stderr, runtime);
             return EngineReaction::DisqualifyEngine;
         }
         let stdout = output.1.unwrap();
-        EngineReaction::ContinueGame((stdin, stdout, stderr, error_log))
+        EngineReaction::ContinueGame((stdin, stdout, stderr))
     }
     pub fn valid_uci_isready_reaction(
         &self,
@@ -336,16 +319,12 @@ impl Engine {
         stderr: ChildStderr,
         runtime: &mut tokio::runtime::Runtime,
         task_id: usize,
-        error_log: Arc<Logger>,
-    ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr, Arc<Logger>)> {
+    ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr)> {
         let mut stdin = print_command(runtime, stdin, "uci\n".to_owned());
         let output = expect_output("uciok".to_owned(), 10000, stdout, runtime);
         if output.0.is_none() {
-            error_log.log(
-                &format!("Engine {} didn't uciok in game {}!\n", self.name, task_id),
-                true,
-            );
-            write_stderr_to_log(error_log, stderr, runtime);
+            error!("Engine {} didn't uciok in game {}!\n", self.name, task_id);
+            write_stderr_to_log(stderr, runtime);
             return EngineReaction::DisqualifyEngine;
         }
         let stdout = output.1.unwrap();
@@ -356,7 +335,7 @@ impl Engine {
                 format!("setoption name {} value {}\n", pair.0, pair.1),
             );
         }
-        self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id, error_log)
+        self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id)
     }
 
     pub fn get_handles(&self) -> (Child, ChildStdin, ChildStdout, ChildStderr) {

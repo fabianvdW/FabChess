@@ -15,6 +15,7 @@ use std::io::Write;
 pub mod async_communication;
 pub mod engine;
 pub mod lct2;
+pub mod logging;
 pub mod openings;
 pub mod queue;
 pub mod selfplay;

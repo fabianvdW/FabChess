@@ -1,5 +1,5 @@
 use crate::queue::ThreadSafeString;
-use core_sdk::logging::Logger;
+use log::error;
 use std::io::BufReader;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -83,13 +83,12 @@ pub fn expect_output_and_listen_for_info(
 }
 
 pub fn write_stderr_to_log(
-    error_log: Arc<Logger>,
     stderr: tokio_process::ChildStderr,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    error_log.log("StdERR of child: \n", true);
+    error!("StdERR of child: \n");
     let line_fut = tokio::io::lines(BufReader::new(stderr))
-        .inspect(move |s| error_log.log(&format!("{}\n", s), true))
+        .inspect(move |s| error!("{}\n", s))
         .collect()
         .timeout(Duration::from_millis(100));
     let result = runtime.block_on(line_fut);

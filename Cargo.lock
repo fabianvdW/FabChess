@@ -377,6 +377,9 @@ dependencies = [
 [[package]]
 name = "playground"
 version = "0.1.0"
+dependencies = [
+ "core-sdk 0.1.0",
+]
 
 [[package]]
 name = "ppv-lite86"
@@ -445,8 +448,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "referee"
 version = "0.1.0"
 dependencies = [
+ "chrono 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "core-sdk 0.1.0",
  "extended-sdk 0.1.0",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.106 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.51 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,11 +1,3 @@
-use crate::pgn::pgn_reader::*;
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
-use core_sdk::evaluation;
-use core_sdk::logging::log;
-use core_sdk::move_generation::movegen;
-use std::fs::File;
-use std::io::BufReader;
-
 pub const STD_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const KING_BASE_PATH: [&str; 15] = [
     "./KingBase/KingBase2019-A00-A39.pgn",
@@ -43,38 +35,4 @@ pub fn to_string_board(board: u64) -> String {
         res_str.push_str("\n+---+---+---+---+---+---+---+---+\n");
     }
     res_str
-}
-
-pub fn parse_pgn_find_static_eval_mistakes() {
-    for path in &KING_BASE_PATH {
-        let res = File::open(path);
-        let file = match res {
-            Err(why) => panic!("{}", why),
-            Ok(file) => file,
-        };
-        let reader = BufReader::new(file);
-        let parser = GameParser {
-            pgn_parser: PGNParser { reader },
-            is_opening: false,
-            opening_load_untilply: 0usize,
-            move_list: movegen::MoveList::default(),
-            attack_container: GameStateAttackContainer::default(),
-        };
-        for _game in parser.into_iter() {
-            let last_game_state = &_game.1[_game.1.len() - 1];
-            let res = _game.2;
-            let eval = evaluation::eval_game_state_from_null(&last_game_state).final_eval;
-            if res == 1 {
-                if eval < 0 {
-                    log(&format!("{} (1-0)\n", &last_game_state.to_fen()));
-                }
-            } else if res == 0 {
-                if eval.abs() > 100 {
-                    log(&format!("{} (1/2-1/2)\n", &last_game_state.to_fen()));
-                }
-            } else if res == -1 && eval > 0 {
-                log(&format!("{} (0-1)\n", &last_game_state.to_fen()));
-            }
-        }
-    }
 }

@@ -1,4 +1,3 @@
-use core_sdk::logging::log;
 use std::time::Instant;
 
 pub mod uci_engine;
@@ -10,11 +9,10 @@ fn main() {
     core_sdk::move_generation::magic::init_magics();
     core_sdk::board_representation::zobrist_hashing::init_at_program_start();
     core_sdk::search::init_constants();
-    log("Should have initialized everything!");
 
     let new_now = Instant::now();
-    log(&format!(
-        "Initialization Time: {}ms\n",
+    println!("{}", format!(
+        "info string Initialization Time: {}ms\n",
         new_now.duration_since(now).as_secs() * 1000
             + u64::from(new_now.duration_since(now).subsec_millis())
     ));

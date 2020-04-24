@@ -2,14 +2,12 @@ use crate::async_communication::print_command;
 use crate::engine::{EndConditionInformation, EngineReaction, EngineStatus, PlayTask, TaskResult};
 use core_sdk::board_representation::game_state::*;
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
-use core_sdk::logging::Logger;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
+pub fn play_game(mut task: PlayTask) -> TaskResult {
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
     //-------------------------------------------------------------
@@ -37,14 +35,9 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
 
     //Check uci and isready
     let (_e1_process, mut e1_input, mut e1_output, mut e1_err) = task.engine1.get_handles();
-    let reaction = task.engine1.valid_uci_isready_reaction(
-        e1_input,
-        e1_output,
-        e1_err,
-        &mut runtime,
-        task.id,
-        error_log,
-    );
+    let reaction =
+        task.engine1
+            .valid_uci_isready_reaction(e1_input, e1_output, e1_err, &mut runtime, task.id);
     match reaction {
         EngineReaction::DisqualifyEngine => {
             return TaskResult::disq(task, true, move_history, status)
@@ -53,19 +46,13 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
             e1_input = temp.0;
             e1_output = temp.1;
             e1_err = temp.2;
-            error_log = temp.3;
         }
     }
 
     let (_e2_process, mut e2_input, mut e2_output, mut e2_err) = task.engine2.get_handles();
-    let reaction = task.engine2.valid_uci_isready_reaction(
-        e2_input,
-        e2_output,
-        e2_err,
-        &mut runtime,
-        task.id,
-        error_log,
-    );
+    let reaction =
+        task.engine2
+            .valid_uci_isready_reaction(e2_input, e2_output, e2_err, &mut runtime, task.id);
     match reaction {
         EngineReaction::DisqualifyEngine => {
             return TaskResult::disq(task, false, move_history, status)
@@ -74,7 +61,6 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
             e2_input = temp.0;
             e2_output = temp.1;
             e2_err = temp.2;
-            error_log = temp.3;
         }
     }
     //-------------------------------------------------------------
@@ -122,7 +108,6 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
                 e1_input,
                 e1_output,
                 e1_err,
-                error_log,
                 &mut runtime,
                 task.id,
                 &movelist,
@@ -137,8 +122,7 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
                     e1_input = temp.1;
                     e1_output = temp.2;
                     e1_err = temp.3;
-                    error_log = temp.4;
-                    engine_status = temp.5;
+                    engine_status = temp.4;
                 }
             }
             if let EngineStatus::ProclaimsNothing = &engine_status {
@@ -171,7 +155,6 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
                 e2_input,
                 e2_output,
                 e2_err,
-                error_log,
                 &mut runtime,
                 task.id,
                 &movelist,
@@ -186,8 +169,7 @@ pub fn play_game(mut task: PlayTask, mut error_log: Arc<Logger>) -> TaskResult {
                     e2_input = temp.1;
                     e2_output = temp.2;
                     e2_err = temp.3;
-                    error_log = temp.4;
-                    engine_status = temp.5;
+                    engine_status = temp.4;
                 }
             }
             if let EngineStatus::ProclaimsNothing = &engine_status {

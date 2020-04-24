@@ -1,4 +1,3 @@
-use crate::logging::log;
 use rand::prelude::*;
 use std::u64;
 
@@ -10,8 +9,7 @@ lazy_static! {
     pub static ref ZOBRIST_KEYS: Zobrist = init_zobrist();
 }
 pub fn init_at_program_start() {
-    log(&format!("{} ", ZOBRIST_KEYS.side_to_move));
-    log("Initialized Zobrist Keys!");
+    ZOBRIST_KEYS.w_pawns.len();
 }
 
 pub fn rand_array_64(rng: &mut StdRng) -> [u64; 64] {

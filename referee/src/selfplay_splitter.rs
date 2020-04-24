@@ -1,11 +1,11 @@
 use crate::engine::{EndConditionInformation, Engine};
 use crate::engine::{PlayTask, TaskResult};
+use crate::logging::FileLogger;
 use crate::openings::{load_db_until, load_openings_into_queue};
 use crate::queue::ThreadSafeQueue;
 use crate::selfplay::play_game;
 use crate::Config;
 use core_sdk::board_representation::game_state::*;
-use core_sdk::logging::Logger;
 use core_sdk::search::timecontrol::TimeControl;
 use extended_sdk::pgn::pgn_writer::*;
 use std::cmp::Ordering;
@@ -58,17 +58,18 @@ pub fn start_self_play(config: Config) {
 
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
-    let error_log = Arc::new(Logger::new("referee_error_log.txt", false));
-    let fen_log = Logger::new("pgns.pgn", true);
+    FileLogger::new("referee_error_log.txt", false)
+        .init()
+        .expect("Could not create File Logger");
+    let pgn_log = FileLogger::new("pgns.pgn", true);
 
     //Start all childs
     let mut childs = Vec::with_capacity(config.processors);
     for _ in 0..config.processors {
         let queue_clone = queue.clone();
         let res_clone = result_queue.clone();
-        let log_clone = error_log.clone();
         childs.push(thread::spawn(move || {
-            start_self_play_thread(queue_clone, res_clone, log_clone);
+            start_self_play_thread(queue_clone, res_clone);
         }));
     }
 
@@ -150,7 +151,7 @@ pub fn start_self_play(config: Config) {
                 } else {
                     result.task.engine1.name.clone()
                 });
-                fen_log.log(&get_pgn_string(&metadata, moves, opening_moves), false);
+                pgn_log.dump_msg(&get_pgn_string(&metadata, moves, opening_moves));
             }
         }
     }
@@ -163,11 +164,10 @@ pub fn start_self_play(config: Config) {
 pub fn start_self_play_thread(
     queue: Arc<ThreadSafeQueue<PlayTask>>,
     result_queue: Arc<ThreadSafeQueue<TaskResult>>,
-    error_log: Arc<Logger>,
 ) {
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
-        let res = play_game(task, error_log.clone());
+        let res = play_game(task);
         if res.endcondition.is_none() {
             thread::sleep(Duration::from_millis(150));
         }

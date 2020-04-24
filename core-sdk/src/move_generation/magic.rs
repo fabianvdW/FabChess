@@ -1,5 +1,4 @@
 use super::super::bitboards::{FILES, NOT_SQUARES, RANKS};
-use crate::logging::log;
 use rand::Rng;
 
 static ROOK_BITS: [usize; 64] = [
@@ -207,7 +206,6 @@ pub fn init_magics_rooks() -> Vec<Magic> {
             lookup_table,
         })
     }
-    log("Finished Initializing Rook Attacks!");
     res
 }
 
@@ -278,7 +276,6 @@ pub fn init_magics_bishops() -> Vec<Magic> {
             lookup_table,
         })
     }
-    log("Finished Initializing Bishop Attacks!");
     res
 }
 

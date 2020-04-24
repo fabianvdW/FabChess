@@ -5,7 +5,6 @@ extern crate rand;
 pub mod bitboards;
 pub mod board_representation;
 pub mod evaluation;
-pub mod logging;
 pub mod move_generation;
 pub mod search;
 

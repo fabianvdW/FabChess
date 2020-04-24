@@ -1,4 +1,3 @@
-use crate::logging::log;
 use crate::move_generation::movegen::{bishop_attack, rook_attack};
 
 lazy_static! {
@@ -219,7 +218,6 @@ pub fn initialize_files() -> [u64; 8] {
             res[file] = res[file - 1] << 1;
         }
     }
-    log("Finished Initializing Files!");
     res
 }
 
@@ -228,7 +226,6 @@ pub fn initialize_not_files() -> [u64; 8] {
     for file in 0..8 {
         res[file] = !FILES[file];
     }
-    log("Finished Initializing NOT Files!");
     res
 }
 
@@ -248,7 +245,6 @@ pub fn initialize_ranks() -> [u64; 8] {
             res[rank] = res[rank - 1] << 8;
         }
     }
-    log("Finished Initializing Ranks!");
     res
 }
 
@@ -257,7 +253,6 @@ pub fn initialize_squares() -> [u64; 64] {
     for (squares, item) in res.iter_mut().enumerate() {
         *item = 1u64 << squares;
     }
-    log("Finished Initializing Squares!");
     res
 }
 
@@ -266,7 +261,6 @@ pub fn initialize_not_squares() -> [u64; 64] {
     for (squares, item) in res.iter_mut().enumerate() {
         *item = !(1u64 << squares);
     }
-    log("Finished Initializing NOT_Squares!");
     res
 }
 
@@ -356,7 +350,6 @@ pub fn init_king_attacks() -> [u64; 64] {
     for (square, item) in res.iter_mut().enumerate() {
         *item = king_attack(1u64 << square);
     }
-    log("Finished Initializing King Attacks!");
     res
 }
 
@@ -378,7 +371,6 @@ pub fn init_knight_attacks() -> [u64; 64] {
     for (square, item) in res.iter_mut().enumerate() {
         *item = knight_attack(1u64 << square);
     }
-    log("Finished Initializing Knight Attacks!");
     res
 }
 
@@ -389,7 +381,6 @@ pub fn init_files_less_than() -> [u64; 8] {
             *item |= FILES[files_less_than];
         }
     }
-    log("Finished Initializing FilesLessThan!");
     res
 }
 
@@ -400,7 +391,6 @@ pub fn init_ranks_less_than() -> [u64; 8] {
             *item |= RANKS[ranks_less_than];
         }
     }
-    log("Finished Initializing RanksLessThan!");
     res
 }
 
@@ -409,7 +399,6 @@ pub fn init_files_greater_than() -> [u64; 8] {
     for files in 0..8 {
         res[files] = !FILES_LESS_THAN[files] & !FILES[files];
     }
-    log("Finished Initializing FilesGreaterThan!");
     res
 }
 
@@ -418,7 +407,6 @@ pub fn init_ranks_greater_than() -> [u64; 8] {
     for ranks in 0..8 {
         res[ranks] = !RANKS_LESS_THAN[ranks] & !RANKS[ranks];
     }
-    log("Finished Initializing FilesGreaterThan!");
     res
 }
 
@@ -439,7 +427,6 @@ pub fn init_diagonally_adjacent() -> [u64; 64] {
             | south_east_one(board)
             | south_west_one(board);
     }
-    log("Finished Initializing Diagonally Adjacent Board!");
     res
 }
 
@@ -454,7 +441,6 @@ pub fn init_shielding_pawns_white() -> [u64; 64] {
         res[8 * rank] = res[8 * rank + 1];
         res[8 * rank + 7] = res[8 * rank + 6];
     }
-    log("Finished Initializing Shielding PawnsWhite Board!");
     res
 }
 
@@ -469,6 +455,5 @@ pub fn init_shielding_pawns_black() -> [u64; 64] {
         res[8 * rank] = res[8 * rank + 1];
         res[8 * rank + 7] = res[8 * rank + 6];
     }
-    log("Finished Initializing Shielding PawnsBlack Board!");
     res
 }
