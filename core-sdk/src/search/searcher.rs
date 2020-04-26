@@ -56,18 +56,8 @@ pub struct InterThreadCommunicationSystem {
     rx_f: Receiver<()>,
     tx_f: Sender<()>,
 }
-
-impl InterThreadCommunicationSystem {
-    pub fn cache(&self) -> &mut Cache {
-        unsafe { self.cache.get().as_mut().unwrap() }
-    }
-    pub fn uci_options(&self) -> &mut UCIOptions {
-        unsafe { self.uci_options.get().as_mut().unwrap() }
-    }
-    pub fn nodes_searched(&self) -> &mut Vec<AtomicU64> {
-        unsafe { self.nodes_searched.get().as_mut().unwrap() }
-    }
-    pub fn new() -> Self {
+impl Default for InterThreadCommunicationSystem {
+    fn default() -> Self {
         let (tx_f, rx_f) = channel();
         InterThreadCommunicationSystem {
             uci_options: UnsafeCell::new(UCIOptions::default()),
@@ -86,6 +76,17 @@ impl InterThreadCommunicationSystem {
             rx_f,
             tx_f,
         }
+    }
+}
+impl InterThreadCommunicationSystem {
+    pub fn cache(&self) -> &mut Cache {
+        unsafe { self.cache.get().as_mut().unwrap() }
+    }
+    pub fn uci_options(&self) -> &mut UCIOptions {
+        unsafe { self.uci_options.get().as_mut().unwrap() }
+    }
+    pub fn nodes_searched(&self) -> &mut Vec<AtomicU64> {
+        unsafe { self.nodes_searched.get().as_mut().unwrap() }
     }
 
     pub fn update_thread_count(
@@ -284,9 +285,9 @@ impl Thread {
         for mv in self.current_pv.pv.pv.iter() {
             if let Some(mv) = mv {
                 if next_state.is_none() {
-                    next_state = Some(make_move(root, mv));
+                    next_state = Some(make_move(root, *mv));
                 } else {
-                    next_state = Some(make_move(next_state.as_ref().unwrap(), mv));
+                    next_state = Some(make_move(next_state.as_ref().unwrap(), *mv));
                 }
                 self.pv_applicable.push(next_state.as_ref().unwrap().hash);
             } else {
@@ -382,8 +383,8 @@ impl Thread {
                     self.id, curr_depth
                 );
             }
-            let mut delta = if previous_score.is_some() {
-                previous_score.unwrap().abs() / 50
+            let mut delta = if let Some(ps) = previous_score {
+                ps.abs() / 50
             } else {
                 0
             } + 14;
@@ -489,11 +490,11 @@ pub fn search_move(
         &game_state,
         false,
         &mut movelist,
-        &mut GameStateAttackContainer::from_state(&game_state),
+        &GameStateAttackContainer::from_state(&game_state),
     );
 
     //Step2. Check legal moves
-    if movelist.move_list.len() == 0 {
+    if movelist.move_list.is_empty() {
         panic!("The root position given does not have any legal move!");
     } else if movelist.move_list.len() == 1 {
         println!("bestmove {:?}", movelist.move_list[0].0);

@@ -21,7 +21,7 @@ pub fn parse_loop() {
 
     let mut us = UCIEngine::standard();
 
-    let itcs = Arc::new(InterThreadCommunicationSystem::new());
+    let itcs = Arc::new(InterThreadCommunicationSystem::default());
     *itcs.cache() =
         Cache::with_size_threaded(itcs.uci_options().hash_size, itcs.uci_options().threads);
     let mut movelist = movegen::MoveList::default();
@@ -232,7 +232,7 @@ pub fn scout_and_make_draftmove(
                     }
                 }
             }
-            return make_move(&game_state, &mv);
+            return make_move(&game_state, mv);
         }
     }
     panic!("Invalid move; not found in list!");

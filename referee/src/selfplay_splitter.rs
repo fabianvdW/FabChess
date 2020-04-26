@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tokio::time::delay_for;
 
 pub async fn start_self_play(config: Config) {
     FileLogger::new("referee_error_log.txt", false)
@@ -34,7 +35,7 @@ pub async fn start_self_play(config: Config) {
     );
     let mut engines: Vec<Engine> = Vec::new();
     for (index, path) in config.enemies_paths.into_iter().enumerate() {
-        engines.push(Engine::from_path(&path.0, index, tcp2.clone(), path.1).await);
+        engines.push(Engine::from_path(&path.0, index, tcp2, path.1).await);
     }
     let mut db: Vec<GameState> = Vec::with_capacity(100_000);
     let mut db_sequences: Vec<Vec<GameMove>> = Vec::with_capacity(100_000);
@@ -77,7 +78,7 @@ pub async fn start_self_play(config: Config) {
     //Collect results
     let mut results_collected = 0;
     while results_collected < games {
-        thread::sleep(Duration::from_millis(50));
+        delay_for(Duration::from_millis(50)).await;
         if let Some(mut result) = result_queue.pop() {
             results_collected += 1;
             println!("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");

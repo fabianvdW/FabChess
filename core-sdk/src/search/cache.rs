@@ -7,7 +7,7 @@ use std::cell::UnsafeCell;
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
-pub const MAX_HASH_SIZE: usize = 131072; //IN MB
+pub const MAX_HASH_SIZE: usize = 131_072; //IN MB
 
 pub struct Cache {
     pub entries: usize,
@@ -46,7 +46,7 @@ impl Cache {
                 let this_chunk = chunksize.min(buckets - t * chunksize);
 
                 // circumvent the fact that raw pointers are not Send
-                let w = PtrWrapper { p: ptr.clone() };
+                let w = PtrWrapper { p: ptr };
                 handles.push(std::thread::spawn(move || {
                     let mut inner_ptr = w.p;
                     for _ in 0..this_chunk {
@@ -54,7 +54,7 @@ impl Cache {
                         inner_ptr = inner_ptr.offset(1);
                     }
                 }));
-                ptr = ptr.offset(chunksize as isize);
+                ptr = ptr.add(chunksize);
             }
 
             for handle in handles {
@@ -63,7 +63,7 @@ impl Cache {
                     .expect("Could not unwrap handle while initializing the cache!");
             }
         }
-        return cache_vec;
+        cache_vec
     }
 
     pub fn fill_status(&self) -> usize {
@@ -75,16 +75,16 @@ impl Cache {
         let mut full = 0;
 
         let mut index = 0;
-        while index < unsafe { (&mut *self.cache.get()).len() } && counted_entries < 500 {
-            let bucket = unsafe { (&mut *self.cache.get()).get(index).unwrap() };
+        while index < unsafe { (&*self.cache.get()).len() } && counted_entries < 500 {
+            let bucket = unsafe { (&*self.cache.get()).get(index).unwrap() };
             index += 1;
             full += bucket.fill_status();
             counted_entries += 3;
         }
         //Count upper 500 entries
-        let mut index = unsafe { (&mut *self.cache.get()).len() - 1 };
+        let mut index = unsafe { (&*self.cache.get()).len() - 1 };
         while counted_entries < 1000 {
-            let bucket = unsafe { (&mut *self.cache.get()).get(index).unwrap() };
+            let bucket = unsafe { (&*self.cache.get()).get(index).unwrap() };
             debug_assert!(index > 0);
             full += bucket.fill_status();
             counted_entries += 3;
@@ -111,17 +111,13 @@ impl Cache {
     }
 
     pub fn get(&self, hash: u64) -> CacheBucket {
-        unsafe {
-            (&mut *self.cache.get())
-                .get_unchecked(hash as usize % self.buckets)
-                .clone()
-        }
+        unsafe { *(&*self.cache.get()).get_unchecked(hash as usize % self.buckets) }
     }
 
     pub fn insert(
         &self,
         p: &CombinedSearchParameters,
-        mv: &GameMove,
+        mv: GameMove,
         score: i16,
         original_alpha: i16,
         root_plies_played: usize,
@@ -186,7 +182,7 @@ impl CacheBucket {
     pub fn replace_entry(
         &mut self,
         p: &CombinedSearchParameters,
-        mv: &GameMove,
+        mv: GameMove,
         score: i16,
         original_alpha: i16,
         root_plies_played: usize,
@@ -205,7 +201,7 @@ impl CacheBucket {
                 pv_node,
                 upper_bound,
                 lower_bound,
-                &mv,
+                mv,
             )
         };
         let renew_entry = |cache_entry: &mut CacheEntry| -> bool {
@@ -255,6 +251,7 @@ impl CacheBucket {
             min_score = self.0[0].get_score();
             min_entry = 0;
         }
+
         let new_score = p.depth_left as f64 * if pv_node { 1. } else { 0.7 };
         if new_score >= min_score {
             write_entry(&mut self.0[min_entry]);
@@ -320,7 +317,7 @@ impl CacheEntry {
 
     pub fn validate_hash(&self, hash: u64) -> bool {
         (self.upper_hash as u64) == (hash >> 32)
-            && ((self.lower_hash ^ self.mv as u32) as u64) == (hash & 0xFFFFFFFF)
+            && ((self.lower_hash ^ self.mv as u32) as u64) == (hash & 0xFFFF_FFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
@@ -350,11 +347,11 @@ impl CacheEntry {
         pv_node: bool,
         alpha: bool,
         beta: bool,
-        mv: &GameMove,
+        mv: GameMove,
     ) {
         let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
-        self.lower_hash = (hash & 0xFFFFFFFF) as u32 ^ mv as u32;
+        self.lower_hash = (hash & 0xFFFF_FFFF) as u32 ^ mv as u32;
         self.depth = depth as i8;
         self.plies_played = plies_played;
         self.score = score;
@@ -362,15 +359,15 @@ impl CacheEntry {
         self.beta = beta;
         self.pv_node = pv_node;
         self.mv = mv;
-        self.static_evaluation = if static_evaluation.is_some() {
-            static_evaluation.unwrap()
+        self.static_evaluation = if let Some(se) = static_evaluation {
+            se
         } else {
             INVALID_STATIC_EVALUATION
         };
     }
 
     #[inline(always)]
-    pub fn mv_to_u16(mv: &GameMove) -> u16 {
+    pub fn mv_to_u16(mv: GameMove) -> u16 {
         let mut res = 0;
         res |= (mv.from as usize) << 10;
         res |= (mv.to as usize) << 4;
@@ -538,7 +535,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Quiet,
             };
-            let h3h4u16 = CacheEntry::mv_to_u16(&h3h4);
+            let h3h4u16 = CacheEntry::mv_to_u16(h3h4);
             let h3h4res = CacheEntry::u16_to_mv(h3h4u16, &game_state);
             assert_eq!(h3h4res.move_type, h3h4.move_type);
             assert_eq!(h3h4res.piece_type, h3h4.piece_type);
@@ -552,7 +549,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Capture(PieceType::Bishop),
             };
-            let h3g4u16 = CacheEntry::mv_to_u16(&h3g4);
+            let h3g4u16 = CacheEntry::mv_to_u16(h3g4);
             let h3g4res = CacheEntry::u16_to_mv(h3g4u16, &game_state);
             assert_eq!(h3g4res.from, h3g4.from);
             assert_eq!(h3g4res.to, h3g4.to);
@@ -566,7 +563,7 @@ mod tests {
                 piece_type: PieceType::King,
                 move_type: GameMoveType::Castle,
             };
-            let e1c1u16 = CacheEntry::mv_to_u16(&e1c1);
+            let e1c1u16 = CacheEntry::mv_to_u16(e1c1);
             let e1c1res = CacheEntry::u16_to_mv(e1c1u16, &game_state);
             assert_eq!(e1c1res.from, e1c1.from);
             assert_eq!(e1c1res.to, e1c1.to);
@@ -580,7 +577,7 @@ mod tests {
                 piece_type: PieceType::King,
                 move_type: GameMoveType::Castle,
             };
-            let e1g1u16 = CacheEntry::mv_to_u16(&e1g1);
+            let e1g1u16 = CacheEntry::mv_to_u16(e1g1);
             let e1g1res = CacheEntry::u16_to_mv(e1g1u16, &game_state);
             assert_eq!(e1g1res.from, e1g1.from);
             assert_eq!(e1g1res.to, e1g1.to);
@@ -594,7 +591,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Queen, None),
             };
-            let e7e8qu16 = CacheEntry::mv_to_u16(&e7e8q);
+            let e7e8qu16 = CacheEntry::mv_to_u16(e7e8q);
             let e7e8qres = CacheEntry::u16_to_mv(e7e8qu16, &game_state);
             assert_eq!(e7e8qres.from, e7e8q.from);
             assert_eq!(e7e8qres.to, e7e8q.to);
@@ -608,7 +605,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Rook, None),
             };
-            let e7e8ru16 = CacheEntry::mv_to_u16(&e7e8r);
+            let e7e8ru16 = CacheEntry::mv_to_u16(e7e8r);
             let e7e8rres = CacheEntry::u16_to_mv(e7e8ru16, &game_state);
             assert_eq!(e7e8rres.from, e7e8r.from);
             assert_eq!(e7e8rres.to, e7e8r.to);
@@ -622,7 +619,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Bishop, None),
             };
-            let e7e8bu16 = CacheEntry::mv_to_u16(&e7e8b);
+            let e7e8bu16 = CacheEntry::mv_to_u16(e7e8b);
             let e7e8bres = CacheEntry::u16_to_mv(e7e8bu16, &game_state);
             assert_eq!(e7e8bres.from, e7e8b.from);
             assert_eq!(e7e8bres.to, e7e8b.to);
@@ -636,7 +633,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Knight, None),
             };
-            let e7e8nu16 = CacheEntry::mv_to_u16(&e7e8n);
+            let e7e8nu16 = CacheEntry::mv_to_u16(e7e8n);
             let e7e8nres = CacheEntry::u16_to_mv(e7e8nu16, &game_state);
             assert_eq!(e7e8nres.from, e7e8n.from);
             assert_eq!(e7e8nres.to, e7e8n.to);
@@ -651,7 +648,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Bishop)),
             };
-            let e7e8qu16 = CacheEntry::mv_to_u16(&e7e8q);
+            let e7e8qu16 = CacheEntry::mv_to_u16(e7e8q);
             let e7e8qres = CacheEntry::u16_to_mv(e7e8qu16, &game_state);
             assert_eq!(e7e8qres.from, e7e8q.from);
             assert_eq!(e7e8qres.to, e7e8q.to);
@@ -665,7 +662,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Rook, Some(PieceType::Bishop)),
             };
-            let e7e8ru16 = CacheEntry::mv_to_u16(&e7e8r);
+            let e7e8ru16 = CacheEntry::mv_to_u16(e7e8r);
             let e7e8rres = CacheEntry::u16_to_mv(e7e8ru16, &game_state);
             assert_eq!(e7e8rres.from, e7e8r.from);
             assert_eq!(e7e8rres.to, e7e8r.to);
@@ -679,7 +676,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Bishop, Some(PieceType::Bishop)),
             };
-            let e7e8bu16 = CacheEntry::mv_to_u16(&e7e8b);
+            let e7e8bu16 = CacheEntry::mv_to_u16(e7e8b);
             let e7e8bres = CacheEntry::u16_to_mv(e7e8bu16, &game_state);
             assert_eq!(e7e8bres.from, e7e8b.from);
             assert_eq!(e7e8bres.to, e7e8b.to);
@@ -693,7 +690,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::Promotion(PieceType::Knight, Some(PieceType::Bishop)),
             };
-            let e7e8nu16 = CacheEntry::mv_to_u16(&e7e8n);
+            let e7e8nu16 = CacheEntry::mv_to_u16(e7e8n);
             let e7e8nres = CacheEntry::u16_to_mv(e7e8nu16, &game_state);
             assert_eq!(e7e8nres.from, e7e8n.from);
             assert_eq!(e7e8nres.to, e7e8n.to);
@@ -702,7 +699,7 @@ mod tests {
         }
         game_state = make_move(
             &game_state,
-            &GameMove {
+            GameMove {
                 from: 23,
                 to: 31,
                 piece_type: PieceType::Pawn,
@@ -711,7 +708,7 @@ mod tests {
         );
         game_state = make_move(
             &game_state,
-            &GameMove {
+            GameMove {
                 from: 50,
                 to: 34,
                 piece_type: PieceType::Pawn,
@@ -725,7 +722,7 @@ mod tests {
                 piece_type: PieceType::Pawn,
                 move_type: GameMoveType::EnPassant,
             };
-            let d5d6u16 = CacheEntry::mv_to_u16(&d5d6);
+            let d5d6u16 = CacheEntry::mv_to_u16(d5d6);
             let d5d6res = CacheEntry::u16_to_mv(d5d6u16, &game_state);
             assert_eq!(d5d6res.from, d5d6.from);
             assert_eq!(d5d6res.to, d5d6.to);

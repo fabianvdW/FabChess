@@ -534,17 +534,15 @@ pub fn piecewise(
                 idx,
             ) & g.pieces[KING][1 - side])
                 != 0u64
-        {
-            queen_xray_king += 1;
-        } else if (bitboards::FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
-            && (movegen::xray_rook_attacks(
-                attack_container.attack[MGSA_QUEEN][side][index]
-                    & bitboards::FREEFIELD_ROOK_ATTACKS[idx],
-                all_pieces,
-                all_pieces,
-                idx,
-            ) & g.pieces[KING][1 - side])
-                != 0u64
+            || (bitboards::FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+                && (movegen::xray_rook_attacks(
+                    attack_container.attack[MGSA_QUEEN][side][index]
+                        & bitboards::FREEFIELD_ROOK_ATTACKS[idx],
+                    all_pieces,
+                    all_pieces,
+                    idx,
+                ) & g.pieces[KING][1 - side])
+                    != 0u64
         {
             queen_xray_king += 1;
         }
@@ -623,6 +621,7 @@ pub fn piecewise(
         _eval.trace.attackers[side] =
             (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
     }
+    #[allow(clippy::let_and_return)]
     let res = mk
         + mb
         + mr
@@ -783,6 +782,7 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Evaluat
         _eval.trace.shielding_pawn_onopen_missing[shields_on_open_missing] +=
             if side == WHITE { 1 } else { -1 };
     }
+    #[allow(clippy::let_and_return)]
     let res = SHIELDING_PAWN_MISSING[shields_missing]
         + SHIELDING_PAWN_MISSING_ON_OPEN_FILE[shields_on_open_missing];
 

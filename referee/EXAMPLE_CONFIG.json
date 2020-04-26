@@ -1,6 +1,5 @@
 {
 	"processors":4,
-	"selfplaytests":true,
 	"games": 2000,
 	"engine_path":["./target/release/uci-engine.exe", {"Hash":"16", "Threads":"1"}],
 	"enemies_paths":[
@@ -12,11 +11,6 @@
 	"timecontrol_engine_time":10000,
 	"timecontrol_engine_inc":100,
 	"timecontrol_enemies_time":10000,
-	"timecontrol_enemies_inc":100,
-	"testsuitetests":false,
-	"suite_movetime":1000,
-	"suite_path":"",
-	"lct2tests":false,
-	"lct2_path":""
+	"timecontrol_enemies_inc":100
 	
 }

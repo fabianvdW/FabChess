@@ -56,7 +56,7 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let len = movelist.move_lists[depth].move_list.len();
     for i in 0..len {
         let gmv = movelist.move_lists[depth].move_list[i];
-        let next_g = make_move(&g, &gmv.0);
+        let next_g = make_move(&g, gmv.0);
         let res = perft(&next_g, depth - 1, &mut movelist, &mut attack_container);
         println!("{:?}: {}", gmv.0, res);
         count += res;
@@ -101,7 +101,7 @@ pub fn perft(
         let len = movelist.move_lists[depth].move_list.len();
         for i in 0..len {
             let mv = movelist.move_lists[depth].move_list[i].0;
-            res += perft(&make_move(&g, &mv), depth - 1, movelist, attack_container);
+            res += perft(&make_move(&g, mv), depth - 1, movelist, attack_container);
         }
         res
     }
@@ -159,7 +159,7 @@ const BENCHMARKING_POSITIONS: [&str; 50] = [
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 ];
 pub fn bench(depth: usize) {
-    let itcs = Arc::new(InterThreadCommunicationSystem::new());
+    let itcs = Arc::new(InterThreadCommunicationSystem::default());
     InterThreadCommunicationSystem::update_thread_count(&itcs, 1);
     *itcs.cache() = search::cache::Cache::with_size_threaded(8, 1);
     let before_time = Instant::now();

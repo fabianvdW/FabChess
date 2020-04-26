@@ -492,9 +492,9 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn find_move(&self, mv: &GameMove, contains: bool) -> usize {
+    pub fn find_move(&self, mv: GameMove, contains: bool) -> usize {
         for (index, mvs) in self.move_list.iter().enumerate() {
-            if mvs.0 == *mv {
+            if mvs.0 == mv {
                 return index;
             }
         }
@@ -507,7 +507,7 @@ impl MoveList {
     #[inline(always)]
     pub fn highest_score(&mut self) -> Option<(usize, GradedMove)> {
         let mut best_index = self.move_list.len();
-        let mut best_score = -1000000000.;
+        let mut best_score = -1_000_000_000.;
         for (index, gmv) in self.move_list.iter().enumerate() {
             if gmv.1.is_some() && gmv.1.unwrap() > best_score {
                 best_index = index;

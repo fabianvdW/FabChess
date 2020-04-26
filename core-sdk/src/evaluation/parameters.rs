@@ -428,6 +428,7 @@ impl Parameters {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
 
+    #[allow(clippy::needless_range_loop)]
     pub fn default() -> Self {
         let mut shielding_pawn_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {

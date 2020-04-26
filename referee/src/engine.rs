@@ -189,7 +189,7 @@ impl Engine {
                 .1
                 .rsplit("id name")
                 .next()
-                .expect(&format!("Couldn't catch the name of engine {}", res.path));
+                .unwrap_or_else(|| panic!("Couldn't catch the name of engine {}", res.path));
             res.name = name[..name.len() - 1].to_owned();
         } else {
             panic!("Couldn't catch the name of engine {}", res.path);
@@ -259,7 +259,7 @@ impl Engine {
         //Get additional info about engine e.g. how deep it saw, nps, and its evaluation
         let mut status = EngineStatus::ProclaimsNothing;
         self.stats.moves_played += 1;
-        let info = fetch_info(output.1.clone());
+        let info = fetch_info(&output.1);
         if info.negative_mate_found {
             status = EngineStatus::ProclaimsLoss;
         } else if info.positive_mate_found {
@@ -367,7 +367,7 @@ pub fn find_move(
     None
 }
 
-pub fn fetch_info(info: String) -> UCIInfo {
+pub fn fetch_info(info: &str) -> UCIInfo {
     let split_line: Vec<&str> = info.split_whitespace().collect();
     let mut depth = None;
     let mut nps = None;

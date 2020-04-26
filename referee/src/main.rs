@@ -2,18 +2,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::BufWriter;
-use std::io::Write;
 
 pub mod async_communication;
 pub mod engine;
-pub mod lct2;
 pub mod logging;
 pub mod openings;
 pub mod queue;
 pub mod selfplay;
 pub mod selfplay_splitter;
-pub mod suit;
 
 //STS
 pub const STS_SUB_SUITS: [&str; 15] = [
@@ -37,7 +33,6 @@ pub const STS_SUB_SUITS: [&str; 15] = [
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub processors: usize,
-    selfplaytests: bool,
     pub games: usize,
     pub engine_path: (String, HashMap<String, String>),
     pub enemies_paths: Vec<(String, HashMap<String, String>)>,
@@ -47,11 +42,6 @@ pub struct Config {
     pub timecontrol_engine_inc: u64,
     pub timecontrol_enemies_time: u64,
     pub timecontrol_enemies_inc: u64,
-    testsuitetests: bool,
-    suite_path: String,
-    suite_movetime: u64,
-    lct2tests: bool,
-    lct2_path: String,
 }
 /*
 Error-Margin in +/- (95% Confidence)
@@ -91,30 +81,11 @@ fn main() {
     }
     let config_content = fs::read_to_string(config_path).expect("Unable to read config file!");
     let config: Config = serde_json::from_str(&config_content).unwrap();
-    if config.selfplaytests {
-        let mut runtime = tokio::runtime::Builder::new()
-            .threaded_scheduler()
-            .core_threads(config.processors)
-            .enable_all()
-            .build()
-            .expect("Could not create tokio runtime");
-        //let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime");
-        runtime.block_on(selfplay_splitter::start_self_play(config));
-    } else if config.lct2tests {
-        lct2::lct2(&config.engine_path.0, config.processors, &config.lct2_path);
-    } else if config.testsuitetests {
-        suit::start_suit(
-            &config.engine_path.0,
-            config.processors,
-            &config.suite_path,
-            config.suite_movetime,
-        );
-    }
-}
-
-pub fn write_to_buf(writer: &mut BufWriter<&mut std::process::ChildStdin>, message: &str) {
-    let _ = writer
-        .write(message.as_bytes())
-        .expect("Unable to write to Buf!");
-    writer.flush().expect("Unable to flush writer!");
+    let mut runtime = tokio::runtime::Builder::new()
+        .threaded_scheduler()
+        .core_threads(config.processors)
+        .enable_all()
+        .build()
+        .expect("Could not create tokio runtime");
+    runtime.block_on(selfplay_splitter::start_self_play(config));
 }

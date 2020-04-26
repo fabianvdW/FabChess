@@ -101,6 +101,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
     {
         _eval.trace.psqt_king[king_idx / 8][king_idx % 8] += if side == WHITE { 1 } else { -1 };
     }
+    #[allow(clippy::let_and_return)]
     let sum = pawn + knight + bishop + rook + queen + king;
     #[cfg(feature = "display-eval")]
     {

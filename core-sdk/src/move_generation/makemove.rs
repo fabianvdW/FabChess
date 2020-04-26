@@ -88,7 +88,7 @@ pub fn rook_castling(to: u8) -> (u8, u8) {
     }
 }
 
-pub fn make_move(g: &GameState, mv: &GameMove) -> GameState {
+pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     //Step 1. Update immediate fields
     let color_to_move = 1 - g.color_to_move;
     let full_moves = g.full_moves + g.color_to_move;

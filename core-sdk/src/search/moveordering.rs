@@ -12,7 +12,7 @@ use crate::search::{CombinedSearchParameters, GradedMove};
 pub const ATTACKER_VALUE: [i16; 6] = [0, 1, 2, 3, 4, 5];
 pub const TARGET_VALUE: [i16; 5] = [100, 400, 400, 650, 1100];
 
-pub fn mvvlva(mv: &GameMove) -> i16 {
+pub fn mvvlva(mv: GameMove) -> i16 {
     debug_assert!(mv.is_capture());
     TARGET_VALUE[mv.get_captured_piece().to_index()] - ATTACKER_VALUE[mv.piece_type.to_index()]
 }
@@ -58,8 +58,8 @@ impl MoveOrderer {
         &mut self,
         thread: &mut Thread,
         p: &CombinedSearchParameters,
-        pv_table_move: &Option<GameMove>,
-        tt_move: &Option<GameMove>,
+        pv_table_move: Option<GameMove>,
+        tt_move: Option<GameMove>,
     ) -> Option<(GameMove, f64)> {
         if self.stage >= self.stages.len() {
             return None;
@@ -69,13 +69,13 @@ impl MoveOrderer {
                 self.stage += 1;
                 if pv_table_move.is_some()
                     && p.game_state.is_valid_tt_move(
-                        &pv_table_move.unwrap(),
+                        pv_table_move.unwrap(),
                         &thread.attack_container.attack_containers[p.current_depth],
                     )
                 {
-                    return Some((pv_table_move.unwrap(), 0.));
+                    Some((pv_table_move.unwrap(), 0.))
                 } else {
-                    return self.next(thread, p, pv_table_move, tt_move);
+                    self.next(thread, p, pv_table_move, tt_move)
                 }
             }
             MoveOrderingStage::TTMove => {
@@ -83,13 +83,13 @@ impl MoveOrderer {
                 if tt_move.is_some()
                     && tt_move != pv_table_move
                     && p.game_state.is_valid_tt_move(
-                        &tt_move.unwrap(),
+                        tt_move.unwrap(),
                         &thread.attack_container.attack_containers[p.current_depth],
                     )
                 {
-                    return Some((tt_move.unwrap(), 0.));
+                    Some((tt_move.unwrap(), 0.))
                 } else {
-                    return self.next(thread, p, pv_table_move, tt_move);
+                    self.next(thread, p, pv_table_move, tt_move)
                 }
             }
             MoveOrderingStage::GoodCaptureInitialization => {
@@ -103,14 +103,14 @@ impl MoveOrderer {
                 self.has_legal_move = agsi.stm_haslegalmove;
                 let our_mvlist = &mut thread.movelist.move_lists[p.current_depth];
 
-                if pv_table_move.is_some() {
-                    let mv_index = our_mvlist.find_move(pv_table_move.as_ref().unwrap(), false);
+                if let Some(pv_move) = pv_table_move {
+                    let mv_index = our_mvlist.find_move(pv_move, false);
                     if mv_index < our_mvlist.move_list.len() {
                         our_mvlist.move_list.remove(mv_index);
                     }
                 }
-                if tt_move.is_some() {
-                    let mv_index = our_mvlist.find_move(tt_move.as_ref().unwrap(), false);
+                if let Some(tt_move) = tt_move {
+                    let mv_index = our_mvlist.find_move(tt_move, false);
                     if mv_index < our_mvlist.move_list.len() {
                         our_mvlist.move_list.remove(mv_index);
                     }
@@ -119,12 +119,12 @@ impl MoveOrderer {
                 //Give any capture move in movelist its MVV-LVA score
                 for mv in our_mvlist.move_list.iter_mut() {
                     if mv.0.is_capture() {
-                        mv.1 = Some(f64::from(mvvlva(&mv.0)));
+                        mv.1 = Some(f64::from(mvvlva(mv.0)));
                     }
                 }
 
                 self.stage += 1;
-                return self.next(thread, p, &None, &None);
+                self.next(thread, p, None, None)
             }
             MoveOrderingStage::GoodCapture => {
                 //We now have all of the captures sorted by mvv lva
@@ -132,7 +132,7 @@ impl MoveOrderer {
                 let highest_mvv_lva = our_list.highest_score();
                 if highest_mvv_lva.is_none() || (highest_mvv_lva.unwrap().1).1.unwrap() < 0. {
                     self.stage += 1;
-                    return self.next(thread, p, pv_table_move, tt_move);
+                    self.next(thread, p, pv_table_move, tt_move)
                 } else {
                     let (gm_index, graded_move) = highest_mvv_lva.unwrap();
                     our_list.move_list.remove(gm_index);
@@ -141,21 +141,21 @@ impl MoveOrderer {
                         >= 0
                         || graded_move.0.piece_type == PieceType::King
                     {
-                        return Some((graded_move.0, 0.));
+                        Some((graded_move.0, 0.))
                     } else {
                         let see_value = see(
                             p.game_state,
-                            &graded_move.0,
+                            graded_move.0,
                             self.stages.len() == NORMAL_STAGES.len(),
                             &mut thread.see_buffer,
                         );
                         if see_value >= 0 {
-                            return Some((graded_move.0, 0.));
+                            Some((graded_move.0, 0.))
                         } else {
                             our_list
                                 .move_list
                                 .push(GradedMove(graded_move.0, Some(f64::from(see_value))));
-                            return self.next(thread, p, &None, &None);
+                            self.next(thread, p, None, None)
                         }
                     }
                 }
@@ -187,10 +187,10 @@ impl MoveOrderer {
                 if found_index < our_list.move_list.len() {
                     let res = our_list.move_list[found_index].0;
                     our_list.move_list.remove(found_index);
-                    return Some((res, 0.));
+                    Some((res, 0.))
                 } else {
                     self.stage += 1;
-                    return self.next(thread, p, &None, &None);
+                    self.next(thread, p, None, None)
                 }
             }
             MoveOrderingStage::QuietInitialization => {
@@ -210,37 +210,35 @@ impl MoveOrderer {
                     }
                 }
                 self.stage += 1;
-                return self.next(thread, p, &None, &None);
+                self.next(thread, p, None, None)
             }
             MoveOrderingStage::Quiet => {
                 let our_list = &mut thread.movelist.move_lists[p.current_depth];
                 let highest = our_list.highest_score();
-                if highest.is_none() {
-                    self.stage = self.stages.len();
-                    return None;
-                } else {
-                    let (index, gmv) = highest.unwrap();
+                if let Some((index, gmv)) = highest {
                     if gmv.1.unwrap() < 0. {
                         self.stage += 1;
-                        return self.next(thread, p, &None, &None);
+                        return self.next(thread, p, None, None);
                     }
                     debug_assert!(!gmv.0.is_capture());
                     our_list.move_list.remove(index);
-                    return Some((gmv.0, 0.));
+                    Some((gmv.0, 0.))
+                } else {
+                    self.stage = self.stages.len();
+                    None
                 }
             }
             MoveOrderingStage::BadCapture => {
                 let our_list = &mut thread.movelist.move_lists[p.current_depth];
                 let highest = our_list.highest_score();
-                if highest.is_none() {
-                    self.stage = self.stages.len();
-                    return None;
-                } else {
-                    let (index, gmv) = highest.unwrap();
+                if let Some((index, gmv)) = highest {
                     debug_assert!(gmv.0.is_capture());
                     debug_assert!(gmv.1.unwrap() < 0.);
                     our_list.move_list.remove(index);
-                    return Some((gmv.0, gmv.1.unwrap()));
+                    Some((gmv.0, gmv.1.unwrap()))
+                } else {
+                    self.stage = self.stages.len();
+                    None
                 }
             }
         }

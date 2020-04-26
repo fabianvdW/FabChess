@@ -20,7 +20,7 @@ pub async fn stderr_listener<T: AsyncBufRead + Unpin>(mut stderr: T) {
         warn!("Could not read from stderr of child: {}", msg);
         0
     });
-    if err.len() > 0 {
+    if !err.is_empty() {
         log_err(&err);
     }
 }

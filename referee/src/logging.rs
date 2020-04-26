@@ -7,9 +7,7 @@ pub struct FileLogger(Mutex<File>);
 impl FileLogger {
     pub fn new(path: &str, append: bool) -> Self {
         if !append {
-            match std::fs::remove_file(path) {
-                _ => {}
-            }
+            let _ = std::fs::remove_file(path);
         };
         let file = OpenOptions::new()
             .create(true)
@@ -26,7 +24,7 @@ impl FileLogger {
         self.0
             .lock()
             .unwrap()
-            .write(msg.as_bytes())
+            .write_all(msg.as_bytes())
             .expect("Could not log to file!");
     }
 }
@@ -48,5 +46,11 @@ impl log::Log for FileLogger {
         }
     }
 
-    fn flush(&self) {}
+    fn flush(&self) {
+        self.0
+            .lock()
+            .unwrap()
+            .flush()
+            .expect("Could not flush in FileLogger");
+    }
 }

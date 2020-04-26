@@ -76,12 +76,12 @@ pub fn find_castle(
     king_side: bool,
 ) -> Result<(GameMove, GameState), ()> {
     for gmv in movelist.move_list.iter() {
-        let mv = &gmv.0;
+        let mv = gmv.0;
         if mv.move_type == GameMoveType::Castle
             && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 }
         {
             let state = make_move(g, mv);
-            return Ok((*mv, state));
+            return Ok((mv, state));
         }
     }
     Err(())
@@ -104,7 +104,7 @@ pub fn find_move(
         }*/
 
         if ms.matches(&gmv.0) {
-            let state = make_move(g, &gmv.0);
+            let state = make_move(g, gmv.0);
             return Ok((gmv.0, state));
         }
     }

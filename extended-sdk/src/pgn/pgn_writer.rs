@@ -116,7 +116,7 @@ pub fn get_pgn_string(
         if opening_comment.is_some() && (index + 1) == opening_comment.unwrap() {
             move_text.push_str("{Opening book has ended} ");
         }
-        start_pos = make_move(&start_pos, mv);
+        start_pos = make_move(&start_pos, *mv);
         if current_color == BLACK && index < moves.len() - 1 {
             move_text.push_str(&format!("{}. ", start_pos.full_moves));
         }
@@ -186,7 +186,7 @@ mod tests {
                 break;
             }
             let mv = movelist.move_list[rng.gen_range(0, movelist.move_list.len())];
-            g = make_move(&g, &mv.0);
+            g = make_move(&g, mv.0);
             moves.push(mv.0);
         }
         let mut metadata = PGNMetadata::default();

@@ -71,8 +71,8 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     }
     //-------------------------------------------------------------
     //Adjudications
-    let mut draw_adjudication = 0;
-    let mut win_adjudication = 0;
+    let mut draw_adjudication = 0usize;
+    let mut win_adjudication = 0usize;
     let mut win_adjudication_for_p1 = true;
 
     while let GameResult::Ingame = status {
@@ -203,7 +203,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
 
         //Make new state with move
         move_history.push(game_move);
-        let state = make_move(latest_state, &game_move);
+        let state = make_move(latest_state, game_move);
         if state.full_moves < 35 {
             draw_adjudication = 0;
         }

@@ -158,7 +158,7 @@ pub fn stripped_q_search(
         }
         let capture_move = capture_move.0;
         move_list.move_lists[current_depth].move_list.remove(i);
-        let next_g = make_move(&game_state, &capture_move);
+        let next_g = make_move(&game_state, capture_move);
         let (score, other_state) = stripped_q_search(
             -beta,
             -alpha,
@@ -210,12 +210,12 @@ pub fn make_moves(
         if let GameMoveType::EnPassant = mv.move_type {
             gmv.1 = Some(100.0);
         } else {
-            if !incheck && !passes_delta_pruning(&mv, phase, stand_pat, alpha) {
+            if !incheck && !passes_delta_pruning(mv, phase, stand_pat, alpha) {
                 gmv.1 = Some(-1.);
                 continue;
             }
             if !incheck {
-                let score = see(&game_state, &mv, true, see_buffer);
+                let score = see(&game_state, mv, true, see_buffer);
                 if score < 0 {
                     gmv.1 = Some(-1.);
                     continue;

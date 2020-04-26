@@ -9,29 +9,31 @@ Interested in how it works?
 Check out the wiki at: https://github.com/fabianvdW/FabChess/wiki
 ## Setup
 Download latest release for your OS in the release section.
-
-If you want to compile from source, make sure you have the latest version of Rust and Cargo installed, then do
+## Compilation Guide
+If you want to compile from source, make sure you have the latest version of Rust and Cargo installed. The only valid way to compile  the engine due to Rust's feature system having issues with workspaces is:
 ```
 git clone https://github.com/fabianvdW/FabChess.git
 cd FabChess
-cargo run --release
+cargo run --release -p uci-engine
 ...
 uci
-< id name FabChess v1.13
-< id author Fabian von der Warth, Contributor: Erik Imgrund
+< id name FabChessDev v1.14.1
+< id author Fabian von der Warth
+< id contributors Erik Imgrund, Marcin Mielniczuk
 < uciok
 go infinite
 ...
 ```
 For a faster compile including popcount operation for new processors, run
 ```
-cargo rustc --release --bin fabchess -- -C target-cpu=native
+cargo rustc --release -p uci-engine -- -C target-cpu=native
 ```
 The binary will be in `./target/release`
 ## Playing strength
 | Version       | 40/4    |  40/40 | Comment |
 |---------------|---------|--------|---------|
-| Latest Dev    | +40     |  +40   | Estimate|
+| Current Dev   |     ~   |    ~   |         |
+| Version 1.14  |3017/2924|  2906  | See CCRL|
 | Version 1.13  |2955-4CPU|  2840  | See CCRL|
 | Version 1.12.6| 2788    |  2762  | See CCRL|
 | Version 1.12  | 2785    |  -     | See CCRL|

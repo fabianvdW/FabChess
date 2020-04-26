@@ -147,7 +147,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         has_legal_move: false,
     };
     loop {
-        let mv = move_orderer.next(thread, &p, &pv_table_move, &tt_move);
+        let mv = move_orderer.next(thread, &p, pv_table_move, tt_move);
         if mv.is_none() {
             break;
         }
@@ -163,7 +163,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             false
         };
         let is_quiet_move = !isc && !isp;
-        let gives_check = p.game_state.gives_check(&mv);
+        let gives_check = p.game_state.gives_check(mv);
 
         if !root
             && is_quiet_move
@@ -224,12 +224,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && index >= 2
             && (!root || index >= 5)
         {
-            compute_lmr_reduction(&p, thread, &mv, index, isc || isp, gives_check)
+            compute_lmr_reduction(&p, thread, mv, index, isc || isp, gives_check)
         } else {
             0
         };
 
-        let next_state = make_move(p.game_state, &mv);
+        let next_state = make_move(p.game_state, mv);
         //Step 14.8. Search the moves
         let mut following_score: i16;
         if p.depth_left <= 2 || !is_pv_node || index == 0 {
@@ -316,7 +316,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 thread.search_statistics.add_normal_node_beta_cutoff(index);
             }
             if !isc {
-                update_quiet_cutoff(&p, thread, &mv, quiets_tried);
+                update_quiet_cutoff(&p, thread, mv, quiets_tried);
             }
             break;
         } else if !isc {
@@ -354,7 +354,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     if !thread.self_stop {
         thread.itcs.cache().insert(
             &p,
-            &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
+            thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
             current_max_score,
             original_alpha,
             thread.root_plies_played,
@@ -370,7 +370,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 pub fn uci_report_move(
     p: &CombinedSearchParameters,
     thread: &mut Thread,
-    mv: &GameMove,
+    mv: GameMove,
     index: usize,
 ) {
     if p.current_depth == 0 && thread.itcs.get_time_elapsed() > 1000 {
@@ -567,7 +567,7 @@ pub fn prepare_futility_pruning(
 pub fn compute_lmr_reduction(
     p: &CombinedSearchParameters,
     thread: &Thread,
-    mv: &GameMove,
+    mv: GameMove,
     index: usize,
     iscp: bool,
     gives_check: bool,
@@ -614,7 +614,7 @@ pub fn uci_report_pv(
 pub fn update_quiet_cutoff(
     p: &CombinedSearchParameters,
     thread: &mut Thread,
-    mv: &GameMove,
+    mv: GameMove,
     quiets_tried: usize,
 ) {
     thread.hh_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
@@ -629,19 +629,19 @@ pub fn update_quiet_cutoff(
         p.game_state.color_to_move,
     );
     if let Some(s) = thread.killer_moves[p.current_depth][0] {
-        if *mv == s {
+        if mv == s {
             return;
         }
     }
     if let Some(s) = thread.killer_moves[p.current_depth][1] {
-        if *mv == s {
+        if mv == s {
             return;
         }
     }
     if let Some(s) = thread.killer_moves[p.current_depth][0] {
         thread.killer_moves[p.current_depth][1] = Some(s);
     }
-    thread.killer_moves[p.current_depth][0] = Some(*mv);
+    thread.killer_moves[p.current_depth][0] = Some(mv);
 }
 
 pub fn decrement_history_quiets(

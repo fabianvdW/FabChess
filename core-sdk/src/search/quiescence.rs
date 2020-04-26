@@ -120,14 +120,14 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     };
 
     loop {
-        let mv = move_orderer.next(thread, &p, &None, &tt_move);
+        let mv = move_orderer.next(thread, &p, None, tt_move);
         if mv.is_none() {
             break;
         }
         let (capture_move, _) = mv.unwrap();
         if !incheck
             && !passes_delta_pruning(
-                &capture_move,
+                capture_move,
                 p.game_state.phase.phase,
                 *stand_pat.as_ref().unwrap(),
                 p.alpha,
@@ -136,7 +136,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             continue;
         }
         debug_assert!(incheck || capture_move.is_capture());
-        let next_g = make_move(p.game_state, &capture_move);
+        let next_g = make_move(p.game_state, capture_move);
         //Step 8.4. Search move
         let score = -q_search(
             CombinedSearchParameters::from(
@@ -190,7 +190,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     if has_pv && p.depth_left == 0 && !thread.self_stop {
         thread.itcs.cache().insert(
             &p,
-            &thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
+            thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
             current_max_score,
             p.alpha,
             thread.root_plies_played,
@@ -249,7 +249,7 @@ pub fn best_move_value(state: &GameState) -> i16 {
 }
 
 #[inline(always)]
-pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: i16, alpha: i16) -> bool {
+pub fn passes_delta_pruning(capture_move: GameMove, phase: f64, eval: i16, alpha: i16) -> bool {
     if phase == 0.0 || eval >= alpha {
         return true;
     }
@@ -265,7 +265,7 @@ pub fn passes_delta_pruning(capture_move: &GameMove, phase: f64, eval: i16, alph
 }
 
 #[inline(always)]
-pub fn see(game_state: &GameState, mv: &GameMove, exact: bool, gain: &mut Vec<i16>) -> i16 {
+pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16>) -> i16 {
     let may_xray = game_state.pieces[PAWN][WHITE]
         | game_state.pieces[PAWN][BLACK]
         | game_state.pieces[BISHOP][WHITE]
@@ -277,7 +277,7 @@ pub fn see(game_state: &GameState, mv: &GameMove, exact: bool, gain: &mut Vec<i1
     let mut from_set = 1u64 << mv.from;
     let mut occ = game_state.get_all_pieces();
     let mut attadef = attacks_to(&game_state, mv.to as usize, occ);
-    gain[0] = capture_value(&mv);
+    gain[0] = capture_value(mv);
     let mut color_to_move = game_state.color_to_move;
     let mut attacked_piece = match mv.piece_type {
         PieceType::Pawn => PAWN,
@@ -362,7 +362,7 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn capture_value(mv: &GameMove) -> i16 {
+pub fn capture_value(mv: GameMove) -> i16 {
     match &mv.move_type {
         GameMoveType::Capture(c) => piece_value(*c),
         GameMoveType::Promotion(_, b) => match b {
@@ -407,7 +407,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
-                &GameMove {
+                GameMove {
                     from: 4,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
@@ -421,7 +421,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("1k2r3/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - -"),
-                &GameMove {
+                GameMove {
                     from: 4,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
@@ -435,7 +435,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"),
-                &GameMove {
+                GameMove {
                     from: 19,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
@@ -449,7 +449,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("1k1r3q/1ppn3p/p4b2/4n3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"),
-                &GameMove {
+                GameMove {
                     from: 19,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Knight),
@@ -463,7 +463,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("1k1r2q1/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -"),
-                &GameMove {
+                GameMove {
                     from: 19,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
@@ -477,7 +477,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("8/8/3p4/4r3/2RKP3/5k2/8/8 b - -"),
-                &GameMove {
+                GameMove {
                     from: 36,
                     to: 28,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
@@ -491,7 +491,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("k7/8/5q2/8/3r4/2KQ4/8/8 w - -"),
-                &GameMove {
+                GameMove {
                     from: 19,
                     to: 27,
                     move_type: GameMoveType::Capture(PieceType::Rook),
@@ -505,7 +505,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("8/8/5q2/2k5/3r4/2KQ4/8/8 w - -"),
-                &GameMove {
+                GameMove {
                     from: 19,
                     to: 27,
                     move_type: GameMoveType::Capture(PieceType::Rook),
@@ -519,7 +519,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("4pq2/3P4/8/8/8/8/8/k1K5 w - -"),
-                &GameMove {
+                GameMove {
                     from: 51,
                     to: 60,
                     move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
@@ -533,7 +533,7 @@ mod tests {
         assert_eq!(
             see(
                 &GameState::from_fen("4pq2/3P4/2B5/8/8/8/8/k1K5 w - -"),
-                &GameMove {
+                GameMove {
                     from: 51,
                     to: 60,
                     move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),

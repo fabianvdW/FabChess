@@ -1,5 +1,5 @@
-use crate::queue::ThreadSafeQueue;
 use crate::engine::{Engine, PlayTask};
+use crate::queue::ThreadSafeQueue;
 use core_sdk::board_representation::game_state::*;
 use core_sdk::move_generation::movegen;
 use extended_sdk::pgn::pgn_reader::{GameParser, PGNParser};
@@ -80,10 +80,5 @@ pub fn load_openings_into_queue(
 }
 
 pub fn contains(queue: &[PlayTask], state: &GameState) -> bool {
-    for other in queue {
-        if other.opening.hash == state.hash {
-            return true;
-        }
-    }
-    false
+    queue.iter().any(|other| other.opening.hash == state.hash)
 }

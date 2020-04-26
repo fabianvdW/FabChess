@@ -138,7 +138,7 @@ impl Clone for GameMove {
 
 impl GameMove {
     #[inline(always)]
-    pub fn is_capture(&self) -> bool {
+    pub fn is_capture(self) -> bool {
         match self.move_type {
             GameMoveType::Capture(_) => true,
             GameMoveType::Promotion(_, s) => match s {
@@ -150,7 +150,7 @@ impl GameMove {
         }
     }
     #[inline(always)]
-    pub fn get_captured_piece(&self) -> PieceType {
+    pub fn get_captured_piece(self) -> PieceType {
         debug_assert!(self.is_capture());
         match self.move_type {
             GameMoveType::Capture(p) => p,
@@ -161,25 +161,25 @@ impl GameMove {
     }
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
-        let from_file = match chars.nth(0) {
+        let from_file = match chars.next() {
             Some(s) => char_to_file(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
-        let from_rank = match chars.nth(0) {
+        let from_rank = match chars.next() {
             Some(s) => char_to_rank(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
-        let to_file = match chars.nth(0) {
+        let to_file = match chars.next() {
             Some(s) => char_to_file(s),
             _ => {
                 panic!("Invalid move desc!");
             }
         };
-        let to_rank = match chars.nth(0) {
+        let to_rank = match chars.next() {
             Some(s) => char_to_rank(s),
             _ => {
                 panic!("Invalid move desc!");
@@ -189,7 +189,7 @@ impl GameMove {
             return (
                 from_file + 8 * from_rank,
                 to_file + 8 * to_rank,
-                Some(char_to_promotion_piecetype(match chars.nth(0) {
+                Some(char_to_promotion_piecetype(match chars.next() {
                     Some(s) => s,
                     _ => panic!("Invalid move desc!"),
                 })),
@@ -198,7 +198,7 @@ impl GameMove {
         (from_file + 8 * from_rank, to_file + 8 * to_rank, None)
     }
 
-    pub fn to_san(&self, game_state: &GameState) -> String {
+    pub fn to_san(self, game_state: &GameState) -> String {
         let mut movelist = MoveList::default();
         let mut agsi = GameStateAttackContainer::from_state(game_state);
         generate_moves(game_state, false, &mut movelist, &agsi);
@@ -508,7 +508,7 @@ impl GameState {
         //En passant target square
         let en_passant: u64 = if vec[3] != "-" {
             let mut idx: usize = 0usize;
-            let file = vec[3].chars().nth(0);
+            let file = vec[3].chars().next();
             let rank = vec[3].chars().nth(1);
             match file {
                 Some(x) => match x {
@@ -900,7 +900,7 @@ impl GameState {
             || self.pieces[QUEEN][side] != 0u64
     }
 
-    pub fn gives_check(&self, mv: &GameMove) -> bool {
+    pub fn gives_check(&self, mv: GameMove) -> bool {
         if mv.move_type == GameMoveType::Castle {
             return false; // In theory a castle move can give_check, but it is too much hasssle to compute that
         }
@@ -955,7 +955,7 @@ impl GameState {
 
     pub fn is_valid_tt_move(
         &self,
-        mv: &GameMove,
+        mv: GameMove,
         attack_container: &GameStateAttackContainer,
     ) -> bool {
         //println!("{}",self.to_fen());
@@ -1001,25 +1001,27 @@ impl GameState {
             {
                 return false;
             }
-            if mv.to == 6
-                && (!self.castle_white_kingside || blocked & (1u64 << 5 | 1u64 << 6) != 0u64)
-            {
-                return false;
-            } else if mv.to == 2
-                && (!self.castle_white_queenside
-                    || blocked & (1u64 << 2 | 1u64 << 3) != 0u64
-                    || all_piece & (1u64 << 1) != 0u64)
-            {
-                return false;
-            } else if mv.to == 62
-                && (!self.castle_black_kingside || blocked & (1u64 << 61 | 1u64 << 62) != 0u64)
-            {
-                return false;
-            } else if mv.to == 58
-                && (!self.castle_black_queenside
-                    || blocked & (1u64 << 58 | 1u64 << 59) != 0u64
-                    || all_piece & (1u64 << 57) != 0u64)
-            {
+            let is_invalid_wk = || {
+                mv.to == 6
+                    && (!self.castle_white_kingside || blocked & (1u64 << 5 | 1u64 << 6) != 0u64)
+            };
+            let is_invalid_wq = || {
+                mv.to == 2
+                    && (!self.castle_white_queenside
+                        || blocked & (1u64 << 2 | 1u64 << 3) != 0u64
+                        || all_piece & (1u64 << 1) != 0u64)
+            };
+            let is_invalid_bk = || {
+                mv.to == 62
+                    && (!self.castle_black_kingside || blocked & (1u64 << 61 | 1u64 << 62) != 0u64)
+            };
+            let is_invalid_bq = || {
+                mv.to == 58
+                    && (!self.castle_black_queenside
+                        || blocked & (1u64 << 58 | 1u64 << 59) != 0u64
+                        || all_piece & (1u64 << 57) != 0u64)
+            };
+            if is_invalid_wk() || is_invalid_wq() || is_invalid_bk() || is_invalid_bq() {
                 return false;
             }
         } else {
@@ -1032,22 +1034,19 @@ impl GameState {
                 if self.get_all_pieces() & (1u64 << mv.to) != 0u64 {
                     return false;
                 }
-            } else {
-                if self.pieces[captured_piece.unwrap().to_index()][1 - self.color_to_move]
-                    & (1u64 << mv.to)
-                    == 0u64
-                {
-                    return false;
-                }
+            } else if self.pieces[captured_piece.unwrap().to_index()][1 - self.color_to_move]
+                & (1u64 << mv.to)
+                == 0u64
+            {
+                return false;
             }
         }
         let mut all_pieces = self.get_all_pieces();
         match mv.piece_type {
             PieceType::King => {
-                if 1u64 << mv.to & (attack_container.attacks_sum[1 - self.color_to_move]) != 0u64 {
-                    return false;
-                } else if mv.move_type != GameMoveType::Castle
-                    && (1u64 << mv.to) & (king_attack(mv.from as usize)) == 0u64
+                if 1u64 << mv.to & (attack_container.attacks_sum[1 - self.color_to_move]) != 0u64
+                    || mv.move_type != GameMoveType::Castle
+                        && (1u64 << mv.to) & (king_attack(mv.from as usize)) == 0u64
                 {
                     return false;
                 }
@@ -1085,18 +1084,18 @@ impl GameState {
                     {
                         return false;
                     }
-                } else {
-                    if (single_push_pawn_targets(self.color_to_move, 1u64 << mv.from, !all_pieces)
-                        | double_push_pawn_targets(
-                            self.color_to_move,
-                            1u64 << mv.from,
-                            !all_pieces,
-                        ))
-                        & 1u64 << mv.to
-                        == 0u64
-                    {
-                        return false;
-                    }
+                } else if (single_push_pawn_targets(
+                    self.color_to_move,
+                    1u64 << mv.from,
+                    !all_pieces,
+                ) | double_push_pawn_targets(
+                    self.color_to_move,
+                    1u64 << mv.from,
+                    !all_pieces,
+                )) & 1u64 << mv.to
+                    == 0u64
+                {
+                    return false;
                 }
             }
         }
@@ -1149,15 +1148,13 @@ impl GameState {
                 {
                     return false;
                 }
-            } else {
-                if (b_pawn_east_targets(1u64 << king_square)
-                    | b_pawn_west_targets(1u64 << king_square))
-                    & (self.pieces[PAWN][1 - self.color_to_move])
-                    & !cap_piece
-                    != 0u64
-                {
-                    return false;
-                }
+            } else if (b_pawn_east_targets(1u64 << king_square)
+                | b_pawn_west_targets(1u64 << king_square))
+                & (self.pieces[PAWN][1 - self.color_to_move])
+                & !cap_piece
+                != 0u64
+            {
+                return false;
             }
         }
         true
