@@ -1,0 +1,16 @@
+{
+	"processors":4,
+	"games": 2000,
+	"engine_path":["./target/release/uci-engine.exe", {"Hash":"16", "Threads":"1"}],
+	"enemies_paths":[
+				["./old_versions/FabChessv1.12.10.exe", {"Hash":"16", "Threads":"1"}],
+				["./old_versions/FabChessv1.14.1.exe", {"Hash":"16", "Threads":"1"}]	
+				  ],
+	"opening_databases":["./O-Deville/o-deville.pgn"],
+	"opening_load_untilply":12,
+	"timecontrol_engine_time":10000,
+	"timecontrol_engine_inc":100,
+	"timecontrol_enemies_time":10000,
+	"timecontrol_enemies_inc":100
+	
+}

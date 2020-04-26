@@ -1,0 +1,10 @@
+[package]
+name = "uci-engine"
+version = "1.14.1"
+authors = ["fabianvdW <fabianvonderwarth@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+core-sdk = {path = "../core-sdk"}

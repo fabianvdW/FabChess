@@ -1,50 +1,14 @@
-[package]
-name = "FabChess"
-version = "1.14.0"
-authors = ["fabianvdW"]
-edition = "2018"
-default-run="fabchess"
-
-[features]
-default = []
-display-eval=[]
-texel-tuning=[]
-search-statistics=[]
-[dependencies]
-lazy_static = "1.2.0"
-hostname="0.1.5"
-chrono = "0.4"
-rand = "0.6.4"
-tokio = "0.1.19"
-tokio-process="0.2"
-tokio-io="0.1.12"
-serde={version = "1.0.94", features= ["derive"]}
-serde_json = "1.0"
+[workspace]
+members = [
+    "core-sdk",
+    "extended-sdk",
+    "uci-engine",
+    "tuning",
+    "referee",
+    "playground",
+    "benchmarking",
+    "tests"
+]
 [profile.release]
-opt-level=3
-debug=false
-lto=true
-[profile.test]
-opt-level=3
-debug=true
-[profile.bench]
-opt-level=3
-lto=true
-[lib]
-name="core"
-path= "src/lib.rs"
-[[bin]]
-name="fabchess"
-path="src/main.rs"
-[[bin]]
-name="referee"
-path="src/testing/referee.rs"
-[[bin]]
-name="benchmarking"
-path="src/benchmarking/benchmarks.rs"
-[[bin]]
-name="preparetuning"
-path="src/tuning/preparation.rs"
-[[bin]]
-name="tuning"
-path="src/tuning/tuning.rs"
+opt-level = 3
+lto = true
