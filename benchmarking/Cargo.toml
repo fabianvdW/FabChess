@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 core-sdk = {path = "../core-sdk"}
+extended-sdk = {path = "../extended-sdk"}
+rand = "0.7.3"

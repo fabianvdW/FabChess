@@ -390,7 +390,7 @@ pub struct GameState {
 
 impl GameState {
     pub fn from_fen(fen: &str) -> GameState {
-        let vec: Vec<&str> = fen.split(' ').collect();
+        let vec: Vec<&str> = fen.trim().split(' ').collect();
         if vec.len() < 4 {
             panic!("Invalid FEN");
         }
@@ -578,7 +578,6 @@ impl GameState {
         } else {
             0u64
         };
-
         let (half_moves, full_moves) = if vec.len() > 4 {
             (
                 vec[4].parse().expect("unable to parse half moves"),

@@ -1,12 +1,13 @@
 use crate::engine::{EndConditionInformation, Engine};
 use crate::engine::{PlayTask, TaskResult};
 use crate::logging::FileLogger;
-use crate::openings::{load_db_until, load_openings_into_queue};
+use crate::openings::load_openings_into_queue;
 use crate::queue::ThreadSafeQueue;
 use crate::selfplay::play_game;
 use crate::Config;
 use core_sdk::board_representation::game_state::*;
 use core_sdk::search::timecontrol::TimeControl;
+use extended_sdk::openings::load_db_until;
 use extended_sdk::pgn::pgn_writer::*;
 use std::cmp::Ordering;
 use std::sync::Arc;
