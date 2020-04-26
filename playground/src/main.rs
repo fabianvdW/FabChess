@@ -5,7 +5,7 @@ use core_sdk::search::timecontrol::TimeControl;
 use std::sync::Arc;
 
 fn main() {
-    go_infinite_from_startpos();
+    //go_infinite_from_startpos();
 }
 fn go_infinite_from_startpos() {
     let itcs = Arc::new(InterThreadCommunicationSystem::default());

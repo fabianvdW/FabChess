@@ -1,5 +1,9 @@
 use super::magic::{self, Magic};
-use crate::bitboards;
+use crate::bitboards::bitboards;
+use crate::bitboards::bitboards::constants::{
+    square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KNIGHT_ATTACKS, RANKS,
+    ROOK_RAYS,
+};
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
@@ -13,10 +17,6 @@ use crate::search::GradedMove;
 //Knight - piecewise by lookup
 //Bishop/Queen/Rook - piecewise by lookup in magic
 //Pawn - setwise by shift
-#[inline(always)]
-pub fn king_attack(square: usize) -> u64 {
-    bitboards::KING_ATTACKS[square]
-}
 
 #[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
@@ -28,10 +28,6 @@ pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
     Magic::get_attacks(&magic::MAGICS_ROOKS[square], all_pieces)
 }
 
-#[inline(always)]
-pub fn knight_attack(square: usize) -> u64 {
-    bitboards::KNIGHT_ATTACKS[square]
-}
 //Pawn single pushes
 
 #[inline(always)]
@@ -65,12 +61,12 @@ pub fn double_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
 
 #[inline(always)]
 pub fn w_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
-    bitboards::north_one(bitboards::north_one(pawns & bitboards::RANKS[1]) & empty) & empty
+    bitboards::north_one(bitboards::north_one(pawns & RANKS[1]) & empty) & empty
 }
 
 #[inline(always)]
 pub fn b_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
-    bitboards::south_one(bitboards::south_one(pawns & bitboards::RANKS[6]) & empty) & empty
+    bitboards::south_one(bitboards::south_one(pawns & RANKS[6]) & empty) & empty
 }
 
 //Pawn east targets
@@ -157,16 +153,6 @@ pub fn xray_bishop_attacks(
             bishop_square,
             occupied_squares ^ (my_pieces & bishop_attacks),
         )
-}
-
-#[inline(always)]
-pub fn get_rook_ray(king_square: usize, rook_square: usize) -> u64 {
-    bitboards::ROOK_RAYS[king_square][rook_square]
-}
-
-#[inline(always)]
-pub fn get_bishop_ray(king_square: usize, bishop_square: usize) -> u64 {
-    bitboards::BISHOP_RAYS[king_square][bishop_square]
 }
 
 #[inline(always)]
@@ -446,7 +432,7 @@ pub fn add_move_to_movelist(
 pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
     let mut checkers = 0u64;
     let my_king = game_state.pieces[KING][game_state.color_to_move];
-    checkers |= knight_attack(my_king.trailing_zeros() as usize)
+    checkers |= KNIGHT_ATTACKS[my_king.trailing_zeros() as usize]
         & game_state.pieces[KNIGHT][1 - game_state.color_to_move];
     checkers |= (pawn_west_targets(game_state.color_to_move, my_king)
         | pawn_east_targets(game_state.color_to_move, my_king))
@@ -582,12 +568,12 @@ pub fn generate_moves(
             != 0u64
         {
             let checker_square = check_board.trailing_zeros() as usize;
-            if check_board & (bitboards::FREEFIELD_ROOK_ATTACKS[g.king_square(side)]) != 0u64 {
+            if check_board & (FREEFIELD_ROOK_ATTACKS[g.king_square(side)]) != 0u64 {
                 //Checker is rook-like
-                push_mask = get_rook_ray(g.king_square(side), checker_square);
+                push_mask = ROOK_RAYS[g.king_square(side)][checker_square];
             } else {
                 //Checker is bishop-like
-                push_mask = get_bishop_ray(g.king_square(side), checker_square);
+                push_mask = BISHOP_RAYS[g.king_square(side)][checker_square];
             }
         } else {
             //else, we can't do push (quiet) moves
@@ -600,7 +586,7 @@ pub fn generate_moves(
     //4. Pins and pinned pieces
     let mut pinned_pieces = 0u64;
     //4.1 Rook-Like pins
-    if bitboards::FREEFIELD_ROOK_ATTACKS[g.king_square(side)]
+    if FREEFIELD_ROOK_ATTACKS[g.king_square(side)]
         & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
         != 0u64
     {
@@ -616,7 +602,7 @@ pub fn generate_moves(
         while enemy_rooks_on_xray != 0u64 {
             let enemy_rook_position = enemy_rooks_on_xray.trailing_zeros() as usize;
             let enemy_rook = 1u64 << enemy_rook_position;
-            let ray_to_king = get_rook_ray(g.king_square(side), enemy_rook_position);
+            let ray_to_king = ROOK_RAYS[g.king_square(side)][enemy_rook_position];
             let pinned_piece = ray_to_king & side_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
             pinned_pieces |= pinned_piece;
@@ -680,7 +666,7 @@ pub fn generate_moves(
         }
     }
     //4.2 Bishop-Like pins
-    if bitboards::FREEFIELD_BISHOP_ATTACKS[g.king_square(side)]
+    if FREEFIELD_BISHOP_ATTACKS[g.king_square(side)]
         & (g.pieces[BISHOP][enemy] | g.pieces[QUEEN][enemy])
         != 0u64
     {
@@ -696,7 +682,7 @@ pub fn generate_moves(
         while enemy_bishop_on_xray != 0u64 {
             let enemy_bishop_position = enemy_bishop_on_xray.trailing_zeros() as usize;
             let enemy_bishop = 1u64 << enemy_bishop_position;
-            let ray_to_king = get_bishop_ray(g.king_square(side), enemy_bishop_position);
+            let ray_to_king = BISHOP_RAYS[g.king_square(side)][enemy_bishop_position];
             let pinned_piece = ray_to_king & side_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
             pinned_pieces |= pinned_piece;
@@ -742,7 +728,7 @@ pub fn generate_moves(
                 //Normal captures
                 let stm_pawn_pin_captures = stm_pawn_pin_target & capture_mask & enemy_bishop;
                 let stm_pawn_pin_promotion_capture =
-                    stm_pawn_pin_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+                    stm_pawn_pin_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
                 if stm_pawn_pin_promotion_capture != 0u64 {
                     stm_haslegalmove = true;
                     add_promotion_move_to_movelist(
@@ -800,8 +786,7 @@ pub fn generate_moves(
         b_single_push_pawn_targets(side_pawns, empty_squares)
     } & push_mask;
     stm_haslegalmove |= stm_pawns_single_push != 0u64;
-    let stm_pawn_promotions =
-        stm_pawns_single_push & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+    let stm_pawn_promotions = stm_pawns_single_push & RANKS[if stm_color_iswhite { 7 } else { 0 }];
     if !only_captures {
         add_pawn_moves_to_movelist(
             g,
@@ -850,7 +835,7 @@ pub fn generate_moves(
         attack_container.pawn_west_attacks[side] & capture_mask & enemy_pieces;
     //Split up in promotion and non-promotion captures
     let stm_pawn_west_promotion_capture =
-        stm_pawn_west_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+        stm_pawn_west_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
     stm_haslegalmove |= add_pawn_moves_to_movelist(
         g,
         movelist,
@@ -896,7 +881,7 @@ pub fn generate_moves(
         let all_pieces_without_en_passants =
             all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
         if rook_attack(g.king_square(side), all_pieces_without_en_passants)
-            & bitboards::RANKS[g.king_square(side) / 8]
+            & RANKS[g.king_square(side) / 8]
             & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
             == 0u64
         {
@@ -915,7 +900,7 @@ pub fn generate_moves(
         attack_container.pawn_east_attacks[side] & capture_mask & enemy_pieces;
     //Split up in promotion and non-promotion captures
     let stm_pawn_east_promotion_capture =
-        stm_pawn_east_captures & bitboards::RANKS[if stm_color_iswhite { 7 } else { 0 }];
+        stm_pawn_east_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
     stm_haslegalmove |= add_pawn_moves_to_movelist(
         g,
         movelist,
@@ -961,7 +946,7 @@ pub fn generate_moves(
         let all_pieces_without_en_passants =
             all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
         if rook_attack(g.king_square(side), all_pieces_without_en_passants)
-            & bitboards::RANKS[g.king_square(side) / 8]
+            & RANKS[g.king_square(side) / 8]
             & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
             == 0u64
         {
@@ -1042,8 +1027,7 @@ pub fn generate_moves(
     if (!only_captures || !stm_haslegalmove) && checkers == 0 {
         if stm_color_iswhite {
             if g.castle_white_kingside
-                && (all_pieces | attack_container.attacks_sum[enemy])
-                    & (bitboards::SQUARES[5] | bitboards::SQUARES[6])
+                && (all_pieces | attack_container.attacks_sum[enemy]) & (square(5) | square(6))
                     == 0u64
             {
                 stm_haslegalmove = true;
@@ -1057,9 +1041,8 @@ pub fn generate_moves(
                 }
             }
             if g.castle_white_queenside
-                && ((all_pieces | attack_container.attacks_sum[enemy])
-                    & (bitboards::SQUARES[2] | bitboards::SQUARES[3])
-                    | all_pieces & bitboards::SQUARES[1])
+                && ((all_pieces | attack_container.attacks_sum[enemy]) & (square(2) | square(3))
+                    | all_pieces & square(1))
                     == 0u64
             {
                 stm_haslegalmove = true;
@@ -1074,8 +1057,7 @@ pub fn generate_moves(
             }
         } else {
             if g.castle_black_kingside
-                && (all_pieces | attack_container.attacks_sum[enemy])
-                    & (bitboards::SQUARES[61] | bitboards::SQUARES[62])
+                && (all_pieces | attack_container.attacks_sum[enemy]) & (square(61) | square(62))
                     == 0u64
             {
                 stm_haslegalmove = true;
@@ -1089,9 +1071,8 @@ pub fn generate_moves(
                 }
             }
             if g.castle_black_queenside
-                && ((all_pieces | attack_container.attacks_sum[enemy])
-                    & (bitboards::SQUARES[58] | bitboards::SQUARES[59])
-                    | all_pieces & bitboards::SQUARES[57])
+                && ((all_pieces | attack_container.attacks_sum[enemy]) & (square(58) | square(59))
+                    | all_pieces & square(57))
                     == 0u64
             {
                 stm_haslegalmove = true;

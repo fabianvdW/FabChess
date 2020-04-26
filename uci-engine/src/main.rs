@@ -5,7 +5,6 @@ pub mod uci_parser;
 
 fn main() {
     let now = Instant::now();
-    core_sdk::bitboards::init_bitboards();
     core_sdk::move_generation::magic::init_magics();
     core_sdk::board_representation::zobrist_hashing::init_at_program_start();
     core_sdk::search::init_constants();

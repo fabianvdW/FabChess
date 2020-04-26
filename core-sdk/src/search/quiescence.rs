@@ -6,7 +6,7 @@ use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
 use super::alphabeta::*;
 use super::*;
-use crate::bitboards;
+use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
 use crate::move_generation::makemove::make_move;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_IN_CHECK_STAGES, QUIESCENCE_STAGES};
 
@@ -240,7 +240,7 @@ pub fn best_move_value(state: &GameState) -> i16 {
     }
 
     if (state.pieces[PAWN][state.color_to_move]
-        & bitboards::RANKS[if state.color_to_move == WHITE { 6 } else { 1 }])
+        & RANKS[if state.color_to_move == WHITE { 6 } else { 1 }])
         != 0u64
     {
         res += PIECE_VALUES[QUEEN] - PIECE_VALUES[PAWN];
@@ -347,7 +347,7 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
         | game_state.pieces[QUEEN][WHITE]
         | game_state.pieces[ROOK][BLACK]
         | game_state.pieces[QUEEN][BLACK];
-    attacks |= movegen::knight_attack(square) & knights
+    attacks |= KNIGHT_ATTACKS[square] & knights
         | movegen::bishop_attack(square, occ) & bishops
         | movegen::rook_attack(square, occ) & rooks;
     attacks |= (movegen::w_pawn_west_targets(square_board)
@@ -356,8 +356,8 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     attacks |= (movegen::b_pawn_west_targets(square_board)
         | movegen::b_pawn_east_targets(square_board))
         & game_state.pieces[PAWN][WHITE];
-    attacks |= bitboards::KING_ATTACKS[square]
-        & (game_state.pieces[KING][WHITE] | game_state.pieces[KING][BLACK]);
+    attacks |=
+        KING_ATTACKS[square] & (game_state.pieces[KING][WHITE] | game_state.pieces[KING][BLACK]);
     attacks
 }
 

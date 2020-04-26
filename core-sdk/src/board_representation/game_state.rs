@@ -1,3 +1,4 @@
+use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS};
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::params::*;
@@ -6,8 +7,8 @@ use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{
     b_pawn_east_targets, b_pawn_west_targets, bishop_attack, double_push_pawn_targets,
-    generate_moves, king_attack, knight_attack, pawn_east_targets, pawn_west_targets, rook_attack,
-    single_push_pawn_targets, w_pawn_east_targets, w_pawn_west_targets, MoveList,
+    generate_moves, pawn_east_targets, pawn_west_targets, rook_attack, single_push_pawn_targets,
+    w_pawn_east_targets, w_pawn_west_targets, MoveList,
 };
 use std::fmt::{Debug, Display, Formatter, Result};
 
@@ -923,7 +924,7 @@ impl GameState {
         match mv.piece_type {
             PieceType::King => false,
             PieceType::Queen => (bishop_like_attack | rook_like_attack) & (1u64 << mv.to) != 0u64,
-            PieceType::Knight => knight_attack(king_position) & (1u64 << mv.to) != 0u64,
+            PieceType::Knight => KNIGHT_ATTACKS[king_position] & (1u64 << mv.to) != 0u64,
             PieceType::Bishop => bishop_like_attack & (1u64 << mv.to) != 0u64,
             PieceType::Rook => rook_like_attack & (1u64 << mv.to) != 0u64,
             PieceType::Pawn => match mv.move_type {
@@ -944,7 +945,7 @@ impl GameState {
                         (bishop_like_attack | rook_like_attack) & (1u64 << mv.to) != 0u64
                     }
                     PieceType::Bishop => bishop_like_attack & (1u64 << mv.to) != 0u64,
-                    PieceType::Knight => knight_attack(king_position) & (1u64 << mv.to) != 0u64,
+                    PieceType::Knight => KNIGHT_ATTACKS[king_position] & (1u64 << mv.to) != 0u64,
                     _ => panic!("Not a valid promotion piece. Game_state.rs #1"),
                 },
                 _ => panic!("Not a valid pawn move. Game_state.rs #2"),
@@ -1045,7 +1046,7 @@ impl GameState {
             PieceType::King => {
                 if 1u64 << mv.to & (attack_container.attacks_sum[1 - self.color_to_move]) != 0u64
                     || mv.move_type != GameMoveType::Castle
-                        && (1u64 << mv.to) & (king_attack(mv.from as usize)) == 0u64
+                        && (1u64 << mv.to) & (KING_ATTACKS[mv.from as usize]) == 0u64
                 {
                     return false;
                 }
@@ -1070,7 +1071,7 @@ impl GameState {
                 }
             }
             PieceType::Knight => {
-                if 1u64 << mv.to & (knight_attack(mv.from as usize)) == 0u64 {
+                if 1u64 << mv.to & (KNIGHT_ATTACKS[mv.from as usize]) == 0u64 {
                     return false;
                 }
             }
@@ -1131,7 +1132,7 @@ impl GameState {
             {
                 return false;
             }
-            if knight_attack(king_square)
+            if KNIGHT_ATTACKS[king_square]
                 & (self.pieces[KNIGHT][1 - self.color_to_move])
                 & !cap_piece
                 != 0u64

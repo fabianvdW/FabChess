@@ -4,7 +4,8 @@ pub mod phase;
 pub mod psqt_evaluation;
 pub mod trace;
 
-use crate::bitboards;
+use crate::bitboards::bitboards;
+use crate::bitboards::bitboards::constants::*;
 use crate::board_representation::game_state::{
     GameState, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
@@ -16,7 +17,7 @@ use crate::evaluation::trace::Trace;
 #[cfg(feature = "display-eval")]
 use crate::logging::log;
 use crate::move_generation::movegen;
-use crate::move_generation::movegen::{bishop_attack, knight_attack, rook_attack};
+use crate::move_generation::movegen::{bishop_attack, rook_attack};
 use params::*;
 use psqt_evaluation::psqt;
 use psqt_evaluation::BLACK_INDEX;
@@ -312,7 +313,7 @@ pub fn knights(
     let mut supp = supported_knights;
     while supp != 0u64 {
         let mut idx = supp.trailing_zeros() as usize;
-        supp &= !bitboards::FILES[idx % 8];
+        supp &= not_file(idx % 8);
         let mut front_span = if white {
             bitboards::w_front_span(1u64 << idx)
         } else {
@@ -365,12 +366,12 @@ pub fn piecewise(
 
     let enemy_king_idx = g.king_square(1 - side);
     let enemy_king_attackable = if white {
-        bitboards::KING_ZONE_BLACK[enemy_king_idx]
+        KING_ZONE_BLACK[enemy_king_idx]
     } else {
-        bitboards::KING_ZONE_WHITE[enemy_king_idx]
+        KING_ZONE_WHITE[enemy_king_idx]
     } & !defended_by_minors;
 
-    let knight_checks = knight_attack(enemy_king_idx);
+    let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
     let all_pieces = g.get_all_pieces();
     let bishop_checks = bishop_attack(enemy_king_idx, all_pieces);
     let rook_checks = rook_attack(enemy_king_idx, all_pieces);
@@ -416,7 +417,7 @@ pub fn piecewise(
     let mut index = 0;
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
-        if (bitboards::FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+        if (FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
             && (movegen::xray_bishop_attacks(
                 attack_container.attack[MGSA_BISHOP][side][index],
                 all_pieces,
@@ -428,7 +429,7 @@ pub fn piecewise(
             bishop_xray_king += 1;
         }
         let diagonally_adjacent_pawns =
-            (bitboards::DIAGONALLY_ADJACENT[idx] & g.pieces[PAWN][side]).count_ones() as usize;
+            (DIAGONALLY_ADJACENT[idx] & g.pieces[PAWN][side]).count_ones() as usize;
         mb_diag += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[diagonally_adjacent_pawns];
 
         let targets = attack_container.attack[MGSA_BISHOP][side][index] & !my_pieces;
@@ -467,7 +468,7 @@ pub fn piecewise(
     let mut index = 0;
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
-        if (bitboards::FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+        if (FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
             && (movegen::xray_rook_attacks(
                 attack_container.attack[MGSA_ROOKS][side][index],
                 all_pieces,
@@ -481,10 +482,10 @@ pub fn piecewise(
         if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
             rooks_onseventh += 1;
         }
-        if bitboards::FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
+        if FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
             rooks_onopen += 1;
-        } else if (bitboards::FILES[idx % 8] & g.pieces[PAWN][1 - side]).count_ones() == 1
-            && (bitboards::FILES[idx % 8] & g.pieces[PAWN][side]) == 0u64
+        } else if (FILES[idx % 8] & g.pieces[PAWN][1 - side]).count_ones() == 1
+            && (FILES[idx % 8] & g.pieces[PAWN][side]) == 0u64
         {
             rooks_on_semi_open += 1;
         }
@@ -525,19 +526,17 @@ pub fn piecewise(
     let mut index = 0;
     while queens != 0u64 {
         let idx = queens.trailing_zeros() as usize;
-        if (bitboards::FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+        if (FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
             && (movegen::xray_bishop_attacks(
-                attack_container.attack[MGSA_QUEEN][side][index]
-                    & bitboards::FREEFIELD_BISHOP_ATTACKS[idx],
+                attack_container.attack[MGSA_QUEEN][side][index] & FREEFIELD_BISHOP_ATTACKS[idx],
                 all_pieces,
                 all_pieces,
                 idx,
             ) & g.pieces[KING][1 - side])
                 != 0u64
-            || (bitboards::FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
+            || (FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
                 && (movegen::xray_rook_attacks(
-                    attack_container.attack[MGSA_QUEEN][side][index]
-                        & bitboards::FREEFIELD_ROOK_ATTACKS[idx],
+                    attack_container.attack[MGSA_QUEEN][side][index] & FREEFIELD_ROOK_ATTACKS[idx],
                     all_pieces,
                     all_pieces,
                     idx,
@@ -547,10 +546,10 @@ pub fn piecewise(
             queen_xray_king += 1;
         }
 
-        if bitboards::FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
+        if FILES[idx % 8] & (g.pieces[PAWN][side] | g.pieces[PAWN][1 - side]) == 0u64 {
             queens_onopen += 1;
-        } else if (bitboards::FILES[idx % 8] & g.pieces[PAWN][1 - side]).count_ones() == 1
-            && (bitboards::FILES[idx % 8] & g.pieces[PAWN][side]) == 0u64
+        } else if (FILES[idx % 8] & g.pieces[PAWN][1 - side]).count_ones() == 1
+            && (FILES[idx % 8] & g.pieces[PAWN][side]) == 0u64
         {
             queens_on_semi_open += 1;
         }
@@ -746,9 +745,9 @@ pub fn piecewise(
 pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
     let mut pawn_shield = if white {
-        bitboards::SHIELDING_PAWNS_WHITE[g.pieces[KING][side].trailing_zeros() as usize]
+        SHIELDING_PAWNS_WHITE[g.pieces[KING][side].trailing_zeros() as usize]
     } else {
-        bitboards::SHIELDING_PAWNS_BLACK[g.pieces[KING][side].trailing_zeros() as usize]
+        SHIELDING_PAWNS_BLACK[g.pieces[KING][side].trailing_zeros() as usize]
     };
     let mut king_front_span = if white {
         bitboards::w_front_span(g.pieces[KING][side])
@@ -767,13 +766,13 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Evaluat
     if g.full_moves >= 1 {
         while pawn_shield != 0u64 {
             let idx = pawn_shield.trailing_zeros() as usize;
-            if g.pieces[PAWN][side] & pawn_shield & bitboards::FILES[idx % 8] == 0u64 {
+            if g.pieces[PAWN][side] & pawn_shield & FILES[idx % 8] == 0u64 {
                 shields_missing += 1;
-                if g.pieces[PAWN][1 - side] & bitboards::FILES[idx % 8] & king_front_span == 0u64 {
+                if g.pieces[PAWN][1 - side] & FILES[idx % 8] & king_front_span == 0u64 {
                     shields_on_open_missing += 1;
                 }
             }
-            pawn_shield &= !bitboards::FILES[idx % 8];
+            pawn_shield &= !FILES[idx % 8];
         }
     }
     #[cfg(feature = "texel-tuning")]
@@ -882,11 +881,9 @@ pub fn pawns(
     res += supp;
     let center_attack_pawns = (g.pieces[PAWN][side]
         & if white {
-            bitboards::south_east_one(*bitboards::INNER_CENTER)
-                | bitboards::south_west_one(*bitboards::INNER_CENTER)
+            bitboards::south_east_one(INNER_CENTER) | bitboards::south_west_one(INNER_CENTER)
         } else {
-            bitboards::north_east_one(*bitboards::INNER_CENTER)
-                | bitboards::north_west_one(*bitboards::INNER_CENTER)
+            bitboards::north_east_one(INNER_CENTER) | bitboards::north_west_one(INNER_CENTER)
         })
     .count_ones() as i16;
     let pawn_mobility = (my_west_attacks.count_ones()

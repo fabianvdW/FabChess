@@ -1,4 +1,4 @@
-use super::super::bitboards::{FILES, NOT_SQUARES, RANKS};
+use crate::bitboards::bitboards::constants::*;
 use rand::Rng;
 
 static ROOK_BITS: [usize; 64] = [
@@ -211,7 +211,7 @@ pub fn init_magics_rooks() -> Vec<Magic> {
 
 pub fn occupancy_mask_rooks(square: usize) -> u64 {
     ((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7])))
-        & NOT_SQUARES[square]
+        & not_square(square)
 }
 
 pub fn rook_attacks_slow(square: usize, blocks: u64) -> u64 {

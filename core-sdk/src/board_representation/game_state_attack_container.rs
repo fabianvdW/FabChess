@@ -1,4 +1,5 @@
 use super::game_state::*;
+use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS};
 use crate::move_generation::movegen;
 
 pub const MGSA_KNIGHT: usize = 0;
@@ -49,7 +50,7 @@ impl GameStateAttackContainer {
             };
             // King Attacks
             self.king_attacks[side] =
-                movegen::king_attack(game_state.pieces[KING][side].trailing_zeros() as usize);
+                KING_ATTACKS[game_state.pieces[KING][side].trailing_zeros() as usize];
             //Pawn attacks
             self.pawn_west_attacks[side] =
                 movegen::pawn_west_targets(side, game_state.pieces[PAWN][side]);
@@ -62,7 +63,7 @@ impl GameStateAttackContainer {
             self.knights[side] = 0;
             while knights != 0u64 {
                 let knight_index = knights.trailing_zeros() as usize;
-                let attack = movegen::knight_attack(knight_index);
+                let attack = KNIGHT_ATTACKS[knight_index];
                 self.attack[MGSA_KNIGHT][side][self.knights[side]] = attack;
                 attacks_minor_sum |= attack;
                 self.knights[side] += 1;
