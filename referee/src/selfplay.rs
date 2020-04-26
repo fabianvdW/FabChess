@@ -1,13 +1,26 @@
-use crate::async_communication::print_command;
+use crate::async_communication::{stderr_listener, write_all};
 use crate::engine::{EndConditionInformation, EngineReaction, EngineStatus, PlayTask, TaskResult};
 use core_sdk::board_representation::game_state::*;
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
-use std::thread;
+use log::warn;
 use std::time::Duration;
+use tokio::process::Child;
+use tokio::task::JoinHandle;
+use tokio::time::delay_for;
 
-pub fn play_game(mut task: PlayTask) -> TaskResult {
+pub async fn cleanup(mut e1: Child, mut e2: Child, e1_err: JoinHandle<()>, e2_err: JoinHandle<()>) {
+    let _ = e1.kill();
+    let _ = e2.kill();
+    e1_err
+        .await
+        .unwrap_or_else(|msg| warn!("Could not join e1_err task: {}", msg));
+    e2_err
+        .await
+        .unwrap_or_else(|msg| warn!("Could not join e2_err task: {}", msg));
+}
+pub async fn play_game(mut task: PlayTask) -> TaskResult {
     let mut movelist = movegen::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
     //-------------------------------------------------------------
@@ -28,40 +41,33 @@ pub fn play_game(mut task: PlayTask) -> TaskResult {
     let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
     let mut endcondition = None;
     //-------------------------------------------------------------
-    //Set tokio runtime up
-    let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
-    //-------------------------------------------------------------
     //Set players up
 
     //Check uci and isready
-    let (_e1_process, mut e1_input, mut e1_output, mut e1_err) = task.engine1.get_handles();
-    let reaction =
-        task.engine1
-            .valid_uci_isready_reaction(e1_input, e1_output, e1_err, &mut runtime, task.id);
-    match reaction {
-        EngineReaction::DisqualifyEngine => {
-            return TaskResult::disq(task, true, move_history, status)
-        }
-        EngineReaction::ContinueGame(temp) => {
-            e1_input = temp.0;
-            e1_output = temp.1;
-            e1_err = temp.2;
-        }
+    let (mut e1, mut e1_input, mut e1_output, e1_err) = task.engine1.get_handles().await;
+    let e1_err = tokio::spawn(stderr_listener(e1_err));
+    let reaction = task
+        .engine1
+        .valid_uci_isready_reaction(&mut e1_input, &mut e1_output, task.id)
+        .await;
+    if let EngineReaction::DisqualifyEngine = reaction {
+        e1.kill()
+            .unwrap_or_else(|msg| warn!("Unable to kill engine 1: {}", msg));
+        e1_err.await.unwrap_or_else(|msg| {
+            warn!("Could not join err reading task: {:?}", msg);
+        });
+        return TaskResult::disq(task, true, move_history, status);
     }
 
-    let (_e2_process, mut e2_input, mut e2_output, mut e2_err) = task.engine2.get_handles();
-    let reaction =
-        task.engine2
-            .valid_uci_isready_reaction(e2_input, e2_output, e2_err, &mut runtime, task.id);
-    match reaction {
-        EngineReaction::DisqualifyEngine => {
-            return TaskResult::disq(task, false, move_history, status)
-        }
-        EngineReaction::ContinueGame(temp) => {
-            e2_input = temp.0;
-            e2_output = temp.1;
-            e2_err = temp.2;
-        }
+    let (e2, mut e2_input, mut e2_output, e2_err) = task.engine2.get_handles().await;
+    let e2_err = tokio::spawn(stderr_listener(e2_err));
+    let reaction = task
+        .engine2
+        .valid_uci_isready_reaction(&mut e2_input, &mut e2_output, task.id)
+        .await;
+    if let EngineReaction::DisqualifyEngine = reaction {
+        cleanup(e1, e2, e1_err, e2_err).await;
+        return TaskResult::disq(task, false, move_history, status);
     }
     //-------------------------------------------------------------
     //Adjudications
@@ -102,27 +108,26 @@ pub fn play_game(mut task: PlayTask) -> TaskResult {
         ));
         let game_move: GameMove;
         if player1_move {
-            let reaction = task.engine1.request_move(
-                position_string,
-                go_string,
-                e1_input,
-                e1_output,
-                e1_err,
-                &mut runtime,
-                task.id,
-                &movelist,
-            );
+            let reaction = task
+                .engine1
+                .request_move(
+                    &position_string,
+                    &go_string,
+                    &mut e1_input,
+                    &mut e1_output,
+                    task.id,
+                    &movelist,
+                )
+                .await;
             let engine_status;
             match reaction {
                 EngineReaction::DisqualifyEngine => {
-                    return TaskResult::disq(task, true, move_history, status)
+                    cleanup(e1, e2, e1_err, e2_err).await;
+                    return TaskResult::disq(task, true, move_history, status);
                 }
                 EngineReaction::ContinueGame(temp) => {
                     game_move = temp.0;
-                    e1_input = temp.1;
-                    e1_output = temp.2;
-                    e1_err = temp.3;
-                    engine_status = temp.4;
+                    engine_status = temp.1;
                 }
             }
             if let EngineStatus::ProclaimsNothing = &engine_status {
@@ -149,27 +154,26 @@ pub fn play_game(mut task: PlayTask) -> TaskResult {
                 win_adjudication_for_p1 = false;
             }
         } else {
-            let reaction = task.engine2.request_move(
-                position_string,
-                go_string,
-                e2_input,
-                e2_output,
-                e2_err,
-                &mut runtime,
-                task.id,
-                &movelist,
-            );
+            let reaction = task
+                .engine2
+                .request_move(
+                    &position_string,
+                    &go_string,
+                    &mut e2_input,
+                    &mut e2_output,
+                    task.id,
+                    &movelist,
+                )
+                .await;
             let engine_status;
             match reaction {
                 EngineReaction::DisqualifyEngine => {
-                    return TaskResult::disq(task, false, move_history, status)
+                    cleanup(e1, e2, e1_err, e2_err).await;
+                    return TaskResult::disq(task, false, move_history, status);
                 }
                 EngineReaction::ContinueGame(temp) => {
                     game_move = temp.0;
-                    e2_input = temp.1;
-                    e2_output = temp.2;
-                    e2_err = temp.3;
-                    engine_status = temp.4;
+                    engine_status = temp.1;
                 }
             }
             if let EngineStatus::ProclaimsNothing = &engine_status {
@@ -234,9 +238,11 @@ pub fn play_game(mut task: PlayTask) -> TaskResult {
 
     //-------------------------------------------------------------
     //Cleanup players' processes
-    print_command(&mut runtime, e1_input, "quit\n".to_owned());
-    print_command(&mut runtime, e2_input, "quit\n".to_owned());
-    thread::sleep(Duration::from_millis(20));
+    write_all(&mut e1_input, "quit\n").await;
+    write_all(&mut e2_input, "quit\n").await;
+    delay_for(Duration::from_millis(20)).await;
+    cleanup(e1, e2, e1_err, e2_err).await;
+
     let draw = status == GameResult::Draw;
     let p1_win = status == GameResult::WhiteWin && task.p1_is_white
         || status == GameResult::BlackWin && !task.p1_is_white;

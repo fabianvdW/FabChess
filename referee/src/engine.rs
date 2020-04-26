@@ -1,19 +1,21 @@
 use crate::async_communication::{
-    expect_output, expect_output_and_listen_for_info, print_command, write_stderr_to_log,
+    expect_output, expect_output_and_listen_for_info, stderr_listener, write_all,
 };
 use core_sdk::board_representation::game_state::*;
 use core_sdk::move_generation::movegen::MoveList;
 use core_sdk::search::timecontrol::TimeControl;
-use log::error;
+use log::{info, warn};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result};
-use std::process::{Command, Stdio};
-use tokio_process::{Child, ChildStderr, ChildStdin, ChildStdout, CommandExt};
+use std::process::Stdio;
+use tokio::io::{BufReader, BufWriter};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 
 pub enum EngineReaction<T> {
     ContinueGame(T),
     DisqualifyEngine,
 }
+#[derive(Debug)]
 pub enum EngineStatus {
     ProclaimsWin,
     ProclaimsLoss,
@@ -153,7 +155,7 @@ impl Engine {
         )
     }
 
-    pub fn from_path(
+    pub async fn from_path(
         path: &str,
         id: usize,
         tc: TimeControl,
@@ -171,19 +173,20 @@ impl Engine {
             stats: EngineStats::default(),
             uci_options: options,
         };
-        let (_child, input, output, _err) = res.get_handles();
-        let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime!");
-        let _input = print_command(&mut runtime, input, "uci\n".to_owned());
-        let output = expect_output_and_listen_for_info(
-            "uciok".to_owned(),
-            10000,
-            output,
-            &mut runtime,
-            "id name".to_owned(),
-        );
-        if output.3.contains("id name") {
+        let (mut child, mut input, mut output, err) = res.get_handles().await;
+        let err_listener = tokio::spawn(stderr_listener(err));
+        write_all(&mut input, "uci\n").await;
+        let output =
+            expect_output_and_listen_for_info("uciok", "id name", 10000, &mut output).await;
+        child
+            .kill()
+            .unwrap_or_else(|msg| warn!("Could not kill child: {}", msg));
+        err_listener
+            .await
+            .unwrap_or_else(|msg| warn!("Could not await err_listener: {}", msg));
+        if output.1.contains("id name") {
             let name = output
-                .3
+                .1
                 .rsplit("id name")
                 .next()
                 .expect(&format!("Couldn't catch the name of engine {}", res.path));
@@ -194,48 +197,39 @@ impl Engine {
         res
     }
 
-    pub fn request_move(
+    pub async fn request_move(
         &mut self,
-        position_description: String,
-        go_string: String,
-        mut stdin: ChildStdin,
-        mut stdout: ChildStdout,
-        mut stderr: ChildStderr,
-        runtime: &mut tokio::runtime::Runtime,
+        position_description: &str,
+        go_string: &str,
+        stdin: &mut BufWriter<ChildStdin>,
+        stdout: &mut BufReader<ChildStdout>,
         task_id: usize,
         movelist: &MoveList,
-    ) -> EngineReaction<(GameMove, ChildStdin, ChildStdout, ChildStderr, EngineStatus)> {
-        stdin = print_command(runtime, stdin, position_description);
-        let reaction = self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id);
-        match reaction {
-            EngineReaction::DisqualifyEngine => return EngineReaction::DisqualifyEngine,
-            EngineReaction::ContinueGame(temp) => {
-                stdin = temp.0;
-                stdout = temp.1;
-                stderr = temp.2;
-            }
+    ) -> EngineReaction<(GameMove, EngineStatus)> {
+        write_all(stdin, position_description).await;
+        let reaction = self.valid_isready_reaction(stdin, stdout, task_id).await;
+        if let EngineReaction::DisqualifyEngine = reaction {
+            return EngineReaction::DisqualifyEngine;
         }
-        stdin = print_command(runtime, stdin, go_string);
+        write_all(stdin, go_string).await;
         let output = expect_output_and_listen_for_info(
-            "bestmove".to_owned(),
+            "bestmove",
+            "info",
             self.time_control.time_left(),
             stdout,
-            runtime,
-            "info".to_owned(),
-        );
+        )
+        .await;
         if output.0.is_none() {
-            error!(
+            info!(
                 "Engine {} didn't send bestmove in time in game {}! It had {}ms left!\n",
                 self.name,
                 task_id,
                 self.time_control.time_left(),
             );
-            write_stderr_to_log(stderr, runtime);
             return EngineReaction::DisqualifyEngine;
         }
-        stdout = output.1.unwrap();
         if output.2 as u64 > self.time_control.time_left() {
-            error!("Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",self.time_control.time_left(),self.name ,task_id);
+            warn!("Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",self.time_control.time_left(),self.name ,task_id);
             return EngineReaction::DisqualifyEngine;
         }
         self.time_control.update(output.2 as u64, None);
@@ -247,27 +241,25 @@ impl Engine {
             let mv = GameMove::string_to_move(split_line[1]);
             let found_move = find_move(mv.0, mv.1, mv.2, &movelist);
             if found_move.is_none() {
-                error!(
+                info!(
                     "Engine {} sent illegal move ({}) in game {}\n",
                     self.name, line, task_id
                 );
-                write_stderr_to_log(stderr, runtime);
                 return EngineReaction::DisqualifyEngine;
             }
             found_move.unwrap()
         } else {
-            error!(
+            info!(
                 "Bestmove wasn't first argument after bestmove keyword! Disqualifiying engine {} in game {}\n",
                 self.name,task_id
             );
-            write_stderr_to_log(stderr, runtime);
             return EngineReaction::DisqualifyEngine;
         };
 
         //Get additional info about engine e.g. how deep it saw, nps, and its evaluation
         let mut status = EngineStatus::ProclaimsNothing;
         self.stats.moves_played += 1;
-        let info = fetch_info(output.3.clone());
+        let info = fetch_info(output.1.clone());
         if info.negative_mate_found {
             status = EngineStatus::ProclaimsLoss;
         } else if info.positive_mate_found {
@@ -291,64 +283,60 @@ impl Engine {
             self.stats.avg_nps += nps as f64;
         }
 
-        EngineReaction::ContinueGame((game_move, stdin, stdout, stderr, status))
+        EngineReaction::ContinueGame((game_move, status))
     }
 
-    pub fn valid_isready_reaction(
+    pub async fn valid_isready_reaction(
         &self,
-        stdin: ChildStdin,
-        stdout: ChildStdout,
-        stderr: ChildStderr,
-        runtime: &mut tokio::runtime::Runtime,
+        stdin: &mut BufWriter<ChildStdin>,
+        stdout: &mut BufReader<ChildStdout>,
         task_id: usize,
-    ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr)> {
-        let stdin = print_command(runtime, stdin, "isready\n".to_owned());
-        let output = expect_output("readyok".to_owned(), 10000, stdout, runtime);
+    ) -> EngineReaction<()> {
+        write_all(stdin, "isready\n").await;
+        let output = expect_output("readyok", 10000, stdout).await;
         if output.0.is_none() {
-            error!("Engine {} didn't readyok in game {}!\n", self.name, task_id);
-            write_stderr_to_log(stderr, runtime);
+            info!("Engine {} didn't readyok in game {}!\n", self.name, task_id);
             return EngineReaction::DisqualifyEngine;
         }
-        let stdout = output.1.unwrap();
-        EngineReaction::ContinueGame((stdin, stdout, stderr))
+        EngineReaction::ContinueGame(())
     }
-    pub fn valid_uci_isready_reaction(
+    pub async fn valid_uci_isready_reaction(
         &self,
-        stdin: ChildStdin,
-        stdout: ChildStdout,
-        stderr: ChildStderr,
-        runtime: &mut tokio::runtime::Runtime,
+        stdin: &mut BufWriter<ChildStdin>,
+        stdout: &mut BufReader<ChildStdout>,
         task_id: usize,
-    ) -> EngineReaction<(ChildStdin, ChildStdout, ChildStderr)> {
-        let mut stdin = print_command(runtime, stdin, "uci\n".to_owned());
-        let output = expect_output("uciok".to_owned(), 10000, stdout, runtime);
+    ) -> EngineReaction<()> {
+        write_all(stdin, "uci\n").await;
+        let output = expect_output("uciok", 10000, stdout).await;
         if output.0.is_none() {
-            error!("Engine {} didn't uciok in game {}!\n", self.name, task_id);
-            write_stderr_to_log(stderr, runtime);
+            info!("Engine {} didn't uciok in game {}!\n", self.name, task_id);
             return EngineReaction::DisqualifyEngine;
         }
-        let stdout = output.1.unwrap();
+        let mut msg = String::new();
         for pair in &self.uci_options {
-            stdin = print_command(
-                runtime,
-                stdin,
-                format!("setoption name {} value {}\n", pair.0, pair.1),
-            );
+            msg.push_str(&format!("setoption name {} value {}\n", pair.0, pair.1));
         }
-        self.valid_isready_reaction(stdin, stdout, stderr, runtime, task_id)
+        write_all(stdin, &msg).await;
+        self.valid_isready_reaction(stdin, stdout, task_id).await
     }
 
-    pub fn get_handles(&self) -> (Child, ChildStdin, ChildStdout, ChildStderr) {
-        let mut process = Command::new(self.path.clone())
-            .stdin(Stdio::piped())
+    pub async fn get_handles(
+        &self,
+    ) -> (
+        Child,
+        BufWriter<ChildStdin>,
+        BufReader<ChildStdout>,
+        BufReader<ChildStderr>,
+    ) {
+        let mut cmd = Command::new(&self.path);
+        cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn_async()
-            .unwrap_or_else(|_| panic!("Failed to start engine {}!", self.path));
-        let input = process.stdin().take().unwrap();
-        let output = process.stdout().take().unwrap();
-        let stderr = process.stderr().take().unwrap();
-        (process, input, output, stderr)
+            .stderr(Stdio::piped());
+        let mut child = cmd.spawn().unwrap();
+        let stdin = BufWriter::new(child.stdin.take().unwrap());
+        let stdout = BufReader::new(child.stdout.take().unwrap());
+        let stderr = BufReader::new(child.stderr.take().unwrap());
+        (child, stdin, stdout, stderr)
     }
 }
 

@@ -13,7 +13,10 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-pub fn start_self_play(config: Config) {
+pub async fn start_self_play(config: Config) {
+    FileLogger::new("referee_error_log.txt", false)
+        .init()
+        .expect("Could not create File Logger");
     let tcp1 = TimeControl::Incremental(
         config.timecontrol_engine_time,
         config.timecontrol_engine_inc,
@@ -23,14 +26,15 @@ pub fn start_self_play(config: Config) {
         999,
         tcp1,
         config.engine_path.1.clone(),
-    );
+    )
+    .await;
     let tcp2 = TimeControl::Incremental(
         config.timecontrol_enemies_time,
         config.timecontrol_enemies_inc,
     );
     let mut engines: Vec<Engine> = Vec::new();
     for (index, path) in config.enemies_paths.into_iter().enumerate() {
-        engines.push(Engine::from_path(&path.0, index, tcp2.clone(), path.1));
+        engines.push(Engine::from_path(&path.0, index, tcp2.clone(), path.1).await);
     }
     let mut db: Vec<GameState> = Vec::with_capacity(100_000);
     let mut db_sequences: Vec<Vec<GameMove>> = Vec::with_capacity(100_000);
@@ -58,9 +62,6 @@ pub fn start_self_play(config: Config) {
 
     let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
         Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
-    FileLogger::new("referee_error_log.txt", false)
-        .init()
-        .expect("Could not create File Logger");
     let pgn_log = FileLogger::new("pgns.pgn", true);
 
     //Start all childs
@@ -68,8 +69,8 @@ pub fn start_self_play(config: Config) {
     for _ in 0..config.processors {
         let queue_clone = queue.clone();
         let res_clone = result_queue.clone();
-        childs.push(thread::spawn(move || {
-            start_self_play_thread(queue_clone, res_clone);
+        childs.push(tokio::spawn(async move {
+            start_self_play_thread(queue_clone, res_clone).await
         }));
     }
 
@@ -156,20 +157,20 @@ pub fn start_self_play(config: Config) {
         }
     }
     for child in childs {
-        child.join().expect("Couldn't join thread");
+        child.await.expect("Couldn't join thread");
     }
     println!("Testing finished!");
 }
 
-pub fn start_self_play_thread(
+pub async fn start_self_play_thread(
     queue: Arc<ThreadSafeQueue<PlayTask>>,
     result_queue: Arc<ThreadSafeQueue<TaskResult>>,
 ) {
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
-        let res = play_game(task);
+        let res = play_game(task).await;
         if res.endcondition.is_none() {
-            thread::sleep(Duration::from_millis(150));
+            thread::sleep(Duration::from_millis(50));
         }
         result_queue.push(res);
     }

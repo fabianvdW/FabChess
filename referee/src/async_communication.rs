@@ -1,98 +1,69 @@
-use crate::queue::ThreadSafeString;
-use log::error;
-use std::io::BufReader;
-use std::sync::Arc;
+use log::{info, warn};
 use std::time::{Duration, Instant};
 use tokio::prelude::*;
+use tokio::time::timeout;
 
-pub fn print_command(
-    runtime: &mut tokio::runtime::Runtime,
-    input: tokio_process::ChildStdin,
-    command: String,
-) -> tokio_process::ChildStdin {
-    let buf = command.as_bytes().to_owned();
-    let fut = tokio_io::io::write_all(input, buf);
-    runtime.block_on(fut).expect("Could not write!").0
+pub async fn write_all<T: AsyncWrite + Unpin>(stdin: &mut T, msg: &str) {
+    stdin
+        .write_all(msg.as_bytes())
+        .await
+        .unwrap_or_else(|msg| warn!("Could not write: {:?}", msg));
+    stdin
+        .flush()
+        .await
+        .unwrap_or_else(|msg| warn!("Could not flush: {:?}", msg));
 }
 
-pub fn expect_output(
-    starts_with: String,
-    time_frame: u64,
-    output: tokio_process::ChildStdout,
-    runtime: &mut tokio::runtime::Runtime,
-) -> (Option<String>, Option<tokio_process::ChildStdout>, usize) {
-    let lines_codec = tokio::codec::LinesCodec::new();
-    let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
-        .filter(move |lines| lines.starts_with(&starts_with[..]))
-        .into_future()
-        .timeout(Duration::from_millis(time_frame));
-    let before = Instant::now();
-    let result = runtime.block_on(line_fut);
-    let after = Instant::now();
-    let dur = after.duration_since(before).as_millis() as usize;
-    match result {
-        Ok(s) => match s.0 {
-            Some(str) => (Some(str), Some(s.1.into_inner().into_inner()), dur),
-            _ => (None, None, dur),
-        },
-        Err(_) => (None, None, dur),
+pub async fn stderr_listener<T: AsyncBufRead + Unpin>(mut stderr: T) {
+    let mut err = String::new();
+    stderr.read_to_string(&mut err).await.unwrap_or_else(|msg| {
+        warn!("Could not read from stderr of child: {}", msg);
+        0
+    });
+    if err.len() > 0 {
+        log_err(&err);
     }
 }
-
-pub fn expect_output_and_listen_for_info(
-    starts_with: String,
+pub fn log_err(msg: &str) {
+    info!("StdERR of child:");
+    info!("{}", msg);
+}
+pub async fn expect_output<T: AsyncBufRead + Unpin>(
+    starts_with: &str,
     time_frame: u64,
-    output: tokio_process::ChildStdout,
-    runtime: &mut tokio::runtime::Runtime,
-    info: String,
-) -> (
-    Option<String>,
-    Option<tokio_process::ChildStdout>,
-    usize,
-    String,
-) {
-    let info_listener = Arc::new(ThreadSafeString::default());
-    let info_listener_moved = info_listener.clone();
-    let lines_codec = tokio::codec::LinesCodec::new();
-    let line_fut = tokio::codec::FramedRead::new(output, lines_codec)
-        .inspect(move |line| {
-            if line.starts_with(&info) {
-                //println!("{}", line);
-                info_listener_moved.push(&format!("{} ", line));
+    output: &mut T,
+) -> (Option<String>, usize) {
+    let res = expect_output_and_listen_for_info(starts_with, "", time_frame, output).await;
+    (res.0, res.2)
+}
+pub async fn expect_output_and_listen_for_info<T: AsyncBufRead + Unpin>(
+    starts_with: &str,
+    info_starts_with: &str,
+    time_frame: u64,
+    output: &mut T,
+) -> (Option<String>, String, usize) {
+    let now = Instant::now();
+    let mut info = String::new();
+    let res = timeout(Duration::from_millis(time_frame), async {
+        let mut reader = output.lines();
+        while let Some(line) = reader.next_line().await.unwrap_or_else(|msg| {
+            warn!("Could not read next line from reader: {:?}", msg);
+            None
+        }) {
+            if line.starts_with(info_starts_with) {
+                info.push_str(&format!("{}\n", line));
             }
-        })
-        .filter(move |lines| lines.starts_with(&starts_with[..]))
-        .into_future()
-        .timeout(Duration::from_millis(time_frame));
-    let before = Instant::now();
-    let result = runtime.block_on(line_fut);
-    let after = Instant::now();
-    let dur = after.duration_since(before).as_millis() as usize;
-    match result {
-        Ok(s) => match s.0 {
-            Some(str) => (
-                Some(str),
-                Some(s.1.into_inner().into_inner().into_inner()),
-                dur,
-                info_listener.get_inner(),
-            ),
-            _ => (None, None, dur, info_listener.get_inner()),
-        },
-        Err(_) => (None, None, dur, info_listener.get_inner()),
+            if line.starts_with(starts_with) {
+                return Some(line);
+            }
+        }
+        None
+    })
+    .await;
+    let time_spent = Instant::now().duration_since(now).as_millis() as usize;
+    if let Ok(s) = res {
+        (s, info, time_spent)
+    } else {
+        (None, info, time_spent)
     }
-}
-
-pub fn write_stderr_to_log(
-    stderr: tokio_process::ChildStderr,
-    runtime: &mut tokio::runtime::Runtime,
-) {
-    error!("StdERR of child: \n");
-    let line_fut = tokio::io::lines(BufReader::new(stderr))
-        .inspect(move |s| error!("{}\n", s))
-        .collect()
-        .timeout(Duration::from_millis(100));
-    let result = runtime.block_on(line_fut);
-    match result {
-        _ => {}
-    };
 }

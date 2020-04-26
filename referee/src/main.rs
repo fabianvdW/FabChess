@@ -1,10 +1,3 @@
-extern crate core;
-extern crate serde;
-extern crate serde_json;
-extern crate tokio;
-extern crate tokio_io;
-extern crate tokio_process;
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
@@ -99,7 +92,14 @@ fn main() {
     let config_content = fs::read_to_string(config_path).expect("Unable to read config file!");
     let config: Config = serde_json::from_str(&config_content).unwrap();
     if config.selfplaytests {
-        selfplay_splitter::start_self_play(config);
+        let mut runtime = tokio::runtime::Builder::new()
+            .threaded_scheduler()
+            .core_threads(config.processors)
+            .enable_all()
+            .build()
+            .expect("Could not create tokio runtime");
+        //let mut runtime = tokio::runtime::Runtime::new().expect("Could not create tokio runtime");
+        runtime.block_on(selfplay_splitter::start_self_play(config));
     } else if config.lct2tests {
         lct2::lct2(&config.engine_path.0, config.processors, &config.lct2_path);
     } else if config.testsuitetests {

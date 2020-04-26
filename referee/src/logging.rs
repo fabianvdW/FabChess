@@ -43,14 +43,8 @@ impl log::Log for FileLogger {
                 record.level(),
                 record.args()
             );
-            self.0
-                .lock()
-                .unwrap()
-                .write(&msg.as_bytes())
-                .expect("Could not log to file!");
-            if record.metadata().level() == Level::Error {
-                print!("{}", msg);
-            }
+            self.dump_msg(&msg);
+            print!("{}", msg);
         }
     }
 
