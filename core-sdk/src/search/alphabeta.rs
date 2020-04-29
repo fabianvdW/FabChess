@@ -4,6 +4,7 @@ use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
+use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::searcher::Thread;
 
@@ -56,6 +57,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         }
     }
     let original_alpha = p.alpha;
+    //Reset killer moves for granchildren
+    if p.current_depth + 2 < thread.killer_moves.len() {
+        thread.killer_moves[p.current_depth + 2][0] = None;
+        thread.killer_moves[p.current_depth + 2][1] = None;
+    }
 
     //Step 4. Attacks and in check  flag
     thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
@@ -80,14 +86,14 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let pv_table_move = get_pvtable_move(&p, thread);
 
     //Step 8. TT Lookup
-    let mut static_evaluation = None;
-    let mut tt_move: Option<GameMove> = None;
-    if let SearchInstruction::StopSearching(res) = thread.itcs.cache().lookup(
-        &p,
-        &mut static_evaluation,
-        &mut tt_move,
-        thread.root_plies_played,
-    ) {
+    //TODO Correctly insert and retrieve mates into the TT
+    let mut tt_entry: Option<CacheEntry> = None;
+    if let SearchInstruction::StopSearching(res) =
+        thread
+            .itcs
+            .cache()
+            .lookup(&p, &mut tt_entry, thread.root_plies_played)
+    {
         #[cfg(feature = "search-statistics")]
         {
             thread.search_statistics.add_cache_hit_aj_replace_ns();
@@ -100,6 +106,20 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             thread.search_statistics.add_cache_hit_ns();
         }
     }
+    let mut tt_move = if let Some(ce) = tt_entry {
+        Some(CacheEntry::u16_to_mv(ce.mv, p.game_state))
+    } else {
+        None
+    };
+    let mut static_evaluation = if let Some(ce) = tt_entry {
+        if ce.static_evaluation != INVALID_STATIC_EVALUATION {
+            Some(ce.static_evaluation)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     thread
         .history
         .push(p.game_state.hash, p.game_state.half_moves == 0);
@@ -118,7 +138,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         }
         //Step 10.2 Null Move Forward Pruning
         if let SearchInstruction::StopSearching(res) =
-            null_move_pruning(&p, thread, static_evaluation)
+            null_move_pruning(&p, thread, static_evaluation, &tt_entry)
         {
             return res;
         }
@@ -475,10 +495,7 @@ pub fn static_null_move_pruning(
         {
             thread.search_statistics.add_static_null_move_node();
         }
-        SearchInstruction::StopSearching(
-            static_evaluation.expect("Static null move 2") * p.color
-                - STATIC_NULL_MOVE_DEPTH * p.depth_left,
-        )
+        SearchInstruction::StopSearching(static_evaluation.expect("Static null move 2") * p.color)
     } else {
         SearchInstruction::ContinueSearching
     }
@@ -489,10 +506,12 @@ pub fn null_move_pruning(
     p: &CombinedSearchParameters,
     thread: &mut Thread,
     static_evaluation: Option<i16>,
+    tt_entry: &Option<CacheEntry>,
 ) -> SearchInstruction {
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
         && p.game_state.has_non_pawns(p.game_state.color_to_move)
         && static_evaluation.expect("null move static") * p.color >= p.beta
+        && (tt_entry.is_none() || !tt_entry.unwrap().alpha || tt_entry.unwrap().score >= p.beta)
     {
         let nextgs = make_nullmove(p.game_state);
         let rat = -principal_variation_search(

@@ -144,8 +144,7 @@ impl Cache {
     pub fn lookup(
         &self,
         p: &CombinedSearchParameters,
-        static_evaluation: &mut Option<i16>,
-        tt_move: &mut Option<GameMove>,
+        tt_entry: &mut Option<CacheEntry>,
         root_plies: usize,
     ) -> SearchInstruction {
         if self.entries == 0 {
@@ -153,6 +152,7 @@ impl Cache {
         }
         let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
         if let Some(ce) = ce {
+            *tt_entry= Some(ce);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
                 && (!ce.alpha && !ce.beta
@@ -161,11 +161,6 @@ impl Cache {
             {
                 return SearchInstruction::StopSearching(ce.score);
             }
-            let mv = CacheEntry::u16_to_mv(ce.mv, p.game_state);
-            if ce.static_evaluation != INVALID_STATIC_EVALUATION {
-                *static_evaluation = Some(ce.static_evaluation);
-            }
-            *tt_move = Some(mv);
             if ce.plies_played != root_plies as u16 {
                 self.age_entry(p.game_state.hash, root_plies as u16);
             }
