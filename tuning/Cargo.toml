@@ -13,7 +13,7 @@ default-features = false
 features = ["texel-tuning"]
 [lib]
 name = "tuning"
-path = "src/main.rs"
+path = "src/lib.rs"
 [[bin]]
 name = "tuning"
 path = "src/main.rs"
