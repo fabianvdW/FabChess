@@ -8,6 +8,7 @@ use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
 use crate::move_generation::makemove::make_move;
+use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_IN_CHECK_STAGES, QUIESCENCE_STAGES};
 
 pub const DELTA_PRUNING: i16 = 100;
@@ -70,13 +71,13 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 7. TT Lookup
-    let mut tt_move: Option<GameMove> = None;
+    let mut tt_entry = None;
     if p.depth_left == 0 {
         if let SearchInstruction::StopSearching(res) =
             thread
                 .itcs
                 .cache()
-                .lookup(&p, &mut None, &mut tt_move, thread.root_plies_played)
+                .lookup(&p, &mut tt_entry, thread.root_plies_played)
         {
             #[cfg(feature = "search-statistics")]
             {
@@ -91,6 +92,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             thread.search_statistics.add_cache_hit_ns();
         }
     }
+    let mut tt_move = if let Some(ce) = tt_entry {
+        Some(CacheEntry::u16_to_mv(ce.mv, p.game_state))
+    } else {
+        None
+    };
     //Only captures are valid tt moves (if not in check)
     if tt_move.is_some() && !incheck && !tt_move.as_ref().unwrap().is_capture() {
         tt_move = None;
