@@ -1,10 +1,25 @@
 use core_sdk::board_representation::game_state::GameState;
+use core_sdk::move_generation::magic::{
+    generate_rook_patterns, print_bishop_magics, print_rook_magics, rook_attacks_slow,
+};
+use core_sdk::move_generation::movegen::{bishop_attack, rook_attack};
 use core_sdk::search::cache::Cache;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
+use extended_sdk::misc::to_string_board;
 use std::sync::Arc;
 
 fn main() {
+    /*for pattern in generate_rook_patterns(15).0 {
+        if rook_attacks_slow(15, pattern.0) != rook_attack(15, pattern.0) {
+            println!("{}", to_string_board(pattern.0));
+            println!("{}", to_string_board(rook_attacks_slow(15, pattern.0)));
+            println!("{}", to_string_board(rook_attack(15, pattern.0)));
+            panic!("yup");
+        }
+    }*/
+    print_bishop_magics();
+    print_rook_magics();
     //go_infinite_from_startpos();
 }
 fn go_infinite_from_startpos() {
