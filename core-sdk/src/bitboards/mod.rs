@@ -37,6 +37,46 @@ pub(crate) fn arr_to_string<T: Display>(arr: &[T], name: &str) -> String {
     res_str.push_str("];");
     res_str
 }
+
+pub const fn occupancy_mask_rook(square: usize) -> u64 {
+    ((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7])))
+        & not_square(square)
+}
+
+pub fn print_rook_occupancy_masks() {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        res[sq] = occupancy_mask_rook(sq);
+    }
+    println!("{}", arr_to_string(&res, "OCCUPANCY_MASKS_ROOK"));
+}
+
+pub fn occupancy_mask_bishops(square: usize) -> u64 {
+    let mut res = 0u64;
+    let rk = (square / 8) as isize;
+    let fl = (square % 8) as isize;
+    let dirs: [(isize, isize); 4] = [(1, 1), (-1, -1), (1, -1), (-1, 1)];
+    for dir in dirs.iter() {
+        let (file_i, rank_i) = dir;
+        let mut rn = rk + rank_i;
+        let mut fnn = fl + file_i;
+        while rn >= 1 && rn <= 6 && fnn >= 1 && fnn <= 6 {
+            res |= 1u64 << (rn * 8 + fnn);
+            rn += rank_i;
+            fnn += file_i;
+        }
+    }
+    res
+}
+
+pub fn print_bishop_occupancy_masks() {
+    let mut res = [0u64; 64];
+    for sq in 0..64 {
+        res[sq] = occupancy_mask_bishops(sq);
+    }
+    println!("{}", arr_to_string(&res, "OCCUPANCY_MASKS_BISHOP"))
+}
+
 pub fn print_bishop_rays() {
     let mut res = [[0u64; 64]; 64];
     for king_sq in 0..64 {

@@ -1,4 +1,4 @@
-use super::magic::{self, Magic};
+use super::magic::{self};
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::{
     square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KNIGHT_ATTACKS, RANKS,
@@ -20,12 +20,12 @@ use crate::search::GradedMove;
 
 #[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
-    Magic::get_attacks(&magic::MAGICS_BISHOPS[square], all_pieces)
+    magic::MAGIC_BISHOP[square].apply(all_pieces)
 }
 
 #[inline(always)]
 pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
-    Magic::get_attacks(&magic::MAGICS_ROOKS[square], all_pieces)
+    magic::MAGIC_ROOK[square].apply(all_pieces)
 }
 
 //Pawn single pushes
