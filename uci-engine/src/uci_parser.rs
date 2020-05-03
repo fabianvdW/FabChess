@@ -32,13 +32,18 @@ pub fn parse_loop() {
     loop {
         line.clear();
         stdin.read_line(&mut line).ok().unwrap();
+        if line.is_empty() {
+            break;
+        }
         let arg: Vec<&str> = line.split_whitespace().collect();
         if arg.is_empty() {
             continue;
         }
         let cmd = arg[0];
         match cmd.trim() {
-            "" => continue,
+            "" => {
+                continue;
+            }
             "uci" => {
                 uci(&us, &itcs);
             }
