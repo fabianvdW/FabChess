@@ -1,13 +1,10 @@
-use core_sdk::board_representation::game_state::{GameState, BLACK, PAWN};
+use core_sdk::board_representation::game_state::GameState;
 use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::movegen::{bishop_attacks, rook_attacks};
 use core_sdk::move_generation::movegen2;
-use core_sdk::move_generation::movelist::MoveList;
 use core_sdk::search::cache::Cache;
 use core_sdk::search::reserved_memory::ReservedMoveList;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
-use extended_sdk::misc::to_string_board;
 use std::io;
 use std::sync::Arc;
 use std::time::Instant;
@@ -41,7 +38,7 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let len = movelist.move_lists[depth].move_list.len();
     for i in 0..len {
         let gmv = movelist.move_lists[depth].move_list[i];
-        if (g.is_valid_move(gmv.0)) {
+        if g.is_valid_move(gmv.0) {
             let next_g = make_move(&g, gmv.0);
             let res = perft(&next_g, depth - 1, &mut movelist);
             println!("{:?}: {}", gmv.0, res);

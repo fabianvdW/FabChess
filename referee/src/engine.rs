@@ -2,7 +2,7 @@ use crate::async_communication::{
     expect_output, expect_output_and_listen_for_info, stderr_listener, write_all,
 };
 use core_sdk::board_representation::game_state::*;
-use core_sdk::move_generation::movegen::MoveList;
+use core_sdk::move_generation::movelist::MoveList;
 use core_sdk::search::timecontrol::TimeControl;
 use log::{info, warn};
 use std::collections::HashMap;

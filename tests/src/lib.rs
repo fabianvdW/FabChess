@@ -7,9 +7,8 @@ mod tests {
     use core_sdk::evaluation::psqt_evaluation::psqt;
     use core_sdk::move_generation::makemove::make_move;
     use core_sdk::move_generation::movegen;
-    use core_sdk::move_generation::movegen::MoveList;
+    use core_sdk::move_generation::movelist::MoveList;
     use core_sdk::perft;
-    use core_sdk::search::reserved_memory::ReservedAttackContainer;
     use core_sdk::search::reserved_memory::ReservedMoveList;
     use extended_sdk::misc::KING_BASE_PATH;
     use extended_sdk::pgn::pgn_reader::{parse_move, GameParser, PGNParser};
@@ -56,7 +55,6 @@ mod tests {
     #[test]
     fn perft_test() {
         let mut movelist = ReservedMoveList::default();
-        let mut attack_container = ReservedAttackContainer::default();
         #[rustfmt::skip]
             let cases = [
             (20, 1, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
@@ -152,12 +150,7 @@ mod tests {
             println!("{}", case.2);
             assert_eq!(
                 case.0,
-                perft(
-                    &GameState::from_fen(case.2),
-                    case.1,
-                    &mut movelist,
-                    &mut attack_container,
-                )
+                perft(&GameState::from_fen(case.2), case.1, &mut movelist,)
             );
         }
     }
@@ -165,24 +158,15 @@ mod tests {
     #[test]
     fn zobrist_hash_test() {
         //Tests incremental update of hash
-        let mut movelist = movegen::MoveList::default();
+        let mut movelist = MoveList::default();
         let mut attack_container = GameStateAttackContainer::default();
         let mut rng = rand::thread_rng();
         for _i in 0..10000 {
             let mut g = GameState::standard();
             for _j in 0..200 {
-                assert_eq!(
-                    g.hash,
-                    GameState::calculate_zobrist_hash(
-                        g.color_to_move,
-                        g.pieces,
-                        g.castle_white_kingside,
-                        g.castle_white_queenside,
-                        g.castle_black_kingside,
-                        g.castle_black_queenside,
-                        g.en_passant,
-                    )
-                );
+                let mut fresh_hash = g.clone();
+                fresh_hash.initialize_hash();
+                assert_eq!(g.hash, fresh_hash.hash);
                 attack_container.write_state(&g);
                 let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
                 if !agsi.stm_haslegalmove {
@@ -199,7 +183,7 @@ mod tests {
     #[test]
     fn phase_incremental() {
         let mut rng = rand::thread_rng();
-        let mut movelist = movegen::MoveList::default();
+        let mut movelist = MoveList::default();
         let mut attack_container = GameStateAttackContainer::default();
         for _i in 0..10_000 {
             let mut g = GameState::standard();
@@ -225,7 +209,7 @@ mod tests {
     #[test]
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
-        let mut movelist = movegen::MoveList::default();
+        let mut movelist = MoveList::default();
         let mut attack_container = GameStateAttackContainer::default();
         let mut _eval = core_sdk::evaluation::EvaluationResult {
             final_eval: 0,
@@ -268,7 +252,7 @@ mod tests {
                 pgn_parser: PGNParser { reader },
                 is_opening: false,
                 opening_load_untilply: 0usize,
-                move_list: movegen::MoveList::default(),
+                move_list: MoveList::default(),
                 attack_container: GameStateAttackContainer::default(),
             };
             for _game in parser.into_iter() {

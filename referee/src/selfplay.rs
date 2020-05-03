@@ -4,6 +4,7 @@ use core_sdk::board_representation::game_state::*;
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
+use core_sdk::move_generation::movelist::MoveList;
 use log::warn;
 use std::time::Duration;
 use tokio::process::Child;
@@ -21,7 +22,7 @@ pub async fn cleanup(mut e1: Child, mut e2: Child, e1_err: JoinHandle<()>, e2_er
         .unwrap_or_else(|msg| warn!("Could not join e2_err task: {}", msg));
 }
 pub async fn play_game(mut task: PlayTask) -> TaskResult {
-    let mut movelist = movegen::MoveList::default();
+    let mut movelist = MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
     //-------------------------------------------------------------
     //Set game up

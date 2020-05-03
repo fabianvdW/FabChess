@@ -375,9 +375,10 @@ pub fn generate_pseudolegal_moves(game_state: &GameState, movelist: &mut MoveLis
     }
 }
 
-pub fn generate_legal_moves(game_state: &GameState, movelist: &mut MoveList) {
-    generate_pseudolegal_moves(game_state, movelist);
-    movelist
-        .move_list
-        .retain(|mv| game_state.is_valid_move(mv.0)); //TODO
+//This is a rather slow function and should only be used when speed is not really important. E.g. one time costs
+pub fn generate_legal_moves(game_state: &GameState) -> MoveList {
+    let mut res = MoveList::default();
+    generate_pseudolegal_moves(game_state, &mut res);
+    res.move_list.retain(|mv| game_state.is_valid_move(mv.0));
+    res
 }

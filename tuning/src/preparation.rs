@@ -4,7 +4,8 @@ use core_sdk::board_representation::game_state::{
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
+use core_sdk::move_generation::movegen::{self, AdditionalGameStateInformation};
+use core_sdk::move_generation::movelist::MoveList;
 use core_sdk::search::history::History;
 use core_sdk::search::in_check;
 use core_sdk::search::quiescence::{best_move_value, passes_delta_pruning, see, DELTA_PRUNING};

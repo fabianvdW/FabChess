@@ -400,7 +400,7 @@ impl GameState {
         self.initialize_psqt();
         self.initialize_checkers();
     }
-    pub(crate) fn initialize_hash(&mut self) {
+    pub fn initialize_hash(&mut self) {
         debug_assert_eq!(self.hash, 0u64);
         self.hash = 0u64;
         if self.color_to_move == BLACK {

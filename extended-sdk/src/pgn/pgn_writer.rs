@@ -155,11 +155,12 @@ mod tests {
     use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core_sdk::move_generation::makemove::make_move;
     use core_sdk::move_generation::movegen;
+    use core_sdk::move_generation::movelist::MoveList;
     use rand::Rng;
 
     #[test]
     fn pgn_writer_test() {
-        let mut movelist = movegen::MoveList::default();
+        let mut movelist = MoveList::default();
         let mut attack_container = GameStateAttackContainer::default();
         let mut rng = rand::thread_rng();
         let mut g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -");
