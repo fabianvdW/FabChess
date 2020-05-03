@@ -116,7 +116,7 @@ pub fn get_pgn_string(
         if opening_comment.is_some() && (index + 1) == opening_comment.unwrap() {
             move_text.push_str("{Opening book has ended} ");
         }
-        start_pos = make_move(&start_pos, *mv);
+        make_move(&mut start_pos, *mv);
         if current_color == BLACK && index < moves.len() - 1 {
             move_text.push_str(&format!("{}. ", start_pos.full_moves));
         }
@@ -152,29 +152,24 @@ pub fn get_pgn_string(
 mod tests {
     use crate::pgn::pgn_writer::PGNMetadata;
     use core_sdk::board_representation::game_state::*;
-    use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
-    use core_sdk::move_generation::makemove::make_move;
-    use core_sdk::move_generation::movegen;
-    use core_sdk::move_generation::movelist::MoveList;
+    use core_sdk::move_generation::makemove::copy_make;
+    use core_sdk::move_generation::movegen2;
     use rand::Rng;
 
     #[test]
     fn pgn_writer_test() {
-        let mut movelist = MoveList::default();
-        let mut attack_container = GameStateAttackContainer::default();
         let mut rng = rand::thread_rng();
         let mut g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -");
         let mut moves = Vec::with_capacity(100);
         let mut res = GameResult::Ingame;
         loop {
-            attack_container.write_state(&g);
-            let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
-            if !agsi.stm_haslegalmove || g.half_moves >= 100 {
-                if g.half_moves >= 100 {
+            let movelist = movegen2::generate_legal_moves(&g);
+            if movelist.move_list.is_empty() || g.irreversible.half_moves >= 100 {
+                if g.irreversible.half_moves >= 100 {
                     res = GameResult::Draw;
                 }
-                if !agsi.stm_haslegalmove {
-                    if agsi.stm_incheck {
+                if movelist.move_list.is_empty() {
+                    if g.in_check() {
                         if g.color_to_move == WHITE {
                             res = GameResult::BlackWin;
                         } else {
@@ -187,7 +182,7 @@ mod tests {
                 break;
             }
             let mv = movelist.move_list[rng.gen_range(0, movelist.move_list.len())];
-            g = make_move(&g, mv.0);
+            g = copy_make(&g, mv.0);
             moves.push(mv.0);
         }
         let mut metadata = PGNMetadata::default();

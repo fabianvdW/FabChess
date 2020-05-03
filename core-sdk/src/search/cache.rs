@@ -152,7 +152,7 @@ impl Cache {
         }
         let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
         if let Some(ce) = ce {
-            *tt_entry= Some(ce);
+            *tt_entry = Some(ce);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
                 && (!ce.alpha && !ce.beta
@@ -692,8 +692,8 @@ mod tests {
             assert_eq!(e7e8nres.move_type, e7e8n.move_type);
             assert_eq!(e7e8nres.piece_type, e7e8n.piece_type);
         }
-        game_state = make_move(
-            &game_state,
+        make_move(
+            &mut game_state,
             GameMove {
                 from: 23,
                 to: 31,
@@ -701,8 +701,8 @@ mod tests {
                 move_type: GameMoveType::Quiet,
             },
         );
-        game_state = make_move(
-            &game_state,
+        make_move(
+            &mut game_state,
             GameMove {
                 from: 50,
                 to: 34,

@@ -1,5 +1,6 @@
+use crate::bitboards::bitboards::constants::square;
 use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, WHITE,
+    GameMove, GameMoveType, GameState, Irreversible, PieceType, PAWN, WHITE,
 };
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::psqt_toggle_piece;
@@ -27,56 +28,46 @@ pub fn enpassant_hash(old: u64, new: u64, hash: &mut u64) {
     }
 }
 #[inline(always)]
-pub fn castle_hash(
-    old: &GameState,
-    new_wk: bool,
-    new_wq: bool,
-    new_bk: bool,
-    new_bq: bool,
-    hash: &mut u64,
-) {
-    if old.castle_white_kingside != new_wk {
+pub fn castle_hash(old: &Irreversible, new: &Irreversible, hash: &mut u64) {
+    if old.castle_white_kingside != new.castle_white_kingside {
         *hash ^= ZOBRIST_KEYS.castle_w_kingside;
     }
-    if old.castle_white_queenside != new_wq {
+    if old.castle_white_queenside != new.castle_white_queenside {
         *hash ^= ZOBRIST_KEYS.castle_w_queenside;
     }
-    if old.castle_black_kingside != new_bk {
+    if old.castle_black_kingside != new.castle_black_kingside {
         *hash ^= ZOBRIST_KEYS.castle_b_kingside;
     }
-    if old.castle_black_queenside != new_bq {
+    if old.castle_black_queenside != new.castle_black_queenside {
         *hash ^= ZOBRIST_KEYS.castle_b_queenside;
     }
 }
 
-pub fn make_nullmove(g: &GameState) -> GameState {
-    let color_to_move = 1 - g.color_to_move;
-    let pieces = g.pieces;
-    let en_passant = 0u64;
-    let half_moves = g.half_moves + 1;
-    let full_moves = g.full_moves + g.color_to_move;
-    let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
-    enpassant_hash(g.en_passant, en_passant, &mut hash);
-    let mut res = GameState {
-        color_to_move,
-        pieces,
-        castle_white_kingside: g.castle_white_kingside,
-        castle_white_queenside: g.castle_white_queenside,
-        castle_black_kingside: g.castle_black_kingside,
-        castle_black_queenside: g.castle_black_queenside,
-        en_passant,
-        half_moves,
-        full_moves,
-        hash,
-        psqt: g.psqt,
-        phase: g.phase.clone(),
-        checkers: 0u64,
-    };
-    res.initialize_checkers();
-    res
+pub fn make_nullmove(g: &mut GameState) -> Irreversible {
+    let irr = g.irreversible.clone();
+    g.irreversible.en_passant = 0u64;
+    g.irreversible.half_moves += 1;
+    g.full_moves = g.full_moves + g.color_to_move;
+    g.hash ^= ZOBRIST_KEYS.side_to_move;
+    g.color_to_move = 1 - g.color_to_move;
+    enpassant_hash(
+        g.irreversible.en_passant,
+        g.irreversible.en_passant,
+        &mut g.hash,
+    );
+    g.initialize_checkers();
+    irr
+}
+pub fn unmake_nullmove(g: &mut GameState, irr: Irreversible) {
+    g.color_to_move = 1 - g.color_to_move;
+    g.full_moves = g.full_moves - g.color_to_move;
+    g.hash ^= ZOBRIST_KEYS.side_to_move;
+    enpassant_hash(g.irreversible.en_passant, irr.en_passant, &mut g.hash);
+    g.irreversible = irr;
 }
 
 #[inline(always)]
+//Returns the rook positions for a castle
 pub fn rook_castling(to: u8) -> (u8, u8) {
     if to == 58 {
         (56, 59)
@@ -91,38 +82,32 @@ pub fn rook_castling(to: u8) -> (u8, u8) {
     }
 }
 
+//TODO: use this outside of search, perft where performance does not matter
+pub fn copy_make(g: &GameState, mv: GameMove) -> GameState {
+    let mut res = g.clone();
+    make_move(&mut res, mv);
+    res
+}
 //We expect the move to be FULLY legal before it can be made!
-pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
-    //Step 1. Update immediate fields
+pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
+    let irr = g.irreversible.clone();
     let color_to_move = 1 - g.color_to_move;
-    let full_moves = g.full_moves + g.color_to_move;
+    //Step 1. Update immediate fields
+    g.full_moves = g.full_moves + g.color_to_move;
     //Step 2. Update pieces, hash and other incremental fields
-    let mut pieces = g.pieces;
-    let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
-    let mut psqt = g.psqt;
-    let mut phase = g.phase.clone();
+    g.hash ^= ZOBRIST_KEYS.side_to_move;
     //Remove piece from original square
-    toggle_piece(&mut pieces, mv.piece_type, mv.from, g.color_to_move);
-    toggle_hash(mv.piece_type, mv.from, g.color_to_move, &mut hash);
+    toggle_piece(&mut g.pieces, mv.piece_type, mv.from, g.color_to_move);
+    toggle_hash(mv.piece_type, mv.from, g.color_to_move, &mut g.hash);
     psqt_toggle_piece(
-        &mut pieces,
+        &mut g.pieces,
         mv.piece_type,
         mv.from as usize,
         g.color_to_move,
-        &mut psqt,
+        &mut g.psqt,
     );
-    let captured_piece = match mv.move_type {
-        GameMoveType::Capture(c) => Some(c),
-        GameMoveType::EnPassant => Some(PieceType::Pawn),
-        GameMoveType::Promotion(_, c) => {
-            if let Some(c) = c {
-                Some(c)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    };
+
+    let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
         let square = if let GameMoveType::EnPassant = mv.move_type {
@@ -134,158 +119,227 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         } else {
             mv.to
         };
-        toggle_piece(&mut pieces, piece, square, color_to_move);
-        toggle_hash(piece, square, color_to_move, &mut hash);
+        toggle_piece(&mut g.pieces, piece, square, color_to_move);
+        toggle_hash(piece, square, color_to_move, &mut g.hash);
         psqt_toggle_piece(
-            &mut pieces,
+            &mut g.pieces,
             piece,
             square as usize,
             color_to_move,
-            &mut psqt,
+            &mut g.psqt,
         );
-        phase.delete_piece(piece);
+        g.phase.delete_piece(piece);
     }
     //Move rook for castling
-    if let GameMoveType::Castle = mv.move_type {
-        toggle_piece(&mut pieces, mv.piece_type, mv.to, g.color_to_move);
-        toggle_hash(mv.piece_type, mv.to, g.color_to_move, &mut hash);
+    if mv.move_type == GameMoveType::Castle {
+        toggle_piece(&mut g.pieces, mv.piece_type, mv.to, g.color_to_move);
+        toggle_hash(mv.piece_type, mv.to, g.color_to_move, &mut g.hash);
         psqt_toggle_piece(
-            &mut pieces,
+            &mut g.pieces,
             mv.piece_type,
             mv.to as usize,
             g.color_to_move,
-            &mut psqt,
+            &mut g.psqt,
         );
         let (rook_from, rook_to) = rook_castling(mv.to);
-        toggle_piece(&mut pieces, PieceType::Rook, rook_from, g.color_to_move);
-        toggle_hash(PieceType::Rook, rook_from, g.color_to_move, &mut hash);
+        toggle_piece(&mut g.pieces, PieceType::Rook, rook_from, g.color_to_move);
+        toggle_hash(PieceType::Rook, rook_from, g.color_to_move, &mut g.hash);
         psqt_toggle_piece(
-            &mut pieces,
+            &mut g.pieces,
             PieceType::Rook,
             rook_from as usize,
             g.color_to_move,
-            &mut psqt,
+            &mut g.psqt,
         );
-        toggle_piece(&mut pieces, PieceType::Rook, rook_to, g.color_to_move);
-        toggle_hash(PieceType::Rook, rook_to, g.color_to_move, &mut hash);
+        toggle_piece(&mut g.pieces, PieceType::Rook, rook_to, g.color_to_move);
+        toggle_hash(PieceType::Rook, rook_to, g.color_to_move, &mut g.hash);
         psqt_toggle_piece(
-            &mut pieces,
+            &mut g.pieces,
             PieceType::Rook,
             rook_to as usize,
             g.color_to_move,
-            &mut psqt,
+            &mut g.psqt,
         );
     } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
         //If promotion, add promotion piece
-        toggle_piece(&mut pieces, promo_piece, mv.to, g.color_to_move);
-        toggle_hash(promo_piece, mv.to, g.color_to_move, &mut hash);
+        toggle_piece(&mut g.pieces, promo_piece, mv.to, g.color_to_move);
+        toggle_hash(promo_piece, mv.to, g.color_to_move, &mut g.hash);
         psqt_toggle_piece(
-            &mut pieces,
+            &mut g.pieces,
             promo_piece,
             mv.to as usize,
             g.color_to_move,
-            &mut psqt,
+            &mut g.psqt,
         );
-        phase.add_piece(promo_piece);
+        g.phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
-        toggle_piece(&mut pieces, mv.piece_type, mv.to, g.color_to_move);
-        toggle_hash(mv.piece_type, mv.to, g.color_to_move, &mut hash);
+        toggle_piece(&mut g.pieces, mv.piece_type, mv.to, g.color_to_move);
+        toggle_hash(mv.piece_type, mv.to, g.color_to_move, &mut g.hash);
         psqt_toggle_piece(
-            &mut pieces,
+            &mut g.pieces,
             mv.piece_type,
             mv.to as usize,
             g.color_to_move,
-            &mut psqt,
+            &mut g.psqt,
         );
     }
     //Step 3. Update Castling Rights
-    let (
-        mut castle_white_kingside,
-        mut castle_white_queenside,
-        mut castle_black_kingside,
-        mut castle_black_queenside,
-    ) = (
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
-    );
     if mv.move_type == GameMoveType::Castle || mv.piece_type == PieceType::King {
         if g.color_to_move == WHITE {
-            castle_white_kingside = false;
-            castle_white_queenside = false;
+            g.irreversible.castle_white_kingside = false;
+            g.irreversible.castle_white_queenside = false;
         } else {
-            castle_black_kingside = false;
-            castle_black_queenside = false;
+            g.irreversible.castle_black_kingside = false;
+            g.irreversible.castle_black_queenside = false;
         }
     } else if mv.piece_type == PieceType::Rook {
         if g.color_to_move == WHITE {
             if mv.from == 0 {
-                castle_white_queenside = false;
+                g.irreversible.castle_white_queenside = false;
             } else if mv.from == 7 {
-                castle_white_kingside = false;
+                g.irreversible.castle_white_kingside = false;
             }
         } else if mv.from == 56 {
-            castle_black_queenside = false;
+            g.irreversible.castle_black_queenside = false;
         } else if mv.from == 63 {
-            castle_black_kingside = false;
+            g.irreversible.castle_black_kingside = false;
         }
     }
     if captured_piece.is_some() {
         if mv.to == 0 {
-            castle_white_queenside = false;
+            g.irreversible.castle_white_queenside = false;
         } else if mv.to == 56 {
-            castle_black_queenside = false;
+            g.irreversible.castle_black_queenside = false;
         } else if mv.to == 7 {
-            castle_white_kingside = false;
+            g.irreversible.castle_white_kingside = false;
         } else if mv.to == 63 {
-            castle_black_kingside = false;
+            g.irreversible.castle_black_kingside = false;
         }
     }
-    castle_hash(
-        g,
-        castle_white_kingside,
-        castle_white_queenside,
-        castle_black_kingside,
-        castle_black_queenside,
-        &mut hash,
-    );
+    castle_hash(&irr, &g.irreversible, &mut g.hash);
     //Step 4. Update en passant field
-    let en_passant = if mv.move_type == GameMoveType::Quiet
+    g.irreversible.en_passant = if mv.move_type == GameMoveType::Quiet
         && mv.piece_type == PieceType::Pawn
         && (mv.to as isize - mv.from as isize).abs() == 16
     {
         if g.color_to_move == WHITE {
-            1u64 << (mv.to - 8)
+            square(mv.to as usize - 8)
         } else {
-            1u64 << (mv.to + 8)
+            square(mv.to as usize + 8)
         }
-    } else {
-        0u64
-    };
-    enpassant_hash(g.en_passant, en_passant, &mut hash);
-    //Step 5. Half moves
-    let half_moves = if mv.move_type == GameMoveType::Quiet && mv.piece_type != PieceType::Pawn {
-        g.half_moves + 1
     } else {
         0
     };
-    let mut res = GameState {
-        color_to_move,
-        pieces,
-        castle_white_kingside,
-        castle_white_queenside,
-        castle_black_kingside,
-        castle_black_queenside,
-        en_passant,
-        half_moves,
-        full_moves,
-        hash,
-        psqt,
-        phase,
-        checkers: 0u64,
-    };
-    res.initialize_checkers();
-    res
+    enpassant_hash(irr.en_passant, g.irreversible.en_passant, &mut g.hash);
+    //Step 5. Half moves
+    g.irreversible.half_moves =
+        if mv.move_type == GameMoveType::Quiet && mv.piece_type != PieceType::Pawn {
+            g.irreversible.half_moves + 1
+        } else {
+            0
+        };
+    g.color_to_move = color_to_move;
+    g.initialize_checkers();
+    irr
+}
+
+pub fn unmake_move(g: &mut GameState, mv: GameMove, irr: Irreversible) {
+    g.color_to_move = 1 - g.color_to_move;
+    //Remake the enpassant hash
+    enpassant_hash(g.irreversible.en_passant, irr.en_passant, &mut g.hash);
+    //Remake the castle rights hash
+    castle_hash(&g.irreversible, &irr, &mut g.hash);
+
+    //Revert the move
+    if mv.move_type == GameMoveType::Castle {
+        toggle_piece(&mut g.pieces, mv.piece_type, mv.to, g.color_to_move);
+        toggle_hash(mv.piece_type, mv.to, g.color_to_move, &mut g.hash);
+        psqt_toggle_piece(
+            &mut g.pieces,
+            mv.piece_type,
+            mv.to as usize,
+            g.color_to_move,
+            &mut g.psqt,
+        );
+        let (rook_from, rook_to) = rook_castling(mv.to);
+        toggle_piece(&mut g.pieces, PieceType::Rook, rook_from, g.color_to_move);
+        toggle_hash(PieceType::Rook, rook_from, g.color_to_move, &mut g.hash);
+        psqt_toggle_piece(
+            &mut g.pieces,
+            PieceType::Rook,
+            rook_from as usize,
+            g.color_to_move,
+            &mut g.psqt,
+        );
+        toggle_piece(&mut g.pieces, PieceType::Rook, rook_to, g.color_to_move);
+        toggle_hash(PieceType::Rook, rook_to, g.color_to_move, &mut g.hash);
+        psqt_toggle_piece(
+            &mut g.pieces,
+            PieceType::Rook,
+            rook_to as usize,
+            g.color_to_move,
+            &mut g.psqt,
+        );
+    } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
+        //If promotion, delete promotion piece
+        toggle_piece(&mut g.pieces, promo_piece, mv.to, g.color_to_move);
+        toggle_hash(promo_piece, mv.to, g.color_to_move, &mut g.hash);
+        psqt_toggle_piece(
+            &mut g.pieces,
+            promo_piece,
+            mv.to as usize,
+            g.color_to_move,
+            &mut g.psqt,
+        );
+        g.phase.delete_piece(promo_piece);
+    } else {
+        //Add piece again at to
+        toggle_piece(&mut g.pieces, mv.piece_type, mv.to, g.color_to_move);
+        toggle_hash(mv.piece_type, mv.to, g.color_to_move, &mut g.hash);
+        psqt_toggle_piece(
+            &mut g.pieces,
+            mv.piece_type,
+            mv.to as usize,
+            g.color_to_move,
+            &mut g.psqt,
+        );
+    }
+    let captured_piece = mv.get_maybe_captured_piece();
+    //Add captured piece back
+    if let Some(piece) = captured_piece {
+        let square = if let GameMoveType::EnPassant = mv.move_type {
+            if g.color_to_move == WHITE {
+                mv.to - 8
+            } else {
+                mv.to + 8
+            }
+        } else {
+            mv.to
+        };
+        toggle_piece(&mut g.pieces, piece, square, 1 - g.color_to_move);
+        toggle_hash(piece, square, 1 - g.color_to_move, &mut g.hash);
+        psqt_toggle_piece(
+            &mut g.pieces,
+            piece,
+            square as usize,
+            1 - g.color_to_move,
+            &mut g.psqt,
+        );
+        g.phase.add_piece(piece);
+    }
+    g.full_moves = g.full_moves - g.color_to_move;
+
+    g.hash ^= ZOBRIST_KEYS.side_to_move;
+    //Add piece to original square
+    toggle_piece(&mut g.pieces, mv.piece_type, mv.from, g.color_to_move);
+    toggle_hash(mv.piece_type, mv.from, g.color_to_move, &mut g.hash);
+    psqt_toggle_piece(
+        &mut g.pieces,
+        mv.piece_type,
+        mv.from as usize,
+        g.color_to_move,
+        &mut g.psqt,
+    );
+    g.irreversible = irr;
 }

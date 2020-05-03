@@ -3,7 +3,7 @@ use crate::board_representation::game_state::*;
 const MG_LIMIT: i16 = 9100;
 const EG_LIMIT: i16 = 2350;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Phase {
     pub phase: f64,
     pub material_score: i16,

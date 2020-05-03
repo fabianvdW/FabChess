@@ -1,5 +1,4 @@
 use crate::bitboards::bitboards::constants::{square, KING_ATTACKS, KNIGHT_ATTACKS};
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
@@ -7,10 +6,11 @@ use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{
     b_pawn_east_targets, b_pawn_west_targets, bishop_attacks, double_push_pawn_targets,
-    generate_moves, pawn_east_targets, pawn_west_targets, rook_attacks, single_push_pawn_targets,
+    pawn_east_targets, pawn_west_targets, rook_attacks, single_push_pawn_targets,
     w_pawn_east_targets, w_pawn_west_targets,
 };
-use crate::move_generation::movelist::MoveList;
+use crate::move_generation::movegen2;
+use crate::move_generation::movegen2::generate_legal_moves;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 //TODO Remove and add as usize
@@ -153,13 +153,22 @@ impl GameMove {
         }
     }
     #[inline(always)]
+    pub fn get_maybe_captured_piece(self) -> Option<PieceType> {
+        match self.move_type {
+            GameMoveType::Capture(c) => Some(c),
+            GameMoveType::EnPassant => Some(PieceType::Pawn),
+            GameMoveType::Promotion(_, Some(c)) => Some(c),
+            _ => None,
+        }
+    }
+    #[inline(always)]
     pub fn get_captured_piece(self) -> PieceType {
         debug_assert!(self.is_capture());
         match self.move_type {
             GameMoveType::Capture(p) => p,
             GameMoveType::Promotion(_, Some(p)) => p,
             GameMoveType::EnPassant => PieceType::Pawn,
-            _ => panic!("Captured piece type  called on a capture"),
+            _ => panic!("Captured piece type  called on a non capture"),
         }
     }
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
@@ -202,9 +211,7 @@ impl GameMove {
     }
 
     pub fn to_san(self, game_state: &GameState) -> String {
-        let mut movelist = MoveList::default();
-        let mut agsi = GameStateAttackContainer::from_state(game_state);
-        generate_moves(game_state, false, &mut movelist, &agsi);
+        let movelist = movegen2::generate_legal_moves(game_state);
         let mut res_str = String::new();
         if let GameMoveType::Castle = self.move_type {
             if self.to == 2 || self.to == 58 {
@@ -267,12 +274,12 @@ impl GameMove {
                 ));
             }
         }
-        let game_state = make_move(game_state, self);
-        agsi.write_state(&game_state);
-        let agsi = generate_moves(&game_state, false, &mut movelist, &agsi);
-        if agsi.stm_incheck && !agsi.stm_haslegalmove {
+        let mut next_state = game_state.clone();
+        make_move(&mut next_state, self);
+        let mvs = generate_legal_moves(&next_state);
+        if mvs.move_list.is_empty() && next_state.in_check() {
             res_str.push_str("#");
-        } else if agsi.stm_incheck {
+        } else if next_state.in_check() {
             res_str.push_str("+");
         }
         res_str
@@ -358,7 +365,18 @@ fn file_to_string(file: usize) -> &'static str {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
+pub struct Irreversible {
+    pub checkers: u64,
+    pub castle_white_kingside: bool,
+    pub castle_white_queenside: bool,
+    pub castle_black_kingside: bool,
+    pub castle_black_queenside: bool,
+    pub en_passant: u64,
+    pub half_moves: usize,
+}
+
+#[derive(Clone, PartialEq)]
 pub struct GameState {
     // 0 = White
     // 1 = Black
@@ -377,16 +395,7 @@ pub struct GameState {
     // 1 -> Black
     pub pieces: [[u64; 2]; 6],
 
-    pub checkers: u64,
-    //Castle flags
-    pub castle_white_kingside: bool,
-    pub castle_white_queenside: bool,
-    pub castle_black_kingside: bool,
-    pub castle_black_queenside: bool,
-
-    pub en_passant: u64,
-    //50 move draw counter
-    pub half_moves: usize,
+    pub irreversible: Irreversible,
     pub full_moves: usize,
     pub hash: u64,
     pub psqt: EvaluationScore,
@@ -406,20 +415,20 @@ impl GameState {
         if self.color_to_move == BLACK {
             self.hash ^= ZOBRIST_KEYS.side_to_move;
         }
-        if self.castle_white_kingside {
+        if self.irreversible.castle_white_kingside {
             self.hash ^= ZOBRIST_KEYS.castle_w_kingside;
         }
-        if self.castle_white_queenside {
+        if self.irreversible.castle_white_queenside {
             self.hash ^= ZOBRIST_KEYS.castle_w_queenside;
         }
-        if self.castle_black_kingside {
+        if self.irreversible.castle_black_kingside {
             self.hash ^= ZOBRIST_KEYS.castle_b_kingside;
         }
-        if self.castle_black_queenside {
+        if self.irreversible.castle_black_queenside {
             self.hash ^= ZOBRIST_KEYS.castle_b_queenside;
         }
-        if self.en_passant != 0u64 {
-            let file = self.en_passant.trailing_zeros() as usize % 8;
+        if self.irreversible.en_passant != 0u64 {
+            let file = self.irreversible.en_passant.trailing_zeros() as usize % 8;
             self.hash ^= ZOBRIST_KEYS.en_passant[file];
         }
 
@@ -510,7 +519,7 @@ impl GameState {
         self.psqt = p_w - p_b;
     }
     pub(crate) fn initialize_checkers(&mut self) {
-        self.checkers =
+        self.irreversible.checkers =
             self.square_attackers(self.king_square(self.color_to_move), self.all_pieces());
     }
 
@@ -715,14 +724,16 @@ impl GameState {
         let mut res = GameState {
             color_to_move,
             pieces: pieces_arr,
-            castle_white_kingside,
-            castle_white_queenside,
-            castle_black_kingside,
-            castle_black_queenside,
-            half_moves,
+            irreversible: Irreversible {
+                castle_white_kingside,
+                castle_white_queenside,
+                castle_black_kingside,
+                castle_black_queenside,
+                half_moves,
+                en_passant,
+                checkers: 0u64,
+            },
             full_moves,
-            en_passant,
-            checkers: 0u64,
             hash: 0u64,
             psqt: EvaluationScore(0, 0),
             phase: Phase {
@@ -799,38 +810,38 @@ impl GameState {
             res_str.push_str("b");
         }
         res_str.push_str(" ");
-        if !(self.castle_white_kingside
-            | self.castle_white_queenside
-            | self.castle_black_kingside
-            | self.castle_black_queenside)
+        if !(self.irreversible.castle_white_kingside
+            | self.irreversible.castle_white_queenside
+            | self.irreversible.castle_black_kingside
+            | self.irreversible.castle_black_queenside)
         {
             res_str.push_str("-");
         } else {
-            if self.castle_white_kingside {
+            if self.irreversible.castle_white_kingside {
                 res_str.push_str("K");
             }
-            if self.castle_white_queenside {
+            if self.irreversible.castle_white_queenside {
                 res_str.push_str("Q");
             }
-            if self.castle_black_kingside {
+            if self.irreversible.castle_black_kingside {
                 res_str.push_str("k");
             }
-            if self.castle_black_queenside {
+            if self.irreversible.castle_black_queenside {
                 res_str.push_str("q");
             }
         }
         res_str.push_str(" ");
 
-        if self.en_passant == 0u64 {
+        if self.irreversible.en_passant == 0u64 {
             res_str.push_str("-");
         } else {
-            let idx = self.en_passant.trailing_zeros() as usize;
+            let idx = self.irreversible.en_passant.trailing_zeros() as usize;
             let rank = idx / 8;
             let file = idx % 8;
             res_str.push_str(&format!("{}{}", file_to_string(file), rank + 1));
         }
         res_str.push_str(" ");
-        res_str.push_str(&format!("{} ", self.half_moves));
+        res_str.push_str(&format!("{} ", self.irreversible.half_moves));
         res_str.push_str(&format!("{}", self.full_moves));
         res_str
     }
@@ -848,14 +859,16 @@ impl GameState {
         let mut res = GameState {
             color_to_move,
             pieces,
-            castle_white_kingside: true,
-            castle_white_queenside: true,
-            castle_black_kingside: true,
-            castle_black_queenside: true,
-            en_passant: 0u64,
-            half_moves: 0usize,
+            irreversible: Irreversible {
+                castle_white_kingside: true,
+                castle_white_queenside: true,
+                castle_black_kingside: true,
+                castle_black_queenside: true,
+                en_passant: 0u64,
+                half_moves: 0,
+                checkers: 0u64,
+            },
             full_moves: 1usize,
-            checkers: 0u64,
             hash: 0u64,
             psqt: EvaluationScore(0, 0),
             phase: Phase {
@@ -867,11 +880,7 @@ impl GameState {
         res
     }
 
-    pub fn is_valid_tt_move(
-        &self,
-        mv: GameMove,
-        attack_container: &GameStateAttackContainer,
-    ) -> bool {
+    pub fn is_valid_tt_move(&self, mv: GameMove) -> bool {
         //println!("{}",self.to_fen());
         //println!("{:?}", mv);
         if self.pieces[mv.piece_type.to_index()][self.color_to_move] & square(mv.from as usize)
@@ -903,40 +912,45 @@ impl GameState {
         }
 
         if mv.move_type == GameMoveType::EnPassant {
-            if (self.en_passant & square(mv.to as usize)) == 0u64 {
+            if (self.irreversible.en_passant & square(mv.to as usize)) == 0u64 {
                 return false;
             }
         } else if mv.move_type == GameMoveType::Castle {
             if mv.piece_type != PieceType::King {
                 return false;
             }
-            let all_piece = self.all_pieces();
-            let blocked = all_piece | attack_container.attacks_sum[1 - self.color_to_move];
-            if mv.to != 6 && mv.to != 2 && mv.to != 62 && mv.to != 58
-                || attack_container.attacks_sum[1 - self.color_to_move] & square(mv.from as usize)
-                    != 0u64
-            {
+
+            if mv.to != 6 && mv.to != 2 && mv.to != 62 && mv.to != 58 || self.in_check() {
                 return false;
             }
+            let all_piece = self.all_pieces();
             let is_invalid_wk = || {
                 mv.to == 6
-                    && (!self.castle_white_kingside || blocked & (1u64 << 5 | 1u64 << 6) != 0u64)
+                    && (!self.irreversible.castle_white_kingside
+                        || all_piece & (square(5) | square(6)) != 0u64
+                        || self.square_attacked(5, all_piece, 0u64)
+                        || self.square_attacked(6, all_piece, 0u64))
             };
             let is_invalid_wq = || {
                 mv.to == 2
-                    && (!self.castle_white_queenside
-                        || blocked & (1u64 << 2 | 1u64 << 3) != 0u64
-                        || all_piece & (1u64 << 1) != 0u64)
+                    && (!self.irreversible.castle_white_queenside
+                        || all_piece & (square(1) | square(2) | square(3)) != 0u64
+                        || self.square_attacked(2, all_piece, 0u64)
+                        || self.square_attacked(3, all_piece, 0u64))
             };
             let is_invalid_bk = || {
                 mv.to == 62
-                    && (!self.castle_black_kingside || blocked & (1u64 << 61 | 1u64 << 62) != 0u64)
+                    && (!self.irreversible.castle_black_kingside
+                        || all_piece & (square(61) | square(62)) != 0u64
+                        || self.square_attacked(61, all_piece, 0u64)
+                        || self.square_attacked(62, all_piece, 0u64))
             };
             let is_invalid_bq = || {
                 mv.to == 58
-                    && (!self.castle_black_queenside
-                        || blocked & (1u64 << 58 | 1u64 << 59) != 0u64
-                        || all_piece & (1u64 << 57) != 0u64)
+                    && (!self.irreversible.castle_black_queenside
+                        || all_piece & (square(57) | square(58) | square(59)) != 0u64
+                        || self.square_attacked(58, all_piece, 0u64)
+                        || self.square_attacked(59, all_piece, 0u64))
             };
             if is_invalid_wk() || is_invalid_wq() || is_invalid_bk() || is_invalid_bq() {
                 return false;
@@ -961,8 +975,7 @@ impl GameState {
         let mut all_pieces = self.all_pieces();
         match mv.piece_type {
             PieceType::King => {
-                if square(mv.to as usize) & (attack_container.attacks_sum[1 - self.color_to_move])
-                    != 0u64
+                if self.square_attacked(mv.to as usize, all_pieces ^ square(mv.from as usize), 0u64)
                     || mv.move_type != GameMoveType::Castle
                         && (square(mv.to as usize)) & (KING_ATTACKS[mv.from as usize]) == 0u64
                 {
@@ -1118,21 +1131,33 @@ impl Display for GameState {
             res_str.push_str("\n+---+---+---+---+---+---+---+---+\n");
         }
         res_str.push_str("Castle Rights: \n");
-        res_str.push_str(&format!("White Kingside: {}\n", self.castle_white_kingside));
+        res_str.push_str(&format!(
+            "White Kingside: {}\n",
+            self.irreversible.castle_white_kingside
+        ));
         res_str.push_str(&format!(
             "White Queenside: {}\n",
-            self.castle_white_queenside
+            self.irreversible.castle_white_queenside
         ));
-        res_str.push_str(&format!("Black Kingside: {}\n", self.castle_black_kingside));
+        res_str.push_str(&format!(
+            "Black Kingside: {}\n",
+            self.irreversible.castle_black_kingside
+        ));
         res_str.push_str(&format!(
             "Black Queenside: {}\n",
-            self.castle_black_queenside
+            self.irreversible.castle_black_queenside
         ));
-        res_str.push_str(&format!("En Passant Possible: {:x}\n", self.en_passant));
-        res_str.push_str(&format!("Half-Counter: {}\n", self.half_moves));
+        res_str.push_str(&format!(
+            "En Passant Possible: {:x}\n",
+            self.irreversible.en_passant
+        ));
+        res_str.push_str(&format!("Half-Counter: {}\n", self.irreversible.half_moves));
         res_str.push_str(&format!("Full-Counter: {}\n", self.full_moves));
         res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
-        res_str.push_str(&format!("Checkers: 0x{:x}u64\n", self.checkers));
+        res_str.push_str(&format!(
+            "Checkers: 0x{:x}u64\n",
+            self.irreversible.checkers
+        ));
         res_str.push_str(&format!("Hash: {}\n", self.hash));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
@@ -1185,16 +1210,34 @@ impl Debug for GameState {
             self.pieces[QUEEN][BLACK]
         ));
         res_str.push_str(&format!("BlackKing: 0x{:x}u64\n", self.pieces[KING][BLACK]));
-        res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside));
-        res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside));
-        res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside));
-        res_str.push_str(&format!("CBQ: {}\n", self.castle_black_queenside));
-        res_str.push_str(&format!("En-Passant: 0x{:x}u64\n", self.en_passant));
-        res_str.push_str(&format!("half_moves: {}\n", self.half_moves));
+        res_str.push_str(&format!(
+            "CWK: {}\n",
+            self.irreversible.castle_white_kingside
+        ));
+        res_str.push_str(&format!(
+            "CWQ: {}\n",
+            self.irreversible.castle_white_queenside
+        ));
+        res_str.push_str(&format!(
+            "CBK: {}\n",
+            self.irreversible.castle_black_kingside
+        ));
+        res_str.push_str(&format!(
+            "CBQ: {}\n",
+            self.irreversible.castle_black_queenside
+        ));
+        res_str.push_str(&format!(
+            "En-Passant: 0x{:x}u64\n",
+            self.irreversible.en_passant
+        ));
+        res_str.push_str(&format!("half_moves: {}\n", self.irreversible.half_moves));
         res_str.push_str(&format!("full_moves: {}\n", self.full_moves));
         res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
         res_str.push_str(&format!("Hash: {}\n", self.hash));
-        res_str.push_str(&format!("Checkers: 0x{:x}u64\n", self.checkers));
+        res_str.push_str(&format!(
+            "Checkers: 0x{:x}u64\n",
+            self.irreversible.checkers
+        ));
         res_str.push_str(&format!("Phase: {}\n", self.phase.phase));
         res_str.push_str(&format!("PSQT: {}\n", self.psqt));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));

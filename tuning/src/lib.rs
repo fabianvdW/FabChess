@@ -5,10 +5,9 @@ pub mod loading;
 
 pub use crate::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
 use core_sdk::board_representation::game_state::{BLACK, WHITE};
-use core_sdk::evaluation::eval_game_state_from_null;
 pub use core_sdk::evaluation::parameters::Parameters;
 use core_sdk::evaluation::trace::Trace;
-use core_sdk::evaluation::{EG, MG};
+use core_sdk::evaluation::{eval_game_state, EG, MG};
 use rand::{seq::SliceRandom, thread_rng};
 
 //pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
@@ -47,7 +46,7 @@ pub const L2_REGULARIZATION: f64 = 0.;
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(1);
     for state in labelledstates {
-        let eval = eval_game_state_from_null(&state.game_state);
+        let eval = eval_game_state(&state.game_state, 0, 0);
         res.push(TexelState {
             label: state.label,
             eval: eval.final_eval as f64,

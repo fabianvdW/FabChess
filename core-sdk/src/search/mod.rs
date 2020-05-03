@@ -9,7 +9,6 @@ pub mod statistics;
 pub mod timecontrol;
 
 use crate::board_representation::game_state::*;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::search::searcher::Thread;
 use crate::search::timecontrol::TimeControlInformation;
 use history::History;
@@ -28,8 +27,7 @@ pub struct CombinedSearchParameters<'a> {
     pub alpha: i16,
     pub beta: i16,
     pub depth_left: i16,
-    pub game_state: &'a GameState,
-    pub color: i16,
+    pub game_state: &'a mut GameState,
     pub current_depth: usize,
 }
 impl<'a> CombinedSearchParameters<'a> {
@@ -37,8 +35,7 @@ impl<'a> CombinedSearchParameters<'a> {
         alpha: i16,
         beta: i16,
         depth_left: i16,
-        game_state: &'a GameState,
-        color: i16,
+        game_state: &'a mut GameState,
         current_depth: usize,
     ) -> Self {
         CombinedSearchParameters {
@@ -46,7 +43,6 @@ impl<'a> CombinedSearchParameters<'a> {
             beta,
             depth_left,
             game_state,
-            color,
             current_depth,
         }
     }
@@ -128,7 +124,7 @@ pub fn check_for_draw(game_state: &GameState, history: &History) -> SearchInstru
         return SearchInstruction::StopSearching(0);
     }
 
-    if game_state.half_moves >= 100 {
+    if game_state.irreversible.half_moves >= 100 {
         return SearchInstruction::StopSearching(0);
     }
 
@@ -177,13 +173,6 @@ pub fn concatenate_pv(at_depth: usize, thread: &mut Thread) {
         thread.pv_table[at_depth].pv[index + 1] = None;
         index += 1;
     }
-}
-
-#[inline(always)]
-pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContainer) -> bool {
-    (game_state.pieces[KING][game_state.color_to_move]
-        & attack_container.attacks_sum[1 - game_state.color_to_move])
-        != 0u64
 }
 
 #[inline(always)]

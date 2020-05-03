@@ -1,9 +1,8 @@
 use core_sdk::board_representation::game_state::{
     char_to_file, char_to_rank, GameMove, GameMoveType, GameState, PieceType, WHITE,
 };
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
-use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::{movegen, movelist};
+use core_sdk::move_generation::makemove::copy_make;
+use core_sdk::move_generation::{movegen2, movelist};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -11,8 +10,6 @@ pub struct GameParser {
     pub pgn_parser: PGNParser,
     pub is_opening: bool,
     pub opening_load_untilply: usize,
-    pub move_list: movelist::MoveList,
-    pub attack_container: GameStateAttackContainer,
 }
 
 impl Iterator for GameParser {
@@ -42,13 +39,7 @@ impl Iterator for GameParser {
                     }
                     //println!("{} || len: {}", move_str, move_str.len());
                     let last_state = &vec_gs[vec_gs.len() - 1];
-                    self.attack_container.write_state(last_state);
-                    let parsed_move = parse_move(
-                        last_state,
-                        &move_str,
-                        &mut self.move_list,
-                        &self.attack_container,
-                    );
+                    let parsed_move = parse_move(last_state, &move_str);
                     vec_gs.push(parsed_move.1);
                     vec_res.push(parsed_move.0);
                     if self.is_opening && vec_res.len() == self.opening_load_untilply {
@@ -80,7 +71,7 @@ pub fn find_castle(
         if mv.move_type == GameMoveType::Castle
             && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 }
         {
-            let state = make_move(g, mv);
+            let state = copy_make(g, mv);
             return Ok((mv, state));
         }
     }
@@ -104,7 +95,7 @@ pub fn find_move(
         }*/
 
         if ms.matches(&gmv.0) {
-            let state = make_move(g, gmv.0);
+            let state = copy_make(g, gmv.0);
             return Ok((gmv.0, state));
         }
     }
@@ -188,38 +179,33 @@ impl MoveSpecification {
     }
 }
 
-pub fn parse_move(
-    g: &GameState,
-    move_str: &str,
-    movelist: &mut movelist::MoveList,
-    attack_container: &GameStateAttackContainer,
-) -> (GameMove, GameState) {
+pub fn parse_move(g: &GameState, move_str: &str) -> (GameMove, GameState) {
     let mut my_string = move_str.to_string();
     my_string = my_string
         .replace("#", "")
         .replace("+", "")
         .replace("=", "")
         .replace("x", "");
-    movegen::generate_moves(&g, false, movelist, &attack_container);
+    let movelist = movegen2::generate_legal_moves(&g);
     if my_string.contains('-') {
         //Castle
         //Kingside
         if my_string.len() == 3 {
             if g.color_to_move == WHITE {
-                assert_eq!(true, g.castle_white_kingside);
+                assert_eq!(true, g.irreversible.castle_white_kingside);
             } else {
-                assert_eq!(true, g.castle_black_kingside);
+                assert_eq!(true, g.irreversible.castle_black_kingside);
             }
-            if let Ok(res) = find_castle(movelist, g, true) {
+            if let Ok(res) = find_castle(&movelist, g, true) {
                 return res;
             }
         } else {
             if g.color_to_move == WHITE {
-                assert_eq!(true, g.castle_white_queenside);
+                assert_eq!(true, g.irreversible.castle_white_queenside);
             } else {
-                assert_eq!(true, g.castle_black_queenside);
+                assert_eq!(true, g.irreversible.castle_black_queenside);
             }
-            if let Ok(res) = find_castle(movelist, g, false) {
+            if let Ok(res) = find_castle(&movelist, g, false) {
                 return res;
             }
         }
@@ -242,7 +228,7 @@ pub fn parse_move(
                 8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0)),
             );
         }
-        if let Ok(res) = find_move(movelist, g, ms) {
+        if let Ok(res) = find_move(&movelist, g, ms) {
             return res;
         }
     }

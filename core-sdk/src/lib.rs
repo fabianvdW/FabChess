@@ -9,7 +9,7 @@ pub mod move_generation;
 pub mod search;
 
 use crate::board_representation::game_state::GameState;
-use crate::move_generation::makemove::make_move;
+use crate::move_generation::makemove::{make_move, unmake_move};
 use crate::move_generation::movegen2;
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;
@@ -40,8 +40,9 @@ impl Default for UCIOptions {
     }
 }
 
-pub fn perft_div(g: &GameState, depth: usize) -> u64 {
+pub fn perft_div(g: &mut GameState, depth: usize) -> u64 {
     let mut count = 0u64;
+    let mut wrongs = 0u64;
     let mut movelist = ReservedMoveList::default();
     let now = Instant::now();
 
@@ -50,10 +51,12 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     for i in 0..len {
         let gmv = movelist.move_lists[depth].move_list[i];
         if g.is_valid_move(gmv.0) {
-            let next_g = make_move(&g, gmv.0);
-            let res = perft(&next_g, depth - 1, &mut movelist);
-            println!("{:?}: {}", gmv.0, res);
-            count += res;
+            let irr = make_move(g, gmv.0);
+            let res = perft(g, depth - 1, &mut movelist);
+            unmake_move(g, gmv.0, irr);
+            println!("{:?}: {}", gmv.0, res.0);
+            count += res.0;
+            wrongs += res.1;
         }
     }
     println!("{}", count);
@@ -64,33 +67,39 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
         "{}",
         &format!("Time {} ({} nps)", secs, count as f64 / secs)
     );
+    println!("Wrongs: {}", wrongs);
     count
 }
 
-pub fn perft(g: &GameState, depth: usize, movelist: &mut ReservedMoveList) -> u64 {
+pub fn perft(g: &mut GameState, depth: usize, movelist: &mut ReservedMoveList) -> (u64, u64) {
+    let (mut correct, mut wrong) = (0u64, 0u64);
     if depth == 1 {
         movegen2::generate_pseudolegal_moves(&g, &mut movelist.move_lists[depth]);
-        let mut res = 0u64;
         for mv in movelist.move_lists[depth].move_list.iter() {
             if g.is_valid_move(mv.0) {
-                res += 1;
+                correct += 1;
+            } else {
+                wrong += 1;
             }
         }
-        res
+        (correct, wrong)
     } else {
         if depth == 0 {
-            return 1;
+            return (1, 0);
         }
-        let mut res = 0;
         movegen2::generate_pseudolegal_moves(&g, &mut movelist.move_lists[depth]);
         let len = movelist.move_lists[depth].move_list.len();
         for i in 0..len {
             let mv = movelist.move_lists[depth].move_list[i].0;
             if g.is_valid_move(mv) {
-                res += perft(&make_move(&g, mv), depth - 1, movelist);
+                let irr = make_move(g, mv);
+                let res = perft(g, depth - 1, movelist);
+                unmake_move(g, mv, irr);
+                correct += res.0;
+                wrong += res.1;
             }
         }
-        res
+        (correct, wrong)
     }
 }
 const BENCHMARKING_POSITIONS: [&str; 50] = [

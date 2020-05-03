@@ -7,13 +7,11 @@ use super::GameMove;
 use super::PrincipalVariation;
 use super::MATED_IN_MAX;
 use super::MAX_SEARCH_DEPTH;
-use crate::board_representation::game_state::{GameState, WHITE};
+use crate::board_representation::game_state::GameState;
 //use crate::logging::log;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
-use crate::move_generation::movegen::generate_moves;
-use crate::move_generation::movelist::MoveList;
-use crate::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
+use crate::move_generation::movegen2;
+use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation, MATE_SCORE};
 use crate::UCIOptions;
 use std::cell::UnsafeCell;
@@ -252,7 +250,6 @@ pub struct Thread {
     pub root_plies_played: usize,
     pub history: History,
     pub movelist: ReservedMoveList,
-    pub attack_container: ReservedAttackContainer,
     pub pv_table: Vec<PrincipalVariation>,
     pub killer_moves: [[Option<GameMove>; 2]; MAX_SEARCH_DEPTH],
     pub quiets_tried: [[Option<GameMove>; 128]; MAX_SEARCH_DEPTH],
@@ -286,9 +283,13 @@ impl Thread {
         for mv in self.current_pv.pv.pv.iter() {
             if let Some(mv) = mv {
                 if next_state.is_none() {
-                    next_state = Some(make_move(root, *mv));
+                    let mut root_clone = root.clone();
+                    make_move(&mut root_clone, *mv);
+                    next_state = Some(root_clone);
                 } else {
-                    next_state = Some(make_move(next_state.as_ref().unwrap(), *mv));
+                    let mut state = next_state.unwrap();
+                    make_move(&mut state, *mv);
+                    next_state = Some(state);
                 }
                 self.pv_applicable.push(next_state.as_ref().unwrap().hash);
             } else {
@@ -312,7 +313,6 @@ impl Thread {
             root_plies_played: 0,
             history: History::default(),
             movelist: ReservedMoveList::default(),
-            attack_container: ReservedAttackContainer::default(),
             pv_table,
             killer_moves: [[None; 2]; MAX_SEARCH_DEPTH],
             quiets_tried: [[None; 128]; MAX_SEARCH_DEPTH],
@@ -361,7 +361,7 @@ impl Thread {
         }
     }
 
-    fn search(&mut self, max_depth: i16, state: GameState) {
+    fn search(&mut self, max_depth: i16, mut state: GameState) {
         if self.itcs.uci_options().debug_print {
             println!(
                 "info String Thread {} starting the search of state!",
@@ -401,14 +401,7 @@ impl Thread {
             };
             loop {
                 principal_variation_search(
-                    CombinedSearchParameters::from(
-                        alpha,
-                        beta,
-                        curr_depth as i16,
-                        &state,
-                        if state.color_to_move == WHITE { 1 } else { -1 },
-                        0,
-                    ),
+                    CombinedSearchParameters::from(alpha, beta, curr_depth as i16, &mut state, 0),
                     self,
                 );
                 if self.self_stop {
@@ -486,13 +479,7 @@ pub fn search_move(
 
     let time_saved_before = itcs.saved_time.load(Ordering::Relaxed);
     //Step 1. Check how many legal moves there are
-    let mut movelist = MoveList::default();
-    generate_moves(
-        &game_state,
-        false,
-        &mut movelist,
-        &GameStateAttackContainer::from_state(&game_state),
-    );
+    let movelist = movegen2::generate_legal_moves(&game_state);
 
     //Step2. Check legal moves
     if movelist.move_list.is_empty() {
@@ -512,7 +499,7 @@ pub fn search_move(
     let mut relevant_hashes: Vec<u64> = Vec::with_capacity(100);
     for gs in history.iter().rev() {
         relevant_hashes.push(gs.hash);
-        if gs.half_moves == 0 {
+        if gs.irreversible.half_moves == 0 {
             break;
         }
     }

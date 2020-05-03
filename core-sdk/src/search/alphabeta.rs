@@ -3,7 +3,7 @@ use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
-use crate::move_generation::makemove::{make_move, make_nullmove};
+use crate::move_generation::makemove::{make_move, make_nullmove, unmake_move, unmake_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::searcher::Thread;
@@ -25,6 +25,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     clear_pv(p.current_depth, thread);
     let root = p.current_depth == 0;
     let is_pv_node = p.beta - p.alpha > 1;
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     //Step 1. Check timeout and if stop flag is set, if we are main thread
     if thread.search_statistics.nodes_searched % 4096 == 0 {
         checkup(thread)
@@ -41,7 +46,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 2. Max Search depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p, thread) {
+    if let SearchInstruction::StopSearching(res) = max_depth(&p) {
         return res;
     }
 
@@ -64,11 +69,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 4. Attacks and in check  flag
-    thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
-    let incheck = in_check(
-        p.game_state,
-        &thread.attack_container.attack_containers[p.current_depth],
-    );
+    let incheck = p.game_state.in_check();
 
     //Step 5. Check extensions if not at root
     if incheck && !root {
@@ -122,7 +123,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     };
     thread
         .history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
+        .push(p.game_state.hash, p.game_state.irreversible.half_moves == 0);
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
@@ -138,7 +139,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         }
         //Step 10.2 Null Move Forward Pruning
         if let SearchInstruction::StopSearching(res) =
-            null_move_pruning(&p, thread, static_evaluation, &tt_entry)
+            null_move_pruning(&mut p, thread, static_evaluation, &tt_entry)
         {
             return res;
         }
@@ -147,7 +148,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     //Step 11. Internal Iterative Deepening
     if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
         if let SearchInstruction::StopSearching(res) =
-            internal_iterative_deepening(&p, thread, &mut tt_move)
+            internal_iterative_deepening(&mut p, thread, &mut tt_move)
         {
             return res;
         }
@@ -163,8 +164,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let mut move_orderer = MoveOrderer {
         stage: 0,
         stages: &NORMAL_STAGES,
-        gen_only_captures: false,
-        has_legal_move: false,
     };
     loop {
         let mv = move_orderer.next(thread, &p, pv_table_move, tt_move);
@@ -172,7 +171,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             break;
         }
         let (mv, move_score) = mv.unwrap(); //Move score is only set for bad_capture
-
+        
         //Step 14.4. UCI Reporting at root
         //uci_report_move(&p, su, &mv, index);
 
@@ -248,8 +247,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         } else {
             0
         };
-
-        let next_state = make_move(p.game_state, mv);
+        let irreversible = make_move(p.game_state, mv);
         //Step 14.8. Search the moves
         let mut following_score: i16;
         if p.depth_left <= 2 || !is_pv_node || index == 0 {
@@ -262,8 +260,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                     -p.beta,
                     -p.alpha,
                     p.depth_left - 1 - reduction,
-                    &next_state,
-                    -p.color,
+                    p.game_state,
                     p.current_depth + 1,
                 ),
                 thread,
@@ -274,8 +271,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                         -p.beta,
                         -p.alpha,
                         p.depth_left - 1,
-                        &next_state,
-                        -p.color,
+                        p.game_state,
                         p.current_depth + 1,
                     ),
                     thread,
@@ -289,8 +285,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                     -p.alpha - 1,
                     -p.alpha,
                     p.depth_left - 1 - reduction,
-                    &next_state,
-                    -p.color,
+                    p.game_state,
                     p.current_depth + 1,
                 ),
                 thread,
@@ -301,15 +296,14 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                         -p.beta,
                         -p.alpha,
                         p.depth_left - 1,
-                        &next_state,
-                        -p.color,
+                        p.game_state,
                         p.current_depth + 1,
                     ),
                     thread,
                 );
             }
         }
-
+        unmake_move(p.game_state, mv, irreversible);
         //Step 14.9. Update principal variation if move raised current best moves score (does not have to raise alpha)
         // Also update UCI pv
         if following_score > current_max_score && !thread.self_stop {
@@ -353,15 +347,12 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     thread.history.pop();
 
-    debug_assert!(
-        !move_orderer.has_legal_move || current_max_score > STANDARD_SCORE || thread.self_stop
-    );
     //Step 15. Evaluate leafs correctly
     let game_status =
         check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
     if game_status != GameResult::Ingame {
         clear_pv(p.current_depth, thread);
-        return leaf_score(game_status, p.color, p.current_depth as i16);
+        return leaf_score(game_status, color, p.current_depth as i16);
     }
     #[cfg(feature = "search-statistics")]
     {
@@ -417,18 +408,15 @@ pub fn mate_distance_pruning(p: &mut CombinedSearchParameters) -> SearchInstruct
 }
 
 #[inline(always)]
-pub fn max_depth(p: &CombinedSearchParameters, thread: &mut Thread) -> SearchInstruction {
+pub fn max_depth(p: &CombinedSearchParameters) -> SearchInstruction {
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     if p.current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
         SearchInstruction::StopSearching(
-            eval_game_state(
-                p.game_state,
-                &thread.attack_container.attack_containers[p.current_depth],
-                p.alpha * p.color,
-                p.beta * p.color,
-            )
-            .final_eval
-                * p.color,
+            eval_game_state(p.game_state, p.alpha * color, p.beta * color).final_eval * color,
         )
     } else {
         SearchInstruction::ContinueSearching
@@ -456,21 +444,21 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 #[inline(always)]
 pub fn make_eval(
     p: &CombinedSearchParameters,
-    thread: &mut Thread,
+    #[allow(unused_variables)] thread: &mut Thread,
     static_evaluation: &mut Option<i16>,
     prunable: bool,
 ) {
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     if static_evaluation.is_none()
         && (prunable
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || p.depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = eval_game_state(
-            p.game_state,
-            &thread.attack_container.attack_containers[p.current_depth],
-            p.alpha * p.color,
-            p.beta * p.color,
-        );
+        let eval_res = eval_game_state(p.game_state, p.alpha * color, p.beta * color);
         *static_evaluation = Some(eval_res.final_eval);
         #[cfg(feature = "search-statistics")]
         {
@@ -485,8 +473,13 @@ pub fn static_null_move_pruning(
     thread: &mut Thread,
     static_evaluation: Option<i16>,
 ) -> SearchInstruction {
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     if p.depth_left <= STATIC_NULL_MOVE_DEPTH
-        && static_evaluation.expect("Static null move") * p.color
+        && static_evaluation.expect("Static null move") * color
             - STATIC_NULL_MOVE_MARGIN * p.depth_left
             >= p.beta
     {
@@ -495,7 +488,7 @@ pub fn static_null_move_pruning(
         {
             thread.search_statistics.add_static_null_move_node();
         }
-        SearchInstruction::StopSearching(static_evaluation.expect("Static null move 2") * p.color)
+        SearchInstruction::StopSearching(static_evaluation.expect("Static null move 2") * color)
     } else {
         SearchInstruction::ContinueSearching
     }
@@ -503,28 +496,33 @@ pub fn static_null_move_pruning(
 
 #[inline(always)]
 pub fn null_move_pruning(
-    p: &CombinedSearchParameters,
+    p: &mut CombinedSearchParameters,
     thread: &mut Thread,
     static_evaluation: Option<i16>,
     tt_entry: &Option<CacheEntry>,
 ) -> SearchInstruction {
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
         && p.game_state.has_non_pawns(p.game_state.color_to_move)
-        && static_evaluation.expect("null move static") * p.color >= p.beta
+        && static_evaluation.expect("null move static") * color >= p.beta
         && (tt_entry.is_none() || !tt_entry.unwrap().alpha || tt_entry.unwrap().score >= p.beta)
     {
-        let nextgs = make_nullmove(p.game_state);
+        let irreverisble = make_nullmove(p.game_state);
         let rat = -principal_variation_search(
             CombinedSearchParameters::from(
                 -p.beta,
                 -p.beta + 1,
                 (p.depth_left - 4 - p.depth_left / 6).max(0),
-                &nextgs,
-                -p.color,
+                p.game_state,
                 p.current_depth + 1,
             ),
             thread,
         );
+        unmake_nullmove(p.game_state, irreverisble);
         if rat >= p.beta {
             #[cfg(feature = "search-statistics")]
             {
@@ -539,7 +537,7 @@ pub fn null_move_pruning(
 
 #[inline(always)]
 pub fn internal_iterative_deepening(
-    p: &CombinedSearchParameters,
+    p: &mut CombinedSearchParameters,
     thread: &mut Thread,
     tt_move: &mut Option<GameMove>,
 ) -> SearchInstruction {
@@ -549,8 +547,7 @@ pub fn internal_iterative_deepening(
             p.alpha,
             p.beta,
             p.depth_left - 2,
-            &p.game_state,
-            p.color,
+            p.game_state,
             p.current_depth,
         ),
         thread,
@@ -564,7 +561,7 @@ pub fn internal_iterative_deepening(
     }
     thread
         .history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
+        .push(p.game_state.hash, p.game_state.irreversible.half_moves == 0);
     *tt_move = thread.pv_table[p.current_depth].pv[0];
     SearchInstruction::ContinueSearching
 }
@@ -574,9 +571,14 @@ pub fn prepare_futility_pruning(
     p: &CombinedSearchParameters,
     static_evaluation: Option<i16>,
 ) -> i16 {
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     let futil_pruning = p.depth_left <= FUTILITY_DEPTH && p.current_depth > 0;
     if futil_pruning {
-        static_evaluation.expect("Futil pruning") * p.color + p.depth_left * FUTILITY_MARGIN
+        static_evaluation.expect("Futil pruning") * color + p.depth_left * FUTILITY_MARGIN
     } else {
         MATE_SCORE
     }

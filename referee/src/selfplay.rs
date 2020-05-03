@@ -1,10 +1,8 @@
 use crate::async_communication::{stderr_listener, write_all};
 use crate::engine::{EndConditionInformation, EngineReaction, EngineStatus, PlayTask, TaskResult};
 use core_sdk::board_representation::game_state::*;
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
-use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::movegen;
-use core_sdk::move_generation::movelist::MoveList;
+use core_sdk::move_generation::makemove::copy_make;
+use core_sdk::move_generation::movegen2;
 use log::warn;
 use std::time::Duration;
 use tokio::process::Child;
@@ -22,18 +20,15 @@ pub async fn cleanup(mut e1: Child, mut e2: Child, e1_err: JoinHandle<()>, e2_er
         .unwrap_or_else(|msg| warn!("Could not join e2_err task: {}", msg));
 }
 pub async fn play_game(mut task: PlayTask) -> TaskResult {
-    let mut movelist = MoveList::default();
-    let mut attack_container = GameStateAttackContainer::default();
     //-------------------------------------------------------------
     //Set game up
     let opening_fen = task.opening.to_fen();
-    attack_container.write_state(&task.opening);
-    let agsi = movegen::generate_moves(&task.opening, false, &mut movelist, &attack_container);
+    let movelist = movegen2::generate_legal_moves(&task.opening);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
-        agsi.stm_haslegalmove,
-        agsi.stm_incheck,
+        !movelist.move_list.is_empty(),
+        task.opening.in_check(),
         &history,
     )
     .0;
@@ -204,13 +199,17 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
 
         //Make new state with move
         move_history.push(game_move);
-        let state = make_move(latest_state, game_move);
+        let state = copy_make(latest_state, game_move);
         if state.full_moves < 35 {
             draw_adjudication = 0;
         }
-        attack_container.write_state(&state);
-        let agsi = movegen::generate_moves(&state, false, &mut movelist, &attack_container);
-        let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
+        let movelist = movegen2::generate_legal_moves(&state);
+        let check = check_end_condition(
+            &state,
+            !movelist.move_list.is_empty(),
+            state.in_check(),
+            &history,
+        );
         history.push(state);
         status = check.0;
         endcondition = check.1;
@@ -306,7 +305,7 @@ pub fn check_end_condition(
             Some(EndConditionInformation::DrawByMissingPieces),
         );
     }
-    if game_state.half_moves >= 100 {
+    if game_state.irreversible.half_moves >= 100 {
         return (
             GameResult::Draw,
             Some(EndConditionInformation::HundredMoveDraw),

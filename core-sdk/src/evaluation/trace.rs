@@ -1,5 +1,5 @@
-use crate::evaluation::parameters::Parameters;
 use crate::board_representation::game_state::{BLACK, WHITE};
+use crate::evaluation::parameters::Parameters;
 use crate::evaluation::{EG, MG};
 
 pub struct Trace {
@@ -443,8 +443,7 @@ mod tests {
     use super::super::parameters::Parameters;
     #[cfg(feature = "texel-tuning")]
     use crate::board_representation::game_state::GameState;
-    #[cfg(feature = "texel-tuning")]
-    use crate::evaluation::eval_game_state_from_null;
+    use crate::evaluation::eval_game_state;
 
     #[test]
     #[ignore]
@@ -553,7 +552,7 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
             let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
             for line in new_linesplit {
                 let position = GameState::from_fen(line);
-                let evaluation = eval_game_state_from_null(&position);
+                let evaluation = eval_game_state(&position, 0, 0);
                 let trace_eval = evaluation.trace.evaluate(&params) as i16;
                 //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
                 if (evaluation.final_eval - trace_eval).abs() > 2 {

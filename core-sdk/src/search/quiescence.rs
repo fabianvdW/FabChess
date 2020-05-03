@@ -1,13 +1,13 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN,
-    QUEEN, ROOK, WHITE,
+    GameMove, GameMoveType, GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK,
+    WHITE,
 };
 use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
 use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
-use crate::move_generation::makemove::make_move;
+use crate::move_generation::makemove::{make_move, unmake_move};
 use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_IN_CHECK_STAGES, QUIESCENCE_STAGES};
 
@@ -18,14 +18,18 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
     thread.search_statistics.add_q_node(p.current_depth);
     clear_pv(p.current_depth, thread);
-
+    let color = if p.game_state.color_to_move == WHITE {
+        1
+    } else {
+        -1
+    };
     //Step 1. Stop flag set, return immediatly
     if thread.self_stop {
         return STANDARD_SCORE;
     }
 
     //Step 2. Max search-depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p, thread) {
+    if let SearchInstruction::StopSearching(res) = max_depth(&p) {
         return res;
     }
 
@@ -35,27 +39,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 4. Attacks and in check  flag. Attacks are only recalculated when parent is also a qnode
-    if p.depth_left < 0 {
-        // Before dropping into qsearch we make sure we're not in check in pvs
-        thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
-    }
-    let incheck = in_check(
-        p.game_state,
-        &thread.attack_container.attack_containers[p.current_depth],
-    );
+    let incheck = p.game_state.in_check();
 
     //Step 5. Get standing pat when not in check
     let stand_pat = if !incheck {
-        Some(
-            eval_game_state(
-                &p.game_state,
-                &thread.attack_container.attack_containers[p.current_depth],
-                p.alpha * p.color,
-                p.beta * p.color,
-            )
-            .final_eval
-                * p.color,
-        )
+        Some(eval_game_state(&p.game_state, p.alpha * color, p.beta * color).final_eval * color)
     } else {
         None
     };
@@ -104,7 +92,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 
     thread
         .history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
+        .push(p.game_state.hash, p.game_state.irreversible.half_moves == 0);
 
     //Step 8. Iterate through moves
 
@@ -121,8 +109,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         } else {
             &QUIESCENCE_STAGES
         },
-        gen_only_captures: !incheck,
-        has_legal_move: false,
     };
 
     loop {
@@ -142,20 +128,19 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             continue;
         }
         debug_assert!(incheck || capture_move.is_capture());
-        let next_g = make_move(p.game_state, capture_move);
+        let irreversible = make_move(p.game_state, capture_move);
         //Step 8.4. Search move
         let score = -q_search(
             CombinedSearchParameters::from(
                 -p.beta,
                 -p.alpha,
                 p.depth_left - 1,
-                &next_g,
-                -p.color,
+                p.game_state,
                 p.current_depth + 1,
             ),
             thread,
         );
-
+        unmake_move(p.game_state, capture_move, irreversible);
         //Step 8.5 Move raises best moves score, so update pv and score
         if score > current_max_score {
             current_max_score = score;
@@ -186,11 +171,12 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         }
     }
     //Step 9. Evaluate leafs correctly
-    let game_status = check_end_condition(p.game_state, move_orderer.has_legal_move, incheck);
+    /*let game_status = check_end_condition(p.game_state, move_orderer.has_legal_move, incheck);
     if game_status != GameResult::Ingame {
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, p.color, p.current_depth as i16);
-    }
+    }*/
+    //This is not done anymore. Let's see if it still works.
 
     //Step 10. Make TT entry
     if has_pv && p.depth_left == 0 && !thread.self_stop {
@@ -203,7 +189,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             if incheck {
                 None
             } else {
-                Some(*stand_pat.as_ref().unwrap() * p.color)
+                Some(*stand_pat.as_ref().unwrap() * color)
             },
         );
     }

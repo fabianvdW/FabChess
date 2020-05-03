@@ -1,5 +1,5 @@
 use crate::board_representation::game_state::{GameMove, PieceType};
-use crate::move_generation::movegen;
+use crate::move_generation::movegen2;
 use crate::search::moveordering::MoveOrderingStage::{
     BadCapture, GoodCapture, GoodCaptureInitialization, Killer, PVMove, Quiet, QuietInitialization,
     TTMove,
@@ -50,8 +50,6 @@ pub enum MoveOrderingStage {
 pub struct MoveOrderer {
     pub stage: usize,
     pub stages: &'static [MoveOrderingStage],
-    pub gen_only_captures: bool,
-    pub has_legal_move: bool,
 }
 impl MoveOrderer {
     pub fn next(
@@ -67,11 +65,7 @@ impl MoveOrderer {
         match self.stages[self.stage] {
             MoveOrderingStage::PVMove => {
                 self.stage += 1;
-                if pv_table_move.is_some()
-                    && p.game_state.is_valid_tt_move(
-                        pv_table_move.unwrap(),
-                        &thread.attack_container.attack_containers[p.current_depth],
-                    )
+                if pv_table_move.is_some() && p.game_state.is_valid_tt_move(pv_table_move.unwrap())
                 {
                     Some((pv_table_move.unwrap(), 0.))
                 } else {
@@ -82,10 +76,7 @@ impl MoveOrderer {
                 self.stage += 1;
                 if tt_move.is_some()
                     && tt_move != pv_table_move
-                    && p.game_state.is_valid_tt_move(
-                        tt_move.unwrap(),
-                        &thread.attack_container.attack_containers[p.current_depth],
-                    )
+                    && p.game_state.is_valid_tt_move(tt_move.unwrap())
                 {
                     Some((tt_move.unwrap(), 0.))
                 } else {
@@ -94,37 +85,29 @@ impl MoveOrderer {
             }
             MoveOrderingStage::GoodCaptureInitialization => {
                 //Generate moves first!
-                let agsi = movegen::generate_moves(
+                thread.movelist.move_lists[p.current_depth]
+                    .move_list
+                    .clear();
+                movegen2::generate_pseudolegal_captures(
                     &p.game_state,
-                    self.gen_only_captures,
                     &mut thread.movelist.move_lists[p.current_depth],
-                    &thread.attack_container.attack_containers[p.current_depth],
                 );
-                self.has_legal_move = agsi.stm_haslegalmove;
                 let our_mvlist = &mut thread.movelist.move_lists[p.current_depth];
-
-                if let Some(pv_move) = pv_table_move {
-                    let mv_index = our_mvlist.find_move(pv_move, false);
-                    if mv_index < our_mvlist.move_list.len() {
-                        our_mvlist.move_list.remove(mv_index);
-                    }
-                }
-                if let Some(tt_move) = tt_move {
-                    let mv_index = our_mvlist.find_move(tt_move, false);
-                    if mv_index < our_mvlist.move_list.len() {
-                        our_mvlist.move_list.remove(mv_index);
-                    }
-                }
 
                 //Give any capture move in movelist its MVV-LVA score
                 for mv in our_mvlist.move_list.iter_mut() {
-                    if mv.0.is_capture() {
-                        mv.1 = Some(f64::from(mvvlva(mv.0)));
+                    if !mv.0.is_capture() {
+                        println!("{:?}", mv.0.piece_type);
+                        println!("{:?}", mv.0.move_type);
+                        println!("{:?}", mv.0);
+                        println!("{}", p.game_state);
                     }
+                    debug_assert!(mv.0.is_capture());
+                    mv.1 = Some(f64::from(mvvlva(mv.0)));
                 }
 
                 self.stage += 1;
-                self.next(thread, p, None, None)
+                self.next(thread, p, pv_table_move, tt_move)
             }
             MoveOrderingStage::GoodCapture => {
                 //We now have all of the captures sorted by mvv lva
@@ -136,26 +119,33 @@ impl MoveOrderer {
                 } else {
                     let (gm_index, graded_move) = highest_mvv_lva.unwrap();
                     our_list.move_list.remove(gm_index);
-                    if PIECE_VALUES[graded_move.0.get_captured_piece().to_index()]
-                        - PIECE_VALUES[graded_move.0.piece_type.to_index()]
-                        >= 0
-                        || graded_move.0.piece_type == PieceType::King
+                    if Some(graded_move.0) == tt_move
+                        || Some(graded_move.0) != pv_table_move
+                        || !p.game_state.is_valid_move(graded_move.0)
                     {
-                        Some((graded_move.0, 0.))
+                        self.next(thread, p, pv_table_move, tt_move)
                     } else {
-                        let see_value = see(
-                            p.game_state,
-                            graded_move.0,
-                            self.stages.len() == NORMAL_STAGES.len(),
-                            &mut thread.see_buffer,
-                        );
-                        if see_value >= 0 {
+                        if PIECE_VALUES[graded_move.0.get_captured_piece().to_index()]
+                            - PIECE_VALUES[graded_move.0.piece_type.to_index()]
+                            >= 0
+                            || graded_move.0.piece_type == PieceType::King
+                        {
                             Some((graded_move.0, 0.))
                         } else {
-                            our_list
-                                .move_list
-                                .push(GradedMove(graded_move.0, Some(f64::from(see_value))));
-                            self.next(thread, p, None, None)
+                            let see_value = see(
+                                p.game_state,
+                                graded_move.0,
+                                self.stages.len() == NORMAL_STAGES.len(),
+                                &mut thread.see_buffer,
+                            );
+                            if see_value >= 0 {
+                                Some((graded_move.0, 0.))
+                            } else {
+                                our_list
+                                    .move_list
+                                    .push(GradedMove(graded_move.0, Some(f64::from(see_value))));
+                                self.next(thread, p, pv_table_move, tt_move)
+                            }
                         }
                     }
                 }
@@ -187,13 +177,24 @@ impl MoveOrderer {
                 if found_index < our_list.move_list.len() {
                     let res = our_list.move_list[found_index].0;
                     our_list.move_list.remove(found_index);
-                    Some((res, 0.))
+                    if Some(res) != pv_table_move
+                        && Some(res) != tt_move
+                        && p.game_state.is_valid_move(res)
+                    {
+                        Some((res, 0.))
+                    } else {
+                        self.next(thread, p, pv_table_move, tt_move)
+                    }
                 } else {
                     self.stage += 1;
-                    self.next(thread, p, None, None)
+                    self.next(thread, p, pv_table_move, tt_move)
                 }
             }
             MoveOrderingStage::QuietInitialization => {
+                movegen2::generate_pseudolegal_quiets(
+                    &p.game_state,
+                    &mut thread.movelist.move_lists[p.current_depth],
+                );
                 for mv in thread.movelist.move_lists[p.current_depth]
                     .move_list
                     .iter_mut()
@@ -210,7 +211,7 @@ impl MoveOrderer {
                     }
                 }
                 self.stage += 1;
-                self.next(thread, p, None, None)
+                self.next(thread, p, pv_table_move, tt_move)
             }
             MoveOrderingStage::Quiet => {
                 let our_list = &mut thread.movelist.move_lists[p.current_depth];
@@ -218,11 +219,18 @@ impl MoveOrderer {
                 if let Some((index, gmv)) = highest {
                     if gmv.1.unwrap() < 0. {
                         self.stage += 1;
-                        return self.next(thread, p, None, None);
+                        return self.next(thread, p, pv_table_move, tt_move);
                     }
                     debug_assert!(!gmv.0.is_capture());
                     our_list.move_list.remove(index);
-                    Some((gmv.0, 0.))
+                    if Some(gmv.0) != pv_table_move
+                        && Some(gmv.0) != tt_move
+                        && p.game_state.is_valid_move(gmv.0)
+                    {
+                        Some((gmv.0, 0.))
+                    } else {
+                        self.next(thread, p, pv_table_move, tt_move)
+                    }
                 } else {
                     self.stage = self.stages.len();
                     None
@@ -235,7 +243,14 @@ impl MoveOrderer {
                     debug_assert!(gmv.0.is_capture());
                     debug_assert!(gmv.1.unwrap() < 0.);
                     our_list.move_list.remove(index);
-                    Some((gmv.0, gmv.1.unwrap()))
+                    if Some(gmv.0) != pv_table_move
+                        && Some(gmv.0) != tt_move
+                        && p.game_state.is_valid_move(gmv.0)
+                    {
+                        Some((gmv.0, gmv.1.unwrap()))
+                    } else {
+                        self.next(thread, p, pv_table_move, tt_move)
+                    }
                 } else {
                     self.stage = self.stages.len();
                     None
