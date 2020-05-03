@@ -1,6 +1,6 @@
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
-use crate::move_generation::movegen::MoveList;
+use crate::move_generation::movelist::MoveList;
 
 pub struct ReserveMemory {
     pub reserved_movelist: ReservedMoveList,

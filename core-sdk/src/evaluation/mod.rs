@@ -17,7 +17,7 @@ use crate::evaluation::trace::Trace;
 #[cfg(feature = "display-eval")]
 use crate::logging::log;
 use crate::move_generation::movegen;
-use crate::move_generation::movegen::{bishop_attack, rook_attack};
+use crate::move_generation::movegen::{bishop_attacks, rook_attacks};
 use params::*;
 use psqt_evaluation::psqt;
 use psqt_evaluation::BLACK_INDEX;
@@ -362,7 +362,7 @@ pub fn piecewise(
 
     let defended_by_minors = attack_container.attacks_minor_sum[1 - side];
     let defended_squares = attack_container.attacks_sum[1 - side];
-    let my_pieces = g.get_pieces_from_side(side);
+    let my_pieces = g.pieces_from_side(side);
 
     let enemy_king_idx = g.king_square(1 - side);
     let enemy_king_attackable = if white {
@@ -372,9 +372,9 @@ pub fn piecewise(
     } & !defended_by_minors;
 
     let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
-    let all_pieces = g.get_all_pieces();
-    let bishop_checks = bishop_attack(enemy_king_idx, all_pieces);
-    let rook_checks = rook_attack(enemy_king_idx, all_pieces);
+    let all_pieces = g.all_pieces();
+    let bishop_checks = bishop_attacks(enemy_king_idx, all_pieces);
+    let rook_checks = rook_attacks(enemy_king_idx, all_pieces);
     //Knights
     let mut knight_attackers: i16 = 0;
     let mut knight_attacker_values = EvaluationScore::default();
@@ -816,7 +816,7 @@ pub fn pawns(
 ) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
-    let empty = !g.get_all_pieces();
+    let empty = !g.all_pieces();
     //Bitboards
     let pawn_file_fill = bitboards::file_fill(g.pieces[PAWN][side]);
     let front_span = if white {
@@ -849,7 +849,7 @@ pub fn pawns(
         )
     };
     let is_attackable = bitboards::west_one(front_span) | bitboards::east_one(front_span);
-    let enemy_pieces = g.get_pieces_from_side(1 - side);
+    let enemy_pieces = g.pieces_from_side(1 - side);
 
     let doubled_pawns = (g.pieces[PAWN][side] & front_span).count_ones() as i16;
     let isolated_pawns = (g.pieces[PAWN][side]

@@ -2,7 +2,7 @@ use super::uci_engine::UCIEngine;
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::movegen;
+use core_sdk::move_generation::{movegen, movelist};
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use core_sdk::search::searcher::{
     search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO,
@@ -24,7 +24,7 @@ pub fn parse_loop() {
     let itcs = Arc::new(InterThreadCommunicationSystem::default());
     *itcs.cache() =
         Cache::with_size_threaded(itcs.uci_options().hash_size, itcs.uci_options().threads);
-    let mut movelist = movegen::MoveList::default();
+    let mut movelist = movelist::MoveList::default();
     let mut attack_container = GameStateAttackContainer::default();
 
     let stdin = io::stdin();
@@ -162,7 +162,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
 pub fn position(
     engine: &mut UCIEngine,
     cmd: &[&str],
-    movelist: &mut movegen::MoveList,
+    movelist: &mut movelist::MoveList,
     attack_container: &mut GameStateAttackContainer,
 ) -> Vec<GameState> {
     let mut move_index = 1;
@@ -212,7 +212,7 @@ pub fn scout_and_make_draftmove(
     to: usize,
     promo_pieces: Option<PieceType>,
     game_state: &GameState,
-    movelist: &mut movegen::MoveList,
+    movelist: &mut movelist::MoveList,
     attack_container: &mut GameStateAttackContainer,
 ) -> GameState {
     attack_container.write_state(game_state);

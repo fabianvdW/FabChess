@@ -1,11 +1,11 @@
 use crate::pgn::pgn_reader::{GameParser, PGNParser};
 use core_sdk::board_representation::game_state::{GameMove, GameState};
-use core_sdk::move_generation::movegen;
+use core_sdk::move_generation::movelist;
 use std::fs::File;
 use std::io::BufReader;
 
 pub fn load_db_until(db: &str, until: usize) -> (Vec<GameState>, Vec<Vec<GameMove>>) {
-    let movelist = movegen::MoveList::default();
+    let movelist = movelist::MoveList::default();
     let attack_container =
         core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer::default(
         );

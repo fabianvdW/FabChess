@@ -34,8 +34,8 @@ impl GameStateAttackContainer {
 
     pub fn write_state(&mut self, game_state: &GameState) {
         let all_pieces_without_stmking = game_state
-            .get_pieces_from_side_without_king(game_state.color_to_move)
-            | game_state.get_pieces_from_side(1 - game_state.color_to_move); // Enemy pieces can xray through my king
+            .pieces_from_side_without_king(game_state.color_to_move)
+            | game_state.pieces_from_side(1 - game_state.color_to_move); // Enemy pieces can xray through my king
         let all_pieces =
             all_pieces_without_stmking | game_state.pieces[KING][game_state.color_to_move];
 
@@ -74,7 +74,7 @@ impl GameStateAttackContainer {
             self.bishops[side] = 0;
             while bishops != 0u64 {
                 let bishop_index = bishops.trailing_zeros() as usize;
-                let attack = movegen::bishop_attack(bishop_index, occupancy_squares);
+                let attack = movegen::bishop_attacks(bishop_index, occupancy_squares);
                 self.attack[MGSA_BISHOP][side][self.bishops[side]] = attack;
                 attacks_minor_sum |= attack;
                 self.bishops[side] += 1;
@@ -86,7 +86,7 @@ impl GameStateAttackContainer {
             self.rooks[side] = 0;
             while rooks != 0u64 {
                 let rook_index = rooks.trailing_zeros() as usize;
-                let attack = movegen::rook_attack(rook_index, occupancy_squares);
+                let attack = movegen::rook_attacks(rook_index, occupancy_squares);
                 self.attack[MGSA_ROOKS][side][self.rooks[side]] = attack;
                 attacks_major_sum |= attack;
                 self.rooks[side] += 1;
@@ -97,8 +97,8 @@ impl GameStateAttackContainer {
             self.queens[side] = 0;
             while queens != 0u64 {
                 let queen_index = queens.trailing_zeros() as usize;
-                let attack = movegen::rook_attack(queen_index, occupancy_squares)
-                    | movegen::bishop_attack(queen_index, occupancy_squares);
+                let attack = movegen::rook_attacks(queen_index, occupancy_squares)
+                    | movegen::bishop_attacks(queen_index, occupancy_squares);
                 self.attack[MGSA_QUEEN][side][self.queens[side]] = attack;
                 attacks_major_sum |= attack;
                 self.queens[side] += 1;

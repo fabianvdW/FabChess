@@ -57,7 +57,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
     let full_moves = g.full_moves + g.color_to_move;
     let mut hash = g.hash ^ ZOBRIST_KEYS.side_to_move;
     enpassant_hash(g.en_passant, en_passant, &mut hash);
-    GameState {
+    let mut res = GameState {
         color_to_move,
         pieces,
         castle_white_kingside: g.castle_white_kingside,
@@ -70,7 +70,10 @@ pub fn make_nullmove(g: &GameState) -> GameState {
         hash,
         psqt: g.psqt,
         phase: g.phase.clone(),
-    }
+        checkers: 0u64,
+    };
+    res.initialize_checkers();
+    res
 }
 
 #[inline(always)]
@@ -88,6 +91,7 @@ pub fn rook_castling(to: u8) -> (u8, u8) {
     }
 }
 
+//We expect the move to be FULLY legal before it can be made!
 pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     //Step 1. Update immediate fields
     let color_to_move = 1 - g.color_to_move;
@@ -267,7 +271,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     } else {
         0
     };
-    GameState {
+    let mut res = GameState {
         color_to_move,
         pieces,
         castle_white_kingside,
@@ -280,5 +284,8 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         hash,
         psqt,
         phase,
-    }
+        checkers: 0u64,
+    };
+    res.initialize_checkers();
+    res
 }

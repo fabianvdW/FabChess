@@ -1,6 +1,6 @@
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
-use crate::move_generation::movegen::{bishop_attack, rook_attack};
+use crate::move_generation::movegen::{bishop_attacks, rook_attacks};
 use std::fmt::Display;
 
 pub mod bitboards;
@@ -200,14 +200,14 @@ pub fn print_king_zone_black() {
 pub fn print_freefield_rook_attacks() {
     let mut res = [0u64; 64];
     for (sq, item) in res.iter_mut().enumerate() {
-        *item = rook_attack(sq, 0u64);
+        *item = rook_attacks(sq, 0u64);
     }
     println!("{}", arr_to_string(&res, "FREEFIELD_ROOK_ATTACKS"))
 }
 pub fn print_freefield_bishop_attacks() {
     let mut res = [0u64; 64];
     for (sq, item) in res.iter_mut().enumerate() {
-        *item = bishop_attack(sq, 0u64);
+        *item = bishop_attacks(sq, 0u64);
     }
     println!("{}", arr_to_string(&res, "FREEFIELD_BISHOP_ATTACKS"))
 }
@@ -293,22 +293,10 @@ pub fn print_king_attacks() {
     }
     println!("{}", arr_to_string(&res, "KING_ATTACKS"))
 }
-fn knight_attack(knight: u64) -> u64 {
-    let mut attacks;
-    let mut east = east_one(knight);
-    let mut west = west_one(knight);
-    attacks = (east | west) << 16;
-    attacks |= (east | west) >> 16;
-    east = east_one(east);
-    west = west_one(west);
-    attacks |= (east | west) << 8;
-    attacks |= (east | west) >> 8;
-    attacks
-}
 pub fn print_knight_attacks() {
     let mut res = [0u64; 64];
     for (square, item) in res.iter_mut().enumerate() {
-        *item = knight_attack(1u64 << square);
+        *item = knight_attacks(1u64 << square);
     }
     println!("{}", arr_to_string(&res, "KNIGHT_ATTACKS"));
 }

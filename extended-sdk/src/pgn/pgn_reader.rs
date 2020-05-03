@@ -3,7 +3,7 @@ use core_sdk::board_representation::game_state::{
 };
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::movegen;
+use core_sdk::move_generation::{movegen, movelist};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -11,7 +11,7 @@ pub struct GameParser {
     pub pgn_parser: PGNParser,
     pub is_opening: bool,
     pub opening_load_untilply: usize,
-    pub move_list: movegen::MoveList,
+    pub move_list: movelist::MoveList,
     pub attack_container: GameStateAttackContainer,
 }
 
@@ -71,7 +71,7 @@ impl Iterator for GameParser {
 }
 
 pub fn find_castle(
-    movelist: &movegen::MoveList,
+    movelist: &movelist::MoveList,
     g: &GameState,
     king_side: bool,
 ) -> Result<(GameMove, GameState), ()> {
@@ -88,7 +88,7 @@ pub fn find_castle(
 }
 
 pub fn find_move(
-    movelist: &movegen::MoveList,
+    movelist: &movelist::MoveList,
     g: &GameState,
     ms: MoveSpecification,
 ) -> Result<(GameMove, GameState), ()> {
@@ -191,7 +191,7 @@ impl MoveSpecification {
 pub fn parse_move(
     g: &GameState,
     move_str: &str,
-    movelist: &mut movegen::MoveList,
+    movelist: &mut movelist::MoveList,
     attack_container: &GameStateAttackContainer,
 ) -> (GameMove, GameState) {
     let mut my_string = move_str.to_string();

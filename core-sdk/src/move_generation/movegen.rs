@@ -10,7 +10,7 @@ use crate::board_representation::game_state::{
 use crate::board_representation::game_state_attack_container::{
     GameStateAttackContainer, MGSA_BISHOP, MGSA_KNIGHT, MGSA_QUEEN, MGSA_ROOKS,
 };
-use crate::search::GradedMove;
+use crate::move_generation::movelist::MoveList;
 
 //Movegen
 //King - piecewise by lookup
@@ -19,12 +19,12 @@ use crate::search::GradedMove;
 //Pawn - setwise by shift
 
 #[inline(always)]
-pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
+pub fn bishop_attacks(square: usize, all_pieces: u64) -> u64 {
     magic::MAGIC_BISHOP[square].apply(all_pieces)
 }
 
 #[inline(always)]
-pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
+pub fn rook_attacks(square: usize, all_pieces: u64) -> u64 {
     magic::MAGIC_ROOK[square].apply(all_pieces)
 }
 
@@ -69,6 +69,11 @@ pub fn b_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
     bitboards::south_one(bitboards::south_one(pawns & RANKS[6]) & empty) & empty
 }
 
+//All targets
+#[inline(always)]
+pub fn pawn_targets(side: usize, pawns: u64) -> u64 {
+    pawn_east_targets(side, pawns) | pawn_west_targets(side, pawns)
+}
 //Pawn east targets
 #[inline(always)]
 pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
@@ -133,26 +138,22 @@ pub fn find_captured_piece_type(g: &GameState, to: usize) -> PieceType {
 
 #[inline(always)]
 pub fn xray_rook_attacks(
-    rook_attacks: u64,
+    attacks: u64,
     occupied_squares: u64,
     my_pieces: u64,
     rook_square: usize,
 ) -> u64 {
-    rook_attacks ^ rook_attack(rook_square, occupied_squares ^ (my_pieces & rook_attacks))
+    attacks ^ rook_attacks(rook_square, occupied_squares ^ (my_pieces & attacks))
 }
 
 #[inline(always)]
 pub fn xray_bishop_attacks(
-    bishop_attacks: u64,
+    attacks: u64,
     occupied_squares: u64,
     my_pieces: u64,
     bishop_square: usize,
 ) -> u64 {
-    bishop_attacks
-        ^ bishop_attack(
-            bishop_square,
-            occupied_squares ^ (my_pieces & bishop_attacks),
-        )
+    attacks ^ bishop_attacks(bishop_square, occupied_squares ^ (my_pieces & attacks))
 }
 
 #[inline(always)]
@@ -440,14 +441,14 @@ pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
     if early_exit && checkers != 0u64 {
         return checkers;
     }
-    let all_pieces = game_state.get_all_pieces();
-    checkers |= bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
+    let all_pieces = game_state.all_pieces();
+    checkers |= bishop_attacks(my_king.trailing_zeros() as usize, all_pieces)
         & (game_state.pieces[BISHOP][1 - game_state.color_to_move]
             | game_state.pieces[QUEEN][1 - game_state.color_to_move]);
     if early_exit && checkers != 0u64 {
         return checkers;
     }
-    checkers |= rook_attack(my_king.trailing_zeros() as usize, all_pieces)
+    checkers |= rook_attacks(my_king.trailing_zeros() as usize, all_pieces)
         & (game_state.pieces[ROOK][1 - game_state.color_to_move]
             | game_state.pieces[QUEEN][1 - game_state.color_to_move]);
     checkers
@@ -457,55 +458,6 @@ pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
 pub struct AdditionalGameStateInformation {
     pub stm_incheck: bool,
     pub stm_haslegalmove: bool,
-}
-
-pub const MAX_MOVES: usize = 128;
-
-pub struct MoveList {
-    pub move_list: Vec<GradedMove>,
-}
-impl Default for MoveList {
-    fn default() -> Self {
-        let move_list = Vec::with_capacity(MAX_MOVES);
-        MoveList { move_list }
-    }
-}
-
-impl MoveList {
-    #[inline(always)]
-    pub fn add_move(&mut self, mv: GameMove) {
-        self.move_list.push(GradedMove(mv, None));
-    }
-
-    #[inline(always)]
-    pub fn find_move(&self, mv: GameMove, contains: bool) -> usize {
-        for (index, mvs) in self.move_list.iter().enumerate() {
-            if mvs.0 == mv {
-                return index;
-            }
-        }
-        if contains {
-            panic!("Type 2 error")
-        }
-        self.move_list.len()
-    }
-
-    #[inline(always)]
-    pub fn highest_score(&mut self) -> Option<(usize, GradedMove)> {
-        let mut best_index = self.move_list.len();
-        let mut best_score = -1_000_000_000.;
-        for (index, gmv) in self.move_list.iter().enumerate() {
-            if gmv.1.is_some() && gmv.1.unwrap() > best_score {
-                best_index = index;
-                best_score = gmv.1.unwrap();
-            }
-        }
-        if best_index == self.move_list.len() {
-            None
-        } else {
-            Some((best_index, self.move_list[best_index]))
-        }
-    }
 }
 
 pub fn generate_moves(
@@ -524,8 +476,8 @@ pub fn generate_moves(
     let stm_color_iswhite: bool = g.color_to_move == WHITE;
 
     let mut side_pawns = g.pieces[PAWN][side];
-    let side_pieces = g.get_pieces_from_side(side);
-    let enemy_pieces = g.get_pieces_from_side(enemy);
+    let side_pieces = g.pieces_from_side(side);
+    let enemy_pieces = g.pieces_from_side(enemy);
     let all_pieces = enemy_pieces | side_pieces;
     let empty_squares = !all_pieces;
 
@@ -590,7 +542,7 @@ pub fn generate_moves(
         & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
         != 0u64
     {
-        let stm_rook_attacks_from_king = rook_attack(g.king_square(side), all_pieces);
+        let stm_rook_attacks_from_king = rook_attacks(g.king_square(side), all_pieces);
         let stm_xray_rook_attacks_from_king = xray_rook_attacks(
             stm_rook_attacks_from_king,
             all_pieces,
@@ -670,7 +622,7 @@ pub fn generate_moves(
         & (g.pieces[BISHOP][enemy] | g.pieces[QUEEN][enemy])
         != 0u64
     {
-        let stm_bishop_attacks_from_king = bishop_attack(g.king_square(side), all_pieces);
+        let stm_bishop_attacks_from_king = bishop_attacks(g.king_square(side), all_pieces);
         let stm_xray_bishop_attacks_from_king = xray_bishop_attacks(
             stm_bishop_attacks_from_king,
             all_pieces,
@@ -880,7 +832,7 @@ pub fn generate_moves(
         };
         let all_pieces_without_en_passants =
             all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
-        if rook_attack(g.king_square(side), all_pieces_without_en_passants)
+        if rook_attacks(g.king_square(side), all_pieces_without_en_passants)
             & RANKS[g.king_square(side) / 8]
             & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
             == 0u64
@@ -945,7 +897,7 @@ pub fn generate_moves(
         };
         let all_pieces_without_en_passants =
             all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
-        if rook_attack(g.king_square(side), all_pieces_without_en_passants)
+        if rook_attacks(g.king_square(side), all_pieces_without_en_passants)
             & RANKS[g.king_square(side) / 8]
             & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
             == 0u64

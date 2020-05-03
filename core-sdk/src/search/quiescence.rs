@@ -281,7 +281,7 @@ pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16
         | game_state.pieces[QUEEN][WHITE]
         | game_state.pieces[QUEEN][BLACK];
     let mut from_set = 1u64 << mv.from;
-    let mut occ = game_state.get_all_pieces();
+    let mut occ = game_state.all_pieces();
     let mut attadef = attacks_to(&game_state, mv.to as usize, occ);
     gain[0] = capture_value(mv);
     let mut color_to_move = game_state.color_to_move;
@@ -334,9 +334,9 @@ pub fn recalculate_sliders(
     occ: u64,
 ) -> u64 {
     //Bishops
-    movegen::bishop_attack(square, occ)
+    movegen::bishop_attacks(square, occ)
         & (game_state.pieces[BISHOP][color_to_move] | game_state.pieces[QUEEN][color_to_move])
-        | movegen::rook_attack(square, occ)
+        | movegen::rook_attacks(square, occ)
             & (game_state.pieces[ROOK][color_to_move] | game_state.pieces[QUEEN][color_to_move])
 }
 
@@ -354,8 +354,8 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
         | game_state.pieces[ROOK][BLACK]
         | game_state.pieces[QUEEN][BLACK];
     attacks |= KNIGHT_ATTACKS[square] & knights
-        | movegen::bishop_attack(square, occ) & bishops
-        | movegen::rook_attack(square, occ) & rooks;
+        | movegen::bishop_attacks(square, occ) & bishops
+        | movegen::rook_attacks(square, occ) & rooks;
     attacks |= (movegen::w_pawn_west_targets(square_board)
         | movegen::w_pawn_east_targets(square_board))
         & game_state.pieces[PAWN][BLACK];
