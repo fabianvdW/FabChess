@@ -1,19 +1,36 @@
-use core_sdk::board_representation::game_state::GameState;
+use core_sdk::board_representation::game_state::{GameState, BLACK, PAWN};
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen::{bishop_attacks, rook_attacks};
 use core_sdk::move_generation::movegen2;
+use core_sdk::move_generation::movelist::MoveList;
 use core_sdk::search::cache::Cache;
 use core_sdk::search::reserved_memory::ReservedMoveList;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
 use extended_sdk::misc::to_string_board;
+use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let state = GameState::standard();
-    println!("{}", state);
-    perft_div(&state, 6);
+    let stdin = io::stdin();
+    let mut line = String::new();
+    let mut state = GameState::standard();
+    loop {
+        line.clear();
+        stdin.read_line(&mut line).ok().unwrap();
+        let arg: Vec<&str> = line.split_whitespace().collect();
+        match arg[0].trim() {
+            "position" => {
+                state = GameState::from_fen(&arg[1..].join(" "));
+            }
+            "perft" => {
+                let depth = arg[1].parse::<usize>().unwrap();
+                perft_div(&state, depth);
+            }
+            _ => continue,
+        }
+    }
     //go_infinite_from_startpos();
 }
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {

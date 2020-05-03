@@ -154,31 +154,34 @@ impl GameState {
             self.king_square(self.color_to_move)
         };
         let mut occ = self.all_pieces();
+        let mut exclude = square(mv.to as usize);
         if mv.move_type == GameMoveType::EnPassant {
             occ ^=
+                square((mv.to as i8 + if self.color_to_move == WHITE { -8 } else { 8 }) as usize);
+            exclude |=
                 square((mv.to as i8 + if self.color_to_move == WHITE { -8 } else { 8 }) as usize);
         //Remove enpassented pawn
         } else if mv.move_type == GameMoveType::Castle {
             if self.color_to_move == WHITE {
                 if mv.to == self.castle_target_square(true) {
-                    if self.square_attacked(5, occ) || self.square_attacked(6, occ) {
+                    if self.square_attacked(5, occ, 0u64) || self.square_attacked(6, occ, 0u64) {
                         return false;
                     }
                     occ ^= square(7) ^ square(5);
                 } else {
-                    if self.square_attacked(3, occ) || self.square_attacked(2, occ) {
+                    if self.square_attacked(3, occ, 0u64) || self.square_attacked(2, occ, 0u64) {
                         return false;
                     }
                     occ ^= square(0) ^ square(3);
                 }
             } else {
                 if mv.to == self.castle_target_square(true) {
-                    if self.square_attacked(61, occ) || self.square_attacked(62, occ) {
+                    if self.square_attacked(61, occ, 0u64) || self.square_attacked(62, occ, 0u64) {
                         return false;
                     }
                     occ ^= square(63) ^ square(61)
                 } else {
-                    if self.square_attacked(58, occ) || self.square_attacked(57, occ) {
+                    if self.square_attacked(58, occ, 0u64) || self.square_attacked(59, occ, 0u64) {
                         return false;
                     }
                     occ ^= square(56) ^ square(59)
@@ -186,25 +189,29 @@ impl GameState {
             }
         }
         occ = (occ ^ square(mv.from as usize)) | square(mv.to as usize);
-        !self.square_attacked(king_idx, occ)
+        !self.square_attacked(king_idx, occ, exclude)
     }
 
     //Returns true if the given square is attacked by the side not to move
     //occ: Blockers in the current position
     #[inline(always)]
-    pub fn square_attacked(&self, sq: usize, occ: u64) -> bool {
+    pub fn square_attacked(&self, sq: usize, occ: u64, exclude: u64) -> bool {
         let square = square(sq);
-        KING_ATTACKS[sq] & self.pieces[KING][1 - self.color_to_move] > 0
-            || knight_attacks(square) & self.pieces[KNIGHT][1 - self.color_to_move] > 0
+        KING_ATTACKS[sq] & self.pieces[KING][1 - self.color_to_move] & !exclude > 0
+            || knight_attacks(square) & self.pieces[KNIGHT][1 - self.color_to_move] & !exclude > 0
             || bishop_attacks(sq, occ)
                 & (self.pieces[BISHOP][1 - self.color_to_move]
                     | self.pieces[QUEEN][1 - self.color_to_move])
+                & !exclude
                 > 0
             || rook_attacks(sq, occ)
                 & (self.pieces[ROOK][1 - self.color_to_move]
                     | self.pieces[QUEEN][1 - self.color_to_move])
+                & !exclude
                 > 0
-            || pawn_targets(self.color_to_move, square) & self.pieces[PAWN][1 - self.color_to_move]
+            || pawn_targets(self.color_to_move, square)
+                & self.pieces[PAWN][1 - self.color_to_move]
+                & !exclude
                 > 0
     }
     //Returns a bitboard of all the pieces attacking the square

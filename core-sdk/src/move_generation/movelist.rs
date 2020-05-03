@@ -32,7 +32,7 @@ impl MoveList {
     //This deserializes a bitboard with setwise target destinations for all pawns
     //Does not work for en-passants
     pub fn add_pawn_bb(&mut self, mut bb: u64, shift: i8, state: &GameState) {
-        let is_capture = shift % 2 == 1;
+        let is_capture = shift.abs() % 2 == 1;
         while bb > 0 {
             let to = bb.trailing_zeros() as usize;
             let is_promotion = to <= 7 || to >= 56;
