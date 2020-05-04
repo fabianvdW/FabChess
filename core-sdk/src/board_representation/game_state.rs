@@ -5,9 +5,8 @@ use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{
-    b_pawn_east_targets, b_pawn_west_targets, bishop_attacks, double_push_pawn_targets,
-    pawn_east_targets, pawn_west_targets, rook_attacks, single_push_pawn_targets,
-    w_pawn_east_targets, w_pawn_west_targets,
+    bishop_attacks, double_push_pawn_targets, pawn_east_targets, pawn_west_targets, rook_attacks,
+    single_push_pawn_targets,
 };
 use crate::move_generation::movegen2;
 use crate::move_generation::movegen2::generate_legal_moves;
@@ -248,18 +247,20 @@ impl GameMove {
                 }
             }
             if file_needed {
-                res_str.push_str(file_to_string((self.from % 8) as usize));
+                res_str.push_str(file_to_string((self.from % 8) as usize).encode_utf8(&mut [0; 4]));
             }
             if rank_needed {
                 res_str.push_str(&format!("{}", self.from / 8 + 1))
             };
             if self.is_capture() {
                 if self.piece_type == PieceType::Pawn && !file_needed {
-                    res_str.push_str(file_to_string((self.from % 8) as usize));
+                    res_str.push_str(
+                        file_to_string((self.from % 8) as usize).encode_utf8(&mut [0; 4]),
+                    );
                 }
                 res_str.push_str("x");
             }
-            res_str.push_str(file_to_string((self.to % 8) as usize));
+            res_str.push_str(file_to_string((self.to % 8) as usize).encode_utf8(&mut [0; 4]));
             res_str.push_str(&format!("{}", self.to / 8 + 1));
             if let GameMoveType::Promotion(promo_piece, _) = self.move_type {
                 res_str.push_str(&format!(
@@ -320,49 +321,17 @@ fn char_to_promotion_piecetype(c: char) -> PieceType {
 }
 
 pub fn char_to_rank(c: char) -> usize {
-    match c {
-        '1' => 0,
-        '2' => 1,
-        '3' => 2,
-        '4' => 3,
-        '5' => 4,
-        '6' => 5,
-        '7' => 6,
-        '8' => 7,
-        _ => {
-            panic!("Invalid rank");
-        }
-    }
+    assert!(c as usize >= '1' as usize && c as usize - '1' as usize <= 7);
+    c as usize - '1' as usize
 }
 
 pub fn char_to_file(c: char) -> usize {
-    match c {
-        'a' => 0,
-        'b' => 1,
-        'c' => 2,
-        'd' => 3,
-        'e' => 4,
-        'f' => 5,
-        'g' => 6,
-        'h' => 7,
-        _ => {
-            panic!("Invalid char");
-        }
-    }
+    assert!(c as usize >= 'a' as usize && c as usize - 'a' as usize <= 7);
+    c as usize - 'a' as usize
 }
 
-fn file_to_string(file: usize) -> &'static str {
-    match file {
-        0 => "a",
-        1 => "b",
-        2 => "c",
-        3 => "d",
-        4 => "e",
-        5 => "f",
-        6 => "g",
-        7 => "h",
-        _ => panic!("invalid file"),
-    }
+fn file_to_string(file: usize) -> char {
+    (file as u8 + b'a') as char
 }
 
 #[derive(Clone, PartialEq)]
@@ -889,11 +858,7 @@ impl GameState {
             return false;
         }
         if mv.piece_type == PieceType::Pawn
-            && if self.color_to_move == WHITE {
-                mv.to / 8
-            } else {
-                7 - mv.to / 8
-            } == 7
+            && GameState::relative_rank(mv.to as usize, self.color_to_move == WHITE) == 7
         {
             if let GameMoveType::Promotion(_, _) = mv.move_type {
             } else {
@@ -901,11 +866,7 @@ impl GameState {
             }
         } else if let GameMoveType::Promotion(_, _) = mv.move_type {
             if mv.piece_type != PieceType::Pawn
-                || if self.color_to_move == WHITE {
-                    mv.to / 8
-                } else {
-                    7 - mv.to / 8
-                } != 7
+                || GameState::relative_rank(mv.to as usize, self.color_to_move == WHITE) != 7
             {
                 return false;
             }
@@ -1030,65 +991,7 @@ impl GameState {
                 }
             }
         }
-        if mv.move_type != GameMoveType::Castle {
-            all_pieces ^= square(mv.from as usize);
-            all_pieces |= square(mv.to as usize);
-            let cap_piece = if mv.move_type == GameMoveType::EnPassant {
-                1u64 << (if self.color_to_move == WHITE {
-                    mv.to - 8
-                } else {
-                    mv.to + 8
-                })
-            } else {
-                1u64 << mv.to
-            };
-            let king_square = if mv.piece_type == PieceType::King {
-                mv.to as usize
-            } else {
-                self.king_square(self.color_to_move)
-            };
-            if bishop_attacks(king_square, all_pieces)
-                & (self.pieces[BISHOP][1 - self.color_to_move]
-                    | self.pieces[QUEEN][1 - self.color_to_move])
-                & !cap_piece
-                != 0u64
-            {
-                return false;
-            }
-            if rook_attacks(king_square, all_pieces)
-                & (self.pieces[ROOK][1 - self.color_to_move]
-                    | self.pieces[QUEEN][1 - self.color_to_move])
-                & !cap_piece
-                != 0u64
-            {
-                return false;
-            }
-            if KNIGHT_ATTACKS[king_square]
-                & (self.pieces[KNIGHT][1 - self.color_to_move])
-                & !cap_piece
-                != 0u64
-            {
-                return false;
-            }
-            if self.color_to_move == WHITE {
-                if (w_pawn_east_targets(square(king_square))
-                    | w_pawn_west_targets(square(king_square)))
-                    & (self.pieces[PAWN][1 - self.color_to_move])
-                    & !cap_piece
-                    != 0u64
-                {
-                    return false;
-                }
-            } else if (b_pawn_east_targets(square(king_square))
-                | b_pawn_west_targets(square(king_square)))
-                & (self.pieces[PAWN][1 - self.color_to_move])
-                & !cap_piece
-                != 0u64
-            {
-                return false;
-            }
-        }
-        true
+        self.is_valid_move(mv)
     }
 }
 impl Display for GameState {

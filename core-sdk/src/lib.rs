@@ -9,7 +9,7 @@ pub mod move_generation;
 pub mod search;
 
 use crate::board_representation::game_state::GameState;
-use crate::move_generation::makemove::{make_move, unmake_move};
+use crate::move_generation::makemove::{make_move, make_move2, unmake_move};
 use crate::move_generation::movegen2;
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;
@@ -73,7 +73,7 @@ pub fn perft_div(g: &mut GameState, depth: usize) -> u64 {
 
 pub fn perft(g: &mut GameState, depth: usize, movelist: &mut ReservedMoveList) -> (u64, u64) {
     let (mut correct, mut wrong) = (0u64, 0u64);
-    if depth == 1 {
+    if depth == 1 && false {
         movegen2::generate_pseudolegal_moves(&g, &mut movelist.move_lists[depth]);
         for mv in movelist.move_lists[depth].move_list.iter() {
             if g.is_valid_move(mv.0) {

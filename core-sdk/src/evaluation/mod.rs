@@ -962,10 +962,10 @@ pub fn pawns(
         let idx = passed_pawns.trailing_zeros() as usize;
         //Passed and blocked
         _passer_normal += 1;
-        passer_score += PAWN_PASSED_VALUES[if white { idx / 8 } else { 7 - idx / 8 }];
+        passer_score += PAWN_PASSED_VALUES[GameState::relative_rank(idx, white)];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.pawn_passed[if white { idx / 8 } else { 7 - idx / 8 }] +=
+            _eval.trace.pawn_passed[GameState::relative_rank(idx, white)] +=
                 if side == WHITE { 1 } else { -1 };
         }
         //A weak passer is an attacked and not defended passer
@@ -986,11 +986,10 @@ pub fn pawns(
         {
             //Passed and not blocked
             _passer_notblocked += 1;
-            passer_score +=
-                PAWN_PASSED_NOT_BLOCKED_VALUES[if white { idx / 8 } else { 7 - idx / 8 }];
+            passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[GameState::relative_rank(idx, white)];
             #[cfg(feature = "texel-tuning")]
             {
-                _eval.trace.pawn_passed_notblocked[if white { idx / 8 } else { 7 - idx / 8 }] +=
+                _eval.trace.pawn_passed_notblocked[GameState::relative_rank(idx, white)] +=
                     if side == WHITE { 1 } else { -1 };
             }
         }

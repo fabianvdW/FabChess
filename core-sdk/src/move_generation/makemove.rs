@@ -1,6 +1,6 @@
 use crate::bitboards::bitboards::constants::square;
 use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, Irreversible, PieceType, PAWN, WHITE,
+    GameMove, GameMoveType, GameState, Irreversible, PieceType, WHITE,
 };
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::psqt_toggle_piece;
@@ -88,6 +88,7 @@ pub fn copy_make(g: &GameState, mv: GameMove) -> GameState {
     make_move(&mut res, mv);
     res
 }
+
 //We expect the move to be FULLY legal before it can be made!
 pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
     let irr = g.irreversible.clone();
