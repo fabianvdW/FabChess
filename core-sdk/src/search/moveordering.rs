@@ -96,12 +96,6 @@ impl MoveOrderer {
 
                 //Give any capture move in movelist its MVV-LVA score
                 for mv in our_mvlist.move_list.iter_mut() {
-                    if !mv.0.is_capture() {
-                        println!("{:?}", mv.0.piece_type);
-                        println!("{:?}", mv.0.move_type);
-                        println!("{:?}", mv.0);
-                        println!("{}", p.game_state);
-                    }
                     debug_assert!(mv.0.is_capture());
                     mv.1 = Some(f64::from(mvvlva(mv.0)));
                 }

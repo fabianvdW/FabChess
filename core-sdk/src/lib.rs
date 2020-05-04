@@ -9,7 +9,7 @@ pub mod move_generation;
 pub mod search;
 
 use crate::board_representation::game_state::GameState;
-use crate::move_generation::makemove::{make_move, make_move2, unmake_move};
+use crate::move_generation::makemove::{make_move, unmake_move};
 use crate::move_generation::movegen2;
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;

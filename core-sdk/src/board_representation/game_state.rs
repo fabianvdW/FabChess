@@ -933,7 +933,7 @@ impl GameState {
                 return false;
             }
         }
-        let mut all_pieces = self.all_pieces();
+        let all_pieces = self.all_pieces();
         match mv.piece_type {
             PieceType::King => {
                 if self.square_attacked(mv.to as usize, all_pieces ^ square(mv.from as usize), 0u64)
