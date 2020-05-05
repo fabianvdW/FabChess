@@ -242,8 +242,8 @@ impl Engine {
             let found_move = find_move(mv.0, mv.1, mv.2, &movelist);
             if found_move.is_none() {
                 info!(
-                    "Engine {} sent illegal move ({}) in game {}\n",
-                    self.name, line, task_id
+                    "Engine {} sent illegal move ({}) in game {} in position {}\n",
+                    self.name, line, task_id, position_description
                 );
                 return EngineReaction::DisqualifyEngine;
             }

@@ -114,7 +114,7 @@ impl MoveOrderer {
                     let (gm_index, graded_move) = highest_mvv_lva.unwrap();
                     our_list.move_list.remove(gm_index);
                     if Some(graded_move.0) == tt_move
-                        || Some(graded_move.0) != pv_table_move
+                        || Some(graded_move.0) == pv_table_move
                         || !p.game_state.is_valid_move(graded_move.0)
                     {
                         self.next(thread, p, pv_table_move, tt_move)

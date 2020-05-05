@@ -50,11 +50,7 @@ pub fn make_nullmove(g: &mut GameState) -> Irreversible {
     g.full_moves = g.full_moves + g.color_to_move;
     g.hash ^= ZOBRIST_KEYS.side_to_move;
     g.color_to_move = 1 - g.color_to_move;
-    enpassant_hash(
-        g.irreversible.en_passant,
-        g.irreversible.en_passant,
-        &mut g.hash,
-    );
+    enpassant_hash(irr.en_passant, g.irreversible.en_passant, &mut g.hash);
     g.initialize_checkers();
     irr
 }

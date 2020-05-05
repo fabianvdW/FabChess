@@ -161,6 +161,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let mut current_max_score = STANDARD_SCORE;
     let mut index: usize = 0;
     let mut quiets_tried: usize = 0;
+
     let mut move_orderer = MoveOrderer {
         stage: 0,
         stages: &NORMAL_STAGES,
@@ -171,7 +172,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             break;
         }
         let (mv, move_score) = mv.unwrap(); //Move score is only set for bad_capture
-        
+
         //Step 14.4. UCI Reporting at root
         //uci_report_move(&p, su, &mv, index);
 
@@ -351,6 +352,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let game_status =
         check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
     if game_status != GameResult::Ingame {
+        assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, color, p.current_depth as i16);
     }

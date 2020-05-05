@@ -23,7 +23,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     //-------------------------------------------------------------
     //Set game up
     let opening_fen = task.opening.to_fen();
-    let movelist = movegen2::generate_legal_moves(&task.opening);
+    let mut movelist = movegen2::generate_legal_moves(&task.opening);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
@@ -203,7 +203,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
         if state.full_moves < 35 {
             draw_adjudication = 0;
         }
-        let movelist = movegen2::generate_legal_moves(&state);
+        movelist = movegen2::generate_legal_moves(&state);
         let check = check_end_condition(
             &state,
             !movelist.move_list.is_empty(),

@@ -171,11 +171,16 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         }
     }
     //Step 9. Evaluate leafs correctly
-    /*let game_status = check_end_condition(p.game_state, move_orderer.has_legal_move, incheck);
-    if game_status != GameResult::Ingame {
-        clear_pv(p.current_depth, thread);
-        return leaf_score(game_status, p.color, p.current_depth as i16);
-    }*/
+    if incheck {
+        let game_status =
+            check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
+        if game_status != GameResult::Ingame {
+            assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
+            clear_pv(p.current_depth, thread);
+            return leaf_score(game_status, color, p.current_depth as i16);
+        }
+    }
+
     //This is not done anymore. Let's see if it still works.
 
     //Step 10. Make TT entry

@@ -1,6 +1,6 @@
 use super::uci_engine::UCIEngine;
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
-use core_sdk::move_generation::makemove::make_move;
+use core_sdk::move_generation::makemove::copy_make;
 use core_sdk::move_generation::movegen2;
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use core_sdk::search::searcher::{
@@ -215,9 +215,7 @@ pub fn scout_and_make_draftmove(
                     }
                 }
             }
-            let mut res = game_state.clone();
-            make_move(&mut res, mv);
-            return res;
+            return copy_make(game_state, mv);
         }
     }
     panic!("Invalid move; not found in list!");
