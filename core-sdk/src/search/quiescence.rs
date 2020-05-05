@@ -8,6 +8,7 @@ use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
 use crate::move_generation::makemove::{make_move, unmake_move};
+use crate::move_generation::movegen2;
 use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_IN_CHECK_STAGES, QUIESCENCE_STAGES};
 
@@ -171,14 +172,21 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         }
     }
     //Step 9. Evaluate leafs correctly
-    if incheck {
-        let game_status =
-            check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
-        if game_status != GameResult::Ingame {
-            assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
-            clear_pv(p.current_depth, thread);
-            return leaf_score(game_status, color, p.current_depth as i16);
-        }
+    let has_legal_move = current_max_score > STANDARD_SCORE || {
+        movegen2::generate_pseudolegal_moves(
+            &p.game_state,
+            &mut thread.movelist.move_lists[p.current_depth],
+        );
+        thread.movelist.move_lists[p.current_depth]
+            .move_list
+            .iter()
+            .any(|x| p.game_state.is_valid_move(x.0))
+    };
+    let game_status = check_end_condition(p.game_state, has_legal_move, incheck);
+    if game_status != GameResult::Ingame {
+        debug_assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
+        clear_pv(p.current_depth, thread);
+        return leaf_score(game_status, color, p.current_depth as i16);
     }
 
     //This is not done anymore. Let's see if it still works.

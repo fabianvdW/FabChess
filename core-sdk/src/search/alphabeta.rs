@@ -352,7 +352,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let game_status =
         check_end_condition(p.game_state, current_max_score > STANDARD_SCORE, incheck);
     if game_status != GameResult::Ingame {
-        assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
+        debug_assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, color, p.current_depth as i16);
     }
