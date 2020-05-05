@@ -36,56 +36,74 @@ impl Magic {
 pub fn initialize_rook_magics() -> Vec<Magic> {
     let mut res = Vec::with_capacity(0);
     for sq in 0..64 {
-        let table = if cfg!(all(target_arch = "x86_64", target_feature = "bmi2")) {
-            use std::arch::x86_64::_pext_u64;
-            fill_table(&generate_rook_patterns(sq), |bb| unsafe {
-                _pext_u64(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize
+        let patterns = generate_rook_patterns(sq);
+        #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
+        {
+            let lookup = fill_table(&patterns, |bb| unsafe {
+                std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize
             })
-            .unwrap()
-        } else {
-            fill_table(&generate_rook_patterns(sq), |bb| {
+            .unwrap();
+            res.push(Magic {
+                occupancy_mask: OCCUPANCY_MASKS_ROOK[sq],
+                magic: MAGICS_ROOK[sq],
+                shift: OCCUPANCY_MASKS_ROOK[sq].count_ones() as usize,
+                lookup,
+            });
+        }
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
+        {
+            let lookup = fill_table(&patterns, |bb| {
                 apply_magic(
                     MAGICS_ROOK[sq],
                     bb,
                     OCCUPANCY_MASKS_ROOK[sq].count_ones() as usize,
                 )
             })
-            .unwrap()
-        };
-        res.push(Magic {
-            occupancy_mask: OCCUPANCY_MASKS_ROOK[sq],
-            magic: MAGICS_ROOK[sq],
-            shift: OCCUPANCY_MASKS_ROOK[sq].count_ones() as usize,
-            lookup: table,
-        });
+            .unwrap();
+            res.push(Magic {
+                occupancy_mask: OCCUPANCY_MASKS_ROOK[sq],
+                magic: MAGICS_ROOK[sq],
+                shift: OCCUPANCY_MASKS_ROOK[sq].count_ones() as usize,
+                lookup,
+            });
+        }
     }
     res
 }
 pub fn initialize_bishop_magics() -> Vec<Magic> {
     let mut res = Vec::with_capacity(0);
     for sq in 0..64 {
-        let table = if cfg!(all(target_arch = "x86_64", target_feature = "bmi2")) {
-            use std::arch::x86_64::_pext_u64;
-            fill_table(&generate_bishop_patterns(sq), |bb| unsafe {
-                _pext_u64(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
+        let patterns = generate_bishop_patterns(sq);
+        #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
+        {
+            let lookup = fill_table(&patterns, |bb| unsafe {
+                std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
             })
-            .unwrap()
-        } else {
-            fill_table(&generate_bishop_patterns(sq), |bb| {
+            .unwrap();
+            res.push(Magic {
+                occupancy_mask: OCCUPANCY_MASKS_BISHOP[sq],
+                magic: MAGICS_BISHOP[sq],
+                shift: OCCUPANCY_MASKS_BISHOP[sq].count_ones() as usize,
+                lookup,
+            });
+        }
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
+        {
+            let lookup = fill_table(&patterns, |bb| {
                 apply_magic(
                     MAGICS_BISHOP[sq],
                     bb,
                     OCCUPANCY_MASKS_BISHOP[sq].count_ones() as usize,
                 )
             })
-            .unwrap()
-        };
-        res.push(Magic {
-            occupancy_mask: OCCUPANCY_MASKS_BISHOP[sq],
-            magic: MAGICS_BISHOP[sq],
-            shift: OCCUPANCY_MASKS_BISHOP[sq].count_ones() as usize,
-            lookup: table,
-        });
+            .unwrap();
+            res.push(Magic {
+                occupancy_mask: OCCUPANCY_MASKS_BISHOP[sq],
+                magic: MAGICS_BISHOP[sq],
+                shift: OCCUPANCY_MASKS_BISHOP[sq].count_ones() as usize,
+                lookup,
+            });
+        }
     }
     res
 }
