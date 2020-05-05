@@ -9,7 +9,7 @@ use super::MATED_IN_MAX;
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::GameState;
 //use crate::logging::log;
-use crate::move_generation::makemove::make_move;
+use crate::move_generation::makemove::{copy_make, make_move};
 use crate::move_generation::movegen2;
 use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation, MATE_SCORE};
@@ -286,13 +286,9 @@ impl Thread {
         for mv in self.current_pv.pv.pv.iter() {
             if let Some(mv) = mv {
                 if next_state.is_none() {
-                    let mut root_clone = root.clone();
-                    make_move(&mut root_clone, *mv);
-                    next_state = Some(root_clone);
+                    next_state = Some(copy_make(root, *mv));
                 } else {
-                    let mut state = next_state.unwrap();
-                    make_move(&mut state, *mv);
-                    next_state = Some(state);
+                    next_state = Some(copy_make(next_state.as_ref().unwrap(), *mv));
                 }
                 self.pv_applicable.push(next_state.as_ref().unwrap().hash);
             } else {
