@@ -436,7 +436,7 @@ pub fn piecewise(
     let mut bishops = g.pieces[BISHOP][side];
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
-        let bishop_attack = bishop_attacks(idx, all_pieces);
+        let bishop_attack = bishop_attacks(idx, all_pieces ^ square(enemy_king_idx));
         if (FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
             && (movegen::xray_bishop_attacks(bishop_attack, all_pieces, all_pieces, idx)
                 & g.pieces[KING][1 - side])
@@ -482,7 +482,7 @@ pub fn piecewise(
     let mut rooks = g.pieces[ROOK][side];
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
-        let rook_attack = rook_attacks(idx, all_pieces);
+        let rook_attack = rook_attacks(idx, all_pieces ^ square(enemy_king_idx));
         if (FREEFIELD_ROOK_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
             && (movegen::xray_rook_attacks(rook_attack, all_pieces, all_pieces, idx)
                 & g.pieces[KING][1 - side])
@@ -535,7 +535,8 @@ pub fn piecewise(
     let mut queens = g.pieces[QUEEN][side];
     while queens != 0u64 {
         let idx = queens.trailing_zeros() as usize;
-        let queen_attack = bishop_attacks(idx, all_pieces) | rook_attacks(idx, all_pieces);
+        let queen_attack = bishop_attacks(idx, all_pieces ^ square(enemy_king_idx))
+            | rook_attacks(idx, all_pieces ^ square(enemy_king_idx));
         if (FREEFIELD_BISHOP_ATTACKS[idx] & g.pieces[KING][1 - side]) != 0u64
             && (movegen::xray_bishop_attacks(
                 queen_attack & FREEFIELD_BISHOP_ATTACKS[idx],
