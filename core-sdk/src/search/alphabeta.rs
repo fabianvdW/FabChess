@@ -173,9 +173,8 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             break;
         }
         let (mv, move_score) = mv.unwrap(); //Move score is only set for bad_capture
-
-        //Step 14.4. UCI Reporting at root
-        //uci_report_move(&p, su, &mv, index);
+                                            //Step 14.4. UCI Reporting at root
+                                            //uci_report_move(&p, su, &mv, index);
 
         let isc = mv.is_capture();
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {

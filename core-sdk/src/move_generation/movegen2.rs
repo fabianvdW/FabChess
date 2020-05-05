@@ -410,9 +410,9 @@ pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveLi
     if game_state.irreversible.checkers.count_ones() <= 1 {
         generate_pawns_quiets(game_state, movelist, general_mask);
         generate_others(game_state, movelist, general_mask, PieceType::Knight);
+        generate_others(game_state, movelist, general_mask, PieceType::Queen);
         generate_others(game_state, movelist, general_mask, PieceType::Bishop);
         generate_others(game_state, movelist, general_mask, PieceType::Rook);
-        generate_others(game_state, movelist, general_mask, PieceType::Queen);
     }
 }
 pub fn generate_pseudolegal_moves(game_state: &GameState, movelist: &mut MoveList) {
@@ -425,9 +425,9 @@ pub fn generate_pseudolegal_moves(game_state: &GameState, movelist: &mut MoveLis
         generate_pawns_quiets(game_state, movelist, general_mask);
         generate_pawns_captures(game_state, movelist, general_mask);
         generate_others(game_state, movelist, general_mask, PieceType::Knight);
+        generate_others(game_state, movelist, general_mask, PieceType::Queen);
         generate_others(game_state, movelist, general_mask, PieceType::Bishop);
         generate_others(game_state, movelist, general_mask, PieceType::Rook);
-        generate_others(game_state, movelist, general_mask, PieceType::Queen);
     }
 }
 

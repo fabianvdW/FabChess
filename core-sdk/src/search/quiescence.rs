@@ -190,8 +190,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         return leaf_score(game_status, color, p.current_depth as i16);
     }
 
-    //This is not done anymore. Let's see if it still works.
-
     //Step 10. Make TT entry
     if has_pv && p.depth_left == 0 && !thread.self_stop {
         thread.itcs.cache().insert(
