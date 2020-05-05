@@ -4,8 +4,6 @@ use super::EvaluationScore;
 use crate::board_representation::game_state::{
     PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
-#[cfg(feature = "display-eval")]
-use crate::logging::log;
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -105,17 +103,14 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
     let sum = pawn + knight + bishop + rook + queen + king;
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPSQT for {}:\n",
-            if white { "White" } else { "Black" }
-        ));
-        log(&format!("\tPawns  : {}\n", pawn));
-        log(&format!("\tKnights: {}\n", knight));
-        log(&format!("\tBishops: {}\n", bishop));
-        log(&format!("\tRooks: {}\n", rook));
-        log(&format!("\tQueens: {}\n", queen));
-        log(&format!("\tKing   : {}\n", king));
-        log(&format!("Sum: {}\n", sum));
+        println!("\nPSQT for {}:", if white { "White" } else { "Black" });
+        println!("\tPawns  : {}", pawn);
+        println!("\tKnights: {}", knight);
+        println!("\tBishops: {}", bishop);
+        println!("\tRooks: {}", rook);
+        println!("\tQueens: {}", queen);
+        println!("\tKing   : {}", king);
+        println!("Sum: {}", sum);
     }
     sum
 }

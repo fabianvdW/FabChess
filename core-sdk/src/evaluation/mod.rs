@@ -12,8 +12,6 @@ use crate::board_representation::game_state::{
 };
 #[cfg(feature = "texel-tuning")]
 use crate::evaluation::trace::Trace;
-#[cfg(feature = "display-eval")]
-use crate::logging::log;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{
     bishop_attacks, pawn_east_targets, pawn_targets, pawn_west_targets, rook_attacks,
@@ -111,7 +109,7 @@ pub fn eval_game_state(
 ) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
-        log(&format!("Evaluating GameState fen: {}\n", g.to_fen()));
+        println!("Evaluating GameState fen: {}", g.to_fen());
     }
     let mut result = EvaluationResult {
         final_eval: 0,
@@ -137,7 +135,7 @@ pub fn eval_game_state(
         } else {
             TEMPO_BONUS * -1
         };
-        log(&format!("\nTempo:{}\n", tempo));
+        println!("\nTempo:{}", tempo);
     }
     #[cfg(feature = "texel-tuning")]
     {
@@ -161,7 +159,7 @@ pub fn eval_game_state(
         };
     #[cfg(feature = "display-eval")]
     {
-        log(&format!("\nPSQT Sum: {}\n", psqt_score));
+        println!("\nPSQT Sum: {}", psqt_score);
     }
     res += psqt_score;
 
@@ -171,12 +169,12 @@ pub fn eval_game_state(
     );
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPiece value Sum: {} - {} -> {}\n",
+        println!(
+            "\nPiece value Sum: {} - {} -> {}",
             pieces_w,
             pieces_b,
             pieces_w - pieces_b
-        ));
+        );
     }
     res += pieces_w - pieces_b;
 
@@ -196,12 +194,12 @@ pub fn eval_game_state(
     );
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPawn Sum: {} - {} -> {}\n",
+        println!(
+            "\nPawn Sum: {} - {} -> {}",
             pawns_w,
             pawns_b,
             pawns_w - pawns_b
-        ));
+        );
     }
     res += pawns_w - pawns_b;
 
@@ -222,12 +220,12 @@ pub fn eval_game_state(
     );
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nKnights Sum: {} - {} -> {}\n",
+        println!(
+            "\nKnights Sum: {} - {} -> {}",
             knights_w,
             knights_b,
             knights_w - knights_b
-        ));
+        );
     }
     res += knights_w - knights_b;
 
@@ -249,24 +247,19 @@ pub fn eval_game_state(
     );
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPiecewise Sum: {} - {} -> {}\n",
+        println!(
+            "\nPiecewise Sum: {} - {} -> {}",
             piecewise_w,
             piecewise_b,
             piecewise_w - piecewise_b
-        ));
+        );
     }
     res += piecewise_w - piecewise_b;
 
     let (king_w, king_b) = (king(true, g, &mut result), king(false, g, &mut result));
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nKing Sum: {} - {} -> {}\n",
-            king_w,
-            king_b,
-            king_w - king_b
-        ));
+        println!("\nKing Sum: {} - {} -> {}", king_w, king_b, king_w - king_b);
     }
     res += king_w - king_b;
 
@@ -275,8 +268,8 @@ pub fn eval_game_state(
     let final_res = res.interpolate(phase);
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {} (EG/=1.5)\n",
+        println!(
+            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {} (EG/=1.5)",
             psqt_score,
             knights_w - knights_b,
             piecewise_w - piecewise_b,
@@ -289,12 +282,12 @@ pub fn eval_game_state(
                 TEMPO_BONUS * -1
             },
             res
-        ));
-        log(&format!("Phase: {}\n", phase));
-        log(&format!(
-            "\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}",
+        );
+        println!("Phase: {}", phase);
+        println!(
+            "Final Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}",
             res.0, phase, res.1, phase, final_res,
-        ));
+        );
     }
     result.final_eval = final_res;
     result
@@ -303,22 +296,22 @@ pub fn eval_game_state(
 #[inline(always)]
 pub fn sum_attacks(g: &GameState, side: usize) -> (u64, u64) {
     let all_pieces = g.all_pieces();
-    let mut defended_by_minors = pawn_targets(1 - side, g.pieces[PAWN][1 - side])
-        | knight_attacks(g.pieces[KNIGHT][1 - side]);
-    let mut enemy_bishops = g.pieces[BISHOP][1 - side];
+    let mut defended_by_minors =
+        pawn_targets(side, g.pieces[PAWN][side]) | knight_attacks(g.pieces[KNIGHT][side]);
+    let mut enemy_bishops = g.pieces[BISHOP][side];
     while enemy_bishops > 0 {
         let bishop = enemy_bishops.trailing_zeros() as usize;
         defended_by_minors |= bishop_attacks(bishop, all_pieces);
         enemy_bishops ^= square(bishop);
     }
-    let mut defended_by_majors = KING_ATTACKS[g.king_square(1 - side)];
-    let mut enemy_rooks = g.pieces[ROOK][1 - side];
+    let mut defended_by_majors = KING_ATTACKS[g.king_square(side)];
+    let mut enemy_rooks = g.pieces[ROOK][side];
     while enemy_rooks > 0 {
         let rook = enemy_rooks.trailing_zeros() as usize;
         defended_by_majors |= rook_attacks(rook, all_pieces);
         enemy_rooks ^= square(rook);
     }
-    let mut enemy_queens = g.pieces[QUEEN][1 - side];
+    let mut enemy_queens = g.pieces[QUEEN][side];
     while enemy_queens > 0 {
         let queen = enemy_queens.trailing_zeros() as usize;
         defended_by_majors |= bishop_attacks(queen, all_pieces) | rook_attacks(queen, all_pieces);
@@ -370,17 +363,14 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Eval
     res += outpost;
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nKnights for {}:\n",
-            if white { "White" } else { "Black" }
-        ));
-        log(&format!(
-            "\tSupported by pawns: {} -> {}\n",
+        println!("\nKnights for {}:", if white { "White" } else { "Black" });
+        println!(
+            "\tSupported by pawns: {} -> {}",
             supported_knights_amount,
             KNIGHT_SUPPORTED_BY_PAWN * supported_knights_amount,
-        ));
-        log(&format!("\tOutposts: {} -> {}\n", _outposts, outpost));
-        log(&format!("Sum: {}\n", res));
+        );
+        println!("\tOutposts: {} -> {}", _outposts, outpost);
+        println!("Sum: {}", res);
     }
 
     res
@@ -657,81 +647,78 @@ pub fn piecewise(
 
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPiecewise for {}:\n",
-            if white { "White" } else { "Black" }
-        ));
-        log(&format!("\tMobility Knight: {}\n", mk));
-        log(&format!("\tMobility Bishop: {}\n", mb));
-        log(&format!("\tBishop Diagonally Adj: {}\n", mb_diag));
-        log(&format!("\tMobility Rook  : {}\n", mr));
-        log(&format!("\tMobility Queen : {}\n", mq));
-        log(&format!(
-            "\tBishopXrayKing : {} -> {}\n",
+        println!("\nPiecewise for {}:", if white { "White" } else { "Black" });
+        println!("\tMobility Knight: {}", mk);
+        println!("\tMobility Bishop: {}", mb);
+        println!("\tBishop Diagonally Adj: {}", mb_diag);
+        println!("\tMobility Rook  : {}", mr);
+        println!("\tMobility Queen : {}", mq);
+        println!(
+            "\tBishopXrayKing : {} -> {}",
             bishop_xray_king,
             BISHOP_XRAY_KING * bishop_xray_king,
-        ));
-        log(&format!(
-            "\tRookXrayKing : {} -> {}\n",
+        );
+        println!(
+            "\tRookXrayKing : {} -> {}",
             rook_xray_king,
             ROOK_XRAY_KING * rook_xray_king,
-        ));
-        log(&format!(
-            "\tQueenXrayKing : {} -> {}\n",
+        );
+        println!(
+            "\tQueenXrayKing : {} -> {}",
             queen_xray_king,
             QUEEN_XRAY_KING * queen_xray_king,
-        ));
-        log(&format!(
-            "\tRooks on open  : {} -> {}\n",
+        );
+        println!(
+            "\tRooks on open  : {} -> {}",
             rooks_onopen,
             ROOK_ON_OPEN_FILE_BONUS * rooks_onopen,
-        ));
-        log(&format!(
-            "\tRooks on semi-open  : {} -> {}\n",
+        );
+        println!(
+            "\tRooks on semi-open  : {} -> {}",
             rooks_on_semi_open,
             ROOK_ON_SEMI_OPEN_FILE_BONUS * rooks_on_semi_open,
-        ));
-        log(&format!(
-            "\tQueens on open  : {} -> {}\n",
+        );
+        println!(
+            "\tQueens on open  : {} -> {}",
             queens_onopen,
             QUEEN_ON_OPEN_FILE_BONUS * queens_onopen,
-        ));
-        log(&format!(
-            "\tQueens on semi-open  : {} -> {}\n",
+        );
+        println!(
+            "\tQueens on semi-open  : {} -> {}",
             queens_on_semi_open,
             QUEEN_ON_SEMI_OPEN_FILE_BONUS * queens_on_semi_open,
-        ));
-        log(&format!(
-            "\tRooks on seventh: {} -> {}\n",
+        );
+        println!(
+            "\tRooks on seventh: {} -> {}",
             rooks_onseventh,
             ROOK_ON_SEVENTH * rooks_onseventh
-        ));
-        log(&format!(
-            "\tKnight Attackers: Num: {} , Val: {}\n",
+        );
+        println!(
+            "\tKnight Attackers: Num: {} , Val: {}",
             knight_attackers, knight_attacker_values
-        ));
-        log(&format!(
-            "\tBishop Attackers: Num: {} , Val: {}\n",
+        );
+        println!(
+            "\tBishop Attackers: Num: {} , Val: {}",
             bishop_attackers, bishop_attacker_values
-        ));
-        log(&format!(
-            "\tRook Attackers: Num: {} , Val: {}\n",
+        );
+        println!(
+            "\tRook Attackers: Num: {} , Val: {}",
             rook_attackers, rook_attacker_values
-        ));
-        log(&format!(
-            "\tQueen Attackers: Num: {} , Val: {}\n",
+        );
+        println!(
+            "\tQueen Attackers: Num: {} , Val: {}",
             queen_attackers, queen_attacker_values
-        ));
-        log(&format!(
-            "\tSum Attackers: (Num: {} , Val: {}\n",
+        );
+        println!(
+            "\tSum Attackers: (Num: {} , Val: {}",
             knight_attackers + bishop_attackers + rook_attackers + queen_attackers,
             knight_attacker_values
                 + bishop_attacker_values
                 + rook_attacker_values
                 + queen_attacker_values
-        ));
-        log(&format!(
-            "\tAttack MG value: {} * {} / 100.0 -> {}\n",
+        );
+        println!(
+            "\tAttack MG value: {} * {} / 100.0 -> {}",
             SAFETY_TABLE[(knight_attacker_values.0
                 + bishop_attacker_values.0
                 + rook_attacker_values.0
@@ -742,9 +729,9 @@ pub fn piecewise(
                 .min(7) as usize]
                 .0,
             attack_mg
-        ));
-        log(&format!(
-            "\tAttack EG value: {} * {} / 100.0 -> {}\n",
+        );
+        println!(
+            "\tAttack EG value: {} * {} / 100.0 -> {}",
             SAFETY_TABLE[(knight_attacker_values.1
                 + bishop_attacker_values.1
                 + rook_attacker_values.1
@@ -755,8 +742,8 @@ pub fn piecewise(
                 .min(7) as usize]
                 .1,
             attack_eg
-        ));
-        log(&format!("Sum: {}\n", res));
+        );
+        println!("Sum: {}", res);
     }
     res
 }
@@ -806,19 +793,16 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Evaluat
 
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nKing for {}:\n",
-            if white { "White" } else { "Black" }
-        ));
-        log(&format!(
-            "\tShield pawn missing: {} -> {}\n",
+        println!("\nKing for {}:", if white { "White" } else { "Black" });
+        println!(
+            "\tShield pawn missing: {} -> {}",
             shields_missing, SHIELDING_PAWN_MISSING[shields_missing],
-        ));
-        log(&format!(
-            "\tShield pawn on open file missing: {} -> {}\n",
+        );
+        println!(
+            "\tShield pawn on open file missing: {} -> {}",
             shields_on_open_missing, SHIELDING_PAWN_MISSING_ON_OPEN_FILE[shields_on_open_missing],
-        ));
-        log(&format!("Sum: {}\n", res));
+        );
+        println!("Sum: {}", res);
     }
     res
 }
@@ -1018,57 +1002,54 @@ pub fn pawns(
     res += passer_score + PAWN_PASSED_WEAK * weak_passers + passer_dist;
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPawns for {}:\n",
-            if white { "White" } else { "Black" }
-        ));
-        log(&format!(
-            "\tDoubled: {} -> {}\n",
+        println!("\nPawns for {}:", if white { "White" } else { "Black" });
+        println!(
+            "\tDoubled: {} -> {}",
             doubled_pawns,
             PAWN_DOUBLED_VALUE * doubled_pawns
-        ));
-        log(&format!(
-            "\tIsolated: {} -> {}\n",
+        );
+        println!(
+            "\tIsolated: {} -> {}",
             isolated_pawns,
             PAWN_ISOLATED_VALUE * isolated_pawns,
-        ));
-        log(&format!(
-            "\tBackward: {} -> {}\n",
+        );
+        println!(
+            "\tBackward: {} -> {}",
             backward_pawns,
             PAWN_BACKWARD_VALUE * backward_pawns,
-        ));
-        log(&format!("\tSupported: {} -> {}\n", _supported_amt, supp));
-        log(&format!(
-            "\tAttack Center: {} -> {}\n",
+        );
+        println!("\tSupported: {} -> {}", _supported_amt, supp);
+        println!(
+            "\tAttack Center: {} -> {}",
             center_attack_pawns,
             PAWN_ATTACK_CENTER * center_attack_pawns,
-        ));
-        log(&format!(
-            "\tMobility: {} -> {}\n",
+        );
+        println!(
+            "\tMobility: {} -> {}",
             pawn_mobility,
             PAWN_MOBILITY * pawn_mobility,
-        ));
-        log(&format!(
-            "\tPasser Blocked/Not Blocked: {} , {} -> {}\n",
+        );
+        println!(
+            "\tPasser Blocked/Not Blocked: {} , {} -> {}",
             _passer_normal, _passer_notblocked, passer_score
-        ));
-        log(&format!(
-            "\tRook behind passer: {} -> {}\n",
+        );
+        println!(
+            "\tRook behind passer: {} -> {}",
             rooks_support_passer,
             ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer,
-        ));
-        log(&format!(
-            "\tEnemy Rook behind passer: {} -> {}\n",
+        );
+        println!(
+            "\tEnemy Rook behind passer: {} -> {}",
             enemy_rooks_attack_passer,
             ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer,
-        ));
-        log(&format!(
-            "\tWeak passer: {} -> {}\n",
+        );
+        println!(
+            "\tWeak passer: {} -> {}",
             weak_passers,
             PAWN_PASSED_WEAK * weak_passers,
-        ));
-        log(&format!("\tPassers distance to kings -> {}\n", passer_dist));
-        log(&format!("Sum: {}\n", res));
+        );
+        println!("\tPassers distance to kings -> {}", passer_dist);
+        println!("Sum: {}", res);
     }
     res
 }
@@ -1115,39 +1096,31 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     }
     #[cfg(feature = "display-eval")]
     {
-        log(&format!(
-            "\nPiece values for {}\n",
+        println!(
+            "\nPiece values for {}",
             if white { "White" } else { "Black" }
-        ));
-        log(&format!(
-            "\tPawns: {} -> {}\n",
-            my_pawns,
-            PAWN_PIECE_VALUE * my_pawns,
-        ));
-        log(&format!(
-            "\tKnights: {} -> {}\n",
+        );
+        println!("\tPawns: {} -> {}", my_pawns, PAWN_PIECE_VALUE * my_pawns,);
+        println!(
+            "\tKnights: {} -> {}",
             my_knights,
             (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights,
-        ));
-        log(&format!(
-            "\tBishops: {} -> {}\n",
+        );
+        println!(
+            "\tBishops: {} -> {}",
             my_bishops,
             BISHOP_PIECE_VALUE * my_bishops,
-        ));
+        );
         if my_bishops > 1 {
-            log(&format!("\tBishop-Pair: {} -> {}\n", 1, BISHOP_PAIR_BONUS));
+            println!("\tBishop-Pair: {} -> {}", 1, BISHOP_PAIR_BONUS);
         }
-        log(&format!(
-            "\tRooks: {} -> {}\n",
-            my_rooks,
-            ROOK_PIECE_VALUE * my_rooks,
-        ));
-        log(&format!(
-            "\tQueens: {} -> {}\n",
+        println!("\tRooks: {} -> {}", my_rooks, ROOK_PIECE_VALUE * my_rooks,);
+        println!(
+            "\tQueens: {} -> {}",
             my_queens,
             QUEEN_PIECE_VALUE * my_queens,
-        ));
-        log(&format!("Sum: {}\n", res));
+        );
+        println!("Sum: {}", res);
     }
     res
 }
