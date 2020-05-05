@@ -16,6 +16,7 @@ pub const DELTA_PRUNING: i16 = 100;
 pub const PIECE_VALUES: [i16; 6] = [100, 400, 400, 650, 1100, 30000];
 
 pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
+    debug_assert!(p.game_state.check_integrity());
     //Step 0. Prepare variables
     thread.search_statistics.add_q_node(p.current_depth);
     clear_pv(p.current_depth, thread);

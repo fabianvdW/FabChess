@@ -20,6 +20,7 @@ pub const SEE_PRUNING_CAPTURE_MULT: f64 = -23.;
 pub const SEE_PRUNING_QUIET_MULT: f64 = -23.;
 
 pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
+    debug_assert!(p.game_state.check_integrity());
     //Step 0. Prepare variables
     thread.search_statistics.add_normal_node(p.current_depth);
     clear_pv(p.current_depth, thread);

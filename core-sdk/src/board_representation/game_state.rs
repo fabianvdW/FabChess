@@ -378,8 +378,15 @@ impl GameState {
         self.initialize_psqt();
         self.initialize_checkers();
     }
+    pub(crate) fn check_integrity(&self) -> bool {
+        let mut other = self.clone();
+        other.initialize_details();
+        self.hash == other.hash
+            && self.psqt == other.psqt
+            && self.phase == other.phase
+            && self.irreversible.checkers == other.irreversible.checkers
+    }
     pub fn initialize_hash(&mut self) {
-        debug_assert_eq!(self.hash, 0u64);
         self.hash = 0u64;
         if self.color_to_move == BLACK {
             self.hash ^= ZOBRIST_KEYS.side_to_move;
