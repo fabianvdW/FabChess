@@ -119,6 +119,12 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             break;
         }
         let (capture_move, _) = mv.unwrap();
+        debug_assert!({
+            let before = p.game_state.clone();
+            let irr = make_move(p.game_state, capture_move);
+            unmake_move(p.game_state, capture_move, irr);
+            before == *p.game_state
+        });
         if !incheck
             && !passes_delta_pruning(
                 capture_move,

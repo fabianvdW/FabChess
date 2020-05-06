@@ -173,8 +173,14 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             break;
         }
         let (mv, move_score) = mv.unwrap(); //Move score is only set for bad_capture
-                                            //Step 14.4. UCI Reporting at root
-                                            //uci_report_move(&p, su, &mv, index);
+        debug_assert!({
+            let before = p.game_state.clone();
+            let irr = make_move(p.game_state, mv);
+            unmake_move(p.game_state, mv, irr);
+            before == *p.game_state
+        });
+        //Step 14.4. UCI Reporting at root
+        //uci_report_move(&p, su, &mv, index);
 
         let isc = mv.is_capture();
         let isp = if let GameMoveType::Promotion(_, _) = mv.move_type {
@@ -513,6 +519,12 @@ pub fn null_move_pruning(
         && static_evaluation.expect("null move static") * color >= p.beta
         && (tt_entry.is_none() || !tt_entry.unwrap().alpha || tt_entry.unwrap().score >= p.beta)
     {
+        debug_assert!({
+            let before = p.game_state.clone();
+            let irr = make_nullmove(p.game_state);
+            unmake_nullmove(p.game_state, irr);
+            before == *p.game_state
+        });
         let irreverisble = make_nullmove(p.game_state);
         let rat = -principal_variation_search(
             CombinedSearchParameters::from(
