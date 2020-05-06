@@ -1,5 +1,6 @@
 use crate::bitboards::bitboards::constants::{square, KING_ATTACKS};
 use crate::bitboards::bitboards::knight_attacks;
+use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK,
     WHITE,
@@ -122,16 +123,12 @@ impl GameState {
 
     #[inline(always)]
     pub fn pieces_from_side(&self, side: usize) -> u64 {
-        self.pieces_from_side_without_king(side) | self.pieces[KING][side]
-    }
-
-    #[inline(always)]
-    pub fn pieces_from_side_without_king(&self, side: usize) -> u64 {
         self.pieces[PAWN][side]
             | self.pieces[KNIGHT][side]
             | self.pieces[BISHOP][side]
             | self.pieces[ROOK][side]
             | self.pieces[QUEEN][side]
+            | self.pieces[KING][side]
     }
 
     #[inline(always)]
@@ -159,8 +156,14 @@ impl GameState {
     #[inline(always)]
     pub fn is_valid_castle(&self, white: bool, kingside: bool, occ: &mut u64) -> bool {
         pub const CASTLE_SQUARES: [[(usize, usize, usize, usize); 2]; 2] = [
-            [(5, 6, 5, 7), (2, 3, 0, 3)],
-            [(61, 62, 61, 63), (58, 59, 56, 59)],
+            [
+                (square::F1, square::G1, square::F1, square::H1),
+                (square::C1, square::D1, square::A1, square::D1),
+            ],
+            [
+                (square::F8, square::G8, square::F8, square::H8),
+                (square::C8, square::D8, square::A8, square::D8),
+            ],
         ];
         let castle_squares =
             CASTLE_SQUARES[if white { 0 } else { 1 }][if kingside { 0 } else { 1 }];
@@ -186,13 +189,13 @@ impl GameState {
         let mut occ = self.all_pieces();
         let mut exclude = square(mv.to as usize);
         if mv.move_type == GameMoveType::EnPassant {
+            //Remove enpassented pawn
             //The ^8 Trick:
             //The fields 40-47 all contain 32+8, does xoring 8 removes 8 fields, getting the en-passented pawn
             //The fields 16-23 all DON't contain the 8-bit, thus xoring 8 adds 8 fields, getting the en-passented pawn
             occ ^= square((mv.to ^ 8) as usize);
             square((mv.to ^ 8) as usize);
             exclude |= square((mv.to ^ 8) as usize);
-        //Remove enpassented pawn
         } else if mv.move_type == GameMoveType::Castle {
             let white = self.color_to_move == WHITE;
             let kingside = mv.to as usize == self.king_square(self.color_to_move) + 2;
@@ -246,15 +249,15 @@ impl GameState {
     pub(crate) fn castle_target_square(&self, kingside: bool) -> u8 {
         if self.color_to_move == WHITE {
             if kingside {
-                6
+                square::G1 as u8
             } else {
-                2
+                square::C1 as u8
             }
         } else {
             if kingside {
-                62
+                square::G8 as u8
             } else {
-                58
+                square::C8 as u8
             }
         }
     }
@@ -271,16 +274,20 @@ pub fn generate_king(game_state: &GameState, movelist: &mut MoveList, mask: u64)
         let (ks, qs) = if game_state.color_to_move == WHITE {
             (
                 game_state.irreversible.castle_white_kingside
-                    && (game_state.all_pieces() & (square(5) | square(6)) == 0),
+                    && (game_state.all_pieces() & (square(square::F1) | square(square::G1)) == 0),
                 game_state.irreversible.castle_white_queenside
-                    && (game_state.all_pieces() & (square(1) | square(2) | square(3)) == 0),
+                    && (game_state.all_pieces()
+                        & (square(square::B1) | square(square::C1) | square(square::D1))
+                        == 0),
             )
         } else {
             (
                 game_state.irreversible.castle_black_kingside
-                    && (game_state.all_pieces() & (square(62) | square(61))) == 0,
+                    && (game_state.all_pieces() & (square(square::F8) | square(square::G8))) == 0,
                 game_state.irreversible.castle_black_queenside
-                    && (game_state.all_pieces() & (square(57) | square(58) | square(59)) == 0),
+                    && (game_state.all_pieces()
+                        & (square(square::B8) | square(square::C8) | square(square::D8))
+                        == 0),
             )
         };
         if ks && mask & square(game_state.castle_target_square(true) as usize) > 0 {

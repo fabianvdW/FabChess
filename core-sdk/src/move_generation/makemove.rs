@@ -1,4 +1,5 @@
 use crate::bitboards::bitboards::constants::square;
+use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, Irreversible, PieceType, WHITE,
 };
@@ -42,6 +43,21 @@ pub fn castle_hash(old: &Irreversible, new: &Irreversible, hash: &mut u64) {
         *hash ^= ZOBRIST_KEYS.castle_b_queenside;
     }
 }
+#[inline(always)]
+//Returns the rook positions for a castle
+pub fn rook_castling(to: u8) -> (u8, u8) {
+    if to == 58 {
+        (56, 59)
+    } else if to == 2 {
+        (0, 3)
+    } else if to == 62 {
+        (63, 61)
+    } else if to == 6 {
+        (7, 5)
+    } else {
+        panic!("Invalid castling move!")
+    }
+}
 
 pub fn make_nullmove(g: &mut GameState) -> Irreversible {
     let irr = g.irreversible.clone();
@@ -60,22 +76,6 @@ pub fn unmake_nullmove(g: &mut GameState, irr: Irreversible) {
     g.hash ^= ZOBRIST_KEYS.side_to_move;
     enpassant_hash(g.irreversible.en_passant, irr.en_passant, &mut g.hash);
     g.irreversible = irr;
-}
-
-#[inline(always)]
-//Returns the rook positions for a castle
-pub fn rook_castling(to: u8) -> (u8, u8) {
-    if to == 58 {
-        (56, 59)
-    } else if to == 2 {
-        (0, 3)
-    } else if to == 62 {
-        (63, 61)
-    } else if to == 6 {
-        (7, 5)
-    } else {
-        panic!("Invalid castling move!")
-    }
 }
 
 //TODO: use this outside of search, perft where performance does not matter
@@ -107,12 +107,8 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
     let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
-        let square = if let GameMoveType::EnPassant = mv.move_type {
-            if g.color_to_move == WHITE {
-                mv.to - 8
-            } else {
-                mv.to + 8
-            }
+        let square = if mv.move_type == GameMoveType::EnPassant {
+            mv.to ^ 8
         } else {
             mv.to
         };
@@ -192,25 +188,25 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
         }
     } else if mv.piece_type == PieceType::Rook {
         if g.color_to_move == WHITE {
-            if mv.from == 0 {
+            if mv.from == square::A1 as u8 {
                 g.irreversible.castle_white_queenside = false;
-            } else if mv.from == 7 {
+            } else if mv.from == square::H1 as u8 {
                 g.irreversible.castle_white_kingside = false;
             }
-        } else if mv.from == 56 {
+        } else if mv.from == square::A8 as u8 {
             g.irreversible.castle_black_queenside = false;
-        } else if mv.from == 63 {
+        } else if mv.from == square::H8 as u8 {
             g.irreversible.castle_black_kingside = false;
         }
     }
     if captured_piece.is_some() {
-        if mv.to == 0 {
+        if mv.to == square::A1 as u8 {
             g.irreversible.castle_white_queenside = false;
-        } else if mv.to == 56 {
+        } else if mv.to == square::A8 as u8 {
             g.irreversible.castle_black_queenside = false;
-        } else if mv.to == 7 {
+        } else if mv.to == square::H1 as u8 {
             g.irreversible.castle_white_kingside = false;
-        } else if mv.to == 63 {
+        } else if mv.to == square::H8 as u8 {
             g.irreversible.castle_black_kingside = false;
         }
     }

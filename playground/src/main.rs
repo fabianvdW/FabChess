@@ -1,4 +1,4 @@
-use core_sdk::board_representation::game_state::GameState;
+use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState};
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::{copy_make, make_move, unmake_move};
 use core_sdk::move_generation::movegen2;

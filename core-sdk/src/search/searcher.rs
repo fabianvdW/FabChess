@@ -9,7 +9,7 @@ use super::MATED_IN_MAX;
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::GameState;
 //use crate::logging::log;
-use crate::move_generation::makemove::{copy_make, make_move};
+use crate::move_generation::makemove::copy_make;
 use crate::move_generation::movegen2;
 use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation, MATE_SCORE};
