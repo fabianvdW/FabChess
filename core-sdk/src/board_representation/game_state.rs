@@ -40,6 +40,7 @@ impl Display for GameResult {
         write!(formatter, "{}", res_str)
     }
 }
+
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,
@@ -119,7 +120,7 @@ impl PieceType {
     }
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct GameMove {
     pub from: u8,
     pub to: u8,
@@ -127,26 +128,20 @@ pub struct GameMove {
     pub piece_type: PieceType,
 }
 
-impl Clone for GameMove {
-    fn clone(&self) -> Self {
+impl GameMove {
+    pub fn new(from: usize, to: usize, move_type: GameMoveType, piece_type: PieceType) -> Self {
         GameMove {
-            from: self.from,
-            to: self.to,
-            move_type: self.move_type,
-            piece_type: self.piece_type,
+            from: from as u8,
+            to: to as u8,
+            move_type,
+            piece_type,
         }
     }
-}
-
-impl GameMove {
     #[inline(always)]
     pub fn is_capture(self) -> bool {
         match self.move_type {
             GameMoveType::Capture(_) => true,
-            GameMoveType::Promotion(_, s) => match s {
-                Some(_) => true,
-                _ => false,
-            },
+            GameMoveType::Promotion(_, Some(_)) => true,
             GameMoveType::EnPassant => true,
             _ => false,
         }

@@ -246,18 +246,18 @@ impl GameState {
     }
 
     #[inline(always)]
-    pub(crate) fn castle_target_square(&self, kingside: bool) -> u8 {
+    pub(crate) fn castle_target_square(&self, kingside: bool) -> usize {
         if self.color_to_move == WHITE {
             if kingside {
-                square::G1 as u8
+                square::G1
             } else {
-                square::C1 as u8
+                square::C1
             }
         } else {
             if kingside {
-                square::G8 as u8
+                square::G8
             } else {
-                square::C8 as u8
+                square::C8
             }
         }
     }
@@ -268,7 +268,7 @@ pub fn generate_king(game_state: &GameState, movelist: &mut MoveList, mask: u64)
     let king_idx = game_state.king_square(game_state.color_to_move);
     //Normal king attacks
     let valid_attacks = KING_ATTACKS[king_idx] & mask;
-    movelist.add_bb(king_idx as u8, PieceType::King, valid_attacks, game_state);
+    movelist.add_bb(king_idx, PieceType::King, valid_attacks, game_state);
     //Castle
     if !game_state.in_check() {
         let (ks, qs) = if game_state.color_to_move == WHITE {
@@ -291,20 +291,20 @@ pub fn generate_king(game_state: &GameState, movelist: &mut MoveList, mask: u64)
             )
         };
         if ks && mask & square(game_state.castle_target_square(true) as usize) > 0 {
-            movelist.add_move(GameMove {
-                from: king_idx as u8,
-                to: game_state.castle_target_square(true),
-                move_type: GameMoveType::Castle,
-                piece_type: PieceType::King,
-            })
+            movelist.add_move(GameMove::new(
+                king_idx,
+                game_state.castle_target_square(true),
+                GameMoveType::Castle,
+                PieceType::King,
+            ));
         }
         if qs && mask & square(game_state.castle_target_square(false) as usize) > 0 {
-            movelist.add_move(GameMove {
-                from: king_idx as u8,
-                to: game_state.castle_target_square(false),
-                move_type: GameMoveType::Castle,
-                piece_type: PieceType::King,
-            })
+            movelist.add_move(GameMove::new(
+                king_idx,
+                game_state.castle_target_square(false),
+                GameMoveType::Castle,
+                PieceType::King,
+            ));
         }
     }
 }
@@ -333,10 +333,10 @@ pub fn generate_others(
 ) {
     let mut pieces = game_state.pieces[piece_type.to_index()][game_state.color_to_move];
     while pieces > 0 {
-        let piece_idx = pieces.trailing_zeros();
-        let attack = mask & piece_type.attacks(piece_idx as usize, game_state);
-        movelist.add_bb(piece_idx as u8, piece_type, attack, game_state);
-        pieces ^= square(piece_idx as usize);
+        let piece_idx = pieces.trailing_zeros() as usize;
+        let attack = mask & piece_type.attacks(piece_idx, game_state);
+        movelist.add_bb(piece_idx, piece_type, attack, game_state);
+        pieces ^= square(piece_idx);
     }
 }
 #[inline(always)]

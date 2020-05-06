@@ -17,15 +17,10 @@ impl Default for MoveList {
 impl MoveList {
     //This deserializes a bitboard with target destinations for a certain piece with piece_type on the from square
     #[inline(always)]
-    pub fn add_bb(&mut self, from: u8, piece_type: PieceType, mut bb: u64, state: &GameState) {
+    pub fn add_bb(&mut self, from: usize, piece_type: PieceType, mut bb: u64, state: &GameState) {
         while bb > 0 {
             let to = bb.trailing_zeros() as usize;
-            self.add_move(GameMove {
-                from,
-                to: to as u8,
-                piece_type,
-                move_type: state.move_type_to(to),
-            });
+            self.add_move(GameMove::new(from, to, state.move_type_to(to), piece_type));
             bb ^= square(to);
         }
     }
@@ -54,24 +49,24 @@ impl MoveList {
                 ]
                 .iter()
                 {
-                    self.add_move(GameMove {
-                        from: (to as i8 + shift) as u8,
-                        to: to as u8,
-                        piece_type: PieceType::Pawn,
-                        move_type: GameMoveType::Promotion(*pt, captured_pt),
-                    })
+                    self.add_move(GameMove::new(
+                        (to as i8 + shift) as usize,
+                        to,
+                        GameMoveType::Promotion(*pt, captured_pt),
+                        PieceType::Pawn,
+                    ));
                 }
             } else {
-                self.add_move(GameMove {
-                    from: (to as i8 + shift) as u8,
-                    to: to as u8,
-                    piece_type: PieceType::Pawn,
-                    move_type: if is_capture {
+                self.add_move(GameMove::new(
+                    (to as i8 + shift) as usize,
+                    to,
+                    if is_capture {
                         state.move_type_to(to)
                     } else {
                         GameMoveType::Quiet
                     },
-                });
+                    PieceType::Pawn,
+                ));
             }
             bb ^= square(to)
         }
