@@ -415,6 +415,7 @@ pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveLi
         generate_others(game_state, movelist, general_mask, PieceType::Rook);
     }
 }
+
 pub fn generate_pseudolegal_moves(game_state: &GameState, movelist: &mut MoveList) {
     movelist.move_list.clear();
     //Generate pseudolegal moves given a position

@@ -3,7 +3,9 @@ use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
-use crate::move_generation::makemove::{make_move, make_nullmove, unmake_move, unmake_nullmove};
+use crate::move_generation::makemove::{
+    copy_make, make_move, make_nullmove, unmake_move, unmake_nullmove,
+};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::searcher::Thread;
@@ -190,6 +192,15 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         };
         let is_quiet_move = !isc && !isp;
         let gives_check = p.game_state.gives_check(mv);
+        debug_assert!({
+            let after_mv = copy_make(p.game_state, mv);
+            if gives_check != after_mv.in_check() {
+                println!("{}", p.game_state);
+                println!("{}", p.game_state.gives_check(mv));
+                println!("{:?}", mv);
+            }
+            gives_check == after_mv.in_check()
+        });
 
         if !root
             && is_quiet_move
