@@ -111,13 +111,14 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             &QUIESCENCE_STAGES
         },
     };
-
+    let mut moves_played = 0;
     loop {
         let mv = move_orderer.next(thread, &p, None, tt_move);
         if mv.is_none() {
             break;
         }
         let (capture_move, _) = mv.unwrap();
+        moves_played += 1;
         debug_assert!({
             let before = p.game_state.clone();
             let irr = make_move(p.game_state, capture_move);
@@ -178,7 +179,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         }
     }
     //Step 9. Evaluate leafs correctly
-    let has_legal_move = current_max_score > STANDARD_SCORE || {
+    let mut legal_move = || {
         movegen2::generate_pseudolegal_moves(
             &p.game_state,
             &mut thread.movelist.move_lists[p.current_depth],
@@ -188,6 +189,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             .iter()
             .any(|x| p.game_state.is_valid_move(x.0))
     };
+    let has_legal_move = moves_played > 0 || legal_move();
     let game_status = check_end_condition(p.game_state, has_legal_move, incheck);
     if game_status != GameResult::Ingame {
         debug_assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);
