@@ -117,9 +117,9 @@ pub fn psqt(white: bool, state: &GameState, _eval: &mut EvaluationResult) -> Eva
 }
 #[inline(always)]
 pub fn psqt_set_piece(state: &mut GameState, piece: PieceType, sq: usize, side: usize) {
-    state.psqt += piece.to_psqt(side, sq);
+    state.irreversible.psqt += piece.to_psqt(side, sq);
 }
 #[inline(always)]
 pub fn psqt_unset_piece(state: &mut GameState, piece: PieceType, sq: usize, side: usize) {
-    state.psqt -= piece.to_psqt(side, sq)
+    state.irreversible.psqt -= piece.to_psqt(side, sq)
 }

@@ -114,7 +114,7 @@ pub fn eval_game_state(
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = g.phase.phase;
+    let phase = g.irreversible.phase.phase;
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
@@ -150,7 +150,7 @@ pub fn eval_game_state(
             let (psqt_w, psqt_b) = (psqt(true, &g, &mut result), psqt(false, &g, &mut result));
             psqt_w - psqt_b
         } else {
-            g.psqt
+            g.irreversible.psqt
         };
     #[cfg(feature = "display-eval")]
     {

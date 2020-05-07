@@ -1,6 +1,7 @@
 use core_sdk::bitboards::print_castle_permisssion;
-use core_sdk::board_representation::game_state::{GameMoveType, GameState};
-use core_sdk::evaluation::eval_game_state;
+use core_sdk::board_representation::game_state::{GameMoveType, GameState, Irreversible};
+use core_sdk::evaluation::phase::Phase;
+use core_sdk::evaluation::{eval_game_state, EvaluationScore};
 use core_sdk::move_generation::movegen2;
 use core_sdk::search::cache::{Cache, CacheEntry};
 use core_sdk::search::moveordering::mvvlva;
@@ -29,10 +30,13 @@ fn main() {
         }
     }
     println!("{}", sum);
-    println!(
+    println!("{}", std::mem::size_of::<Irreversible>());
+    println!("{}", std::mem::size_of::<EvaluationScore>());
+    println!("{}", std::mem::size_of::<Phase>())
+    /*println!(
         "{}",
         core_sdk::board_representation::zobrist_hashing::init_zobrist()
-    );
+    );*/
     //print_castle_permisssion();
     //go_infinite_from_startpos();
 }

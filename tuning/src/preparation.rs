@@ -126,7 +126,7 @@ pub fn stripped_q_search(
     let has_legal_move = make_moves(
         &game_state,
         &mut move_list.move_lists[current_depth],
-        game_state.phase.phase,
+        game_state.irreversible.phase.phase,
         stand_pat,
         alpha,
         see_buffer,

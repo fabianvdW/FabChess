@@ -129,7 +129,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         if !incheck
             && !passes_delta_pruning(
                 capture_move,
-                p.game_state.phase.phase,
+                p.game_state.irreversible.phase.phase,
                 *stand_pat.as_ref().unwrap(),
                 p.alpha,
             )

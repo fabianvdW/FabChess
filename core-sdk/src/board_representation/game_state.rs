@@ -317,8 +317,10 @@ pub struct Irreversible {
     pub checkers: u64,
     pub hash: u64,
     pub en_passant: u64,
-    pub(crate) castle_permissions: u8,
     pub half_moves: usize,
+    pub(crate) castle_permissions: u8,
+    pub phase: Phase,
+    pub psqt: EvaluationScore,
 }
 impl Irreversible {
     pub fn castle_permissions(&self) -> u8 {
@@ -345,8 +347,6 @@ pub struct GameState {
 
     pub irreversible: Irreversible,
     pub full_moves: usize,
-    pub psqt: EvaluationScore,
-    pub phase: Phase,
 }
 //Querying functions
 impl GameState {
@@ -491,10 +491,10 @@ impl GameState {
         if self.irreversible.hash != other.irreversible.hash {
             return false;
         }
-        if self.psqt != other.psqt {
+        if self.irreversible.psqt != other.irreversible.psqt {
             return false;
         }
-        if self.phase != other.phase {
+        if self.irreversible.phase != other.irreversible.phase {
             return false;
         }
         if self.irreversible.checkers != other.irreversible.checkers {
@@ -559,7 +559,7 @@ impl GameState {
     }
 
     pub(crate) fn initialize_phase(&mut self) {
-        self.phase = Phase::from_state(self);
+        self.irreversible.phase = Phase::from_state(self);
     }
 
     pub(crate) fn initialize_psqt(&mut self) {
@@ -570,7 +570,7 @@ impl GameState {
         };
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, self, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, self, &mut _eval);
-        self.psqt = p_w - p_b;
+        self.irreversible.psqt = p_w - p_b;
     }
 
     pub(crate) fn initialize_checkers(&mut self) {
@@ -759,13 +759,13 @@ impl GameState {
                 en_passant,
                 hash: 0u64,
                 checkers: 0u64,
+                psqt: EvaluationScore(0, 0),
+                phase: Phase {
+                    phase: 0.,
+                    material_score: 0,
+                },
             },
             full_moves,
-            psqt: EvaluationScore(0, 0),
-            phase: Phase {
-                phase: 0.,
-                material_score: 0,
-            },
         };
         res.initialize_details();
         res
@@ -897,13 +897,13 @@ impl GameState {
                 hash: 0u64,
                 half_moves: 0,
                 checkers: 0u64,
+                psqt: EvaluationScore(0, 0),
+                phase: Phase {
+                    phase: 0.,
+                    material_score: 0,
+                },
             },
             full_moves: 1usize,
-            psqt: EvaluationScore(0, 0),
-            phase: Phase {
-                phase: 0.,
-                material_score: 0,
-            },
         };
         res.initialize_details();
         res
@@ -1164,8 +1164,8 @@ impl Debug for GameState {
             "Checkers: 0x{:x}u64\n",
             self.irreversible.checkers
         ));
-        res_str.push_str(&format!("Phase: {}\n", self.phase.phase));
-        res_str.push_str(&format!("PSQT: {}\n", self.psqt));
+        res_str.push_str(&format!("Phase: {}\n", self.irreversible.phase.phase));
+        res_str.push_str(&format!("PSQT: {}\n", self.irreversible.psqt));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
@@ -1178,7 +1178,5 @@ impl PartialEq for GameState {
             && self.color_bb == other.color_bb
             && self.irreversible == other.irreversible
             && self.full_moves == other.full_moves
-            && self.psqt == other.psqt
-            && self.phase == other.phase
     }
 }

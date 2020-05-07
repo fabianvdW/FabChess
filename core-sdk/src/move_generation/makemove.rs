@@ -96,7 +96,7 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
         g.unset_piece(piece, square as usize, color_to_move);
         toggle_hash(piece, square, color_to_move, &mut g.irreversible.hash);
         psqt_unset_piece(g, piece, square as usize, color_to_move);
-        g.phase.delete_piece(piece);
+        g.irreversible.phase.delete_piece(piece);
     }
     //Move rook for castling
     if mv.move_type == GameMoveType::Castle {
@@ -136,7 +136,7 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
             &mut g.irreversible.hash,
         );
         psqt_set_piece(g, promo_piece, mv.to as usize, g.color_to_move);
-        g.phase.add_piece(promo_piece);
+        g.irreversible.phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
         g.set_piece(mv.piece_type, mv.to as usize, g.color_to_move);
@@ -186,21 +186,15 @@ pub fn unmake_move(g: &mut GameState, mv: GameMove, irr: Irreversible) {
     //Revert the move
     if mv.move_type == GameMoveType::Castle {
         g.unset_piece(mv.piece_type, mv.to as usize, g.color_to_move);
-        psqt_unset_piece(g, mv.piece_type, mv.to as usize, g.color_to_move);
         let (rook_from, rook_to) = rook_castling(mv.to);
         g.set_piece(PieceType::Rook, rook_from, g.color_to_move);
-        psqt_set_piece(g, PieceType::Rook, rook_from as usize, g.color_to_move);
         g.unset_piece(PieceType::Rook, rook_to, g.color_to_move);
-        psqt_unset_piece(g, PieceType::Rook, rook_to as usize, g.color_to_move);
     } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
         //If promotion, delete promotion piece
         g.unset_piece(promo_piece, mv.to as usize, g.color_to_move);
-        psqt_unset_piece(g, promo_piece, mv.to as usize, g.color_to_move);
-        g.phase.delete_piece(promo_piece);
     } else {
         //Remove piece from to
         g.unset_piece(mv.piece_type, mv.to as usize, g.color_to_move);
-        psqt_unset_piece(g, mv.piece_type, mv.to as usize, g.color_to_move);
     }
     let captured_piece = mv.get_maybe_captured_piece();
     //Add captured piece back
@@ -215,13 +209,10 @@ pub fn unmake_move(g: &mut GameState, mv: GameMove, irr: Irreversible) {
             mv.to
         };
         g.set_piece(piece, square as usize, 1 - g.color_to_move);
-        psqt_set_piece(g, piece, square as usize, 1 - g.color_to_move);
-        g.phase.add_piece(piece);
     }
     g.full_moves = g.full_moves - g.color_to_move;
 
     //Add piece to original square
     g.set_piece(mv.piece_type, mv.from as usize, g.color_to_move);
-    psqt_set_piece(g, mv.piece_type, mv.from as usize, g.color_to_move);
     g.irreversible = irr;
 }
