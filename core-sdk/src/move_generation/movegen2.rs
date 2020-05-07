@@ -196,20 +196,20 @@ pub fn generate_king(game_state: &GameState, movelist: &mut MoveList, mask: u64)
     if !game_state.in_check() {
         let (ks, qs) = if game_state.color_to_move == WHITE {
             (
-                game_state.irreversible.castle_white_kingside
+                game_state.castle_white_kingside()
                     && (game_state.all_pieces_bb() & (square(square::F1) | square(square::G1))
                         == 0),
-                game_state.irreversible.castle_white_queenside
+                game_state.castle_white_queenside()
                     && (game_state.all_pieces_bb()
                         & (square(square::B1) | square(square::C1) | square(square::D1))
                         == 0),
             )
         } else {
             (
-                game_state.irreversible.castle_black_kingside
+                game_state.castle_black_kingside()
                     && (game_state.all_pieces_bb() & (square(square::F8) | square(square::G8)))
                         == 0,
-                game_state.irreversible.castle_black_queenside
+                game_state.castle_black_queenside()
                     && (game_state.all_pieces_bb()
                         & (square(square::B8) | square(square::C8) | square(square::D8))
                         == 0),

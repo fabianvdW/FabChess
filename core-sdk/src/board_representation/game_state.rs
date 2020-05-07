@@ -15,6 +15,13 @@ use std::fmt::{Debug, Display, Formatter, Result};
 
 pub const WHITE: usize = 0;
 pub const BLACK: usize = 1;
+pub const CASTLE_WHITE_KS: u8 = 0b1000;
+pub const CASTLE_WHITE_QS: u8 = 0b100;
+pub const CASTLE_BLACK_KS: u8 = 0b10;
+pub const CASTLE_BLACK_QS: u8 = 0b1;
+pub const CASTLE_ALL_WHITE: u8 = CASTLE_WHITE_KS | CASTLE_WHITE_QS;
+pub const CASTLE_ALL_BLACK: u8 = CASTLE_BLACK_KS | CASTLE_BLACK_QS;
+pub const CASTLE_ALL: u8 = CASTLE_ALL_WHITE | CASTLE_ALL_BLACK;
 
 #[derive(PartialEq, Debug)]
 pub enum GameResult {
@@ -310,13 +317,14 @@ pub struct Irreversible {
     pub checkers: u64,
     pub hash: u64,
     pub en_passant: u64,
-    pub castle_white_kingside: bool,
-    pub castle_white_queenside: bool,
-    pub castle_black_kingside: bool,
-    pub castle_black_queenside: bool,
+    pub(crate) castle_permissions: u8,
     pub half_moves: usize,
 }
-
+impl Irreversible {
+    pub fn castle_permissions(&self) -> u8 {
+        self.castle_permissions
+    }
+}
 #[derive(Clone)]
 pub struct GameState {
     // 0 = White
@@ -423,6 +431,24 @@ impl GameState {
             GameMoveType::Quiet
         }
     }
+
+    pub fn castle_white_kingside(&self) -> bool {
+        self.irreversible.castle_permissions & CASTLE_WHITE_KS > 0
+    }
+    pub fn castle_white_queenside(&self) -> bool {
+        self.irreversible.castle_permissions & CASTLE_WHITE_QS > 0
+    }
+
+    pub fn castle_black_kingside(&self) -> bool {
+        self.irreversible.castle_permissions & CASTLE_BLACK_KS > 0
+    }
+
+    pub fn castle_black_queenside(&self) -> bool {
+        self.irreversible.castle_permissions & CASTLE_BLACK_QS > 0
+    }
+    pub fn castle_permissions(&self) -> u8 {
+        self.irreversible.castle_permissions()
+    }
 }
 
 //Integrity and after initialization functions
@@ -505,18 +531,8 @@ impl GameState {
         if self.color_to_move == BLACK {
             self.irreversible.hash ^= ZOBRIST_KEYS.side_to_move;
         }
-        if self.irreversible.castle_white_kingside {
-            self.irreversible.hash ^= ZOBRIST_KEYS.castle_w_kingside;
-        }
-        if self.irreversible.castle_white_queenside {
-            self.irreversible.hash ^= ZOBRIST_KEYS.castle_w_queenside;
-        }
-        if self.irreversible.castle_black_kingside {
-            self.irreversible.hash ^= ZOBRIST_KEYS.castle_b_kingside;
-        }
-        if self.irreversible.castle_black_queenside {
-            self.irreversible.hash ^= ZOBRIST_KEYS.castle_b_queenside;
-        }
+        self.irreversible.hash ^=
+            ZOBRIST_KEYS.castle_permissions[self.castle_permissions() as usize];
         if self.irreversible.en_passant != 0u64 {
             let file = self.irreversible.en_passant.trailing_zeros() as usize % 8;
             self.irreversible.hash ^= ZOBRIST_KEYS.en_passant[file];
@@ -719,17 +735,26 @@ impl GameState {
         } else {
             (0, 1)
         };
-
+        let mut castle_permissions = 0u8;
+        if castle_white_kingside {
+            castle_permissions |= CASTLE_WHITE_KS
+        }
+        if castle_white_queenside {
+            castle_permissions |= CASTLE_WHITE_QS
+        }
+        if castle_black_kingside {
+            castle_permissions |= CASTLE_BLACK_KS
+        }
+        if castle_black_queenside {
+            castle_permissions |= CASTLE_BLACK_QS
+        }
         let mut res = GameState {
             color_to_move,
             pieces_bb,
             color_bb,
             piece_square_table,
             irreversible: Irreversible {
-                castle_white_kingside,
-                castle_white_queenside,
-                castle_black_kingside,
-                castle_black_queenside,
+                castle_permissions,
                 half_moves,
                 en_passant,
                 hash: 0u64,
@@ -801,23 +826,19 @@ impl GameState {
             res_str.push_str("b");
         }
         res_str.push_str(" ");
-        if !(self.irreversible.castle_white_kingside
-            | self.irreversible.castle_white_queenside
-            | self.irreversible.castle_black_kingside
-            | self.irreversible.castle_black_queenside)
-        {
+        if self.castle_permissions() == 0 {
             res_str.push_str("-");
         } else {
-            if self.irreversible.castle_white_kingside {
+            if self.castle_white_kingside() {
                 res_str.push_str("K");
             }
-            if self.irreversible.castle_white_queenside {
+            if self.castle_white_queenside() {
                 res_str.push_str("Q");
             }
-            if self.irreversible.castle_black_kingside {
+            if self.castle_black_kingside() {
                 res_str.push_str("k");
             }
-            if self.irreversible.castle_black_queenside {
+            if self.castle_black_queenside() {
                 res_str.push_str("q");
             }
         }
@@ -871,10 +892,7 @@ impl GameState {
             color_bb,
             piece_square_table,
             irreversible: Irreversible {
-                castle_white_kingside: true,
-                castle_white_queenside: true,
-                castle_black_kingside: true,
-                castle_black_queenside: true,
+                castle_permissions: CASTLE_ALL,
                 en_passant: 0u64,
                 hash: 0u64,
                 half_moves: 0,
@@ -927,28 +945,28 @@ impl GameState {
             let all_piece = self.all_pieces_bb();
             let is_invalid_wk = || {
                 mv.to == 6
-                    && (!self.irreversible.castle_white_kingside
+                    && (!self.castle_white_kingside()
                         || all_piece & (square(5) | square(6)) != 0u64
                         || self.square_attacked(5, all_piece, 0u64)
                         || self.square_attacked(6, all_piece, 0u64))
             };
             let is_invalid_wq = || {
                 mv.to == 2
-                    && (!self.irreversible.castle_white_queenside
+                    && (!self.castle_white_queenside()
                         || all_piece & (square(1) | square(2) | square(3)) != 0u64
                         || self.square_attacked(2, all_piece, 0u64)
                         || self.square_attacked(3, all_piece, 0u64))
             };
             let is_invalid_bk = || {
                 mv.to == 62
-                    && (!self.irreversible.castle_black_kingside
+                    && (!self.castle_black_kingside()
                         || all_piece & (square(61) | square(62)) != 0u64
                         || self.square_attacked(61, all_piece, 0u64)
                         || self.square_attacked(62, all_piece, 0u64))
             };
             let is_invalid_bq = || {
                 mv.to == 58
-                    && (!self.irreversible.castle_black_queenside
+                    && (!self.castle_black_queenside()
                         || all_piece & (square(57) | square(58) | square(59)) != 0u64
                         || self.square_attacked(58, all_piece, 0u64)
                         || self.square_attacked(59, all_piece, 0u64))
@@ -1047,19 +1065,19 @@ impl Display for GameState {
         res_str.push_str("Castle Rights: \n");
         res_str.push_str(&format!(
             "White Kingside: {}\n",
-            self.irreversible.castle_white_kingside
+            self.castle_white_kingside()
         ));
         res_str.push_str(&format!(
             "White Queenside: {}\n",
-            self.irreversible.castle_white_queenside
+            self.castle_white_queenside()
         ));
         res_str.push_str(&format!(
             "Black Kingside: {}\n",
-            self.irreversible.castle_black_kingside
+            self.castle_black_kingside()
         ));
         res_str.push_str(&format!(
             "Black Queenside: {}\n",
-            self.irreversible.castle_black_queenside
+            self.castle_black_queenside()
         ));
         res_str.push_str(&format!(
             "En Passant Possible: {:x}\n",
@@ -1130,22 +1148,10 @@ impl Debug for GameState {
             "BlackKing: 0x{:x}u64\n",
             self.get_piece(PieceType::King, BLACK)
         ));
-        res_str.push_str(&format!(
-            "CWK: {}\n",
-            self.irreversible.castle_white_kingside
-        ));
-        res_str.push_str(&format!(
-            "CWQ: {}\n",
-            self.irreversible.castle_white_queenside
-        ));
-        res_str.push_str(&format!(
-            "CBK: {}\n",
-            self.irreversible.castle_black_kingside
-        ));
-        res_str.push_str(&format!(
-            "CBQ: {}\n",
-            self.irreversible.castle_black_queenside
-        ));
+        res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside()));
+        res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside()));
+        res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside()));
+        res_str.push_str(&format!("CBQ: {}\n", self.castle_black_queenside()));
         res_str.push_str(&format!(
             "En-Passant: 0x{:x}u64\n",
             self.irreversible.en_passant
@@ -1172,7 +1178,6 @@ impl PartialEq for GameState {
             && self.color_bb == other.color_bb
             && self.irreversible == other.irreversible
             && self.full_moves == other.full_moves
-            && self.irreversible.hash == other.irreversible.hash
             && self.psqt == other.psqt
             && self.phase == other.phase
     }

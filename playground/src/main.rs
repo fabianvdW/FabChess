@@ -1,3 +1,4 @@
+use core_sdk::bitboards::print_castle_permisssion;
 use core_sdk::board_representation::game_state::{GameMoveType, GameState};
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::movegen2;
@@ -30,8 +31,9 @@ fn main() {
     println!("{}", sum);
     println!(
         "{}",
-        core_sdk::board_representation::zobrist_hashing::ZOBRIST_KEYS
+        core_sdk::board_representation::zobrist_hashing::init_zobrist()
     );
+    //print_castle_permisssion();
     //go_infinite_from_startpos();
 }
 pub const BENCHMARKING_POSITIONS: &str = "./benchmarking/benchmarking_positions.txt";

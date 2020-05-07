@@ -1,5 +1,4 @@
-use crate::bitboards::bitboards::constants::square;
-use crate::bitboards::bitboards::square;
+use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, Irreversible, PieceType, WHITE,
 };
@@ -21,18 +20,8 @@ pub fn enpassant_hash(old: u64, new: u64, hash: &mut u64) {
 }
 #[inline(always)]
 pub fn castle_hash(old: &Irreversible, new: &mut Irreversible) {
-    if old.castle_white_kingside != new.castle_white_kingside {
-        new.hash ^= ZOBRIST_KEYS.castle_w_kingside;
-    }
-    if old.castle_white_queenside != new.castle_white_queenside {
-        new.hash ^= ZOBRIST_KEYS.castle_w_queenside;
-    }
-    if old.castle_black_kingside != new.castle_black_kingside {
-        new.hash ^= ZOBRIST_KEYS.castle_b_kingside;
-    }
-    if old.castle_black_queenside != new.castle_black_queenside {
-        new.hash ^= ZOBRIST_KEYS.castle_b_queenside;
-    }
+    new.hash ^= ZOBRIST_KEYS.castle_permissions[old.castle_permissions() as usize];
+    new.hash ^= ZOBRIST_KEYS.castle_permissions[new.castle_permissions() as usize];
 }
 #[inline(always)]
 //Returns the rook positions for a castle
@@ -159,40 +148,8 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
         );
         psqt_set_piece(g, mv.piece_type, mv.to as usize, g.color_to_move);
     }
-
-    //Step 3. Update Castling Rights
-    if mv.move_type == GameMoveType::Castle || mv.piece_type == PieceType::King {
-        if g.color_to_move == WHITE {
-            g.irreversible.castle_white_kingside = false;
-            g.irreversible.castle_white_queenside = false;
-        } else {
-            g.irreversible.castle_black_kingside = false;
-            g.irreversible.castle_black_queenside = false;
-        }
-    } else if mv.piece_type == PieceType::Rook {
-        if g.color_to_move == WHITE {
-            if mv.from == square::A1 as u8 {
-                g.irreversible.castle_white_queenside = false;
-            } else if mv.from == square::H1 as u8 {
-                g.irreversible.castle_white_kingside = false;
-            }
-        } else if mv.from == square::A8 as u8 {
-            g.irreversible.castle_black_queenside = false;
-        } else if mv.from == square::H8 as u8 {
-            g.irreversible.castle_black_kingside = false;
-        }
-    }
-    if captured_piece.is_some() {
-        if mv.to == square::A1 as u8 {
-            g.irreversible.castle_white_queenside = false;
-        } else if mv.to == square::A8 as u8 {
-            g.irreversible.castle_black_queenside = false;
-        } else if mv.to == square::H1 as u8 {
-            g.irreversible.castle_white_kingside = false;
-        } else if mv.to == square::H8 as u8 {
-            g.irreversible.castle_black_kingside = false;
-        }
-    }
+    g.irreversible.castle_permissions &=
+        CASTLE_PERMISSION[mv.from as usize] & CASTLE_PERMISSION[mv.to as usize];
     castle_hash(&irr, &mut g.irreversible);
     //Step 4. Update en passant field
     g.irreversible.en_passant = if mv.move_type == GameMoveType::Quiet
