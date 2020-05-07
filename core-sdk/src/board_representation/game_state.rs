@@ -66,15 +66,8 @@ impl PieceType {
     }
 
     #[inline(always)]
-    pub fn to_zobrist_key(self) -> (&'static [u64; 64], &'static [u64; 64]) {
-        match &self {
-            PieceType::Pawn => (&ZOBRIST_KEYS.w_pawns, &ZOBRIST_KEYS.b_pawns),
-            PieceType::Knight => (&ZOBRIST_KEYS.w_knights, &ZOBRIST_KEYS.b_knights),
-            PieceType::Bishop => (&ZOBRIST_KEYS.w_bishops, &ZOBRIST_KEYS.b_bishops),
-            PieceType::Rook => (&ZOBRIST_KEYS.w_rooks, &ZOBRIST_KEYS.b_rooks),
-            PieceType::Queen => (&ZOBRIST_KEYS.w_queens, &ZOBRIST_KEYS.b_queens),
-            PieceType::King => (&ZOBRIST_KEYS.w_king, &ZOBRIST_KEYS.b_king),
-        }
+    pub fn to_zobrist_key(self, side: usize, sq: usize) -> u64 {
+        ZOBRIST_KEYS.pieces[side][self as usize][sq]
     }
 
     #[inline(always)]
@@ -527,78 +520,24 @@ impl GameState {
             let file = self.irreversible.en_passant.trailing_zeros() as usize % 8;
             self.hash ^= ZOBRIST_KEYS.en_passant[file];
         }
-
-        let mut w_pawns = self.get_piece(PieceType::Pawn, WHITE);
-        while w_pawns != 0u64 {
-            let idx = w_pawns.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.w_pawns[idx];
-            w_pawns ^= square(idx);
-        }
-        let mut w_knights = self.get_piece(PieceType::Knight, WHITE);
-        while w_knights != 0u64 {
-            let idx = w_knights.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.w_knights[idx];
-            w_knights ^= square(idx);
-        }
-        let mut w_bishops = self.get_piece(PieceType::Bishop, WHITE);
-        while w_bishops != 0u64 {
-            let idx = w_bishops.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.w_bishops[idx];
-            w_bishops ^= square(idx);
-        }
-        let mut w_rooks = self.get_piece(PieceType::Rook, WHITE);
-        while w_rooks != 0u64 {
-            let idx = w_rooks.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.w_rooks[idx];
-            w_rooks ^= square(idx);
-        }
-        let mut w_queens = self.get_piece(PieceType::Queen, WHITE);
-        while w_queens != 0u64 {
-            let idx = w_queens.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.w_queens[idx];
-            w_queens ^= square(idx);
-        }
-        let mut w_king = self.get_piece(PieceType::King, WHITE);
-        while w_king != 0u64 {
-            let idx = w_king.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.w_king[idx];
-            w_king ^= square(idx);
-        }
-        let mut b_pawns = self.get_piece(PieceType::Pawn, BLACK);
-        while b_pawns != 0u64 {
-            let idx = b_pawns.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.b_pawns[idx];
-            b_pawns ^= square(idx);
-        }
-        let mut b_knights = self.get_piece(PieceType::Knight, BLACK);
-        while b_knights != 0u64 {
-            let idx = b_knights.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.b_knights[idx];
-            b_knights ^= square(idx);
-        }
-        let mut b_bishops = self.get_piece(PieceType::Bishop, BLACK);
-        while b_bishops != 0u64 {
-            let idx = b_bishops.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.b_bishops[idx];
-            b_bishops ^= square(idx);
-        }
-        let mut b_rooks = self.get_piece(PieceType::Rook, BLACK);
-        while b_rooks != 0u64 {
-            let idx = b_rooks.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.b_rooks[idx];
-            b_rooks ^= square(idx);
-        }
-        let mut b_queens = self.get_piece(PieceType::Queen, BLACK);
-        while b_queens != 0u64 {
-            let idx = b_queens.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.b_queens[idx];
-            b_queens ^= square(idx);
-        }
-        let mut b_king = self.get_piece(PieceType::King, BLACK);
-        while b_king != 0u64 {
-            let idx = b_king.trailing_zeros() as usize;
-            self.hash ^= ZOBRIST_KEYS.b_king[idx];
-            b_king ^= square(idx);
+        for side in 0..2 {
+            for pt in [
+                PieceType::King,
+                PieceType::Pawn,
+                PieceType::Knight,
+                PieceType::Rook,
+                PieceType::Bishop,
+                PieceType::Queen,
+            ]
+            .iter()
+            {
+                let mut piece = self.get_piece(*pt, side);
+                while piece > 0 {
+                    let idx = piece.trailing_zeros() as usize;
+                    self.hash ^= ZOBRIST_KEYS.pieces[side][*pt as usize][idx];
+                    piece ^= square(idx)
+                }
+            }
         }
     }
 

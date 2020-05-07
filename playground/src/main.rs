@@ -31,6 +31,10 @@ fn main() {
         }
     }
     println!("{}", sum);
+    println!(
+        "{}",
+        core_sdk::board_representation::zobrist_hashing::ZOBRIST_KEYS
+    );
     //go_infinite_from_startpos();
 }
 pub const BENCHMARKING_POSITIONS: &str = "./benchmarking/benchmarking_positions.txt";

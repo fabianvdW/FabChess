@@ -8,11 +8,7 @@ use crate::evaluation::psqt_evaluation::psqt_toggle_piece;
 
 #[inline(always)]
 pub fn toggle_hash(piece: PieceType, square: u8, color: usize, hash: &mut u64) {
-    *hash ^= if color == WHITE {
-        piece.to_zobrist_key().0
-    } else {
-        piece.to_zobrist_key().1
-    }[square as usize];
+    *hash ^= piece.to_zobrist_key(color, square as usize);
 }
 #[inline(always)]
 pub fn enpassant_hash(old: u64, new: u64, hash: &mut u64) {
