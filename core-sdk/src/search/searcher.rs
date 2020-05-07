@@ -281,7 +281,7 @@ impl Thread {
         self.itcs.register_pv(&scored_pv, no_fail);
         self.current_pv = scored_pv;
         self.pv_applicable.clear();
-        self.pv_applicable.push(root.hash);
+        self.pv_applicable.push(root.irreversible.hash);
         let mut next_state = None;
         for mv in self.current_pv.pv.pv.iter() {
             if let Some(mv) = mv {
@@ -290,7 +290,8 @@ impl Thread {
                 } else {
                     next_state = Some(copy_make(next_state.as_ref().unwrap(), *mv));
                 }
-                self.pv_applicable.push(next_state.as_ref().unwrap().hash);
+                self.pv_applicable
+                    .push(next_state.as_ref().unwrap().irreversible.hash);
             } else {
                 break;
             }
@@ -497,7 +498,7 @@ pub fn search_move(
     let mut hist: History = History::default();
     let mut relevant_hashes: Vec<u64> = Vec::with_capacity(100);
     for gs in history.iter().rev() {
-        relevant_hashes.push(gs.hash);
+        relevant_hashes.push(gs.irreversible.hash);
         if gs.irreversible.half_moves == 0 {
             break;
         }

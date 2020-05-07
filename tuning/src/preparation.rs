@@ -118,7 +118,10 @@ pub fn stripped_q_search(
     if !incheck && diff > 0 && best_move_value(&game_state) < diff {
         return (stand_pat, game_state.clone());
     }
-    history.push(game_state.hash, game_state.irreversible.half_moves == 0);
+    history.push(
+        game_state.irreversible.hash,
+        game_state.irreversible.half_moves == 0,
+    );
 
     let has_legal_move = make_moves(
         &game_state,

@@ -162,7 +162,7 @@ mod tests {
             for _j in 0..200 {
                 let mut fresh_hash = g.clone();
                 fresh_hash.initialize_hash();
-                assert_eq!(g.hash, fresh_hash.hash);
+                assert_eq!(g.irreversible.hash, fresh_hash.irreversible.hash);
                 let movelist = movegen2::generate_legal_moves(&g);
                 if movelist.move_list.is_empty() {
                     break;
@@ -248,32 +248,46 @@ mod tests {
         let g = GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/4K2R w K c6 0 2");
         println!("{}", copy_make(&g, parse_move(&g, "e1g1").0));
         assert_eq!(
-            copy_make(&g, parse_move(&g, "e1g1").0).hash,
-            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/5RK1 b - - 1 2").hash
+            copy_make(&g, parse_move(&g, "e1g1").0).irreversible.hash,
+            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/5RK1 b - - 1 2")
+                .irreversible
+                .hash
         );
         assert_eq!(
-            copy_make(&g, parse_move(&g, "g7g8q").0).hash,
-            GameState::from_fen("4k1Q1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            copy_make(&g, parse_move(&g, "g7g8q").0).irreversible.hash,
+            GameState::from_fen("4k1Q1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2")
+                .irreversible
+                .hash
         );
         assert_eq!(
-            copy_make(&g, parse_move(&g, "g7g8b").0).hash,
-            GameState::from_fen("4k1B1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            copy_make(&g, parse_move(&g, "g7g8b").0).irreversible.hash,
+            GameState::from_fen("4k1B1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2")
+                .irreversible
+                .hash
         );
         assert_eq!(
-            copy_make(&g, parse_move(&g, "g7g8n").0).hash,
-            GameState::from_fen("4k1N1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            copy_make(&g, parse_move(&g, "g7g8n").0).irreversible.hash,
+            GameState::from_fen("4k1N1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2")
+                .irreversible
+                .hash
         );
         assert_eq!(
-            copy_make(&g, parse_move(&g, "g7g8r").0).hash,
-            GameState::from_fen("4k1R1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            copy_make(&g, parse_move(&g, "g7g8r").0).irreversible.hash,
+            GameState::from_fen("4k1R1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2")
+                .irreversible
+                .hash
         );
         assert_eq!(
-            copy_make(&g, parse_move(&g, "b5c6").0).hash,
-            GameState::from_fen("4k3/6P1/2P5/8/6b1/8/2B5/4K2R b K - 0 2").hash
+            copy_make(&g, parse_move(&g, "b5c6").0).irreversible.hash,
+            GameState::from_fen("4k3/6P1/2P5/8/6b1/8/2B5/4K2R b K - 0 2")
+                .irreversible
+                .hash
         );
         assert_eq!(
-            copy_make(&g, parse_move(&g, "c2d3").0).hash,
-            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/3B4/8/4K2R b K - 1 2").hash
+            copy_make(&g, parse_move(&g, "c2d3").0).irreversible.hash,
+            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/3B4/8/4K2R b K - 1 2")
+                .irreversible
+                .hash
         );
     }
 }

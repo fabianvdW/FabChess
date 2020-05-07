@@ -91,9 +91,10 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         tt_move = None;
     }
 
-    thread
-        .history
-        .push(p.game_state.hash, p.game_state.irreversible.half_moves == 0);
+    thread.history.push(
+        p.game_state.irreversible.hash,
+        p.game_state.irreversible.half_moves == 0,
+    );
 
     //Step 8. Iterate through moves
 

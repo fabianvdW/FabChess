@@ -124,9 +124,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     } else {
         None
     };
-    thread
-        .history
-        .push(p.game_state.hash, p.game_state.irreversible.half_moves == 0);
+    thread.history.push(
+        p.game_state.irreversible.hash,
+        p.game_state.irreversible.half_moves == 0,
+    );
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
@@ -446,7 +447,7 @@ pub fn max_depth(p: &CombinedSearchParameters) -> SearchInstruction {
 pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option<GameMove> {
     //PV-Table lookup
     if thread.pv_applicable.len() > (p.current_depth + 1)
-        && thread.pv_applicable[p.current_depth] == p.game_state.hash
+        && thread.pv_applicable[p.current_depth] == p.game_state.irreversible.hash
     {
         if thread.current_pv.pv.pv[p.current_depth].is_none() {
             println!("Error will occur in thread {}", thread.id);
@@ -584,9 +585,10 @@ pub fn internal_iterative_deepening(
     if thread.self_stop {
         return SearchInstruction::StopSearching(STANDARD_SCORE);
     }
-    thread
-        .history
-        .push(p.game_state.hash, p.game_state.irreversible.half_moves == 0);
+    thread.history.push(
+        p.game_state.irreversible.hash,
+        p.game_state.irreversible.half_moves == 0,
+    );
     *tt_move = thread.pv_table[p.current_depth].pv[0];
     SearchInstruction::ContinueSearching
 }

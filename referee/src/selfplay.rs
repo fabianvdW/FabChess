@@ -319,7 +319,7 @@ pub fn check_end_condition(
 pub fn get_occurences(history: &[GameState], state: &GameState) -> usize {
     let mut occ = 0;
     for other in history {
-        if other.hash == state.hash {
+        if other.irreversible.hash == state.irreversible.hash {
             occ += 1;
         }
     }

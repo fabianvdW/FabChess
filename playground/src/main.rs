@@ -1,14 +1,11 @@
-use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState};
+use core_sdk::board_representation::game_state::{GameMoveType, GameState};
 use core_sdk::evaluation::eval_game_state;
-use core_sdk::move_generation::makemove::{copy_make, make_move, unmake_move};
 use core_sdk::move_generation::movegen2;
 use core_sdk::search::cache::{Cache, CacheEntry};
-use core_sdk::search::moveordering::{mvvlva, MoveOrderer, NORMAL_STAGES};
+use core_sdk::search::moveordering::mvvlva;
 use core_sdk::search::quiescence::see;
-use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem, Thread};
+use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
-use extended_sdk::misc::to_string_board;
-use extended_sdk::pgn::pgn_reader::parse_move;
 use std::fs;
 use std::sync::Arc;
 
@@ -23,7 +20,7 @@ fn main() {
         let moves = movegen2::generate_legal_moves(&p);
         for mv in moves.move_list.iter() {
             sum += CacheEntry::mv_to_u16(mv.0) as i32;
-            sum += p.hash as i32;
+            sum += p.irreversible.hash as i32;
             if mv.0.is_capture() && mv.0.move_type != GameMoveType::EnPassant {
                 sum += see(&p, mv.0, true, &mut see_buffer) as i32;
                 sum += mvvlva(mv.0) as i32;

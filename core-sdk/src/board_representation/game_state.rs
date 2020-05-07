@@ -307,6 +307,7 @@ fn file_to_string(file: usize) -> char {
 #[derive(Clone, PartialEq)]
 pub struct Irreversible {
     pub checkers: u64,
+    pub hash: u64,
     pub castle_white_kingside: bool,
     pub castle_white_queenside: bool,
     pub castle_black_kingside: bool,
@@ -335,7 +336,6 @@ pub struct GameState {
 
     pub irreversible: Irreversible,
     pub full_moves: usize,
-    pub hash: u64,
     pub psqt: EvaluationScore,
     pub phase: Phase,
 }
@@ -461,7 +461,7 @@ impl GameState {
     pub(crate) fn check_integrity(&self) -> bool {
         let mut other = self.clone();
         other.initialize_details();
-        if self.hash != other.hash {
+        if self.irreversible.hash != other.irreversible.hash {
             return false;
         }
         if self.psqt != other.psqt {
@@ -500,25 +500,25 @@ impl GameState {
     }
 
     pub fn initialize_hash(&mut self) {
-        self.hash = 0u64;
+        self.irreversible.hash = 0u64;
         if self.color_to_move == BLACK {
-            self.hash ^= ZOBRIST_KEYS.side_to_move;
+            self.irreversible.hash ^= ZOBRIST_KEYS.side_to_move;
         }
         if self.irreversible.castle_white_kingside {
-            self.hash ^= ZOBRIST_KEYS.castle_w_kingside;
+            self.irreversible.hash ^= ZOBRIST_KEYS.castle_w_kingside;
         }
         if self.irreversible.castle_white_queenside {
-            self.hash ^= ZOBRIST_KEYS.castle_w_queenside;
+            self.irreversible.hash ^= ZOBRIST_KEYS.castle_w_queenside;
         }
         if self.irreversible.castle_black_kingside {
-            self.hash ^= ZOBRIST_KEYS.castle_b_kingside;
+            self.irreversible.hash ^= ZOBRIST_KEYS.castle_b_kingside;
         }
         if self.irreversible.castle_black_queenside {
-            self.hash ^= ZOBRIST_KEYS.castle_b_queenside;
+            self.irreversible.hash ^= ZOBRIST_KEYS.castle_b_queenside;
         }
         if self.irreversible.en_passant != 0u64 {
             let file = self.irreversible.en_passant.trailing_zeros() as usize % 8;
-            self.hash ^= ZOBRIST_KEYS.en_passant[file];
+            self.irreversible.hash ^= ZOBRIST_KEYS.en_passant[file];
         }
         for side in 0..2 {
             for pt in [
@@ -534,7 +534,7 @@ impl GameState {
                 let mut piece = self.get_piece(*pt, side);
                 while piece > 0 {
                     let idx = piece.trailing_zeros() as usize;
-                    self.hash ^= ZOBRIST_KEYS.pieces[side][*pt as usize][idx];
+                    self.irreversible.hash ^= ZOBRIST_KEYS.pieces[side][*pt as usize][idx];
                     piece ^= square(idx)
                 }
             }
@@ -731,10 +731,10 @@ impl GameState {
                 castle_black_queenside,
                 half_moves,
                 en_passant,
+                hash: 0u64,
                 checkers: 0u64,
             },
             full_moves,
-            hash: 0u64,
             psqt: EvaluationScore(0, 0),
             phase: Phase {
                 phase: 0.,
@@ -875,11 +875,11 @@ impl GameState {
                 castle_black_kingside: true,
                 castle_black_queenside: true,
                 en_passant: 0u64,
+                hash: 0u64,
                 half_moves: 0,
                 checkers: 0u64,
             },
             full_moves: 1usize,
-            hash: 0u64,
             psqt: EvaluationScore(0, 0),
             phase: Phase {
                 phase: 0.,
@@ -1071,7 +1071,7 @@ impl Display for GameState {
             "Checkers: 0x{:x}u64\n",
             self.irreversible.checkers
         ));
-        res_str.push_str(&format!("Hash: {}\n", self.hash));
+        res_str.push_str(&format!("Hash: {}\n", self.irreversible.hash));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
@@ -1152,7 +1152,7 @@ impl Debug for GameState {
         res_str.push_str(&format!("half_moves: {}\n", self.irreversible.half_moves));
         res_str.push_str(&format!("full_moves: {}\n", self.full_moves));
         res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
-        res_str.push_str(&format!("Hash: {}\n", self.hash));
+        res_str.push_str(&format!("Hash: {}\n", self.irreversible.hash));
         res_str.push_str(&format!(
             "Checkers: 0x{:x}u64\n",
             self.irreversible.checkers
@@ -1171,7 +1171,7 @@ impl PartialEq for GameState {
             && self.color_bb == other.color_bb
             && self.irreversible == other.irreversible
             && self.full_moves == other.full_moves
-            && self.hash == other.hash
+            && self.irreversible.hash == other.irreversible.hash
             && self.psqt == other.psqt
             && self.phase == other.phase
     }
