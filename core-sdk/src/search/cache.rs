@@ -1,6 +1,4 @@
-use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, BISHOP, KNIGHT, PAWN, QUEEN, ROOK,
-};
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use crate::search::{CombinedSearchParameters, SearchInstruction};
 use std::cell::UnsafeCell;
 
@@ -386,124 +384,59 @@ impl CacheEntry {
     pub fn u16_to_mv(mv: u16, game_state: &GameState) -> GameMove {
         let typ = mv & 15;
         let from = ((mv & 0xFC00) >> 10) as u8;
-        let from_board = 1u64 << from;
         let to = ((mv & 0x03F0) >> 4) as u8;
-        let to_board = 1u64 << to;
-        let color_to_move = game_state.color_to_move;
-        let enemy_color = 1 - color_to_move;
-        let piece_type = if (game_state.pieces[PAWN][color_to_move] & from_board) != 0u64 {
-            PieceType::Pawn
-        } else if (game_state.pieces[KNIGHT][color_to_move] & from_board) != 0u64 {
-            PieceType::Knight
-        } else if (game_state.pieces[BISHOP][color_to_move] & from_board) != 0u64 {
-            PieceType::Bishop
-        } else if (game_state.pieces[ROOK][color_to_move] & from_board) != 0u64 {
-            PieceType::Rook
-        } else if (game_state.pieces[QUEEN][color_to_move] & from_board) != 0u64 {
-            PieceType::Queen
-        } else {
-            PieceType::King
-        };
+        let piece_type = game_state.piecetype_on(from as usize).unwrap().0;
         if typ == 1 {
-            GameMove {
-                from,
-                to,
-                piece_type,
-                move_type: GameMoveType::Quiet,
-            }
+            GameMove::new(from as usize, to as usize, GameMoveType::Quiet, piece_type)
         } else if typ == 2 {
-            //debug_assert_eq!(piece_type, PieceType::King); //We literally expect TRASH in here.
-            GameMove {
-                from,
-                to,
-                piece_type,
-                move_type: GameMoveType::Castle,
-            }
+            GameMove::new(from as usize, to as usize, GameMoveType::Castle, piece_type)
         } else {
             if typ == 8 {
-                return GameMove {
-                    from,
-                    to,
+                return GameMove::new(
+                    from as usize,
+                    to as usize,
+                    GameMoveType::EnPassant,
                     piece_type,
-                    move_type: GameMoveType::EnPassant,
-                };
+                );
             }
-            let captured_piece_type = if (game_state.pieces[PAWN][enemy_color] & to_board) != 0u64 {
-                PieceType::Pawn
-            } else if (game_state.pieces[KNIGHT][enemy_color] & to_board) != 0u64 {
-                PieceType::Knight
-            } else if (game_state.pieces[BISHOP][enemy_color] & to_board) != 0u64 {
-                PieceType::Bishop
-            } else if (game_state.pieces[ROOK][enemy_color] & to_board) != 0u64 {
-                PieceType::Rook
-            } else if (game_state.pieces[QUEEN][enemy_color] & to_board) != 0u64 {
-                PieceType::Queen
-            } else {
-                PieceType::King
-            };
+            let captured_piece_type = game_state.piecetype_on(to as usize).map(|x| x.0);
             if typ == 3 {
-                GameMove {
-                    from,
-                    to,
+                GameMove::new(
+                    from as usize,
+                    to as usize,
+                    GameMoveType::Promotion(PieceType::Queen, captured_piece_type),
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Queen,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
-                }
+                )
             } else if typ == 4 {
-                GameMove {
-                    from,
-                    to,
+                GameMove::new(
+                    from as usize,
+                    to as usize,
+                    GameMoveType::Promotion(PieceType::Rook, captured_piece_type),
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Rook,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
-                }
+                )
             } else if typ == 5 {
-                GameMove {
-                    from,
-                    to,
+                GameMove::new(
+                    from as usize,
+                    to as usize,
+                    GameMoveType::Promotion(PieceType::Bishop, captured_piece_type),
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Bishop,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
-                }
+                )
             } else if typ == 6 {
-                GameMove {
-                    from,
-                    to,
+                GameMove::new(
+                    from as usize,
+                    to as usize,
+                    GameMoveType::Promotion(PieceType::Knight, captured_piece_type),
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Knight,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
-                }
+                )
             } else {
-                GameMove {
-                    from,
-                    to,
+                GameMove::new(
+                    from as usize,
+                    to as usize,
+                    GameMoveType::Capture(
+                        captured_piece_type.expect("Could not find captured piece type"),
+                    ),
                     piece_type,
-                    move_type: GameMoveType::Capture(captured_piece_type),
-                }
+                )
             }
         }
     }

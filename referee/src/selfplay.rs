@@ -288,16 +288,11 @@ pub fn check_end_condition(
     }
 
     //Missing pieces
-    if game_state.pieces[PAWN][WHITE]
-        | game_state.pieces[KNIGHT][WHITE]
-        | game_state.pieces[BISHOP][WHITE]
-        | game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[PAWN][BLACK]
-        | game_state.pieces[KNIGHT][BLACK]
-        | game_state.pieces[BISHOP][BLACK]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][BLACK]
+    if game_state.piece_bb(PieceType::Pawn)
+        | game_state.piece_bb(PieceType::Knight)
+        | game_state.piece_bb(PieceType::Bishop)
+        | game_state.piece_bb(PieceType::Rook)
+        | game_state.piece_bb(PieceType::Queen)
         == 0u64
     {
         return (

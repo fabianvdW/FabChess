@@ -2,8 +2,7 @@ use crate::bitboards::bitboards::constants::{square, KING_ATTACKS};
 use crate::bitboards::bitboards::knight_attacks;
 use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK,
-    WHITE,
+    GameMove, GameMoveType, GameState, PieceType, WHITE,
 };
 use crate::move_generation::movegen::{
     b_pawn_east_targets, b_pawn_west_targets, bishop_attacks, double_push_pawn_targets,
@@ -13,24 +12,12 @@ use crate::move_generation::movegen::{
 use crate::move_generation::movelist::MoveList;
 
 impl GameState {
-    #[inline(always)]
-    pub fn relative_rank(sq: usize, white: bool) -> usize {
-        if white {
-            sq / 8
-        } else {
-            7 - sq / 8
-        }
-    }
-
-    pub fn in_check(&self) -> bool {
-        self.irreversible.checkers > 0
-    }
     pub fn gives_check(&self, mv: GameMove) -> bool {
         if mv.move_type == GameMoveType::Castle {
             return false; // In theory a castle move can give_check, but it is too much hasssle to compute that
         }
         //We also ignore en passant discovered checks here
-        let mut occ_board = self.all_pieces();
+        let mut occ_board = self.all_pieces_bb();
         occ_board ^= square(mv.from as usize);
         occ_board |= square(mv.to as usize);
         let king_position = self.king_square(1 - self.color_to_move);
@@ -38,10 +25,12 @@ impl GameState {
         let rook_like_attack = rook_attacks(king_position, occ_board);
         //CHeck discovered check
         if bishop_like_attack
-            & (self.pieces[BISHOP][self.color_to_move] | self.pieces[QUEEN][self.color_to_move])
+            & (self.get_piece(PieceType::Bishop, self.color_to_move)
+                | self.get_piece(PieceType::Queen, self.color_to_move))
             != 0u64
             || rook_like_attack
-                & (self.pieces[ROOK][self.color_to_move] | self.pieces[QUEEN][self.color_to_move])
+                & (self.get_piece(PieceType::Rook, self.color_to_move)
+                    | self.get_piece(PieceType::Queen, self.color_to_move))
                 != 0u64
         {
             return true;
@@ -87,73 +76,6 @@ impl GameState {
     }
 
     #[inline(always)]
-    pub fn piecetype_on(&self, sq: usize, side: usize) -> PieceType {
-        if self.pieces[PAWN][side] & square(sq) != 0u64 {
-            PieceType::Pawn
-        } else if self.pieces[KNIGHT][side] & square(sq) != 0u64 {
-            PieceType::Knight
-        } else if self.pieces[QUEEN][side] & square(sq) != 0u64 {
-            PieceType::Queen
-        } else if self.pieces[BISHOP][side] & square(sq) != 0u64 {
-            PieceType::Bishop
-        } else if self.pieces[ROOK][side] & square(sq) != 0u64 {
-            PieceType::Rook
-        } else {
-            debug_assert!(self.pieces[KING][side] & square(sq) > 0);
-            PieceType::King
-        }
-    }
-    #[inline(always)]
-    pub fn move_type_to(&self, to: usize) -> GameMoveType {
-        if self.pieces[PAWN][1 - self.color_to_move] & square(to) != 0u64 {
-            GameMoveType::Capture(PieceType::Pawn)
-        } else if self.pieces[KNIGHT][1 - self.color_to_move] & square(to) != 0u64 {
-            GameMoveType::Capture(PieceType::Knight)
-        } else if self.pieces[QUEEN][1 - self.color_to_move] & square(to) != 0u64 {
-            GameMoveType::Capture(PieceType::Queen)
-        } else if self.pieces[BISHOP][1 - self.color_to_move] & square(to) != 0u64 {
-            GameMoveType::Capture(PieceType::Bishop)
-        } else if self.pieces[ROOK][1 - self.color_to_move] & square(to) != 0u64 {
-            GameMoveType::Capture(PieceType::Rook)
-        } else {
-            debug_assert_eq!(self.pieces[KING][1 - self.color_to_move] & square(to), 0);
-            GameMoveType::Quiet
-        }
-    }
-
-    #[inline(always)]
-    pub fn pieces_from_side(&self, side: usize) -> u64 {
-        self.pieces[PAWN][side]
-            | self.pieces[KNIGHT][side]
-            | self.pieces[BISHOP][side]
-            | self.pieces[ROOK][side]
-            | self.pieces[QUEEN][side]
-            | self.pieces[KING][side]
-    }
-
-    #[inline(always)]
-    pub fn all_pieces(&self) -> u64 {
-        self.pieces_from_side(WHITE) | self.pieces_from_side(BLACK)
-    }
-    #[inline(always)]
-    pub fn empty(&self) -> u64 {
-        !self.all_pieces()
-    }
-
-    #[inline(always)]
-    pub fn king_square(&self, side: usize) -> usize {
-        self.pieces[KING][side].trailing_zeros() as usize
-    }
-
-    #[inline(always)]
-    pub fn has_non_pawns(&self, side: usize) -> bool {
-        self.pieces[BISHOP][side] != 0u64
-            || self.pieces[KNIGHT][side] != 0u64
-            || self.pieces[ROOK][side] != 0u64
-            || self.pieces[QUEEN][side] != 0u64
-    }
-
-    #[inline(always)]
     pub fn is_valid_castle(&self, white: bool, kingside: bool, occ: &mut u64) -> bool {
         pub const CASTLE_SQUARES: [[(usize, usize, usize, usize); 2]; 2] = [
             [
@@ -186,7 +108,7 @@ impl GameState {
         } else {
             self.king_square(self.color_to_move)
         };
-        let mut occ = self.all_pieces();
+        let mut occ = self.all_pieces_bb();
         let mut exclude = square(mv.to as usize);
         if mv.move_type == GameMoveType::EnPassant {
             //Remove enpassented pawn
@@ -212,20 +134,23 @@ impl GameState {
     #[inline(always)]
     pub fn square_attacked(&self, sq: usize, occ: u64, exclude: u64) -> bool {
         let square = square(sq);
-        KING_ATTACKS[sq] & self.pieces[KING][1 - self.color_to_move] & !exclude > 0
-            || knight_attacks(square) & self.pieces[KNIGHT][1 - self.color_to_move] & !exclude > 0
+        KING_ATTACKS[sq] & self.get_piece(PieceType::King, 1 - self.color_to_move) & !exclude > 0
+            || knight_attacks(square)
+                & self.get_piece(PieceType::Knight, 1 - self.color_to_move)
+                & !exclude
+                > 0
             || bishop_attacks(sq, occ)
-                & (self.pieces[BISHOP][1 - self.color_to_move]
-                    | self.pieces[QUEEN][1 - self.color_to_move])
+                & (self.get_piece(PieceType::Bishop, 1 - self.color_to_move)
+                    | self.get_piece(PieceType::Queen, 1 - self.color_to_move))
                 & !exclude
                 > 0
             || rook_attacks(sq, occ)
-                & (self.pieces[ROOK][1 - self.color_to_move]
-                    | self.pieces[QUEEN][1 - self.color_to_move])
+                & (self.get_piece(PieceType::Rook, 1 - self.color_to_move)
+                    | self.get_piece(PieceType::Queen, 1 - self.color_to_move))
                 & !exclude
                 > 0
             || pawn_targets(self.color_to_move, square)
-                & self.pieces[PAWN][1 - self.color_to_move]
+                & self.get_piece(PieceType::Pawn, 1 - self.color_to_move)
                 & !exclude
                 > 0
     }
@@ -234,15 +159,16 @@ impl GameState {
     #[inline(always)]
     pub fn square_attackers(&self, sq: usize, occ: u64) -> u64 {
         let square = square(sq);
-        KING_ATTACKS[sq] & self.pieces[KING][1 - self.color_to_move]
-            | knight_attacks(square) & self.pieces[KNIGHT][1 - self.color_to_move]
+        KING_ATTACKS[sq] & self.get_piece(PieceType::King, 1 - self.color_to_move)
+            | knight_attacks(square) & self.get_piece(PieceType::Knight, 1 - self.color_to_move)
             | bishop_attacks(sq, occ)
-                & (self.pieces[BISHOP][1 - self.color_to_move]
-                    | self.pieces[QUEEN][1 - self.color_to_move])
+                & (self.get_piece(PieceType::Bishop, 1 - self.color_to_move)
+                    | self.get_piece(PieceType::Queen, 1 - self.color_to_move))
             | rook_attacks(sq, occ)
-                & (self.pieces[ROOK][1 - self.color_to_move]
-                    | self.pieces[QUEEN][1 - self.color_to_move])
-            | pawn_targets(self.color_to_move, square) & self.pieces[PAWN][1 - self.color_to_move]
+                & (self.get_piece(PieceType::Rook, 1 - self.color_to_move)
+                    | self.get_piece(PieceType::Queen, 1 - self.color_to_move))
+            | pawn_targets(self.color_to_move, square)
+                & self.get_piece(PieceType::Pawn, 1 - self.color_to_move)
     }
 
     #[inline(always)]
@@ -274,18 +200,20 @@ pub fn generate_king(game_state: &GameState, movelist: &mut MoveList, mask: u64)
         let (ks, qs) = if game_state.color_to_move == WHITE {
             (
                 game_state.irreversible.castle_white_kingside
-                    && (game_state.all_pieces() & (square(square::F1) | square(square::G1)) == 0),
+                    && (game_state.all_pieces_bb() & (square(square::F1) | square(square::G1))
+                        == 0),
                 game_state.irreversible.castle_white_queenside
-                    && (game_state.all_pieces()
+                    && (game_state.all_pieces_bb()
                         & (square(square::B1) | square(square::C1) | square(square::D1))
                         == 0),
             )
         } else {
             (
                 game_state.irreversible.castle_black_kingside
-                    && (game_state.all_pieces() & (square(square::F8) | square(square::G8))) == 0,
+                    && (game_state.all_pieces_bb() & (square(square::F8) | square(square::G8)))
+                        == 0,
                 game_state.irreversible.castle_black_queenside
-                    && (game_state.all_pieces()
+                    && (game_state.all_pieces_bb()
                         & (square(square::B8) | square(square::C8) | square(square::D8))
                         == 0),
             )
@@ -315,12 +243,12 @@ impl PieceType {
         match self {
             PieceType::King | PieceType::Pawn => panic!("Piece types not supported."),
             PieceType::Knight => knight_attacks(square(from)), //TODO: Test if KNIGHT_ATTACK[knight_idx as usize] is faster
-            PieceType::Rook => rook_attacks(from, game_state.all_pieces()),
+            PieceType::Rook => rook_attacks(from, game_state.all_pieces_bb()),
             PieceType::Queen => {
-                bishop_attacks(from, game_state.all_pieces())
-                    | rook_attacks(from, game_state.all_pieces())
+                bishop_attacks(from, game_state.all_pieces_bb())
+                    | rook_attacks(from, game_state.all_pieces_bb())
             }
-            PieceType::Bishop => bishop_attacks(from, game_state.all_pieces()),
+            PieceType::Bishop => bishop_attacks(from, game_state.all_pieces_bb()),
         }
     }
 }
@@ -331,7 +259,7 @@ pub fn generate_others(
     mask: u64,
     piece_type: PieceType,
 ) {
-    let mut pieces = game_state.pieces[piece_type.to_index()][game_state.color_to_move];
+    let mut pieces = game_state.get_piece(piece_type, game_state.color_to_move);
     while pieces > 0 {
         let piece_idx = pieces.trailing_zeros() as usize;
         let attack = mask & piece_type.attacks(piece_idx, game_state);
@@ -341,8 +269,8 @@ pub fn generate_others(
 }
 #[inline(always)]
 pub fn generate_pawns_quiets(game_state: &GameState, movelist: &mut MoveList, mask: u64) {
-    let pawns = game_state.pieces[PAWN][game_state.color_to_move];
-    let empty = game_state.empty();
+    let pawns = game_state.get_piece(PieceType::Pawn, game_state.color_to_move);
+    let empty = game_state.empty_bb();
     let single_push_targets =
         single_push_pawn_targets(game_state.color_to_move, pawns, empty) & mask;
     let double_push_targets =
@@ -357,8 +285,8 @@ pub fn generate_pawns_quiets(game_state: &GameState, movelist: &mut MoveList, ma
 }
 #[inline(always)]
 pub fn generate_pawns_captures(game_state: &GameState, movelist: &mut MoveList, mask: u64) {
-    let pawns = game_state.pieces[PAWN][game_state.color_to_move];
-    let other = game_state.pieces_from_side(1 - game_state.color_to_move);
+    let pawns = game_state.get_piece(PieceType::Pawn, game_state.color_to_move);
+    let other = game_state.color_bb(1 - game_state.color_to_move);
     let west_targets = pawn_west_targets(game_state.color_to_move, pawns) & mask;
     let east_targets = pawn_east_targets(game_state.color_to_move, pawns) & mask;
 
@@ -392,7 +320,7 @@ pub fn generate_pawns_captures(game_state: &GameState, movelist: &mut MoveList, 
 //Make sure the movelist is cleared before you call this
 #[inline(always)]
 pub fn generate_pseudolegal_captures(game_state: &GameState, movelist: &mut MoveList) {
-    let mut general_mask = game_state.pieces_from_side(1 - game_state.color_to_move);
+    let mut general_mask = game_state.color_bb(1 - game_state.color_to_move);
     generate_king(game_state, movelist, general_mask);
     if game_state.irreversible.checkers.count_ones() <= 1 {
         if game_state.irreversible.checkers.count_ones() == 1 {
@@ -412,7 +340,7 @@ pub fn generate_pseudolegal_captures(game_state: &GameState, movelist: &mut Move
 //Make sure movelist is cleared before you call this
 #[inline(always)]
 pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveList) {
-    let general_mask = game_state.empty();
+    let general_mask = game_state.empty_bb();
     generate_king(game_state, movelist, general_mask);
     if game_state.irreversible.checkers.count_ones() <= 1 {
         generate_pawns_quiets(game_state, movelist, general_mask);
@@ -426,7 +354,7 @@ pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveLi
 pub fn generate_pseudolegal_moves(game_state: &GameState, movelist: &mut MoveList) {
     movelist.move_list.clear();
     //Generate pseudolegal moves given a position
-    let general_mask = !game_state.pieces_from_side(game_state.color_to_move);
+    let general_mask = !game_state.color_bb(game_state.color_to_move);
     generate_king(game_state, movelist, general_mask);
     if game_state.irreversible.checkers.count_ones() <= 1 {
         //TODO : update general mask with updated stuff

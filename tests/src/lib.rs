@@ -180,9 +180,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         for _i in 0..10_000 {
             let mut g = GameState::standard();
-            assert!(
-                (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
-            );
+            assert!((g.phase.phase - Phase::from_state(&g).phase).abs() < std::f64::EPSILON);
             for _j in 0..200 {
                 let movelist = movegen2::generate_legal_moves(&g);
                 if movelist.move_list.is_empty() {
@@ -192,9 +190,7 @@ mod tests {
                     &mut g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
-                assert!(
-                    (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
-                );
+                assert!((g.phase.phase - Phase::from_state(&g).phase).abs() < std::f64::EPSILON);
             }
         }
     }
@@ -208,8 +204,8 @@ mod tests {
 
         for _i in 0..100_000 {
             let mut g = GameState::standard();
-            let w_psqt = psqt(true, &g.pieces, &mut _eval);
-            let b_psqt = psqt(false, &g.pieces, &mut _eval);
+            let w_psqt = psqt(true, &g, &mut _eval);
+            let b_psqt = psqt(false, &g, &mut _eval);
             assert_eq!(g.psqt, w_psqt - b_psqt);
             for _j in 0..200 {
                 let movelist = movegen2::generate_legal_moves(&g);
@@ -220,8 +216,8 @@ mod tests {
                     &mut g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
-                let w_psqt = psqt(true, &g.pieces, &mut _eval);
-                let b_psqt = psqt(false, &g.pieces, &mut _eval);
+                let w_psqt = psqt(true, &g, &mut _eval);
+                let b_psqt = psqt(false, &g, &mut _eval);
                 assert_eq!(g.psqt, w_psqt - b_psqt);
             }
         }

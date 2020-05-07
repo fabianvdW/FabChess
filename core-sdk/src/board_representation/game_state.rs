@@ -12,13 +12,6 @@ use crate::move_generation::movegen2;
 use crate::move_generation::movegen2::generate_legal_moves;
 use std::fmt::{Debug, Display, Formatter, Result};
 
-//TODO Remove and add as usize
-pub const PAWN: usize = 0;
-pub const KNIGHT: usize = 1;
-pub const BISHOP: usize = 2;
-pub const ROOK: usize = 3;
-pub const QUEEN: usize = 4;
-pub const KING: usize = 5;
 pub const WHITE: usize = 0;
 pub const BLACK: usize = 1;
 
@@ -52,25 +45,14 @@ pub enum GameMoveType {
 
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum PieceType {
-    King,
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
+    King = 0,
+    Pawn = 1,
+    Knight = 2,
+    Bishop = 3,
+    Rook = 4,
+    Queen = 5,
 }
 impl PieceType {
-    #[inline(always)]
-    pub fn to_index(self) -> usize {
-        match &self {
-            PieceType::Pawn => PAWN,
-            PieceType::Knight => KNIGHT,
-            PieceType::Bishop => BISHOP,
-            PieceType::Rook => ROOK,
-            PieceType::Queen => QUEEN,
-            PieceType::King => KING,
-        }
-    }
     #[inline(always)]
     pub fn to_psqt(self) -> &'static [[EvaluationScore; 8]; 8] {
         match &self {
@@ -340,7 +322,7 @@ pub struct Irreversible {
     pub half_moves: usize,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct GameState {
     // 0 = White
     // 1 = Black
@@ -350,14 +332,13 @@ pub struct GameState {
     //Index 1:
     // 0 -> Pawns
     // 1 -> Knights
-    // 2 -> Bishops
+    // 2 -> Bisho
     // 3 -> Rooks
     // 4 -> Queens
     // 5 -> King
-    //Index 2:
-    // 0 -> White
-    // 1 -> Black
-    pub pieces: [[u64; 2]; 6],
+    pieces_bb: [u64; 6],
+    color_bb: [u64; 2],
+    piece_square_table: [Option<(PieceType, bool)>; 64],
 
     pub irreversible: Irreversible,
     pub full_moves: usize,
@@ -365,22 +346,177 @@ pub struct GameState {
     pub psqt: EvaluationScore,
     pub phase: Phase,
 }
-
+//Querying functions
 impl GameState {
+    #[inline(always)]
+    pub fn unset_piece(&mut self, piece: PieceType, sq: usize, color: usize) {
+        debug_assert!(self.pieces_bb[piece as usize] & square(sq) > 0);
+        debug_assert!(self.color_bb[color as usize] & square(sq) > 0);
+        debug_assert!(self.piece_square_table[sq].is_some());
+        self.pieces_bb[piece as usize] ^= square(sq);
+        self.color_bb[color] ^= square(sq);
+        self.piece_square_table[sq] = None;
+    }
+
+    #[inline(always)]
+    pub fn set_piece(&mut self, piece: PieceType, sq: usize, color: usize) {
+        debug_assert!(self.pieces_bb[piece as usize] & square(sq) == 0);
+        debug_assert!(self.color_bb[color as usize] & square(sq) == 0);
+        debug_assert!(self.piece_square_table[sq].is_none());
+        self.pieces_bb[piece as usize] ^= square(sq);
+        self.color_bb[color] ^= square(sq);
+        self.piece_square_table[sq] = Some((piece, color == WHITE));
+    }
+    #[inline(always)]
+    pub fn relative_rank(sq: usize, white: bool) -> usize {
+        if white {
+            sq / 8
+        } else {
+            7 - sq / 8
+        }
+    }
+
+    #[inline(always)]
+    pub fn all_pieces_bb(&self) -> u64 {
+        self.color_bb(WHITE) | self.color_bb(BLACK)
+    }
+
+    #[inline(always)]
+    pub fn empty_bb(&self) -> u64 {
+        !self.all_pieces_bb()
+    }
+
+    #[inline(always)]
+    pub fn color_bb(&self, side: usize) -> u64 {
+        self.color_bb[side]
+    }
+
+    #[inline(always)]
+    pub fn piece_bb(&self, pt: PieceType) -> u64 {
+        self.pieces_bb[pt as usize]
+    }
+
+    #[inline(always)]
+    pub fn get_piece(&self, pt: PieceType, side: usize) -> u64 {
+        self.piece_bb(pt) & self.color_bb(side)
+    }
+
+    #[inline(always)]
+    pub fn has_non_pawns(&self, side: usize) -> bool {
+        self.all_pieces_bb()
+            & !self.piece_bb(PieceType::Pawn)
+            & !self.piece_bb(PieceType::King)
+            & self.color_bb(side)
+            > 0
+    }
+
+    #[inline(always)]
+    pub fn king_square(&self, side: usize) -> usize {
+        self.get_piece(PieceType::King, side).trailing_zeros() as usize
+    }
+
+    #[inline(always)]
+    pub fn in_check(&self) -> bool {
+        self.irreversible.checkers > 0
+    }
+
+    //Returns: Some if any piece type on the given square. Else none
+    //Returns: 0: PieceType 1: bool color: True => White, False => Black
+    #[inline(always)]
+    pub fn piecetype_on(&self, sq: usize) -> Option<(PieceType, bool)> {
+        self.piece_square_table[sq]
+    }
+    #[inline(always)]
+    pub fn move_type_to(&self, to: usize) -> GameMoveType {
+        if let Some((pt, color)) = self.piecetype_on(to) {
+            debug_assert!(pt != PieceType::King);
+            assert!(if self.color_to_move == WHITE {
+                !color
+            } else {
+                color
+            });
+            GameMoveType::Capture(pt)
+        } else {
+            GameMoveType::Quiet
+        }
+    }
+}
+
+//Integrity and after initialization functions
+impl GameState {
+    pub(crate) fn integrity_bb(&self) -> bool {
+        if self.color_bb(WHITE) & self.color_bb(BLACK) > 0 {
+            return false;
+        }
+        for sq in 0..64 {
+            let sum = (self.piece_bb(PieceType::Pawn) & square(sq)).count_ones()
+                | (self.piece_bb(PieceType::Knight) & square(sq)).count_ones()
+                | (self.piece_bb(PieceType::Bishop) & square(sq)).count_ones()
+                | (self.piece_bb(PieceType::Rook) & square(sq)).count_ones()
+                | (self.piece_bb(PieceType::Queen) & square(sq)).count_ones()
+                | (self.piece_bb(PieceType::King) & square(sq)).count_ones();
+            if sum >= 2
+                || sum == 0 && self.all_pieces_bb() & square(sq) > 0
+                || sum == 1 && self.all_pieces_bb() & square(sq) == 0
+            {
+                return false;
+            }
+        }
+        true
+    }
+    pub(crate) fn integrity_piece_square_table(&self) -> bool {
+        for sq in 0..64 {
+            if let Some((pt, color)) = self.piecetype_on(sq) {
+                if self.get_piece(pt, if color { WHITE } else { BLACK }) & square(sq) == 0 {
+                    return false;
+                }
+            } else if self.all_pieces_bb() & square(sq) > 0 {
+                return false;
+            }
+        }
+        true
+    }
+    pub(crate) fn check_integrity(&self) -> bool {
+        let mut other = self.clone();
+        other.initialize_details();
+        if self.hash != other.hash {
+            return false;
+        }
+        if self.psqt != other.psqt {
+            return false;
+        }
+        if self.phase != other.phase {
+            return false;
+        }
+        if self.irreversible.checkers != other.irreversible.checkers {
+            return false;
+        }
+        if self.all_pieces_bb()
+            != (self.piece_bb(PieceType::King)
+                | self.piece_bb(PieceType::Pawn)
+                | self.piece_bb(PieceType::Knight)
+                | self.piece_bb(PieceType::Bishop)
+                | self.piece_bb(PieceType::Rook)
+                | self.piece_bb(PieceType::Queen))
+        {
+            return false;
+        }
+        if !self.integrity_piece_square_table() {
+            return false;
+        }
+        if !self.integrity_bb() {
+            return false;
+        }
+        true
+    }
+
     pub(crate) fn initialize_details(&mut self) {
         self.initialize_hash();
         self.initialize_phase();
         self.initialize_psqt();
         self.initialize_checkers();
     }
-    pub(crate) fn check_integrity(&self) -> bool {
-        let mut other = self.clone();
-        other.initialize_details();
-        self.hash == other.hash
-            && self.psqt == other.psqt
-            && self.phase == other.phase
-            && self.irreversible.checkers == other.irreversible.checkers
-    }
+
     pub fn initialize_hash(&mut self) {
         self.hash = 0u64;
         if self.color_to_move == BLACK {
@@ -403,97 +539,102 @@ impl GameState {
             self.hash ^= ZOBRIST_KEYS.en_passant[file];
         }
 
-        let mut w_pawns = self.pieces[PAWN][WHITE];
+        let mut w_pawns = self.get_piece(PieceType::Pawn, WHITE);
         while w_pawns != 0u64 {
             let idx = w_pawns.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.w_pawns[idx];
             w_pawns ^= square(idx);
         }
-        let mut w_knights = self.pieces[KNIGHT][WHITE];
+        let mut w_knights = self.get_piece(PieceType::Knight, WHITE);
         while w_knights != 0u64 {
             let idx = w_knights.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.w_knights[idx];
             w_knights ^= square(idx);
         }
-        let mut w_bishops = self.pieces[BISHOP][WHITE];
+        let mut w_bishops = self.get_piece(PieceType::Bishop, WHITE);
         while w_bishops != 0u64 {
             let idx = w_bishops.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.w_bishops[idx];
             w_bishops ^= square(idx);
         }
-        let mut w_rooks = self.pieces[ROOK][WHITE];
+        let mut w_rooks = self.get_piece(PieceType::Rook, WHITE);
         while w_rooks != 0u64 {
             let idx = w_rooks.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.w_rooks[idx];
             w_rooks ^= square(idx);
         }
-        let mut w_queens = self.pieces[QUEEN][WHITE];
+        let mut w_queens = self.get_piece(PieceType::Queen, WHITE);
         while w_queens != 0u64 {
             let idx = w_queens.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.w_queens[idx];
             w_queens ^= square(idx);
         }
-        let mut w_king = self.pieces[KING][WHITE];
+        let mut w_king = self.get_piece(PieceType::King, WHITE);
         while w_king != 0u64 {
             let idx = w_king.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.w_king[idx];
             w_king ^= square(idx);
         }
-        let mut b_pawns = self.pieces[PAWN][BLACK];
+        let mut b_pawns = self.get_piece(PieceType::Pawn, BLACK);
         while b_pawns != 0u64 {
             let idx = b_pawns.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.b_pawns[idx];
             b_pawns ^= square(idx);
         }
-        let mut b_knights = self.pieces[KNIGHT][BLACK];
+        let mut b_knights = self.get_piece(PieceType::Knight, BLACK);
         while b_knights != 0u64 {
             let idx = b_knights.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.b_knights[idx];
             b_knights ^= square(idx);
         }
-        let mut b_bishops = self.pieces[BISHOP][BLACK];
+        let mut b_bishops = self.get_piece(PieceType::Bishop, BLACK);
         while b_bishops != 0u64 {
             let idx = b_bishops.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.b_bishops[idx];
             b_bishops ^= square(idx);
         }
-        let mut b_rooks = self.pieces[ROOK][BLACK];
+        let mut b_rooks = self.get_piece(PieceType::Rook, BLACK);
         while b_rooks != 0u64 {
             let idx = b_rooks.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.b_rooks[idx];
             b_rooks ^= square(idx);
         }
-        let mut b_queens = self.pieces[QUEEN][BLACK];
+        let mut b_queens = self.get_piece(PieceType::Queen, BLACK);
         while b_queens != 0u64 {
             let idx = b_queens.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.b_queens[idx];
             b_queens ^= square(idx);
         }
-        let mut b_king = self.pieces[KING][BLACK];
+        let mut b_king = self.get_piece(PieceType::King, BLACK);
         while b_king != 0u64 {
             let idx = b_king.trailing_zeros() as usize;
             self.hash ^= ZOBRIST_KEYS.b_king[idx];
             b_king ^= square(idx);
         }
     }
+
     pub(crate) fn initialize_phase(&mut self) {
-        self.phase = Phase::from_pieces(&self.pieces);
+        self.phase = Phase::from_state(self);
     }
+
     pub(crate) fn initialize_psqt(&mut self) {
         let mut _eval = crate::evaluation::EvaluationResult {
             final_eval: 0,
             #[cfg(feature = "texel-tuning")]
             trace: crate::evaluation::trace::Trace::default(),
         };
-        let p_w = crate::evaluation::psqt_evaluation::psqt(true, &self.pieces, &mut _eval);
-        let p_b = crate::evaluation::psqt_evaluation::psqt(false, &self.pieces, &mut _eval);
+        let p_w = crate::evaluation::psqt_evaluation::psqt(true, self, &mut _eval);
+        let p_b = crate::evaluation::psqt_evaluation::psqt(false, self, &mut _eval);
         self.psqt = p_w - p_b;
     }
+
     pub(crate) fn initialize_checkers(&mut self) {
         self.irreversible.checkers =
-            self.square_attackers(self.king_square(self.color_to_move), self.all_pieces());
+            self.square_attackers(self.king_square(self.color_to_move), self.all_pieces_bb());
     }
-
+}
+//Constructor and util functions
+impl GameState {
     pub fn from_fen(fen: &str) -> GameState {
         let vec: Vec<&str> = fen.trim().split(' ').collect();
         if vec.len() < 4 {
@@ -506,7 +647,10 @@ impl GameState {
             panic!("Invalid FEN");
         }
         //Iterate over all 8 ranks
-        let mut pieces_arr: [[u64; 2]; 6] = [[0u64; 2]; 6];
+        let mut pieces_bb = [0u64; 6];
+        let mut color_bb = [0u64; 2];
+        let mut piece_square_table = [None; 64];
+
         for (rank, rank_str) in pieces.iter().enumerate().take(8) {
             let mut file: usize = 0;
             let mut rank_str_idx: usize = 0;
@@ -515,83 +659,38 @@ impl GameState {
                 let next_char = rank_str.chars().nth(rank_str_idx);
                 rank_str_idx += 1;
                 match next_char {
-                    Some(x) => match x {
-                        'P' => {
-                            pieces_arr[PAWN][WHITE] |= square(idx);
+                    Some(x) => {
+                        if ['p', 'n', 'b', 'r', 'q', 'k'].contains(&x.to_ascii_lowercase()) {
+                            let side = if x.is_uppercase() { WHITE } else { BLACK };
+                            let piece_type = match x.to_lowercase().next().unwrap() {
+                                'p' => PieceType::Pawn,
+                                'n' => PieceType::Knight,
+                                'b' => PieceType::Bishop,
+                                'r' => PieceType::Rook,
+                                'q' => PieceType::Queen,
+                                'k' => PieceType::King,
+                                _ => panic!("Invalid fen"),
+                            };
+                            color_bb[side] |= square(idx);
+                            pieces_bb[piece_type as usize] |= square(idx);
+                            piece_square_table[idx] = Some((piece_type, side == WHITE));
                             file += 1;
+                        } else {
+                            file += match x {
+                                '1' => 1,
+                                '2' => 2,
+                                '3' => 3,
+                                '4' => 4,
+                                '5' => 5,
+                                '6' => 6,
+                                '7' => 7,
+                                '8' => 8,
+                                _ => {
+                                    panic!("Invalid FEN");
+                                }
+                            };
                         }
-                        'p' => {
-                            pieces_arr[PAWN][BLACK] |= square(idx);
-                            file += 1;
-                        }
-                        'N' => {
-                            pieces_arr[KNIGHT][WHITE] |= square(idx);
-                            file += 1;
-                        }
-                        'n' => {
-                            pieces_arr[KNIGHT][BLACK] |= square(idx);
-                            file += 1;
-                        }
-                        'B' => {
-                            pieces_arr[BISHOP][WHITE] |= square(idx);
-                            file += 1;
-                        }
-                        'b' => {
-                            pieces_arr[BISHOP][BLACK] |= square(idx);
-                            file += 1;
-                        }
-                        'R' => {
-                            pieces_arr[ROOK][WHITE] |= square(idx);
-                            file += 1;
-                        }
-                        'r' => {
-                            pieces_arr[ROOK][BLACK] |= square(idx);
-                            file += 1;
-                        }
-                        'Q' => {
-                            pieces_arr[QUEEN][WHITE] |= square(idx);
-                            file += 1;
-                        }
-                        'q' => {
-                            pieces_arr[QUEEN][BLACK] |= square(idx);
-                            file += 1;
-                        }
-                        'K' => {
-                            pieces_arr[KING][WHITE] |= square(idx);
-                            file += 1;
-                        }
-                        'k' => {
-                            pieces_arr[KING][BLACK] |= square(idx);
-                            file += 1;
-                        }
-                        '1' => {
-                            file += 1;
-                        }
-                        '2' => {
-                            file += 2;
-                        }
-                        '3' => {
-                            file += 3;
-                        }
-                        '4' => {
-                            file += 4;
-                        }
-                        '5' => {
-                            file += 5;
-                        }
-                        '6' => {
-                            file += 6;
-                        }
-                        '7' => {
-                            file += 7;
-                        }
-                        '8' => {
-                            file += 8;
-                        }
-                        _ => {
-                            panic!("Invalid FEN");
-                        }
-                    },
+                    }
                     None => panic!("Invalid FEN"),
                 }
             }
@@ -694,7 +793,9 @@ impl GameState {
 
         let mut res = GameState {
             color_to_move,
-            pieces: pieces_arr,
+            pieces_bb,
+            color_bb,
+            piece_square_table,
             irreversible: Irreversible {
                 castle_white_kingside,
                 castle_white_queenside,
@@ -716,33 +817,23 @@ impl GameState {
         res
     }
 
-    pub fn get_piece_on(&self, shift: i32) -> &str {
-        if (self.pieces[PAWN][WHITE] >> shift) & 1u64 != 0u64 {
-            "P"
-        } else if (self.pieces[KNIGHT][WHITE] >> shift) & 1u64 != 0u64 {
-            "N"
-        } else if (self.pieces[BISHOP][WHITE] >> shift) & 1u64 != 0u64 {
-            "B"
-        } else if (self.pieces[ROOK][WHITE] >> shift) & 1u64 != 0u64 {
-            "R"
-        } else if (self.pieces[QUEEN][WHITE] >> shift) & 1u64 != 0u64 {
-            "Q"
-        } else if (self.pieces[KING][WHITE] >> shift) & 1u64 != 0u64 {
-            "K"
-        } else if (self.pieces[PAWN][BLACK] >> shift) & 1u64 != 0u64 {
-            "p"
-        } else if (self.pieces[KNIGHT][BLACK] >> shift) & 1u64 != 0u64 {
-            "n"
-        } else if (self.pieces[BISHOP][BLACK] >> shift) & 1u64 != 0u64 {
-            "b"
-        } else if (self.pieces[ROOK][BLACK] >> shift) & 1u64 != 0u64 {
-            "r"
-        } else if (self.pieces[QUEEN][BLACK] >> shift) & 1u64 != 0u64 {
-            "q"
-        } else if (self.pieces[KING][BLACK] >> shift) & 1u64 != 0u64 {
-            "k"
+    pub fn get_piece_on(&self, sq: usize) -> String {
+        if let Some((pt, color)) = self.piecetype_on(sq) {
+            let res = match pt {
+                PieceType::Pawn => "p",
+                PieceType::Knight => "n",
+                PieceType::Bishop => "b",
+                PieceType::Rook => "r",
+                PieceType::Queen => "q",
+                PieceType::King => "k",
+            };
+            if color {
+                res.to_uppercase()
+            } else {
+                res.to_owned()
+            }
         } else {
-            " "
+            " ".to_owned()
         }
     }
 
@@ -764,7 +855,7 @@ impl GameState {
                         res_str.push_str(&format!("{}", files_skipped - 1));
                     }
                     files_skipped = 0;
-                    res_str.push_str(piece_on);
+                    res_str.push_str(&piece_on);
                 }
             }
             if files_skipped != 0 {
@@ -819,17 +910,37 @@ impl GameState {
 
     pub fn standard() -> GameState {
         let color_to_move = 0usize;
-        let pieces = [
-            [0xff00u64, 0x00ff_0000_0000_0000u64],
-            [0x42u64, 0x4200_0000_0000_0000u64],
-            [0x24u64, 0x2400_0000_0000_0000u64],
-            [0x81u64, 0x8100_0000_0000_0000u64],
-            [0x8u64, 0x0800_0000_0000_0000u64],
-            [0x10u64, 0x1000_0000_0000_0000u64],
+        let mut pieces_bb = [0u64; 6];
+        let mut color_bb = [0u64; 2];
+        let mut piece_square_table = [None; 64];
+        let info = [
+            (PieceType::Pawn, WHITE, 0xff00u64),
+            (PieceType::Pawn, BLACK, 0x00ff_0000_0000_0000u64),
+            (PieceType::Knight, WHITE, 0x42u64),
+            (PieceType::Knight, BLACK, 0x4200_0000_0000_0000u64),
+            (PieceType::Bishop, WHITE, 0x24u64),
+            (PieceType::Bishop, BLACK, 0x2400_0000_0000_0000u64),
+            (PieceType::Rook, WHITE, 0x81u64),
+            (PieceType::Rook, BLACK, 0x8100_0000_0000_0000u64),
+            (PieceType::Queen, WHITE, 0x8u64),
+            (PieceType::Queen, BLACK, 0x0800_0000_0000_0000u64),
+            (PieceType::King, WHITE, 0x10u64),
+            (PieceType::King, BLACK, 0x1000_0000_0000_0000u64),
         ];
+        for (pt, side, mut bb) in info.iter() {
+            pieces_bb[*pt as usize] |= bb;
+            color_bb[*side] |= bb;
+            while bb > 0 {
+                let idx = bb.trailing_zeros() as usize;
+                piece_square_table[idx] = Some((*pt, *side == WHITE));
+                bb ^= square(idx);
+            }
+        }
         let mut res = GameState {
             color_to_move,
-            pieces,
+            pieces_bb,
+            color_bb,
+            piece_square_table,
             irreversible: Irreversible {
                 castle_white_kingside: true,
                 castle_white_queenside: true,
@@ -854,9 +965,7 @@ impl GameState {
     pub fn is_valid_tt_move(&self, mv: GameMove) -> bool {
         //println!("{}",self.to_fen());
         //println!("{:?}", mv);
-        if self.pieces[mv.piece_type.to_index()][self.color_to_move] & square(mv.from as usize)
-            == 0u64
-        {
+        if self.get_piece(mv.piece_type, self.color_to_move) & square(mv.from as usize) == 0 {
             return false;
         }
         if mv.piece_type == PieceType::Pawn
@@ -886,7 +995,7 @@ impl GameState {
             if mv.to != 6 && mv.to != 2 && mv.to != 62 && mv.to != 58 || self.in_check() {
                 return false;
             }
-            let all_piece = self.all_pieces();
+            let all_piece = self.all_pieces_bb();
             let is_invalid_wk = || {
                 mv.to == 6
                     && (!self.irreversible.castle_white_kingside
@@ -919,23 +1028,19 @@ impl GameState {
                 return false;
             }
         } else {
-            let captured_piece = match mv.move_type {
-                GameMoveType::Capture(p) => Some(p),
-                GameMoveType::Promotion(_, p) => p,
-                _ => None,
-            };
+            let captured_piece = mv.get_maybe_captured_piece();
             if captured_piece.is_none() {
-                if self.all_pieces() & (square(mv.to as usize)) != 0u64 {
+                if self.all_pieces_bb() & (square(mv.to as usize)) != 0u64 {
                     return false;
                 }
-            } else if self.pieces[captured_piece.unwrap().to_index()][1 - self.color_to_move]
+            } else if self.get_piece(captured_piece.unwrap(), 1 - self.color_to_move)
                 & (square(mv.to as usize))
                 == 0u64
             {
                 return false;
             }
         }
-        let all_pieces = self.all_pieces();
+        let all_pieces = self.all_pieces_bb();
         match mv.piece_type {
             PieceType::King => {
                 if self.square_attacked(mv.to as usize, all_pieces ^ square(mv.from as usize), 0u64)
@@ -996,6 +1101,7 @@ impl GameState {
         self.is_valid_move(mv)
     }
 }
+
 impl Display for GameState {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
@@ -1004,33 +1110,7 @@ impl Display for GameState {
             res_str.push_str("| ");
             for file in 0..8 {
                 let idx = 8 * (7 - rank) + file;
-                if (self.pieces[PAWN][WHITE] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("P");
-                } else if (self.pieces[PAWN][BLACK] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("p");
-                } else if (self.pieces[KNIGHT][WHITE] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("N");
-                } else if (self.pieces[KNIGHT][BLACK] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("n");
-                } else if (self.pieces[BISHOP][WHITE] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("B");
-                } else if (self.pieces[BISHOP][BLACK] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("b");
-                } else if (self.pieces[ROOK][WHITE] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("R");
-                } else if (self.pieces[ROOK][BLACK] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("r");
-                } else if (self.pieces[QUEEN][WHITE] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("Q");
-                } else if (self.pieces[QUEEN][BLACK] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("q");
-                } else if (self.pieces[KING][WHITE] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("K");
-                } else if (self.pieces[KING][BLACK] >> idx) & 1u64 != 0u64 {
-                    res_str.push_str("k");
-                } else {
-                    res_str.push_str(" ");
-                }
+                res_str.push_str(&self.get_piece_on(idx));
                 res_str.push_str(" | ");
             }
             res_str.push_str("\n+---+---+---+---+---+---+---+---+\n");
@@ -1075,46 +1155,52 @@ impl Debug for GameState {
         res_str.push_str(&format!("Color: {}\n", self.color_to_move));
         res_str.push_str(&format!(
             "WhitePawns: 0x{:x}u64\n",
-            self.pieces[PAWN][WHITE]
+            self.get_piece(PieceType::Pawn, WHITE)
         ));
         res_str.push_str(&format!(
             "WhiteKnights: 0x{:x}u64\n",
-            self.pieces[KNIGHT][WHITE]
+            self.get_piece(PieceType::Knight, WHITE)
         ));
         res_str.push_str(&format!(
             "WhiteBishops: 0x{:x}u64\n",
-            self.pieces[BISHOP][WHITE]
+            self.get_piece(PieceType::Bishop, WHITE)
         ));
         res_str.push_str(&format!(
             "WhiteRooks: 0x{:x}u64\n",
-            self.pieces[ROOK][WHITE]
+            self.get_piece(PieceType::Rook, WHITE)
         ));
         res_str.push_str(&format!(
             "WhiteQueens: 0x{:x}u64\n",
-            self.pieces[QUEEN][WHITE]
+            self.get_piece(PieceType::Queen, WHITE)
         ));
-        res_str.push_str(&format!("WhiteKing: 0x{:x}u64\n", self.pieces[KING][WHITE]));
+        res_str.push_str(&format!(
+            "WhiteKing: 0x{:x}u64\n",
+            self.get_piece(PieceType::King, WHITE)
+        ));
         res_str.push_str(&format!(
             "BlackPawns: 0x{:x}u64\n",
-            self.pieces[PAWN][BLACK]
+            self.get_piece(PieceType::Pawn, BLACK)
         ));
         res_str.push_str(&format!(
             "BlackKnights: 0x{:x}u64\n",
-            self.pieces[KNIGHT][BLACK]
+            self.get_piece(PieceType::Knight, BLACK)
         ));
         res_str.push_str(&format!(
             "BlackBishops: 0x{:x}u64\n",
-            self.pieces[BISHOP][BLACK]
+            self.get_piece(PieceType::Bishop, BLACK)
         ));
         res_str.push_str(&format!(
             "BlackRooks: 0x{:x}u64\n",
-            self.pieces[ROOK][BLACK]
+            self.get_piece(PieceType::Rook, BLACK)
         ));
         res_str.push_str(&format!(
             "BlackQueens: 0x{:x}u64\n",
-            self.pieces[QUEEN][BLACK]
+            self.get_piece(PieceType::Queen, BLACK)
         ));
-        res_str.push_str(&format!("BlackKing: 0x{:x}u64\n", self.pieces[KING][BLACK]));
+        res_str.push_str(&format!(
+            "BlackKing: 0x{:x}u64\n",
+            self.get_piece(PieceType::King, BLACK)
+        ));
         res_str.push_str(&format!(
             "CWK: {}\n",
             self.irreversible.castle_white_kingside
@@ -1147,5 +1233,18 @@ impl Debug for GameState {
         res_str.push_str(&format!("PSQT: {}\n", self.psqt));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
+    }
+}
+
+impl PartialEq for GameState {
+    fn eq(&self, other: &Self) -> bool {
+        self.color_to_move == other.color_to_move
+            && self.pieces_bb == other.pieces_bb
+            && self.color_bb == other.color_bb
+            && self.irreversible == other.irreversible
+            && self.full_moves == other.full_moves
+            && self.hash == other.hash
+            && self.psqt == other.psqt
+            && self.phase == other.phase
     }
 }

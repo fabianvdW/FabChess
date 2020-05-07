@@ -22,14 +22,14 @@ impl Phase {
         self.phase = f64::from(tmp - EG_LIMIT) * 128. / f64::from(MG_LIMIT - EG_LIMIT);
     }
     #[inline(always)]
-    pub fn from_pieces(pieces: &[[u64; 2]; 6]) -> Self {
-        let material_score = (pieces[QUEEN][WHITE] | pieces[QUEEN][BLACK]).count_ones() as i16
+    pub fn from_state(state: &GameState) -> Self {
+        let material_score = state.piece_bb(PieceType::Queen).count_ones() as i16
             * PieceType::Queen.to_phase_score()
-            + (pieces[KNIGHT][WHITE] | pieces[KNIGHT][BLACK]).count_ones() as i16
+            + state.piece_bb(PieceType::Knight).count_ones() as i16
                 * PieceType::Knight.to_phase_score()
-            + (pieces[BISHOP][WHITE] | pieces[BISHOP][BLACK]).count_ones() as i16
+            + state.piece_bb(PieceType::Bishop).count_ones() as i16
                 * PieceType::Bishop.to_phase_score()
-            + (pieces[ROOK][WHITE] | pieces[ROOK][BLACK]).count_ones() as i16
+            + state.piece_bb(PieceType::Rook).count_ones() as i16
                 * PieceType::Rook.to_phase_score();
         let mut res = Phase {
             phase: 0.,

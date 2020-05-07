@@ -9,12 +9,12 @@ use crate::search::searcher::Thread;
 use crate::search::{CombinedSearchParameters, GradedMove};
 
 //For MVV-LVA calculation
-pub const ATTACKER_VALUE: [i16; 6] = [0, 1, 2, 3, 4, 5];
-pub const TARGET_VALUE: [i16; 5] = [100, 400, 400, 650, 1100];
+pub const ATTACKER_VALUE: [i16; 6] = [5, 0, 1, 2, 3, 4];
+pub const TARGET_VALUE: [i16; 6] = [0, 100, 400, 400, 650, 1100];
 
 pub fn mvvlva(mv: GameMove) -> i16 {
     debug_assert!(mv.is_capture());
-    TARGET_VALUE[mv.get_captured_piece().to_index()] - ATTACKER_VALUE[mv.piece_type.to_index()]
+    TARGET_VALUE[mv.get_captured_piece() as usize] - ATTACKER_VALUE[mv.piece_type as usize]
 }
 
 pub const NORMAL_STAGES: [MoveOrderingStage; 8] = [
@@ -119,8 +119,8 @@ impl MoveOrderer {
                     {
                         self.next(thread, p, pv_table_move, tt_move)
                     } else {
-                        if PIECE_VALUES[graded_move.0.get_captured_piece().to_index()]
-                            - PIECE_VALUES[graded_move.0.piece_type.to_index()]
+                        if PIECE_VALUES[graded_move.0.get_captured_piece() as usize]
+                            - PIECE_VALUES[graded_move.0.piece_type as usize]
                             >= 0
                             || graded_move.0.piece_type == PieceType::King
                         {

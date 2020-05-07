@@ -111,15 +111,18 @@ pub fn leaf_score(game_status: GameResult, color: i16, current_depth: i16) -> i1
 //Doesn't actually check for stalemate
 #[inline(always)]
 pub fn check_for_draw(game_state: &GameState, history: &History) -> SearchInstruction {
-    if game_state.pieces[PAWN][WHITE]
-        | game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[PAWN][BLACK]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][BLACK]
+    if game_state.piece_bb(PieceType::Pawn)
+        | game_state.piece_bb(PieceType::Rook)
+        | game_state.piece_bb(PieceType::Queen)
         == 0u64
-        && (game_state.pieces[KNIGHT][WHITE] | game_state.pieces[BISHOP][WHITE]).count_ones() <= 1
-        && (game_state.pieces[KNIGHT][BLACK] | game_state.pieces[BISHOP][BLACK]).count_ones() <= 1
+        && (game_state.get_piece(PieceType::Knight, WHITE)
+            | game_state.get_piece(PieceType::Bishop, WHITE))
+        .count_ones()
+            <= 1
+        && (game_state.get_piece(PieceType::Knight, BLACK)
+            | game_state.get_piece(PieceType::Bishop, BLACK))
+        .count_ones()
+            <= 1
     {
         return SearchInstruction::StopSearching(0);
     }

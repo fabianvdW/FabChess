@@ -1,9 +1,8 @@
 use super::params::*;
 use super::EvaluationResult;
 use super::EvaluationScore;
-use crate::board_representation::game_state::{
-    PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
-};
+use crate::bitboards::bitboards::constants::square;
+use crate::board_representation::game_state::{GameState, PieceType, BLACK, WHITE};
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -11,7 +10,8 @@ pub const BLACK_INDEX: [usize; 64] = [
     8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7,
 ];
 
-pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> EvaluationScore {
+#[inline(always)]
+pub fn psqt(white: bool, state: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
     let mut pawn = EvaluationScore::default();
     let mut knight = EvaluationScore::default();
     let mut bishop = EvaluationScore::default();
@@ -21,10 +21,11 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
 
     let side = if white { WHITE } else { BLACK };
 
-    let mut pawns = pieces[PAWN][side];
+    //TODO: Vectorize
+    let mut pawns = state.get_piece(PieceType::Pawn, side);
     while pawns != 0u64 {
         let mut idx = pawns.trailing_zeros() as usize;
-        pawns ^= 1u64 << idx;
+        pawns ^= square(idx);
         if !white {
             idx = BLACK_INDEX[idx];
         }
@@ -35,10 +36,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut knights = pieces[KNIGHT][side];
+    let mut knights = state.get_piece(PieceType::Knight, side);
     while knights != 0u64 {
         let mut idx = knights.trailing_zeros() as usize;
-        knights ^= 1u64 << idx;
+        knights ^= square(idx);
         if !white {
             idx = BLACK_INDEX[idx]
         }
@@ -49,10 +50,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut bishops = pieces[BISHOP][side];
+    let mut bishops = state.get_piece(PieceType::Bishop, side);
     while bishops != 0u64 {
         let mut idx = bishops.trailing_zeros() as usize;
-        bishops ^= 1u64 << idx;
+        bishops ^= square(idx);
         if !white {
             idx = BLACK_INDEX[idx];
         }
@@ -63,10 +64,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut rooks = pieces[ROOK][side];
+    let mut rooks = state.get_piece(PieceType::Rook, side);
     while rooks != 0u64 {
         let mut idx = rooks.trailing_zeros() as usize;
-        rooks ^= 1u64 << idx;
+        rooks ^= square(idx);
         if !white {
             idx = BLACK_INDEX[idx];
         }
@@ -77,10 +78,10 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut queens = pieces[QUEEN][side];
+    let mut queens = state.get_piece(PieceType::Queen, side);
     while queens != 0u64 {
         let mut idx = queens.trailing_zeros() as usize;
-        queens ^= 1u64 << idx;
+        queens ^= square(idx);
         if !white {
             idx = BLACK_INDEX[idx];
         }
@@ -90,7 +91,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
             _eval.trace.psqt_queen[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
-    let mut king_idx = pieces[KING][side].trailing_zeros() as usize;
+    let mut king_idx = state.king_square(side);
     if !white {
         king_idx = BLACK_INDEX[king_idx];
     }
@@ -116,23 +117,17 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
 }
 
 #[inline(always)]
-pub fn psqt_toggle_piece(
-    pieces: &mut [[u64; 2]; 6],
-    piece: PieceType,
-    square: usize,
-    side: usize,
-    score: &mut EvaluationScore,
-) {
-    let temp = pieces[piece.to_index()][side];
+pub fn psqt_toggle_piece(state: &mut GameState, piece: PieceType, sq: usize, side: usize) {
+    let temp = state.get_piece(piece, side);
     let (rank, file) = if side == WHITE {
-        (square / 8, square % 8)
+        (sq / 8, sq % 8)
     } else {
-        (BLACK_INDEX[square] / 8, BLACK_INDEX[square] % 8)
+        (BLACK_INDEX[sq] / 8, BLACK_INDEX[sq] % 8)
     };
     let mut new_score = piece.to_psqt()[rank][file];
-    if (temp & 1u64 << square) == 0u64 {
+    if temp & square(sq) == 0u64 {
         new_score *= -1;
     }
     new_score *= if side == WHITE { 1 } else { -1 };
-    *score += new_score;
+    state.psqt += new_score;
 }

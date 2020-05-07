@@ -1,5 +1,7 @@
 use crate::bitboards::bitboards::constants::square;
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use crate::board_representation::game_state::{
+    GameMove, GameMoveType, GameState, PieceType, WHITE,
+};
 use crate::search::GradedMove;
 
 pub const MAX_MOVES: usize = 128;
@@ -27,20 +29,14 @@ impl MoveList {
     //This deserializes a bitboard with setwise target destinations for all pawns
     //Does not work for en-passants
     pub fn add_pawn_bb(&mut self, mut bb: u64, shift: i8, state: &GameState) {
-        let is_capture = shift.abs() % 2 == 1;
         while bb > 0 {
             let to = bb.trailing_zeros() as usize;
             let is_promotion = to <= 7 || to >= 56;
             if is_promotion {
-                let captured_pt = if is_capture {
-                    if let GameMoveType::Capture(pt) = state.move_type_to(to) {
-                        Some(pt)
-                    } else {
-                        panic!("Expected this to be a capture")
-                    }
-                } else {
-                    None
-                };
+                let captured_pt = state.piecetype_on(to).map(|x| {
+                    debug_assert!((1 - state.color_to_move == WHITE) == x.1);
+                    x.0
+                });
                 for pt in [
                     PieceType::Queen,
                     PieceType::Rook,
@@ -60,11 +56,7 @@ impl MoveList {
                 self.add_move(GameMove::new(
                     (to as i8 + shift) as usize,
                     to,
-                    if is_capture {
-                        state.move_type_to(to)
-                    } else {
-                        GameMoveType::Quiet
-                    },
+                    state.move_type_to(to),
                     PieceType::Pawn,
                 ));
             }

@@ -2,24 +2,37 @@ use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameSta
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::{copy_make, make_move, unmake_move};
 use core_sdk::move_generation::movegen2;
-use core_sdk::search::cache::Cache;
-use core_sdk::search::moveordering::{MoveOrderer, NORMAL_STAGES};
+use core_sdk::search::cache::{Cache, CacheEntry};
+use core_sdk::search::moveordering::{mvvlva, MoveOrderer, NORMAL_STAGES};
+use core_sdk::search::quiescence::see;
 use core_sdk::search::reserved_memory::ReservedMoveList;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem, Thread};
 use core_sdk::search::timecontrol::TimeControl;
 use extended_sdk::misc::to_string_board;
 use extended_sdk::pgn::pgn_reader::parse_move;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Instant;
 use std::{fs, io};
 
 fn main() {
     let pos = load_benchmarking_positions();
-    let mut sum: i16 = 0;
+    let mut sum: i32 = 0;
+    let mut see_buffer = vec![0; 32];
     for p in pos {
         let eval = eval_game_state(&p, 0, 0);
         println!("{}", eval.final_eval);
-        sum += eval.final_eval;
+        sum += eval.final_eval as i32;
+        let moves = movegen2::generate_legal_moves(&p);
+        for mv in moves.move_list.iter() {
+            sum += CacheEntry::mv_to_u16(mv.0) as i32;
+            sum += p.hash as i32;
+            if mv.0.is_capture() && mv.0.move_type != GameMoveType::EnPassant {
+                sum += see(&p, mv.0, true, &mut see_buffer) as i32;
+                sum += mvvlva(mv.0) as i32;
+            }
+        }
     }
     println!("{}", sum);
     //go_infinite_from_startpos();
