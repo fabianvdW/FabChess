@@ -5,16 +5,12 @@ use core_sdk::move_generation::movegen2;
 use core_sdk::search::cache::{Cache, CacheEntry};
 use core_sdk::search::moveordering::{mvvlva, MoveOrderer, NORMAL_STAGES};
 use core_sdk::search::quiescence::see;
-use core_sdk::search::reserved_memory::ReservedMoveList;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem, Thread};
 use core_sdk::search::timecontrol::TimeControl;
 use extended_sdk::misc::to_string_board;
 use extended_sdk::pgn::pgn_reader::parse_move;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hash;
+use std::fs;
 use std::sync::Arc;
-use std::time::Instant;
-use std::{fs, io};
 
 fn main() {
     let pos = load_benchmarking_positions();

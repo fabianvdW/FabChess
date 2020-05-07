@@ -131,7 +131,6 @@ impl GameState {
 
     //Returns true if the given square is attacked by the side not to move
     //occ: Blockers in the current position
-    #[inline(always)]
     pub fn square_attacked(&self, sq: usize, occ: u64, exclude: u64) -> bool {
         let square = square(sq);
         KING_ATTACKS[sq] & self.get_piece(PieceType::King, 1 - self.color_to_move) & !exclude > 0
@@ -156,7 +155,6 @@ impl GameState {
     }
     //Returns a bitboard of all the pieces attacking the square
     //occ: Blockers in the current position
-    #[inline(always)]
     pub fn square_attackers(&self, sq: usize, occ: u64) -> u64 {
         let square = square(sq);
         KING_ATTACKS[sq] & self.get_piece(PieceType::King, 1 - self.color_to_move)
@@ -171,7 +169,6 @@ impl GameState {
                 & self.get_piece(PieceType::Pawn, 1 - self.color_to_move)
     }
 
-    #[inline(always)]
     pub(crate) fn castle_target_square(&self, kingside: bool) -> usize {
         if self.color_to_move == WHITE {
             if kingside {
@@ -318,7 +315,6 @@ pub fn generate_pawns_captures(game_state: &GameState, movelist: &mut MoveList, 
 }
 
 //Make sure the movelist is cleared before you call this
-#[inline(always)]
 pub fn generate_pseudolegal_captures(game_state: &GameState, movelist: &mut MoveList) {
     let mut general_mask = game_state.color_bb(1 - game_state.color_to_move);
     generate_king(game_state, movelist, general_mask);
@@ -338,7 +334,6 @@ pub fn generate_pseudolegal_captures(game_state: &GameState, movelist: &mut Move
     }
 }
 //Make sure movelist is cleared before you call this
-#[inline(always)]
 pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveList) {
     let general_mask = game_state.empty_bb();
     generate_king(game_state, movelist, general_mask);

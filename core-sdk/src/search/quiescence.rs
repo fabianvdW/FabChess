@@ -189,7 +189,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             .iter()
             .any(|x| p.game_state.is_valid_move(x.0))
     };
-    let has_legal_move = moves_played > 0 || legal_move();
+    let has_legal_move = moves_played > 0 || !incheck && legal_move();
     let game_status = check_end_condition(p.game_state, has_legal_move, incheck);
     if game_status != GameResult::Ingame {
         debug_assert!(thread.pv_table[p.current_depth].pv[0].is_none() || thread.self_stop);

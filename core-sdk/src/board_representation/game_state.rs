@@ -348,7 +348,6 @@ pub struct GameState {
 }
 //Querying functions
 impl GameState {
-    #[inline(always)]
     pub fn unset_piece(&mut self, piece: PieceType, sq: usize, color: usize) {
         debug_assert!(self.pieces_bb[piece as usize] & square(sq) > 0);
         debug_assert!(self.color_bb[color as usize] & square(sq) > 0);
@@ -358,7 +357,6 @@ impl GameState {
         self.piece_square_table[sq] = None;
     }
 
-    #[inline(always)]
     pub fn set_piece(&mut self, piece: PieceType, sq: usize, color: usize) {
         debug_assert!(self.pieces_bb[piece as usize] & square(sq) == 0);
         debug_assert!(self.color_bb[color as usize] & square(sq) == 0);
@@ -367,7 +365,7 @@ impl GameState {
         self.color_bb[color] ^= square(sq);
         self.piece_square_table[sq] = Some((piece, color == WHITE));
     }
-    #[inline(always)]
+
     pub fn relative_rank(sq: usize, white: bool) -> usize {
         if white {
             sq / 8
@@ -376,32 +374,26 @@ impl GameState {
         }
     }
 
-    #[inline(always)]
     pub fn all_pieces_bb(&self) -> u64 {
         self.color_bb(WHITE) | self.color_bb(BLACK)
     }
 
-    #[inline(always)]
     pub fn empty_bb(&self) -> u64 {
         !self.all_pieces_bb()
     }
 
-    #[inline(always)]
     pub fn color_bb(&self, side: usize) -> u64 {
         self.color_bb[side]
     }
 
-    #[inline(always)]
     pub fn piece_bb(&self, pt: PieceType) -> u64 {
         self.pieces_bb[pt as usize]
     }
 
-    #[inline(always)]
     pub fn get_piece(&self, pt: PieceType, side: usize) -> u64 {
         self.piece_bb(pt) & self.color_bb(side)
     }
 
-    #[inline(always)]
     pub fn has_non_pawns(&self, side: usize) -> bool {
         self.all_pieces_bb()
             & !self.piece_bb(PieceType::Pawn)
@@ -410,23 +402,20 @@ impl GameState {
             > 0
     }
 
-    #[inline(always)]
     pub fn king_square(&self, side: usize) -> usize {
         self.get_piece(PieceType::King, side).trailing_zeros() as usize
     }
 
-    #[inline(always)]
     pub fn in_check(&self) -> bool {
         self.irreversible.checkers > 0
     }
 
     //Returns: Some if any piece type on the given square. Else none
     //Returns: 0: PieceType 1: bool color: True => White, False => Black
-    #[inline(always)]
     pub fn piecetype_on(&self, sq: usize) -> Option<(PieceType, bool)> {
         self.piece_square_table[sq]
     }
-    #[inline(always)]
+
     pub fn move_type_to(&self, to: usize) -> GameMoveType {
         if let Some((pt, color)) = self.piecetype_on(to) {
             debug_assert!(pt != PieceType::King);

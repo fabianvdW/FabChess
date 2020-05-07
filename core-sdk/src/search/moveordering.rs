@@ -14,6 +14,7 @@ pub const TARGET_VALUE: [i16; 6] = [0, 100, 400, 400, 650, 1100];
 
 pub fn mvvlva(mv: GameMove) -> i16 {
     debug_assert!(mv.is_capture());
+    debug_assert!(mv.get_captured_piece() as usize > 0);
     TARGET_VALUE[mv.get_captured_piece() as usize] - ATTACKER_VALUE[mv.piece_type as usize]
 }
 

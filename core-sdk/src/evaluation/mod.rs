@@ -819,53 +819,50 @@ pub fn pawns(
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
     let empty = g.empty_bb();
+    let my_pawns = g.get_piece(PieceType::Pawn, side);
+    let enemy_pawns = g.get_piece(PieceType::Pawn, 1 - side);
     //Bitboards
-    let pawn_file_fill = bitboards::file_fill(g.get_piece(PieceType::Pawn, side));
+    let pawn_file_fill = bitboards::file_fill(my_pawns);
     let front_span = if white {
-        bitboards::w_front_span(g.get_piece(PieceType::Pawn, side))
+        bitboards::w_front_span(my_pawns)
     } else {
-        bitboards::b_front_span(g.get_piece(PieceType::Pawn, side))
+        bitboards::b_front_span(my_pawns)
     };
     let mut enemy_front_spans = if white {
-        bitboards::b_front_span(g.get_piece(PieceType::Pawn, 1 - side))
+        bitboards::b_front_span(enemy_pawns)
     } else {
-        bitboards::w_front_span(g.get_piece(PieceType::Pawn, 1 - side))
+        bitboards::w_front_span(enemy_pawns)
     };
     enemy_front_spans |=
         bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
     let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (
-        pawn_west_targets(side, g.get_piece(PieceType::Pawn, side)),
-        pawn_east_targets(side, g.get_piece(PieceType::Pawn, side)),
-        pawn_targets(1 - side, g.get_piece(PieceType::Pawn, 1 - side)),
+        pawn_west_targets(side, my_pawns),
+        pawn_east_targets(side, my_pawns),
+        pawn_targets(1 - side, enemy_pawns),
     );
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
     let (my_pawn_pushes, my_pawn_double_pushes) = if white {
         (
-            movegen::w_single_push_pawn_targets(g.get_piece(PieceType::Pawn, side), empty),
-            movegen::w_double_push_pawn_targets(g.get_piece(PieceType::Pawn, side), empty),
+            movegen::w_single_push_pawn_targets(my_pawns, empty),
+            movegen::w_double_push_pawn_targets(my_pawns, empty),
         )
     } else {
         (
-            movegen::b_single_push_pawn_targets(g.get_piece(PieceType::Pawn, side), empty),
-            movegen::b_double_push_pawn_targets(g.get_piece(PieceType::Pawn, side), empty),
+            movegen::b_single_push_pawn_targets(my_pawns, empty),
+            movegen::b_double_push_pawn_targets(my_pawns, empty),
         )
     };
     let is_attackable = bitboards::west_one(front_span) | bitboards::east_one(front_span);
     let enemy_pieces = g.color_bb(1 - side);
 
-    let doubled_pawns = (g.get_piece(PieceType::Pawn, side) & front_span).count_ones() as i16;
-    let isolated_pawns = (g.get_piece(PieceType::Pawn, side)
-        & !bitboards::west_one(pawn_file_fill)
-        & !bitboards::east_one(pawn_file_fill))
-    .count_ones() as i16;
-    let backward_pawns = (if white {
-        g.get_piece(PieceType::Pawn, side) << 8
-    } else {
-        g.get_piece(PieceType::Pawn, side) >> 8
-    } & enemy_pawn_attacks
-        & !is_attackable)
-        .count_ones() as i16;
-    let mut supported_pawns = g.get_piece(PieceType::Pawn, side) & my_pawn_attacks;
+    let doubled_pawns = (my_pawns & front_span).count_ones() as i16;
+    let isolated_pawns =
+        (my_pawns & !bitboards::west_one(pawn_file_fill) & !bitboards::east_one(pawn_file_fill))
+            .count_ones() as i16;
+    let backward_pawns =
+        (if white { my_pawns << 8 } else { my_pawns >> 8 } & enemy_pawn_attacks & !is_attackable)
+            .count_ones() as i16;
+    let mut supported_pawns = my_pawns & my_pawn_attacks;
     let _supported_amt = supported_pawns.count_ones() as usize;
     let mut supp = EvaluationScore::default();
     while supported_pawns != 0u64 {
@@ -881,7 +878,7 @@ pub fn pawns(
         }
     }
     res += supp;
-    let center_attack_pawns = (g.get_piece(PieceType::Pawn, side)
+    let center_attack_pawns = (my_pawns
         & if white {
             bitboards::south_east_one(INNER_CENTER) | bitboards::south_west_one(INNER_CENTER)
         } else {
@@ -908,7 +905,7 @@ pub fn pawns(
         _eval.trace.pawn_mobility += pawn_mobility as i8 * if side == WHITE { 1 } else { -1 };
     }
     //Passers
-    let mut passed_pawns: u64 = g.get_piece(PieceType::Pawn, side)
+    let mut passed_pawns: u64 = my_pawns
 
         /*& !if white {
             bitboards::w_rear_span(g.pieces[PAWN][side])
