@@ -1,4 +1,4 @@
-use crate::bitboards::bitboards::constants::{square, KING_ATTACKS};
+use crate::bitboards::bitboards::constants::{square, BISHOP_RAYS, KING_ATTACKS, ROOK_RAYS};
 use crate::bitboards::bitboards::knight_attacks;
 use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
@@ -314,6 +314,7 @@ pub fn generate_pawns_captures(game_state: &GameState, movelist: &mut MoveList, 
 }
 
 //Make sure the movelist is cleared before you call this
+#[inline(always)]
 pub fn generate_pseudolegal_captures(game_state: &GameState, movelist: &mut MoveList) {
     let mut general_mask = game_state.color_bb(1 - game_state.color_to_move);
     generate_king(game_state, movelist, general_mask);
@@ -327,16 +328,36 @@ pub fn generate_pseudolegal_captures(game_state: &GameState, movelist: &mut Move
             general_mask | game_state.irreversible.en_passant,
         );
         generate_others(game_state, movelist, general_mask, PieceType::Knight);
+        generate_others(game_state, movelist, general_mask, PieceType::Queen);
         generate_others(game_state, movelist, general_mask, PieceType::Bishop);
         generate_others(game_state, movelist, general_mask, PieceType::Rook);
-        generate_others(game_state, movelist, general_mask, PieceType::Queen);
     }
 }
 //Make sure movelist is cleared before you call this
+#[inline(always)]
 pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveList) {
-    let general_mask = game_state.empty_bb();
+    let mut general_mask = game_state.empty_bb();
     generate_king(game_state, movelist, general_mask);
     if game_state.irreversible.checkers.count_ones() <= 1 {
+        if game_state.irreversible.checkers.count_ones() == 1 {
+            let check_square = game_state.irreversible.checkers.trailing_zeros() as usize;
+            let checker_type = game_state.piecetype_on(check_square).unwrap().0;
+            if checker_type == PieceType::Pawn || checker_type == PieceType::Knight {
+                return;
+            } else if checker_type == PieceType::Bishop {
+                general_mask =
+                    BISHOP_RAYS[game_state.king_square(game_state.color_to_move)][check_square];
+            } else if checker_type == PieceType::Rook {
+                general_mask =
+                    ROOK_RAYS[game_state.king_square(game_state.color_to_move)][check_square];
+            } else {
+                general_mask =
+                    BISHOP_RAYS[game_state.king_square(game_state.color_to_move)][check_square];
+                general_mask |=
+                    ROOK_RAYS[game_state.king_square(game_state.color_to_move)][check_square];
+            }
+            general_mask &= game_state.empty_bb();
+        }
         generate_pawns_quiets(game_state, movelist, general_mask);
         generate_others(game_state, movelist, general_mask, PieceType::Knight);
         generate_others(game_state, movelist, general_mask, PieceType::Queen);
@@ -347,18 +368,8 @@ pub fn generate_pseudolegal_quiets(game_state: &GameState, movelist: &mut MoveLi
 
 pub fn generate_pseudolegal_moves(game_state: &GameState, movelist: &mut MoveList) {
     movelist.move_list.clear();
-    //Generate pseudolegal moves given a position
-    let general_mask = !game_state.color_bb(game_state.color_to_move);
-    generate_king(game_state, movelist, general_mask);
-    if game_state.irreversible.checkers.count_ones() <= 1 {
-        //TODO : update general mask with updated stuff
-        generate_pawns_quiets(game_state, movelist, general_mask);
-        generate_pawns_captures(game_state, movelist, general_mask);
-        generate_others(game_state, movelist, general_mask, PieceType::Knight);
-        generate_others(game_state, movelist, general_mask, PieceType::Queen);
-        generate_others(game_state, movelist, general_mask, PieceType::Bishop);
-        generate_others(game_state, movelist, general_mask, PieceType::Rook);
-    }
+    generate_pseudolegal_captures(game_state, movelist);
+    generate_pseudolegal_quiets(game_state, movelist);
 }
 
 //This is a rather slow function and should only be used when speed is not really important. E.g. one time costs
