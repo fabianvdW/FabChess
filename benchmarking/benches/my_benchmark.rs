@@ -1,5 +1,6 @@
 use benchmarking::*;
 use core_sdk::evaluation::eval_game_state;
+use core_sdk::move_generation::makemove::{make_move, unmake_move};
 use core_sdk::move_generation::movegen2;
 use core_sdk::move_generation::movelist::MoveList;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -18,7 +19,7 @@ pub fn evaluation_bench(c: &mut Criterion) {
 }
 
 pub fn generate_moves_bench(c: &mut Criterion) {
-    let states = load_benchmarking_positions();
+    let mut states = load_benchmarking_positions();
     let mut movelist = MoveList::default();
     c.bench_function("movegen", |b| {
         b.iter(|| {
@@ -26,6 +27,10 @@ pub fn generate_moves_bench(c: &mut Criterion) {
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
                 movegen2::generate_pseudolegal_moves(&states[i], &mut movelist);
                 movelist.move_list.retain(|x| states[i].is_valid_move(x.0));
+                for mv in movelist.move_list.iter() {
+                    let irr = make_move(&mut states[i], mv.0);
+                    unmake_move(&mut states[i], mv.0, irr);
+                }
                 sum += movelist.move_list.len();
             }
             sum

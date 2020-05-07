@@ -304,15 +304,16 @@ fn file_to_string(file: usize) -> char {
     (file as u8 + b'a') as char
 }
 
+#[repr(align(32))]
 #[derive(Clone, PartialEq)]
 pub struct Irreversible {
     pub checkers: u64,
     pub hash: u64,
+    pub en_passant: u64,
     pub castle_white_kingside: bool,
     pub castle_white_queenside: bool,
     pub castle_black_kingside: bool,
     pub castle_black_queenside: bool,
-    pub en_passant: u64,
     pub half_moves: usize,
 }
 
