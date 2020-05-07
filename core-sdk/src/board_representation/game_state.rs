@@ -2,6 +2,7 @@ use crate::bitboards::bitboards::constants::{square, KING_ATTACKS, KNIGHT_ATTACK
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
+use crate::evaluation::psqt_evaluation::BLACK_INDEX;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{
@@ -54,14 +55,13 @@ pub enum PieceType {
 }
 impl PieceType {
     #[inline(always)]
-    pub fn to_psqt(self) -> &'static [[EvaluationScore; 8]; 8] {
-        match &self {
-            PieceType::Pawn => &PSQT_PAWN,
-            PieceType::Knight => &PSQT_KNIGHT,
-            PieceType::Bishop => &PSQT_BISHOP,
-            PieceType::Rook => &PSQT_ROOK,
-            PieceType::Queen => &PSQT_QUEEN,
-            PieceType::King => &PSQT_KING,
+    pub fn to_psqt(self, side: usize, sq: usize) -> EvaluationScore {
+        if side == WHITE {
+            let (rank, file) = (sq / 8, sq % 8);
+            PSQT[self as usize][rank][file]
+        } else {
+            let (rank, file) = (BLACK_INDEX[sq] / 8, BLACK_INDEX[sq] % 8);
+            PSQT[self as usize][rank][file] * -1
         }
     }
 

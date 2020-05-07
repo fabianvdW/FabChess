@@ -117,18 +117,9 @@ pub fn psqt(white: bool, state: &GameState, _eval: &mut EvaluationResult) -> Eva
 }
 #[inline(always)]
 pub fn psqt_set_piece(state: &mut GameState, piece: PieceType, sq: usize, side: usize) {
-    let (rank, file) = if side == WHITE {
-        (sq / 8, sq % 8)
-    } else {
-        (BLACK_INDEX[sq] / 8, BLACK_INDEX[sq] % 8)
-    };
-    state.psqt += piece.to_psqt()[rank][file] * if side == WHITE { 1 } else { -1 };
+    state.psqt += piece.to_psqt(side, sq);
 }
+#[inline(always)]
 pub fn psqt_unset_piece(state: &mut GameState, piece: PieceType, sq: usize, side: usize) {
-    let (rank, file) = if side == WHITE {
-        (sq / 8, sq % 8)
-    } else {
-        (BLACK_INDEX[sq] / 8, BLACK_INDEX[sq] % 8)
-    };
-    state.psqt -= piece.to_psqt()[rank][file] * if side == WHITE { 1 } else { -1 };
+    state.psqt -= piece.to_psqt(side, sq)
 }

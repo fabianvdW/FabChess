@@ -454,6 +454,14 @@ pub const KNIGHT_SAFE_CHECK: EvaluationScore = EvaluationScore(23, 16);
 pub const BISHOP_SAFE_CHECK: EvaluationScore = EvaluationScore(5, 20);
 pub const ROOK_SAFE_CHECK: EvaluationScore = EvaluationScore(19, 13);
 pub const QUEEN_SAFE_CHECK: EvaluationScore = EvaluationScore(10, 37);
+pub const PSQT: [[[EvaluationScore; 8]; 8]; 6] = [
+    PSQT_KING,
+    PSQT_PAWN,
+    PSQT_KNIGHT,
+    PSQT_BISHOP,
+    PSQT_ROOK,
+    PSQT_QUEEN,
+];
 pub const PSQT_PAWN: [[EvaluationScore; 8]; 8] = [
     [
         EvaluationScore(0, 0),
