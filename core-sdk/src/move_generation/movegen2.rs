@@ -116,7 +116,6 @@ impl GameState {
             //The fields 40-47 all contain 32+8, does xoring 8 removes 8 fields, getting the en-passented pawn
             //The fields 16-23 all DON't contain the 8-bit, thus xoring 8 adds 8 fields, getting the en-passented pawn
             occ ^= square((mv.to ^ 8) as usize);
-            square((mv.to ^ 8) as usize);
             exclude |= square((mv.to ^ 8) as usize);
         } else if mv.move_type == GameMoveType::Castle {
             let white = self.color_to_move == WHITE;

@@ -1,4 +1,4 @@
-use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
+use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION, FILES};
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, Irreversible, PieceType, WHITE,
 };
@@ -26,16 +26,10 @@ pub fn castle_hash(old: &Irreversible, new: &mut Irreversible) {
 #[inline(always)]
 //Returns the rook positions for a castle
 pub fn rook_castling(to: u8) -> (usize, usize) {
-    if to == 58 {
-        (56, 59)
-    } else if to == 2 {
-        (0, 3)
-    } else if to == 62 {
-        (63, 61)
-    } else if to == 6 {
-        (7, 5)
+    if square(to as usize) & FILES[2] > 0 {
+        ((to - 2) as usize, (to + 1) as usize)
     } else {
-        panic!("Invalid castling move!")
+        ((to + 1) as usize, (to - 1) as usize)
     }
 }
 
@@ -88,11 +82,7 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
     let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
-        let square = if mv.move_type == GameMoveType::EnPassant {
-            mv.to ^ 8
-        } else {
-            mv.to
-        };
+        let square = mv.to ^ (8 * (mv.move_type == GameMoveType::EnPassant) as u8);
         g.unset_piece(piece, square as usize, color_to_move);
         toggle_hash(piece, square, color_to_move, &mut g.irreversible.hash);
         psqt_unset_piece(g, piece, square as usize, color_to_move);
