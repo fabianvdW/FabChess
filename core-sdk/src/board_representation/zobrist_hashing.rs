@@ -52,26 +52,7 @@ pub fn init_zobrist() -> Zobrist {
     let b_queens = rand_array_64(&mut generator);
     let b_king = rand_array_64(&mut generator);
     let side_to_move = rand_u64(&mut generator);
-    //let castle_w_kingside = rand_u64(&mut generator);
-    //let castle_w_queenside = rand_u64(&mut generator);
-    //let castle_b_kingside = rand_u64(&mut generator);
-    //let castle_b_queenside = rand_u64(&mut generator);
     let en_passant = rand_array_8(&mut generator);
-    /*let mut castle_permissions = [0u64; 16];
-    for i in 0..16 {
-        if i & CASTLE_WHITE_KS > 0 {
-            castle_permissions[i as usize] ^= castle_w_kingside;
-        }
-        if i & CASTLE_WHITE_QS > 0 {
-            castle_permissions[i as usize] ^= castle_w_queenside;
-        }
-        if i & CASTLE_BLACK_KS > 0 {
-            castle_permissions[i as usize] ^= castle_b_kingside;
-        }
-        if i & CASTLE_BLACK_QS > 0 {
-            castle_permissions[i as usize] ^= castle_b_queenside;
-        }
-    }*/
     let castle_permissions = rand_array_16(&mut generator);
     Zobrist {
         w_pawns,
