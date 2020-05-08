@@ -4,6 +4,7 @@ use crate::bitboards::bitboards::constants::{
     square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KNIGHT_ATTACKS, RANKS,
     ROOK_RAYS,
 };
+use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
 };
@@ -115,7 +116,7 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
 
 #[inline(always)]
 pub fn find_captured_piece_type(g: &GameState, to: usize) -> PieceType {
-    let to_board = 1u64 << to;
+    let to_board = square(to);
     if g.pieces[PAWN][1 - g.color_to_move] & to_board != 0u64 {
         PieceType::Pawn
     } else if g.pieces[KNIGHT][1 - g.color_to_move] & to_board != 0u64 {
@@ -169,7 +170,7 @@ pub fn add_pin_moves_to_movelist(
     enemy_queens: u64,
     other_pinner_piece_type: PieceType,
 ) -> bool {
-    let pin_quiet_targets = ray_to_king & push_mask & !(1u64 << pinned_piece_position);
+    let pin_quiet_targets = ray_to_king & push_mask & !square(pinned_piece_position);
     let pin_capture_possible = (capture_mask & enemy_pinner) != 0u64;
     let haslegalmove = pin_capture_possible || pin_quiet_targets != 0u64;
     if !only_captures {
@@ -217,7 +218,7 @@ pub fn add_king_moves_to_movelist(
             PieceType::King,
             GameMoveType::Capture(find_captured_piece_type(g, capture_index)),
         );
-        captures ^= 1u64 << capture_index;
+        captures ^= square(capture_index);
     }
     if !only_captures {
         add_moves_to_movelist(
@@ -243,13 +244,13 @@ pub fn add_pawn_moves_to_movelist(
     let mut stm_haslegalmove = false;
     while target_board != 0u64 {
         let pawn_index = target_board.trailing_zeros() as usize;
-        let pawn = 1u64 << pawn_index;
+        let pawn = square(pawn_index);
         let from_index = if g.color_to_move == WHITE {
             pawn_index - shift
         } else {
             pawn_index + shift
         };
-        let from_board = 1u64 << from_index;
+        let from_board = square(from_index);
         if from_board & pinned_pieces == 0u64 {
             stm_haslegalmove = true;
             let mv_type = if is_capture {
@@ -292,7 +293,7 @@ pub fn add_normal_moves_to_movelist(
     let mut index = 0;
     while piece_board != 0u64 {
         let piece_index = piece_board.trailing_zeros() as usize;
-        let piece = 1u64 << piece_index;
+        let piece = square(piece_index);
         if piece & pinned_pieces == 0u64 {
             let piece_target = if let PieceType::Knight = piece_type {
                 attack_container.attack[MGSA_KNIGHT][g.color_to_move][index]
@@ -316,7 +317,7 @@ pub fn add_normal_moves_to_movelist(
                     piece_type,
                     GameMoveType::Capture(find_captured_piece_type(g, capture_index)),
                 );
-                captures ^= 1u64 << capture_index;
+                captures ^= square(capture_index);
             }
 
             if !only_captures || !stm_haslegalmove {
@@ -408,7 +409,7 @@ pub fn add_moves_to_movelist(
             piece_type,
             move_type,
         );
-        target_board ^= 1u64 << target_square;
+        target_board ^= square(target_square);
     }
 }
 
@@ -601,7 +602,7 @@ pub fn generate_moves(
             stm_xray_rook_attacks_from_king & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy]);
         while enemy_rooks_on_xray != 0u64 {
             let enemy_rook_position = enemy_rooks_on_xray.trailing_zeros() as usize;
-            let enemy_rook = 1u64 << enemy_rook_position;
+            let enemy_rook = square(enemy_rook_position);
             let ray_to_king = ROOK_RAYS[g.king_square(side)][enemy_rook_position];
             let pinned_piece = ray_to_king & side_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
@@ -681,7 +682,7 @@ pub fn generate_moves(
             stm_xray_bishop_attacks_from_king & (g.pieces[BISHOP][enemy] | g.pieces[QUEEN][enemy]);
         while enemy_bishop_on_xray != 0u64 {
             let enemy_bishop_position = enemy_bishop_on_xray.trailing_zeros() as usize;
-            let enemy_bishop = 1u64 << enemy_bishop_position;
+            let enemy_bishop = square(enemy_bishop_position);
             let ray_to_king = BISHOP_RAYS[g.king_square(side)][enemy_bishop_position];
             let pinned_piece = ray_to_king & side_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
@@ -879,7 +880,7 @@ pub fn generate_moves(
             (pawn_index + 7, pawn_index + 8)
         };
         let all_pieces_without_en_passants =
-            all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
+            all_pieces & !square(pawn_from) & !square(removed_piece_index);
         if rook_attack(g.king_square(side), all_pieces_without_en_passants)
             & RANKS[g.king_square(side) / 8]
             & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
@@ -944,7 +945,7 @@ pub fn generate_moves(
             (pawn_index + 9, pawn_index + 8)
         };
         let all_pieces_without_en_passants =
-            all_pieces & !(1u64 << pawn_from) & !(1u64 << removed_piece_index);
+            all_pieces & !square(pawn_from) & !square(removed_piece_index);
         if rook_attack(g.king_square(side), all_pieces_without_en_passants)
             & RANKS[g.king_square(side) / 8]
             & (g.pieces[ROOK][enemy] | g.pieces[QUEEN][enemy])
@@ -1027,29 +1028,31 @@ pub fn generate_moves(
     if (!only_captures || !stm_haslegalmove) && checkers == 0 {
         if stm_color_iswhite {
             if g.castle_white_kingside
-                && (all_pieces | attack_container.attacks_sum[enemy]) & (square(5) | square(6))
+                && (all_pieces | attack_container.attacks_sum[enemy])
+                    & (square(square::F1) | square(square::G1))
                     == 0u64
             {
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
                         from: g.king_square(side) as u8,
-                        to: 6,
+                        to: square::G1 as u8,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });
                 }
             }
             if g.castle_white_queenside
-                && ((all_pieces | attack_container.attacks_sum[enemy]) & (square(2) | square(3))
-                    | all_pieces & square(1))
+                && ((all_pieces | attack_container.attacks_sum[enemy])
+                    & (square(square::C1) | square(square::D1))
+                    | all_pieces & square(square::B1))
                     == 0u64
             {
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
                         from: g.king_square(side) as u8,
-                        to: 2,
+                        to: square::C1 as u8,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });
@@ -1057,29 +1060,31 @@ pub fn generate_moves(
             }
         } else {
             if g.castle_black_kingside
-                && (all_pieces | attack_container.attacks_sum[enemy]) & (square(61) | square(62))
+                && (all_pieces | attack_container.attacks_sum[enemy])
+                    & (square(square::F8) | square(square::G8))
                     == 0u64
             {
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
                         from: g.king_square(side) as u8,
-                        to: 62,
+                        to: square::G8 as u8,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });
                 }
             }
             if g.castle_black_queenside
-                && ((all_pieces | attack_container.attacks_sum[enemy]) & (square(58) | square(59))
-                    | all_pieces & square(57))
+                && ((all_pieces | attack_container.attacks_sum[enemy])
+                    & (square(square::C8) | square(square::D8))
+                    | all_pieces & square(square::B8))
                     == 0u64
             {
                 stm_haslegalmove = true;
                 if !only_captures {
                     movelist.add_move(GameMove {
                         from: g.king_square(side) as u8,
-                        to: 58,
+                        to: square::C8 as u8,
                         move_type: GameMoveType::Castle,
                         piece_type: PieceType::King,
                     });

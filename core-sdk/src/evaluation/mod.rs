@@ -315,9 +315,9 @@ pub fn knights(
         let mut idx = supp.trailing_zeros() as usize;
         supp &= not_file(idx % 8);
         let mut front_span = if white {
-            bitboards::w_front_span(1u64 << idx)
+            bitboards::w_front_span(square(idx))
         } else {
-            bitboards::b_front_span(1u64 << idx)
+            bitboards::b_front_span(square(idx))
         };
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         if g.pieces[PAWN][1 - side] & front_span == 0u64 {
@@ -405,7 +405,7 @@ pub fn piecewise(
                 _eval.trace.knight_safe_check[side] += 1;
             }
         }
-        knights ^= 1u64 << idx;
+        knights ^= square(idx);
         index += 1;
     }
     //Bishops
@@ -455,7 +455,7 @@ pub fn piecewise(
                 _eval.trace.bishop_safe_check[side] += 1;
             }
         }
-        bishops ^= 1u64 << idx;
+        bishops ^= square(idx);
         index += 1;
     }
     //Rooks
@@ -512,7 +512,7 @@ pub fn piecewise(
                 _eval.trace.rook_safe_check[side] += 1;
             }
         }
-        rooks ^= 1u64 << idx;
+        rooks ^= square(idx);
         index += 1;
     }
 
@@ -577,7 +577,7 @@ pub fn piecewise(
                 _eval.trace.queen_safe_check[side] += 1;
             }
         }
-        queens ^= 1u64 << idx;
+        queens ^= square(idx);
         index += 1;
     }
     #[cfg(feature = "texel-tuning")]
@@ -868,7 +868,7 @@ pub fn pawns(
     let mut supp = EvaluationScore::default();
     while supported_pawns != 0u64 {
         let mut index = supported_pawns.trailing_zeros() as usize;
-        supported_pawns ^= 1u64 << index;
+        supported_pawns ^= square(index);
         if !white {
             index = BLACK_INDEX[index];
         }
@@ -948,8 +948,8 @@ pub fn pawns(
                 if side == WHITE { 1 } else { -1 };
         }
         //A weak passer is an attacked and not defended passer
-        let weak_passer = (1u64 << idx) & attack_container.attacks_sum[1 - side] != 0u64
-            && (1u64 << idx) & attack_container.attacks_sum[side] == 0u64;
+        let weak_passer = square(idx) & attack_container.attacks_sum[1 - side] != 0u64
+            && square(idx) & attack_container.attacks_sum[side] == 0u64;
         if weak_passer {
             //Weak passer
             weak_passers += 1;
@@ -957,9 +957,9 @@ pub fn pawns(
         //An unblocked passer is a) not weak b) all the squares until conversions are either not attacked or defended and unoccupied or attacked
         if !weak_passer
             && if white {
-                bitboards::w_front_span(1u64 << idx)
+                bitboards::w_front_span(square(idx))
             } else {
-                bitboards::b_front_span(1u64 << idx)
+                bitboards::b_front_span(square(idx))
             } & (attack_container.attacks_sum[1 - side] | enemy_pieces)
                 & !attack_container.attacks_sum[side]
                 == 0u64
@@ -990,7 +990,7 @@ pub fn pawns(
                 if side == WHITE { 1 } else { -1 };
             _eval.trace.pawn_passed_subdistance[sub_dist] += if side == WHITE { 1 } else { -1 };
         }
-        passed_pawns ^= 1u64 << idx;
+        passed_pawns ^= square(idx);
     }
     #[cfg(feature = "texel-tuning")]
     {
