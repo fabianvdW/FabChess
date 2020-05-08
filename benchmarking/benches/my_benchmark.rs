@@ -1,6 +1,7 @@
 use benchmarking::*;
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::evaluation::eval_game_state;
+use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen::{self, MoveList};
 use criterion::{criterion_group, criterion_main, Criterion};
 
@@ -31,6 +32,10 @@ pub fn generate_moves_bench(c: &mut Criterion) {
                 attack_container.write_state(&states[i]);
                 movegen::generate_moves(&states[i], false, &mut movelist, &attack_container);
                 sum += movelist.move_list.len();
+                for mv in movelist.move_list.iter() {
+                    let g = make_move(&states[i], mv.0);
+                    sum += (g.hash & 0xFF) as usize;
+                }
             }
             sum
         })
