@@ -115,15 +115,21 @@ pub fn leaf_score(game_status: GameResult, color: i16, current_depth: i16) -> i1
 //Doesn't actually check for stalemate
 #[inline(always)]
 pub fn check_for_draw(game_state: &GameState, history: &History) -> SearchInstruction {
-    if game_state.pieces[PAWN][WHITE]
-        | game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[PAWN][BLACK]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][BLACK]
+    if game_state.pieces[PieceType::Pawn as usize][WHITE]
+        | game_state.pieces[PieceType::Rook as usize][WHITE]
+        | game_state.pieces[PieceType::Queen as usize][WHITE]
+        | game_state.pieces[PieceType::Pawn as usize][BLACK]
+        | game_state.pieces[PieceType::Rook as usize][BLACK]
+        | game_state.pieces[PieceType::Queen as usize][BLACK]
         == 0u64
-        && (game_state.pieces[KNIGHT][WHITE] | game_state.pieces[BISHOP][WHITE]).count_ones() <= 1
-        && (game_state.pieces[KNIGHT][BLACK] | game_state.pieces[BISHOP][BLACK]).count_ones() <= 1
+        && (game_state.pieces[PieceType::Knight as usize][WHITE]
+            | game_state.pieces[PieceType::Bishop as usize][WHITE])
+            .count_ones()
+            <= 1
+        && (game_state.pieces[PieceType::Knight as usize][BLACK]
+            | game_state.pieces[PieceType::Bishop as usize][BLACK])
+            .count_ones()
+            <= 1
     {
         return SearchInstruction::StopSearching(0);
     }
@@ -181,7 +187,7 @@ pub fn concatenate_pv(at_depth: usize, thread: &mut Thread) {
 
 #[inline(always)]
 pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContainer) -> bool {
-    (game_state.pieces[KING][game_state.color_to_move]
+    (game_state.pieces[PieceType::King as usize][game_state.color_to_move]
         & attack_container.attacks_sum[1 - game_state.color_to_move])
         != 0u64
 }

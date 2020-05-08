@@ -14,7 +14,7 @@ pub const TARGET_VALUE: [i16; 5] = [100, 400, 400, 650, 1100];
 
 pub fn mvvlva(mv: GameMove) -> i16 {
     debug_assert!(mv.is_capture());
-    TARGET_VALUE[mv.get_captured_piece().to_index()] - ATTACKER_VALUE[mv.piece_type.to_index()]
+    TARGET_VALUE[mv.get_captured_piece() as usize] - ATTACKER_VALUE[mv.piece_type as usize]
 }
 
 pub const NORMAL_STAGES: [MoveOrderingStage; 8] = [
@@ -136,8 +136,8 @@ impl MoveOrderer {
                 } else {
                     let (gm_index, graded_move) = highest_mvv_lva.unwrap();
                     our_list.move_list.remove(gm_index);
-                    if PIECE_VALUES[graded_move.0.get_captured_piece().to_index()]
-                        - PIECE_VALUES[graded_move.0.piece_type.to_index()]
+                    if PIECE_VALUES[graded_move.0.get_captured_piece() as usize]
+                        - PIECE_VALUES[graded_move.0.piece_type as usize]
                         >= 0
                         || graded_move.0.piece_type == PieceType::King
                     {

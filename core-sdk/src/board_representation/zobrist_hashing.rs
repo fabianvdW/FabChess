@@ -1,6 +1,3 @@
-use crate::board_representation::game_state::{
-    CASTLE_BLACK_KS, CASTLE_BLACK_QS, CASTLE_WHITE_KS, CASTLE_WHITE_QS,
-};
 use rand::prelude::*;
 use std::u64;
 

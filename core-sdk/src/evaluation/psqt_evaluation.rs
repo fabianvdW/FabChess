@@ -1,9 +1,7 @@
 use super::params::*;
 use super::EvaluationResult;
 use super::EvaluationScore;
-use crate::board_representation::game_state::{
-    PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, WHITE,
-};
+use crate::board_representation::game_state::{PieceType, BLACK, WHITE};
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -21,7 +19,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
 
     let side = if white { WHITE } else { BLACK };
 
-    let mut pawns = pieces[PAWN][side];
+    let mut pawns = pieces[PieceType::Pawn as usize][side];
     while pawns != 0u64 {
         let mut idx = pawns.trailing_zeros() as usize;
         pawns ^= 1u64 << idx;
@@ -35,7 +33,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut knights = pieces[KNIGHT][side];
+    let mut knights = pieces[PieceType::Knight as usize][side];
     while knights != 0u64 {
         let mut idx = knights.trailing_zeros() as usize;
         knights ^= 1u64 << idx;
@@ -49,7 +47,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut bishops = pieces[BISHOP][side];
+    let mut bishops = pieces[PieceType::Bishop as usize][side];
     while bishops != 0u64 {
         let mut idx = bishops.trailing_zeros() as usize;
         bishops ^= 1u64 << idx;
@@ -63,7 +61,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut rooks = pieces[ROOK][side];
+    let mut rooks = pieces[PieceType::Rook as usize][side];
     while rooks != 0u64 {
         let mut idx = rooks.trailing_zeros() as usize;
         rooks ^= 1u64 << idx;
@@ -77,7 +75,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
         }
     }
 
-    let mut queens = pieces[QUEEN][side];
+    let mut queens = pieces[PieceType::Queen as usize][side];
     while queens != 0u64 {
         let mut idx = queens.trailing_zeros() as usize;
         queens ^= 1u64 << idx;
@@ -90,7 +88,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
             _eval.trace.psqt_queen[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
-    let mut king_idx = pieces[KING][side].trailing_zeros() as usize;
+    let mut king_idx = pieces[PieceType::King as usize][side].trailing_zeros() as usize;
     if !white {
         king_idx = BLACK_INDEX[king_idx];
     }
@@ -123,7 +121,7 @@ pub fn psqt_toggle_piece(
     side: usize,
     score: &mut EvaluationScore,
 ) {
-    let temp = pieces[piece.to_index()][side];
+    let temp = pieces[piece as usize][side];
     let (rank, file) = if side == WHITE {
         (square / 8, square % 8)
     } else {
