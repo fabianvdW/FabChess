@@ -385,6 +385,7 @@ pub struct GameState {
     pub psqt: EvaluationScore,
     pub phase: Phase,
 }
+//Getters
 impl GameState {
     pub fn castle_white_kingside(&self) -> bool {
         self.castle_permissions & CASTLE_WHITE_KS > 0
@@ -400,6 +401,16 @@ impl GameState {
     }
     pub fn castle_permissions(&self) -> u8 {
         self.castle_permissions
+    }
+}
+//Utility functions
+impl GameState {
+    pub fn relative_rank(side: usize, sq: usize) -> usize {
+        if side == WHITE {
+            sq / 8
+        } else {
+            7 - sq / 8
+        }
     }
 }
 impl GameState {
@@ -964,11 +975,7 @@ impl GameState {
             return false;
         }
         if mv.piece_type == PieceType::Pawn
-            && if self.color_to_move == WHITE {
-                mv.to / 8
-            } else {
-                7 - mv.to / 8
-            } == 7
+            && GameState::relative_rank(self.color_to_move, mv.to as usize) == 7
         {
             if let GameMoveType::Promotion(_, _) = mv.move_type {
             } else {
@@ -976,11 +983,7 @@ impl GameState {
             }
         } else if let GameMoveType::Promotion(_, _) = mv.move_type {
             if mv.piece_type != PieceType::Pawn
-                || if self.color_to_move == WHITE {
-                    mv.to / 8
-                } else {
-                    7 - mv.to / 8
-                } != 7
+                || GameState::relative_rank(self.color_to_move, mv.to as usize) != 7
             {
                 return false;
             }
