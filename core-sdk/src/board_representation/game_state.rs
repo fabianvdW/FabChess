@@ -13,7 +13,13 @@ use crate::move_generation::movegen::{
     w_pawn_east_targets, w_pawn_west_targets, MoveList,
 };
 use std::fmt::{Debug, Display, Formatter, Result};
-
+pub const CASTLE_WHITE_KS: u8 = 0b1000;
+pub const CASTLE_WHITE_QS: u8 = 0b100;
+pub const CASTLE_BLACK_KS: u8 = 0b10;
+pub const CASTLE_BLACK_QS: u8 = 0b1;
+pub const CASTLE_ALL_WHITE: u8 = CASTLE_WHITE_KS | CASTLE_WHITE_QS;
+pub const CASTLE_ALL_BLACK: u8 = CASTLE_BLACK_KS | CASTLE_BLACK_QS;
+pub const CASTLE_ALL: u8 = CASTLE_ALL_WHITE | CASTLE_ALL_BLACK;
 pub const PAWN: usize = 0;
 pub const KNIGHT: usize = 1;
 pub const BISHOP: usize = 2;
@@ -358,6 +364,7 @@ fn file_to_string(file: usize) -> &'static str {
     }
 }
 
+#[derive(Clone)]
 pub struct GameState {
     // 0 = White
     // 1 = Black
@@ -377,10 +384,7 @@ pub struct GameState {
     pub pieces: [[u64; 2]; 6],
 
     //Castle flags
-    pub castle_white_kingside: bool,
-    pub castle_white_queenside: bool,
-    pub castle_black_kingside: bool,
-    pub castle_black_queenside: bool,
+    pub castle_permissions: u8,
 
     pub en_passant: u64,
     //50 move draw counter
@@ -390,7 +394,23 @@ pub struct GameState {
     pub psqt: EvaluationScore,
     pub phase: Phase,
 }
-
+impl GameState {
+    pub fn castle_white_kingside(&self) -> bool {
+        self.castle_permissions & CASTLE_WHITE_KS > 0
+    }
+    pub fn castle_white_queenside(&self) -> bool {
+        self.castle_permissions & CASTLE_WHITE_QS > 0
+    }
+    pub fn castle_black_kingside(&self) -> bool {
+        self.castle_permissions & CASTLE_BLACK_KS > 0
+    }
+    pub fn castle_black_queenside(&self) -> bool {
+        self.castle_permissions & CASTLE_BLACK_QS > 0
+    }
+    pub fn castle_permissions(&self) -> u8 {
+        self.castle_permissions
+    }
+}
 impl GameState {
     pub fn from_fen(fen: &str) -> GameState {
         let vec: Vec<&str> = fen.trim().split(' ').collect();
@@ -507,7 +527,19 @@ impl GameState {
         let castle_white_queenside = vec[2].contains('Q');
         let castle_black_kingside = vec[2].contains('k');
         let castle_black_queenside = vec[2].contains('q');
-
+        let mut castle_permissions = 0u8;
+        if castle_white_kingside {
+            castle_permissions |= CASTLE_WHITE_KS
+        }
+        if castle_white_queenside {
+            castle_permissions |= CASTLE_WHITE_QS
+        }
+        if castle_black_kingside {
+            castle_permissions |= CASTLE_BLACK_KS
+        }
+        if castle_black_queenside {
+            castle_permissions |= CASTLE_BLACK_QS
+        }
         //En passant target square
         let en_passant: u64 = if vec[3] != "-" {
             let mut idx: usize = 0usize;
@@ -592,10 +624,7 @@ impl GameState {
         let hash = GameState::calculate_zobrist_hash(
             color_to_move,
             pieces_arr,
-            castle_white_kingside,
-            castle_white_queenside,
-            castle_black_kingside,
-            castle_black_queenside,
+            castle_permissions,
             en_passant,
         );
         let mut _eval = crate::evaluation::EvaluationResult {
@@ -609,10 +638,7 @@ impl GameState {
         GameState {
             color_to_move,
             pieces: pieces_arr,
-            castle_white_kingside,
-            castle_white_queenside,
-            castle_black_kingside,
-            castle_black_queenside,
+            castle_permissions,
             half_moves,
             full_moves,
             en_passant,
@@ -687,23 +713,19 @@ impl GameState {
             res_str.push_str("b");
         }
         res_str.push_str(" ");
-        if !(self.castle_white_kingside
-            | self.castle_white_queenside
-            | self.castle_black_kingside
-            | self.castle_black_queenside)
-        {
+        if self.castle_permissions() == 0 {
             res_str.push_str("-");
         } else {
-            if self.castle_white_kingside {
+            if self.castle_white_kingside() {
                 res_str.push_str("K");
             }
-            if self.castle_white_queenside {
+            if self.castle_white_queenside() {
                 res_str.push_str("Q");
             }
-            if self.castle_black_kingside {
+            if self.castle_black_kingside() {
                 res_str.push_str("k");
             }
-            if self.castle_black_queenside {
+            if self.castle_black_queenside() {
                 res_str.push_str("q");
             }
         }
@@ -744,22 +766,11 @@ impl GameState {
         GameState {
             color_to_move,
             pieces,
-            castle_white_kingside: true,
-            castle_white_queenside: true,
-            castle_black_kingside: true,
-            castle_black_queenside: true,
+            castle_permissions: CASTLE_ALL,
             en_passant: 0u64,
             half_moves: 0usize,
             full_moves: 1usize,
-            hash: GameState::calculate_zobrist_hash(
-                color_to_move,
-                pieces,
-                true,
-                true,
-                true,
-                true,
-                0u64,
-            ),
+            hash: GameState::calculate_zobrist_hash(color_to_move, pieces, CASTLE_ALL, 0u64),
             psqt: p_w - p_b,
             phase,
         }
@@ -768,28 +779,14 @@ impl GameState {
     pub fn calculate_zobrist_hash(
         color_to_move: usize,
         pieces: [[u64; 2]; 6],
-        cwk: bool,
-        cwq: bool,
-        cbk: bool,
-        cbq: bool,
+        castle_permissions: u8,
         ep: u64,
     ) -> u64 {
         let mut hash = 0u64;
         if color_to_move == 1 {
             hash ^= ZOBRIST_KEYS.side_to_move;
         }
-        if cwk {
-            hash ^= ZOBRIST_KEYS.castle_w_kingside;
-        }
-        if cwq {
-            hash ^= ZOBRIST_KEYS.castle_w_queenside;
-        }
-        if cbk {
-            hash ^= ZOBRIST_KEYS.castle_b_kingside;
-        }
-        if cbq {
-            hash ^= ZOBRIST_KEYS.castle_b_queenside;
-        }
+        hash ^= ZOBRIST_KEYS.castle_permissions[castle_permissions as usize];
         if ep != 0u64 {
             let file = ep.trailing_zeros() as usize % 8;
             hash ^= ZOBRIST_KEYS.en_passant[file];
@@ -1017,23 +1014,23 @@ impl GameState {
             }
             let is_invalid_wk = || {
                 mv.to == square::G1 as u8
-                    && (!self.castle_white_kingside
+                    && (!self.castle_white_kingside()
                         || blocked & (square(square::F1) | square(square::G1)) != 0u64)
             };
             let is_invalid_wq = || {
                 mv.to == square::C1 as u8
-                    && (!self.castle_white_queenside
+                    && (!self.castle_white_queenside()
                         || blocked & (square(square::C1) | square(square::D1)) != 0u64
                         || all_piece & square(square::B1) != 0u64)
             };
             let is_invalid_bk = || {
                 mv.to == square::G8 as u8
-                    && (!self.castle_black_kingside
+                    && (!self.castle_black_kingside()
                         || blocked & (square(square::F8) | square(square::G8)) != 0u64)
             };
             let is_invalid_bq = || {
                 mv.to == square::C8 as u8
-                    && (!self.castle_black_queenside
+                    && (!self.castle_black_queenside()
                         || blocked & (square(square::C8) | square(square::D8)) != 0u64
                         || all_piece & square(square::B8) != 0u64)
             };
@@ -1180,25 +1177,6 @@ impl GameState {
     }
 }
 
-impl Clone for GameState {
-    fn clone(&self) -> Self {
-        GameState {
-            color_to_move: self.color_to_move,
-            pieces: self.pieces,
-            castle_white_kingside: self.castle_white_kingside,
-            castle_white_queenside: self.castle_white_queenside,
-            castle_black_kingside: self.castle_black_kingside,
-            castle_black_queenside: self.castle_black_queenside,
-            en_passant: self.en_passant,
-            half_moves: self.half_moves,
-            full_moves: self.full_moves,
-            hash: self.hash,
-            psqt: self.psqt,
-            phase: self.phase.clone(),
-        }
-    }
-}
-
 impl Display for GameState {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
@@ -1239,15 +1217,21 @@ impl Display for GameState {
             res_str.push_str("\n+---+---+---+---+---+---+---+---+\n");
         }
         res_str.push_str("Castle Rights: \n");
-        res_str.push_str(&format!("White Kingside: {}\n", self.castle_white_kingside));
+        res_str.push_str(&format!(
+            "White Kingside: {}\n",
+            self.castle_white_kingside()
+        ));
         res_str.push_str(&format!(
             "White Queenside: {}\n",
-            self.castle_white_queenside
+            self.castle_white_queenside()
         ));
-        res_str.push_str(&format!("Black Kingside: {}\n", self.castle_black_kingside));
+        res_str.push_str(&format!(
+            "Black Kingside: {}\n",
+            self.castle_black_kingside()
+        ));
         res_str.push_str(&format!(
             "Black Queenside: {}\n",
-            self.castle_black_queenside
+            self.castle_black_queenside()
         ));
         res_str.push_str(&format!("En Passant Possible: {:x}\n", self.en_passant));
         res_str.push_str(&format!("Half-Counter: {}\n", self.half_moves));
@@ -1305,10 +1289,10 @@ impl Debug for GameState {
             self.pieces[QUEEN][BLACK]
         ));
         res_str.push_str(&format!("BlackKing: 0x{:x}u64\n", self.pieces[KING][BLACK]));
-        res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside));
-        res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside));
-        res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside));
-        res_str.push_str(&format!("CBQ: {}\n", self.castle_black_queenside));
+        res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside()));
+        res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside()));
+        res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside()));
+        res_str.push_str(&format!("CBQ: {}\n", self.castle_black_queenside()));
         res_str.push_str(&format!("En-Passant: 0x{:x}u64\n", self.en_passant));
         res_str.push_str(&format!("half_moves: {}\n", self.half_moves));
         res_str.push_str(&format!("full_moves: {}\n", self.full_moves));

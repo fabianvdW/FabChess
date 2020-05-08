@@ -1,4 +1,4 @@
-use crate::bitboards::bitboards::constants::square;
+use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, WHITE,
@@ -29,26 +29,9 @@ pub fn enpassant_hash(old: u64, new: u64, hash: &mut u64) {
     }
 }
 #[inline(always)]
-pub fn castle_hash(
-    old: &GameState,
-    new_wk: bool,
-    new_wq: bool,
-    new_bk: bool,
-    new_bq: bool,
-    hash: &mut u64,
-) {
-    if old.castle_white_kingside != new_wk {
-        *hash ^= ZOBRIST_KEYS.castle_w_kingside;
-    }
-    if old.castle_white_queenside != new_wq {
-        *hash ^= ZOBRIST_KEYS.castle_w_queenside;
-    }
-    if old.castle_black_kingside != new_bk {
-        *hash ^= ZOBRIST_KEYS.castle_b_kingside;
-    }
-    if old.castle_black_queenside != new_bq {
-        *hash ^= ZOBRIST_KEYS.castle_b_queenside;
-    }
+pub fn castle_hash(old: &GameState, new: u8, hash: &mut u64) {
+    *hash ^= ZOBRIST_KEYS.castle_permissions[old.castle_permissions() as usize];
+    *hash ^= ZOBRIST_KEYS.castle_permissions[new as usize];
 }
 
 pub fn make_nullmove(g: &GameState) -> GameState {
@@ -62,10 +45,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
     GameState {
         color_to_move,
         pieces,
-        castle_white_kingside: g.castle_white_kingside,
-        castle_white_queenside: g.castle_white_queenside,
-        castle_black_kingside: g.castle_black_kingside,
-        castle_black_queenside: g.castle_black_queenside,
+        castle_permissions: g.castle_permissions(),
         en_passant,
         half_moves,
         full_moves,
@@ -203,57 +183,10 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         );
     }
     //Step 3. Update Castling Rights
-    let (
-        mut castle_white_kingside,
-        mut castle_white_queenside,
-        mut castle_black_kingside,
-        mut castle_black_queenside,
-    ) = (
-        g.castle_white_kingside,
-        g.castle_white_queenside,
-        g.castle_black_kingside,
-        g.castle_black_queenside,
-    );
-    if mv.move_type == GameMoveType::Castle || mv.piece_type == PieceType::King {
-        if g.color_to_move == WHITE {
-            castle_white_kingside = false;
-            castle_white_queenside = false;
-        } else {
-            castle_black_kingside = false;
-            castle_black_queenside = false;
-        }
-    } else if mv.piece_type == PieceType::Rook {
-        if g.color_to_move == WHITE {
-            if mv.from == 0 {
-                castle_white_queenside = false;
-            } else if mv.from == 7 {
-                castle_white_kingside = false;
-            }
-        } else if mv.from == 56 {
-            castle_black_queenside = false;
-        } else if mv.from == 63 {
-            castle_black_kingside = false;
-        }
-    }
-    if captured_piece.is_some() {
-        if mv.to == 0 {
-            castle_white_queenside = false;
-        } else if mv.to == 56 {
-            castle_black_queenside = false;
-        } else if mv.to == 7 {
-            castle_white_kingside = false;
-        } else if mv.to == 63 {
-            castle_black_kingside = false;
-        }
-    }
-    castle_hash(
-        g,
-        castle_white_kingside,
-        castle_white_queenside,
-        castle_black_kingside,
-        castle_black_queenside,
-        &mut hash,
-    );
+    let castle_permissions = g.castle_permissions()
+        & CASTLE_PERMISSION[mv.from as usize]
+        & CASTLE_PERMISSION[mv.to as usize];
+    castle_hash(g, castle_permissions, &mut hash);
     //Step 4. Update en passant field
     let en_passant = if mv.move_type == GameMoveType::Quiet
         && mv.piece_type == PieceType::Pawn
@@ -277,10 +210,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     GameState {
         color_to_move,
         pieces,
-        castle_white_kingside,
-        castle_white_queenside,
-        castle_black_kingside,
-        castle_black_queenside,
+        castle_permissions,
         en_passant,
         half_moves,
         full_moves,
