@@ -206,18 +206,18 @@ pub fn parse_move(
         //Kingside
         if my_string.len() == 3 {
             if g.color_to_move == WHITE {
-                assert_eq!(true, g.castle_white_kingside);
+                assert_eq!(true, g.castle_white_kingside());
             } else {
-                assert_eq!(true, g.castle_black_kingside);
+                assert_eq!(true, g.castle_black_kingside());
             }
             if let Ok(res) = find_castle(movelist, g, true) {
                 return res;
             }
         } else {
             if g.color_to_move == WHITE {
-                assert_eq!(true, g.castle_white_queenside);
+                assert_eq!(true, g.castle_white_queenside());
             } else {
-                assert_eq!(true, g.castle_black_queenside);
+                assert_eq!(true, g.castle_black_queenside());
             }
             if let Ok(res) = find_castle(movelist, g, false) {
                 return res;

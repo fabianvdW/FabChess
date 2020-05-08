@@ -1027,7 +1027,7 @@ pub fn generate_moves(
     //7. Castling
     if (!only_captures || !stm_haslegalmove) && checkers == 0 {
         if stm_color_iswhite {
-            if g.castle_white_kingside
+            if g.castle_white_kingside()
                 && (all_pieces | attack_container.attacks_sum[enemy])
                     & (square(square::F1) | square(square::G1))
                     == 0u64
@@ -1042,7 +1042,7 @@ pub fn generate_moves(
                     });
                 }
             }
-            if g.castle_white_queenside
+            if g.castle_white_queenside()
                 && ((all_pieces | attack_container.attacks_sum[enemy])
                     & (square(square::C1) | square(square::D1))
                     | all_pieces & square(square::B1))
@@ -1059,7 +1059,7 @@ pub fn generate_moves(
                 }
             }
         } else {
-            if g.castle_black_kingside
+            if g.castle_black_kingside()
                 && (all_pieces | attack_container.attacks_sum[enemy])
                     & (square(square::F8) | square(square::G8))
                     == 0u64
@@ -1074,7 +1074,7 @@ pub fn generate_moves(
                     });
                 }
             }
-            if g.castle_black_queenside
+            if g.castle_black_queenside()
                 && ((all_pieces | attack_container.attacks_sum[enemy])
                     & (square(square::C8) | square(square::D8))
                     | all_pieces & square(square::B8))

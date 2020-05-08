@@ -1,5 +1,9 @@
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
+use crate::board_representation::game_state::{
+    CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS,
+    CASTLE_WHITE_KS, CASTLE_WHITE_QS,
+};
 use crate::move_generation::movegen::{bishop_attack, rook_attack};
 use std::fmt::Display;
 
@@ -36,6 +40,17 @@ pub(crate) fn arr_to_string<T: Display>(arr: &[T], name: &str) -> String {
     }
     res_str.push_str("];");
     res_str
+}
+
+pub fn print_castle_permisssion() {
+    let mut res = [CASTLE_ALL; 64];
+    res[square::E1] &= !CASTLE_ALL_WHITE;
+    res[square::A1] &= !CASTLE_WHITE_QS;
+    res[square::H1] &= !CASTLE_WHITE_KS;
+    res[square::E8] &= !CASTLE_ALL_BLACK;
+    res[square::A8] &= !CASTLE_BLACK_QS;
+    res[square::H8] &= !CASTLE_BLACK_KS;
+    println!("{}", arr_to_string(&res, "CASTLE_PERMISSION"));
 }
 
 pub const fn occupancy_mask_rook(square: usize) -> u64 {

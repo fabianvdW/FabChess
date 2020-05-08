@@ -176,10 +176,7 @@ mod tests {
                     GameState::calculate_zobrist_hash(
                         g.color_to_move,
                         g.pieces,
-                        g.castle_white_kingside,
-                        g.castle_white_queenside,
-                        g.castle_black_kingside,
-                        g.castle_black_queenside,
+                        g.castle_permissions(),
                         g.en_passant,
                     )
                 );
