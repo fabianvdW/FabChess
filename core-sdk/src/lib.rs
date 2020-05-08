@@ -8,7 +8,7 @@ pub mod evaluation;
 pub mod move_generation;
 pub mod search;
 
-use crate::board_representation::game_state::GameState;
+use crate::board_representation::game_state::{GameState, Irreversible};
 use crate::move_generation::makemove::{make_move, unmake_move};
 use crate::move_generation::movegen2;
 use crate::search::cache::DEFAULT_HASH_SIZE;
@@ -51,7 +51,8 @@ pub fn perft_div(g: &mut GameState, depth: usize) -> u64 {
     for i in 0..len {
         let gmv = movelist.move_lists[depth].move_list[i];
         if g.is_valid_move(gmv.0) {
-            let irr = make_move(g, gmv.0);
+            let mut irr = Irreversible::default();
+            make_move(g, gmv.0, &mut irr);
             let res = perft(g, depth - 1, &mut movelist);
             unmake_move(g, gmv.0, irr);
             println!("{:?}: {}", gmv.0, res.0);
@@ -92,7 +93,8 @@ pub fn perft(g: &mut GameState, depth: usize, movelist: &mut ReservedMoveList) -
         for i in 0..len {
             let mv = movelist.move_lists[depth].move_list[i].0;
             if g.is_valid_move(mv) {
-                let irr = make_move(g, mv);
+                let mut irr = Irreversible::default();
+                make_move(g, mv, &mut irr);
                 let res = perft(g, depth - 1, movelist);
                 unmake_move(g, mv, irr);
                 correct += res.0;

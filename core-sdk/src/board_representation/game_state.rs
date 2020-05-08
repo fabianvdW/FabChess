@@ -4,7 +4,7 @@ use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
 use crate::evaluation::psqt_evaluation::BLACK_INDEX;
 use crate::evaluation::EvaluationScore;
-use crate::move_generation::makemove::make_move;
+use crate::move_generation::makemove::copy_make;
 use crate::move_generation::movegen::{
     bishop_attacks, double_push_pawn_targets, pawn_east_targets, pawn_west_targets, rook_attacks,
     single_push_pawn_targets,
@@ -252,8 +252,7 @@ impl GameMove {
                 ));
             }
         }
-        let mut next_state = game_state.clone();
-        make_move(&mut next_state, self);
+        let next_state = copy_make(game_state, self);
         let mvs = generate_legal_moves(&next_state);
         if mvs.move_list.is_empty() && next_state.in_check() {
             res_str.push_str("#");
@@ -325,6 +324,19 @@ pub struct Irreversible {
 impl Irreversible {
     pub fn castle_permissions(&self) -> u8 {
         self.castle_permissions
+    }
+}
+impl Default for Irreversible {
+    fn default() -> Self {
+        Irreversible {
+            checkers: 0u64,
+            hash: 0u64,
+            en_passant: 0u64,
+            half_moves: 0,
+            castle_permissions: 0u8,
+            phase: Phase::default(),
+            psqt: EvaluationScore(0, 0),
+        }
     }
 }
 #[derive(Clone)]

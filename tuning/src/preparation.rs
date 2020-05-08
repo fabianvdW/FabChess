@@ -1,5 +1,5 @@
 use core_sdk::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, GameState, WHITE,
+    GameMove, GameMoveType, GameResult, GameState, Irreversible, WHITE,
 };
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::{make_move, unmake_move};
@@ -146,7 +146,8 @@ pub fn stripped_q_search(
         }
         let capture_move = capture_move.0;
         move_list.move_lists[current_depth].move_list.remove(i);
-        let irreversible = make_move(game_state, capture_move);
+        let mut irreversible = Irreversible::default();
+        make_move(game_state, capture_move, &mut irreversible);
         let (score, other_state) = stripped_q_search(
             -beta,
             -alpha,

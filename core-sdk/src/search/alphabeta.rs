@@ -178,7 +178,8 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         let (mv, move_score) = mv.unwrap(); //Move score is only set for bad_capture
         debug_assert!({
             let before = p.game_state.clone();
-            let irr = make_move(p.game_state, mv);
+            let mut irr = Irreversible::default();
+            make_move(p.game_state, mv, &mut irr);
             unmake_move(p.game_state, mv, irr);
             before == *p.game_state
         });
@@ -266,7 +267,8 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         } else {
             0
         };
-        let irreversible = make_move(p.game_state, mv);
+        let mut irreversible = Irreversible::default();
+        make_move(p.game_state, mv, &mut irreversible);
         //Step 14.8. Search the moves
         let mut following_score: i16;
         if p.depth_left <= 2 || !is_pv_node || index == 0 {

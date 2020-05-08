@@ -4,7 +4,7 @@ mod tests {
     use core_sdk::board_representation::game_state::GameState;
     use core_sdk::evaluation::phase::Phase;
     use core_sdk::evaluation::psqt_evaluation::psqt;
-    use core_sdk::move_generation::makemove::{copy_make, make_move};
+    use core_sdk::move_generation::makemove::copy_make;
     use core_sdk::move_generation::movegen2;
     use core_sdk::perft;
     use core_sdk::search::reserved_memory::ReservedMoveList;
@@ -167,8 +167,8 @@ mod tests {
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                make_move(
-                    &mut g,
+                g = copy_make(
+                    &g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
             }
@@ -189,8 +189,8 @@ mod tests {
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                make_move(
-                    &mut g,
+                g = copy_make(
+                    &g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
                 assert!(
@@ -218,8 +218,8 @@ mod tests {
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                make_move(
-                    &mut g,
+                g = copy_make(
+                    &g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
                 let w_psqt = psqt(true, &g, &mut _eval);

@@ -122,7 +122,8 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         moves_played += 1;
         debug_assert!({
             let before = p.game_state.clone();
-            let irr = make_move(p.game_state, capture_move);
+            let mut irr = Irreversible::default();
+            make_move(p.game_state, capture_move, &mut irr);
             unmake_move(p.game_state, capture_move, irr);
             before == *p.game_state
         });
@@ -137,7 +138,8 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             continue;
         }
         debug_assert!(incheck || capture_move.is_capture());
-        let irreversible = make_move(p.game_state, capture_move);
+        let mut irreversible = Irreversible::default();
+        make_move(p.game_state, capture_move, &mut irreversible);
         //Step 8.4. Search move
         let score = -q_search(
             CombinedSearchParameters::from(

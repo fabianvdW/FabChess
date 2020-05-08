@@ -1,4 +1,5 @@
 use benchmarking::*;
+use core_sdk::board_representation::game_state::Irreversible;
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::{make_move, unmake_move};
 use core_sdk::move_generation::movegen2;
@@ -28,8 +29,9 @@ pub fn generate_moves_bench(c: &mut Criterion) {
                 movegen2::generate_pseudolegal_moves(&states[i], &mut movelist);
                 movelist.move_list.retain(|x| states[i].is_valid_move(x.0));
                 for mv in movelist.move_list.iter() {
-                    let irr = make_move(&mut states[i], mv.0);
-                    unmake_move(&mut states[i], mv.0, irr);
+                    let mut irreversible = Irreversible::none();
+                    make_move(&mut states[i], mv.0, &mut irreversible);
+                    unmake_move(&mut states[i], mv.0, irreversible);
                 }
                 sum += movelist.move_list.len();
             }

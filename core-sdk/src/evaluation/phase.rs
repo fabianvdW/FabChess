@@ -50,3 +50,11 @@ impl Phase {
         self.update();
     }
 }
+impl Default for Phase {
+    fn default() -> Self {
+        Phase {
+            phase: 0.0,
+            material_score: 0,
+        }
+    }
+}

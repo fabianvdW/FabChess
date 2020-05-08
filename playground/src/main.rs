@@ -1,4 +1,3 @@
-use core_sdk::bitboards::print_castle_permisssion;
 use core_sdk::board_representation::game_state::{GameMoveType, GameState, Irreversible};
 use core_sdk::evaluation::phase::Phase;
 use core_sdk::evaluation::{eval_game_state, EvaluationScore};

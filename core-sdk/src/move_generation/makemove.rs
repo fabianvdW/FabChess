@@ -57,13 +57,13 @@ pub fn unmake_nullmove(g: &mut GameState, irr: Irreversible) {
 //TODO: use this outside of search, perft where performance does not matter
 pub fn copy_make(g: &GameState, mv: GameMove) -> GameState {
     let mut res = g.clone();
-    make_move(&mut res, mv);
+    make_move(&mut res, mv, &mut Irreversible::default());
     res
 }
 
 //We expect the move to be FULLY legal before it can be made!
-pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
-    let irr = g.irreversible.clone();
+pub fn make_move(g: &mut GameState, mv: GameMove, irr_buffer: &mut Irreversible) {
+    *irr_buffer = g.irreversible.clone();
     let color_to_move = 1 - g.color_to_move;
     //Step 1. Update immediate fields
     g.full_moves = g.full_moves + g.color_to_move;
@@ -140,7 +140,7 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
     }
     g.irreversible.castle_permissions &=
         CASTLE_PERMISSION[mv.from as usize] & CASTLE_PERMISSION[mv.to as usize];
-    castle_hash(&irr, &mut g.irreversible);
+    castle_hash(irr_buffer, &mut g.irreversible);
     //Step 4. Update en passant field
     g.irreversible.en_passant = if mv.move_type == GameMoveType::Quiet
         && mv.piece_type == PieceType::Pawn
@@ -155,7 +155,7 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
         0
     };
     enpassant_hash(
-        irr.en_passant,
+        irr_buffer.en_passant,
         g.irreversible.en_passant,
         &mut g.irreversible.hash,
     );
@@ -168,7 +168,6 @@ pub fn make_move(g: &mut GameState, mv: GameMove) -> Irreversible {
         };
     g.color_to_move = color_to_move;
     g.initialize_checkers();
-    irr
 }
 
 pub fn unmake_move(g: &mut GameState, mv: GameMove, irr: Irreversible) {

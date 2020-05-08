@@ -116,7 +116,7 @@ pub fn get_pgn_string(
         if opening_comment.is_some() && (index + 1) == opening_comment.unwrap() {
             move_text.push_str("{Opening book has ended} ");
         }
-        make_move(&mut start_pos, *mv);
+        make_move(&mut start_pos, *mv, &mut Irreversible::default());
         if current_color == BLACK && index < moves.len() - 1 {
             move_text.push_str(&format!("{}. ", start_pos.full_moves));
         }
