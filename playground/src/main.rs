@@ -1,4 +1,5 @@
 use core_sdk::board_representation::game_state::GameState;
+use core_sdk::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use core_sdk::search::cache::Cache;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
@@ -15,6 +16,7 @@ fn main() {
         }
     }*/
     //go_infinite_from_startpos();
+    println!("{}", *ZOBRIST_KEYS);
 }
 fn go_infinite_from_startpos() {
     let itcs = Arc::new(InterThreadCommunicationSystem::default());
