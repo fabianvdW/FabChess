@@ -16,7 +16,6 @@ fn main() {
         }
     }*/
     //go_infinite_from_startpos();
-    println!("{}", *ZOBRIST_KEYS);
 }
 fn go_infinite_from_startpos() {
     let itcs = Arc::new(InterThreadCommunicationSystem::default());
