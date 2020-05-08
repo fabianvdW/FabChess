@@ -36,8 +36,8 @@ impl GameStateAttackContainer {
         let all_pieces_without_stmking = game_state
             .get_pieces_from_side_without_king(game_state.color_to_move)
             | game_state.get_pieces_from_side(1 - game_state.color_to_move); // Enemy pieces can xray through my king
-        let all_pieces =
-            all_pieces_without_stmking | game_state.pieces[KING][game_state.color_to_move];
+        let all_pieces = all_pieces_without_stmking
+            | game_state.pieces[PieceType::King as usize][game_state.color_to_move];
 
         for side in 0..2 {
             self.attacks_minor_sum[side] = 0u64;
@@ -49,17 +49,17 @@ impl GameStateAttackContainer {
                 all_pieces_without_stmking
             };
             // King Attacks
-            self.king_attacks[side] =
-                KING_ATTACKS[game_state.pieces[KING][side].trailing_zeros() as usize];
+            self.king_attacks[side] = KING_ATTACKS
+                [game_state.pieces[PieceType::King as usize][side].trailing_zeros() as usize];
             //Pawn attacks
             self.pawn_west_attacks[side] =
-                movegen::pawn_west_targets(side, game_state.pieces[PAWN][side]);
+                movegen::pawn_west_targets(side, game_state.pieces[PieceType::Pawn as usize][side]);
             self.pawn_east_attacks[side] =
-                movegen::pawn_east_targets(side, game_state.pieces[PAWN][side]);
+                movegen::pawn_east_targets(side, game_state.pieces[PieceType::Pawn as usize][side]);
             self.pawn_attacks[side] = self.pawn_west_attacks[side] | self.pawn_east_attacks[side];
             let mut attacks_minor_sum = self.pawn_attacks[side];
             //Knight attacks
-            let mut knights = game_state.pieces[KNIGHT][side];
+            let mut knights = game_state.pieces[PieceType::Knight as usize][side];
             self.knights[side] = 0;
             while knights != 0u64 {
                 let knight_index = knights.trailing_zeros() as usize;
@@ -70,7 +70,7 @@ impl GameStateAttackContainer {
                 knights ^= 1u64 << knight_index;
             }
             //Bishop attack
-            let mut bishops = game_state.pieces[BISHOP][side];
+            let mut bishops = game_state.pieces[PieceType::Bishop as usize][side];
             self.bishops[side] = 0;
             while bishops != 0u64 {
                 let bishop_index = bishops.trailing_zeros() as usize;
@@ -82,7 +82,7 @@ impl GameStateAttackContainer {
             }
             //Rooks
             let mut attacks_major_sum = 0u64;
-            let mut rooks = game_state.pieces[ROOK][side];
+            let mut rooks = game_state.pieces[PieceType::Rook as usize][side];
             self.rooks[side] = 0;
             while rooks != 0u64 {
                 let rook_index = rooks.trailing_zeros() as usize;
@@ -93,7 +93,7 @@ impl GameStateAttackContainer {
                 rooks ^= 1u64 << rook_index;
             }
             //Queens
-            let mut queens = game_state.pieces[QUEEN][side];
+            let mut queens = game_state.pieces[PieceType::Queen as usize][side];
             self.queens[side] = 0;
             while queens != 0u64 {
                 let queen_index = queens.trailing_zeros() as usize;

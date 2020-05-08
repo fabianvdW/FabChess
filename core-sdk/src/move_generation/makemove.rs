@@ -8,7 +8,7 @@ use crate::evaluation::psqt_evaluation::psqt_toggle_piece;
 
 #[inline(always)]
 pub fn toggle_piece(pieces: &mut [[u64; 2]; 6], piece: PieceType, sq: usize, color: usize) {
-    pieces[piece.to_index()][color] ^= square(sq);
+    pieces[piece as usize][color] ^= square(sq);
 }
 
 #[inline(always)]

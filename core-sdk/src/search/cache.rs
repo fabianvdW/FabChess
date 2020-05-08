@@ -1,6 +1,4 @@
-use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, BISHOP, KNIGHT, PAWN, QUEEN, ROOK,
-};
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use crate::search::{CombinedSearchParameters, SearchInstruction};
 use std::cell::UnsafeCell;
 
@@ -152,7 +150,7 @@ impl Cache {
         }
         let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
         if let Some(ce) = ce {
-            *tt_entry= Some(ce);
+            *tt_entry = Some(ce);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
                 && (!ce.alpha && !ce.beta
@@ -391,15 +389,24 @@ impl CacheEntry {
         let to_board = 1u64 << to;
         let color_to_move = game_state.color_to_move;
         let enemy_color = 1 - color_to_move;
-        let piece_type = if (game_state.pieces[PAWN][color_to_move] & from_board) != 0u64 {
+        let piece_type = if (game_state.pieces[PieceType::Pawn as usize][color_to_move]
+            & from_board)
+            != 0u64
+        {
             PieceType::Pawn
-        } else if (game_state.pieces[KNIGHT][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[PieceType::Knight as usize][color_to_move] & from_board)
+            != 0u64
+        {
             PieceType::Knight
-        } else if (game_state.pieces[BISHOP][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[PieceType::Bishop as usize][color_to_move] & from_board)
+            != 0u64
+        {
             PieceType::Bishop
-        } else if (game_state.pieces[ROOK][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[PieceType::Rook as usize][color_to_move] & from_board) != 0u64
+        {
             PieceType::Rook
-        } else if (game_state.pieces[QUEEN][color_to_move] & from_board) != 0u64 {
+        } else if (game_state.pieces[PieceType::Queen as usize][color_to_move] & from_board) != 0u64
+        {
             PieceType::Queen
         } else {
             PieceType::King
@@ -428,15 +435,24 @@ impl CacheEntry {
                     move_type: GameMoveType::EnPassant,
                 };
             }
-            let captured_piece_type = if (game_state.pieces[PAWN][enemy_color] & to_board) != 0u64 {
+            let captured_piece_type = if (game_state.pieces[PieceType::Pawn as usize][enemy_color]
+                & to_board)
+                != 0u64
+            {
                 PieceType::Pawn
-            } else if (game_state.pieces[KNIGHT][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[PieceType::Knight as usize][enemy_color] & to_board)
+                != 0u64
+            {
                 PieceType::Knight
-            } else if (game_state.pieces[BISHOP][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[PieceType::Bishop as usize][enemy_color] & to_board)
+                != 0u64
+            {
                 PieceType::Bishop
-            } else if (game_state.pieces[ROOK][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[PieceType::Rook as usize][enemy_color] & to_board) != 0u64
+            {
                 PieceType::Rook
-            } else if (game_state.pieces[QUEEN][enemy_color] & to_board) != 0u64 {
+            } else if (game_state.pieces[PieceType::Queen as usize][enemy_color] & to_board) != 0u64
+            {
                 PieceType::Queen
             } else {
                 PieceType::King

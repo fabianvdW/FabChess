@@ -1,6 +1,5 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, GameState, PieceType, BISHOP, BLACK, KING, KNIGHT, PAWN,
-    QUEEN, ROOK, WHITE,
+    GameMove, GameMoveType, GameResult, GameState, PieceType, BLACK, WHITE,
 };
 use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
@@ -245,11 +244,11 @@ pub fn best_move_value(state: &GameState) -> i16 {
         i -= 1;
     }
 
-    if (state.pieces[PAWN][state.color_to_move]
+    if (state.pieces[PieceType::Pawn as usize][state.color_to_move]
         & RANKS[if state.color_to_move == WHITE { 6 } else { 1 }])
         != 0u64
     {
-        res += PIECE_VALUES[QUEEN] - PIECE_VALUES[PAWN];
+        res += PIECE_VALUES[PieceType::Queen as usize] - PIECE_VALUES[PieceType::Pawn as usize];
     }
     res
 }
@@ -272,27 +271,20 @@ pub fn passes_delta_pruning(capture_move: GameMove, phase: f64, eval: i16, alpha
 
 #[inline(always)]
 pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16>) -> i16 {
-    let may_xray = game_state.pieces[PAWN][WHITE]
-        | game_state.pieces[PAWN][BLACK]
-        | game_state.pieces[BISHOP][WHITE]
-        | game_state.pieces[BISHOP][BLACK]
-        | game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[QUEEN][BLACK];
+    let may_xray = game_state.pieces[PieceType::Pawn as usize][WHITE]
+        | game_state.pieces[PieceType::Pawn as usize][BLACK]
+        | game_state.pieces[PieceType::Bishop as usize][WHITE]
+        | game_state.pieces[PieceType::Bishop as usize][BLACK]
+        | game_state.pieces[PieceType::Rook as usize][WHITE]
+        | game_state.pieces[PieceType::Rook as usize][BLACK]
+        | game_state.pieces[PieceType::Queen as usize][WHITE]
+        | game_state.pieces[PieceType::Queen as usize][BLACK];
     let mut from_set = 1u64 << mv.from;
     let mut occ = game_state.get_all_pieces();
     let mut attadef = attacks_to(&game_state, mv.to as usize, occ);
     gain[0] = capture_value(mv);
     let mut color_to_move = game_state.color_to_move;
-    let mut attacked_piece = match mv.piece_type {
-        PieceType::Pawn => PAWN,
-        PieceType::Knight => KNIGHT,
-        PieceType::Bishop => BISHOP,
-        PieceType::Rook => ROOK,
-        PieceType::Queen => QUEEN,
-        PieceType::King => KING,
-    };
+    let mut attacked_piece = mv.piece_type as usize;
     let mut index = 0;
     let mut deleted_pieces = 0u64;
     while from_set != 0u64 {
@@ -335,35 +327,39 @@ pub fn recalculate_sliders(
 ) -> u64 {
     //Bishops
     movegen::bishop_attack(square, occ)
-        & (game_state.pieces[BISHOP][color_to_move] | game_state.pieces[QUEEN][color_to_move])
+        & (game_state.pieces[PieceType::Bishop as usize][color_to_move]
+            | game_state.pieces[PieceType::Queen as usize][color_to_move])
         | movegen::rook_attack(square, occ)
-            & (game_state.pieces[ROOK][color_to_move] | game_state.pieces[QUEEN][color_to_move])
+            & (game_state.pieces[PieceType::Rook as usize][color_to_move]
+                | game_state.pieces[PieceType::Queen as usize][color_to_move])
 }
 
 #[inline(always)]
 pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     let square_board = 1u64 << square;
     let mut attacks = 0u64;
-    let knights = game_state.pieces[KNIGHT][WHITE] | game_state.pieces[KNIGHT][BLACK];
-    let bishops = game_state.pieces[BISHOP][WHITE]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[BISHOP][BLACK]
-        | game_state.pieces[QUEEN][BLACK];
-    let rooks = game_state.pieces[ROOK][WHITE]
-        | game_state.pieces[QUEEN][WHITE]
-        | game_state.pieces[ROOK][BLACK]
-        | game_state.pieces[QUEEN][BLACK];
+    let knights = game_state.pieces[PieceType::Knight as usize][WHITE]
+        | game_state.pieces[PieceType::Knight as usize][BLACK];
+    let bishops = game_state.pieces[PieceType::Bishop as usize][WHITE]
+        | game_state.pieces[PieceType::Queen as usize][WHITE]
+        | game_state.pieces[PieceType::Bishop as usize][BLACK]
+        | game_state.pieces[PieceType::Queen as usize][BLACK];
+    let rooks = game_state.pieces[PieceType::Rook as usize][WHITE]
+        | game_state.pieces[PieceType::Queen as usize][WHITE]
+        | game_state.pieces[PieceType::Rook as usize][BLACK]
+        | game_state.pieces[PieceType::Queen as usize][BLACK];
     attacks |= KNIGHT_ATTACKS[square] & knights
         | movegen::bishop_attack(square, occ) & bishops
         | movegen::rook_attack(square, occ) & rooks;
     attacks |= (movegen::w_pawn_west_targets(square_board)
         | movegen::w_pawn_east_targets(square_board))
-        & game_state.pieces[PAWN][BLACK];
+        & game_state.pieces[PieceType::Pawn as usize][BLACK];
     attacks |= (movegen::b_pawn_west_targets(square_board)
         | movegen::b_pawn_east_targets(square_board))
-        & game_state.pieces[PAWN][WHITE];
-    attacks |=
-        KING_ATTACKS[square] & (game_state.pieces[KING][WHITE] | game_state.pieces[KING][BLACK]);
+        & game_state.pieces[PieceType::Pawn as usize][WHITE];
+    attacks |= KING_ATTACKS[square]
+        & (game_state.pieces[PieceType::King as usize][WHITE]
+            | game_state.pieces[PieceType::King as usize][BLACK]);
     attacks
 }
 
@@ -381,7 +377,7 @@ pub fn capture_value(mv: GameMove) -> i16 {
 
 #[inline(always)]
 pub fn piece_value(piece_type: PieceType) -> i16 {
-    PIECE_VALUES[piece_type.to_index()]
+    PIECE_VALUES[piece_type as usize]
 }
 
 #[inline(always)]

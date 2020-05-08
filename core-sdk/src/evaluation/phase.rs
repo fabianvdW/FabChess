@@ -23,13 +23,20 @@ impl Phase {
     }
     #[inline(always)]
     pub fn from_pieces(pieces: &[[u64; 2]; 6]) -> Self {
-        let material_score = (pieces[QUEEN][WHITE] | pieces[QUEEN][BLACK]).count_ones() as i16
+        let material_score = (pieces[PieceType::Queen as usize][WHITE]
+            | pieces[PieceType::Queen as usize][BLACK])
+            .count_ones() as i16
             * PieceType::Queen.to_phase_score()
-            + (pieces[KNIGHT][WHITE] | pieces[KNIGHT][BLACK]).count_ones() as i16
+            + (pieces[PieceType::Knight as usize][WHITE]
+                | pieces[PieceType::Knight as usize][BLACK])
+                .count_ones() as i16
                 * PieceType::Knight.to_phase_score()
-            + (pieces[BISHOP][WHITE] | pieces[BISHOP][BLACK]).count_ones() as i16
+            + (pieces[PieceType::Bishop as usize][WHITE]
+                | pieces[PieceType::Bishop as usize][BLACK])
+                .count_ones() as i16
                 * PieceType::Bishop.to_phase_score()
-            + (pieces[ROOK][WHITE] | pieces[ROOK][BLACK]).count_ones() as i16
+            + (pieces[PieceType::Rook as usize][WHITE] | pieces[PieceType::Rook as usize][BLACK])
+                .count_ones() as i16
                 * PieceType::Rook.to_phase_score();
         let mut res = Phase {
             phase: 0.,

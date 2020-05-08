@@ -1,4 +1,3 @@
-use core_sdk::bitboards::print_castle_permisssion;
 use core_sdk::board_representation::game_state::GameState;
 use core_sdk::search::cache::Cache;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
