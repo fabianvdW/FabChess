@@ -3,14 +3,8 @@ use crate::bitboards::bitboards::magic_constants::{
     MAGICS_BISHOP, MAGICS_ROOK, OCCUPANCY_MASKS_BISHOP, OCCUPANCY_MASKS_ROOK,
 };
 use rand::RngCore;
-lazy_static! {
-    pub static ref MAGIC_ROOK: Vec<Magic> = initialize_rook_magics();
-    pub static ref MAGIC_BISHOP: Vec<Magic> = initialize_bishop_magics();
-}
-pub fn init_magics() {
-    MAGIC_ROOK.len();
-    MAGIC_BISHOP.len();
-}
+pub static mut MAGIC_ROOK: Vec<Magic> = Vec::new();
+pub static mut MAGIC_BISHOP: Vec<Magic> = Vec::new();
 #[derive(Clone)]
 pub struct Magic {
     pub occupancy_mask: u64,
@@ -19,6 +13,16 @@ pub struct Magic {
     pub lookup: Vec<u64>,
 }
 impl Magic {
+    #[inline(always)]
+    pub fn bishop(square: usize, occ: u64) -> u64 {
+        unsafe { MAGIC_BISHOP[square].apply(occ) }
+    }
+
+    #[inline(always)]
+    pub fn rook(square: usize, occ: u64) -> u64 {
+        unsafe { MAGIC_ROOK[square].apply(occ) }
+    }
+
     #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
     #[inline(always)]
     pub fn apply(&self, occ: u64) -> u64 {
@@ -32,8 +36,11 @@ impl Magic {
         self.lookup[apply_magic(self.magic, occ & self.occupancy_mask, self.shift)]
     }
 }
-
-pub fn initialize_rook_magics() -> Vec<Magic> {
+pub fn initialize_magics() {
+    initialize_bishop_magics();
+    initialize_rook_magics();
+}
+pub fn initialize_rook_magics() {
     let mut res = Vec::with_capacity(0);
     for sq in 0..64 {
         let patterns = generate_rook_patterns(sq);
@@ -68,9 +75,9 @@ pub fn initialize_rook_magics() -> Vec<Magic> {
             });
         }
     }
-    res
+    unsafe { MAGIC_ROOK = res }
 }
-pub fn initialize_bishop_magics() -> Vec<Magic> {
+pub fn initialize_bishop_magics() {
     let mut res = Vec::with_capacity(0);
     for sq in 0..64 {
         let patterns = generate_bishop_patterns(sq);
@@ -105,7 +112,7 @@ pub fn initialize_bishop_magics() -> Vec<Magic> {
             });
         }
     }
-    res
+    unsafe { MAGIC_BISHOP = res }
 }
 pub fn fill_table<F: Fn(u64) -> usize>(pattern: &Vec<(u64, u64)>, f: F) -> Option<Vec<u64>> {
     let mut result = vec![std::u64::MAX; pattern.len()];

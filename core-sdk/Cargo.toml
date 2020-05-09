@@ -10,5 +10,4 @@ default = []
 texel-tuning = []
 display-eval = []
 [dependencies]
-lazy_static = "1.4.0"
 rand = "0.7.3"

@@ -5,9 +5,9 @@ pub mod uci_parser;
 
 fn main() {
     let now = Instant::now();
-    core_sdk::move_generation::magic::init_magics();
     core_sdk::search::init_constants();
-
+    core_sdk::move_generation::magic::initialize_magics();
+    
     let new_now = Instant::now();
     println!(
         "{}",
