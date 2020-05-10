@@ -854,7 +854,8 @@ pub fn pawns(
     } else {
         g.pieces[PieceType::Pawn as usize][side] >> 8
     } & enemy_pawn_attacks
-        & !is_attackable)
+        & !is_attackable
+        & !g.pieces[PieceType::Pawn as usize][1 - side])
         .count_ones() as i16;
     let mut supported_pawns = g.pieces[PieceType::Pawn as usize][side] & my_pawn_attacks;
     let _supported_amt = supported_pawns.count_ones() as usize;
