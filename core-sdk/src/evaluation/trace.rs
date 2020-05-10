@@ -1,5 +1,5 @@
+use crate::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
 use crate::evaluation::parameters::Parameters;
-use crate::board_representation::game_state::{BLACK, WHITE};
 use crate::evaluation::{EG, MG};
 
 pub struct Trace {
@@ -51,12 +51,7 @@ pub struct Trace {
     pub bishop_safe_check: [u8; 2],
     pub rook_safe_check: [u8; 2],
     pub queen_safe_check: [u8; 2],
-    pub psqt_pawn: [[i8; 8]; 8],
-    pub psqt_knight: [[i8; 8]; 8],
-    pub psqt_bishop: [[i8; 8]; 8],
-    pub psqt_rook: [[i8; 8]; 8],
-    pub psqt_queen: [[i8; 8]; 8],
-    pub psqt_king: [[i8; 8]; 8],
+    pub psqt: [[[i8; 8]; 8]; 6],
     pub phase: f64,
 }
 
@@ -87,12 +82,13 @@ impl Trace {
     pub fn evaluate(&self, params: &Parameters) -> f64 {
         //PSQT Evaluation
         let mut psqt_res = (0., 0.);
-        evaluate_psqt(&mut psqt_res, &self.psqt_pawn, &params.psqt_pawn);
-        evaluate_psqt(&mut psqt_res, &self.psqt_knight, &params.psqt_knight);
-        evaluate_psqt(&mut psqt_res, &self.psqt_bishop, &params.psqt_bishop);
-        evaluate_psqt(&mut psqt_res, &self.psqt_rook, &params.psqt_rook);
-        evaluate_psqt(&mut psqt_res, &self.psqt_queen, &params.psqt_queen);
-        evaluate_psqt(&mut psqt_res, &self.psqt_king, &params.psqt_king);
+        for pt in PIECE_TYPES.iter() {
+            evaluate_psqt(
+                &mut psqt_res,
+                &self.psqt[*pt as usize],
+                &params.psqt[*pt as usize],
+            )
+        }
 
         //Knight evaluation
         let mut knight_res = (0., 0.);
@@ -426,12 +422,7 @@ impl Trace {
             bishop_safe_check: [0; 2],
             rook_safe_check: [0; 2],
             queen_safe_check: [0; 2],
-            psqt_pawn: [[0; 8]; 8],
-            psqt_knight: [[0; 8]; 8],
-            psqt_bishop: [[0; 8]; 8],
-            psqt_rook: [[0; 8]; 8],
-            psqt_queen: [[0; 8]; 8],
-            psqt_king: [[0; 8]; 8],
+            psqt: [[[0; 8]; 8]; 6],
             phase: 0.,
         }
     }

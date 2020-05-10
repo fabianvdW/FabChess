@@ -1,4 +1,6 @@
+use crate::board_representation::game_state::PIECE_TYPES;
 use crate::evaluation::params::*;
+use crate::evaluation::psqt_evaluation::BLACK_INDEX;
 use crate::evaluation::{EG, MG};
 use std::fmt::{Debug, Display, Formatter, Result};
 use std::fs;
@@ -69,19 +71,30 @@ pub struct Parameters {
     pub bishop_check_value: [f64; 2],
     pub rook_check_value: [f64; 2],
     pub queen_check_value: [f64; 2],
-    pub psqt_pawn: [[[f64; 8]; 8]; 2],
-    pub psqt_knight: [[[f64; 8]; 8]; 2],
-    pub psqt_bishop: [[[f64; 8]; 8]; 2],
-    pub psqt_rook: [[[f64; 8]; 8]; 2],
-    pub psqt_queen: [[[f64; 8]; 8]; 2],
-    pub psqt_king: [[[f64; 8]; 8]; 2],
+    pub psqt: [[[[f64; 8]; 8]; 2]; 6],
 }
-
-pub fn psqt_to_string(psqt: &[[f64; 8]; 8]) -> String {
+pub fn vectorized_psqt_to_string(psqt: &[[[[f64; 8]; 8]; 2]; 6]) -> String {
     let mut res_str = String::new();
     res_str.push_str("[");
-    for x in psqt.iter() {
-        res_str.push_str(&format!("{}, ", array_to_string(x)));
+    for pt in PIECE_TYPES.iter() {
+        res_str.push_str("[");
+        res_str.push_str(&psqts_to_evalstring(
+            &psqt[*pt as usize][MG],
+            &psqt[*pt as usize][EG],
+        ));
+        res_str.push_str(",");
+        let mut color_swapped = [[[0.; 8]; 8]; 2];
+        for ph in 0..2 {
+            for i in 0..8 {
+                for j in 0..8 {
+                    let b_index = BLACK_INDEX[i * 8 + j];
+                    color_swapped[ph][i][j] =
+                        psqt[*pt as usize][ph][b_index / 8][b_index % 8] * -1.;
+                }
+            }
+        }
+        res_str.push_str(&psqts_to_evalstring(&color_swapped[MG], &color_swapped[EG]));
+        res_str.push_str("],");
     }
     res_str.push_str("]");
     res_str
@@ -141,6 +154,7 @@ pub fn psqts_to_evalstring(psqt1: &[[f64; 8]; 8], psqt2: &[[f64; 8]; 8]) -> Stri
 impl Display for Parameters {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
+        res_str.push_str("use super::EvaluationScore;");
         res_str.push_str(&format!(
             "pub const TEMPO_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
             self.tempo_bonus[MG].round() as isize,
@@ -397,28 +411,8 @@ impl Display for Parameters {
             self.queen_check_value[EG].round() as isize
         ));
         res_str.push_str(&format!(
-            "pub const PSQT_PAWN: [[EvaluationScore;8];8] = {};\n",
-            psqts_to_evalstring(&self.psqt_pawn[MG], &self.psqt_pawn[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_KNIGHT: [[EvaluationScore;8];8] = {};\n",
-            psqts_to_evalstring(&self.psqt_knight[MG], &self.psqt_knight[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_BISHOP: [[EvaluationScore;8];8] = {};\n",
-            psqts_to_evalstring(&self.psqt_bishop[MG], &self.psqt_bishop[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_ROOK: [[EvaluationScore;8];8] = {};\n",
-            psqts_to_evalstring(&self.psqt_rook[MG], &self.psqt_rook[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_QUEEN: [[EvaluationScore;8];8] = {};\n",
-            psqts_to_evalstring(&self.psqt_queen[MG], &self.psqt_queen[EG])
-        ));
-        res_str.push_str(&format!(
-            "pub const PSQT_KING: [[EvaluationScore;8];8] = {};\n",
-            psqts_to_evalstring(&self.psqt_king[MG], &self.psqt_king[EG])
+            "pub const PSQT: [[[[EvaluationScore;8];8];2];6] = {};\n",
+            vectorized_psqt_to_string(&self.psqt)
         ));
         write!(formatter, "{}", res_str)
     }
@@ -522,47 +516,13 @@ impl Parameters {
             safety_table[MG].safety_table[i] = f64::from(SAFETY_TABLE[i].0);
             safety_table[EG].safety_table[i] = f64::from(SAFETY_TABLE[i].1);
         }
-
-        let mut psqt_pawn: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
-        for i in 0..8 {
-            for j in 0..8 {
-                psqt_pawn[MG][i][j] = f64::from(PSQT_PAWN[i][j].0);
-                psqt_pawn[EG][i][j] = f64::from(PSQT_PAWN[i][j].1);
-            }
-        }
-        let mut psqt_knight: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
-        for i in 0..8 {
-            for j in 0..8 {
-                psqt_knight[MG][i][j] = f64::from(PSQT_KNIGHT[i][j].0);
-                psqt_knight[EG][i][j] = f64::from(PSQT_KNIGHT[i][j].1);
-            }
-        }
-        let mut psqt_bishop: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
-        for i in 0..8 {
-            for j in 0..8 {
-                psqt_bishop[MG][i][j] = f64::from(PSQT_BISHOP[i][j].0);
-                psqt_bishop[EG][i][j] = f64::from(PSQT_BISHOP[i][j].1);
-            }
-        }
-        let mut psqt_rook: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
-        for i in 0..8 {
-            for j in 0..8 {
-                psqt_rook[MG][i][j] = f64::from(PSQT_ROOK[i][j].0);
-                psqt_rook[EG][i][j] = f64::from(PSQT_ROOK[i][j].1);
-            }
-        }
-        let mut psqt_queen: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
-        for i in 0..8 {
-            for j in 0..8 {
-                psqt_queen[MG][i][j] = f64::from(PSQT_QUEEN[i][j].0);
-                psqt_queen[EG][i][j] = f64::from(PSQT_QUEEN[i][j].1);
-            }
-        }
-        let mut psqt_king: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
-        for i in 0..8 {
-            for j in 0..8 {
-                psqt_king[MG][i][j] = f64::from(PSQT_KING[i][j].0);
-                psqt_king[EG][i][j] = f64::from(PSQT_KING[i][j].1);
+        let mut psqt = [[[[0.; 8]; 8]; 2]; 6];
+        for pt in PIECE_TYPES.iter() {
+            for i in 0..8 {
+                for j in 0..8 {
+                    psqt[*pt as usize][MG][i][j] = f64::from(PSQT[*pt as usize][0][i][j].0);
+                    psqt[*pt as usize][EG][i][j] = f64::from(PSQT[*pt as usize][0][i][j].1);
+                }
             }
         }
         let mut psqt_pawn_supported: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
@@ -685,12 +645,7 @@ impl Parameters {
             queen_mobility,
             attack_weight,
             safety_table,
-            psqt_pawn,
-            psqt_knight,
-            psqt_bishop,
-            psqt_rook,
-            psqt_queen,
-            psqt_king,
+            psqt,
         }
     }
 
@@ -752,12 +707,7 @@ impl Parameters {
             bishop_check_value: [0.; 2],
             rook_check_value: [0.; 2],
             queen_check_value: [0.; 2],
-            psqt_pawn: [[[0.; 8]; 8]; 2],
-            psqt_knight: [[[0.; 8]; 8]; 2],
-            psqt_bishop: [[[0.; 8]; 8]; 2],
-            psqt_rook: [[[0.; 8]; 8]; 2],
-            psqt_queen: [[[0.; 8]; 8]; 2],
-            psqt_king: [[[0.; 8]; 8]; 2],
+            psqt: [[[[0.; 8]; 8]; 2]; 6],
         }
     }
     pub fn calculate_norm(&self) -> f64 {
@@ -791,12 +741,9 @@ impl Parameters {
                 for k in 0..8 {
                     norm += self.pawn_supported[i][j][k].powf(2.);
                     norm += self.knight_outpost_table[i][j][k].powf(2.);
-                    norm += self.psqt_pawn[i][j][k].powf(2.);
-                    norm += self.psqt_knight[i][j][k].powf(2.);
-                    norm += self.psqt_bishop[i][j][k].powf(2.);
-                    norm += self.psqt_rook[i][j][k].powf(2.);
-                    norm += self.psqt_queen[i][j][k].powf(2.);
-                    norm += self.psqt_king[i][j][k].powf(2.);
+                    for pt in PIECE_TYPES.iter() {
+                        norm += self.psqt[*pt as usize][i][j][k].powf(2.);
+                    }
                 }
             }
             norm += self.bishop_xray_king[i].powf(2.);
@@ -932,12 +879,13 @@ impl Parameters {
             &gradient.knight_outpost_table,
             norm,
         );
-        apply_gradient_psqt(&mut self.psqt_pawn, &gradient.psqt_pawn, norm);
-        apply_gradient_psqt(&mut self.psqt_knight, &gradient.psqt_knight, norm);
-        apply_gradient_psqt(&mut self.psqt_bishop, &gradient.psqt_bishop, norm);
-        apply_gradient_psqt(&mut self.psqt_rook, &gradient.psqt_rook, norm);
-        apply_gradient_psqt(&mut self.psqt_queen, &gradient.psqt_queen, norm);
-        apply_gradient_psqt(&mut self.psqt_king, &gradient.psqt_king, norm);
+        for pt in PIECE_TYPES.iter() {
+            apply_gradient_psqt(
+                &mut self.psqt[*pt as usize],
+                &gradient.psqt[*pt as usize],
+                norm,
+            );
+        }
 
         apply_gradient_arr(
             &mut self.knight_value_with_pawns,

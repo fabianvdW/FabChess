@@ -4,7 +4,7 @@ extern crate rand;
 pub mod loading;
 
 pub use crate::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
-use core_sdk::board_representation::game_state::{BLACK, WHITE};
+use core_sdk::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
 use core_sdk::evaluation::eval_game_state_from_null;
 pub use core_sdk::evaluation::parameters::Parameters;
 use core_sdk::evaluation::trace::Trace;
@@ -274,41 +274,17 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                             - portion * regularization(tuner.params.knight_outpost_table[EG][i][j]);
                 }
                 if TUNE_PSQT || TUNE_ALL {
-                    let pawns = f64::from(pos.trace.psqt_pawn[i][j]);
-                    gradient.psqt_pawn[MG][i][j] += start_of_gradient * devaldmg * pawns
-                        - portion * regularization(tuner.params.psqt_pawn[MG][i][j]);
-                    gradient.psqt_pawn[EG][i][j] += start_of_gradient * devaldeg * pawns
-                        - portion * regularization(tuner.params.psqt_pawn[EG][i][j]);
-
-                    let knights = f64::from(pos.trace.psqt_knight[i][j]);
-                    gradient.psqt_knight[MG][i][j] += start_of_gradient * devaldmg * knights
-                        - portion * regularization(tuner.params.psqt_knight[MG][i][j]);
-                    gradient.psqt_knight[EG][i][j] += start_of_gradient * devaldeg * knights
-                        - portion * regularization(tuner.params.psqt_knight[EG][i][j]);
-
-                    let bishops = f64::from(pos.trace.psqt_bishop[i][j]);
-                    gradient.psqt_bishop[MG][i][j] += start_of_gradient * devaldmg * bishops
-                        - portion * regularization(tuner.params.psqt_bishop[MG][i][j]);
-                    gradient.psqt_bishop[EG][i][j] += start_of_gradient * devaldeg * bishops
-                        - portion * regularization(tuner.params.psqt_bishop[EG][i][j]);
-
-                    let rooks = f64::from(pos.trace.psqt_rook[i][j]);
-                    gradient.psqt_rook[MG][i][j] += start_of_gradient * devaldmg * rooks
-                        - portion * regularization(tuner.params.psqt_rook[MG][i][j]);
-                    gradient.psqt_rook[EG][i][j] += start_of_gradient * devaldeg * rooks
-                        - portion * regularization(tuner.params.psqt_rook[EG][i][j]);
-
-                    let queens = f64::from(pos.trace.psqt_queen[i][j]);
-                    gradient.psqt_queen[MG][i][j] += start_of_gradient * devaldmg * queens
-                        - portion * regularization(tuner.params.psqt_queen[MG][i][j]);
-                    gradient.psqt_queen[EG][i][j] += start_of_gradient * devaldeg * queens
-                        - portion * regularization(tuner.params.psqt_queen[EG][i][j]);
-
-                    let king = f64::from(pos.trace.psqt_king[i][j]);
-                    gradient.psqt_king[MG][i][j] += start_of_gradient * devaldmg * king
-                        - portion * regularization(tuner.params.psqt_king[MG][i][j]);
-                    gradient.psqt_king[EG][i][j] += start_of_gradient * devaldeg * king
-                        - portion * regularization(tuner.params.psqt_king[EG][i][j]);
+                    for pt in PIECE_TYPES.iter() {
+                        let piece = f64::from(pos.trace.psqt[*pt as usize][i][j]);
+                        gradient.psqt[*pt as usize][MG][i][j] *= start_of_gradient
+                            * devaldmg
+                            * piece
+                            - portion * regularization(tuner.params.psqt[*pt as usize][MG][i][j]);
+                        gradient.psqt[*pt as usize][EG][i][j] *= start_of_gradient
+                            * devaldeg
+                            * piece
+                            - portion * regularization(tuner.params.psqt[*pt as usize][EG][i][j]);
+                    }
                 }
             }
         }

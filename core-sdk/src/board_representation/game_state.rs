@@ -69,15 +69,8 @@ pub enum PieceType {
 }
 impl PieceType {
     #[inline(always)]
-    pub fn to_psqt(self) -> &'static [[EvaluationScore; 8]; 8] {
-        match &self {
-            PieceType::Pawn => &PSQT_PAWN,
-            PieceType::Knight => &PSQT_KNIGHT,
-            PieceType::Bishop => &PSQT_BISHOP,
-            PieceType::Rook => &PSQT_ROOK,
-            PieceType::Queen => &PSQT_QUEEN,
-            PieceType::King => &PSQT_KING,
-        }
+    pub fn to_psqt(self, side: usize, sq: usize) -> EvaluationScore {
+        PSQT[self as usize][side][sq / 8][sq % 8]
     }
 
     #[inline(always)]

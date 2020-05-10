@@ -1,7 +1,8 @@
-use super::params::*;
 use super::EvaluationResult;
 use super::EvaluationScore;
-use crate::board_representation::game_state::{PieceType, BLACK, WHITE};
+use crate::bitboards::bitboards::constants::square;
+use crate::board_representation::game_state::{PieceType, BLACK, PIECE_TYPES, WHITE};
+use crate::evaluation::params::PSQT;
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -10,107 +11,41 @@ pub const BLACK_INDEX: [usize; 64] = [
 ];
 
 pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> EvaluationScore {
-    let mut pawn = EvaluationScore::default();
-    let mut knight = EvaluationScore::default();
-    let mut bishop = EvaluationScore::default();
-    let mut rook = EvaluationScore::default();
-    let mut queen = EvaluationScore::default();
-    let king;
-
+    let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
-
-    let mut pawns = pieces[PieceType::Pawn as usize][side];
-    while pawns != 0u64 {
-        let mut idx = pawns.trailing_zeros() as usize;
-        pawns ^= 1u64 << idx;
-        if !white {
-            idx = BLACK_INDEX[idx];
-        }
-        pawn += PSQT_PAWN[idx / 8][idx % 8];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.psqt_pawn[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
-        }
-    }
-
-    let mut knights = pieces[PieceType::Knight as usize][side];
-    while knights != 0u64 {
-        let mut idx = knights.trailing_zeros() as usize;
-        knights ^= 1u64 << idx;
-        if !white {
-            idx = BLACK_INDEX[idx]
-        }
-        knight += PSQT_KNIGHT[idx / 8][idx % 8];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.psqt_knight[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
-        }
-    }
-
-    let mut bishops = pieces[PieceType::Bishop as usize][side];
-    while bishops != 0u64 {
-        let mut idx = bishops.trailing_zeros() as usize;
-        bishops ^= 1u64 << idx;
-        if !white {
-            idx = BLACK_INDEX[idx];
-        }
-        bishop += PSQT_BISHOP[idx / 8][idx % 8];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.psqt_bishop[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
-        }
-    }
-
-    let mut rooks = pieces[PieceType::Rook as usize][side];
-    while rooks != 0u64 {
-        let mut idx = rooks.trailing_zeros() as usize;
-        rooks ^= 1u64 << idx;
-        if !white {
-            idx = BLACK_INDEX[idx];
-        }
-        rook += PSQT_ROOK[idx / 8][idx % 8];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.psqt_rook[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
-        }
-    }
-
-    let mut queens = pieces[PieceType::Queen as usize][side];
-    while queens != 0u64 {
-        let mut idx = queens.trailing_zeros() as usize;
-        queens ^= 1u64 << idx;
-        if !white {
-            idx = BLACK_INDEX[idx];
-        }
-        queen += PSQT_QUEEN[idx / 8][idx % 8];
-        #[cfg(feature = "texel-tuning")]
-        {
-            _eval.trace.psqt_queen[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
-        }
-    }
-    let mut king_idx = pieces[PieceType::King as usize][side].trailing_zeros() as usize;
-    if !white {
-        king_idx = BLACK_INDEX[king_idx];
-    }
-    king = PSQT_KING[king_idx / 8][king_idx % 8];
-    #[cfg(feature = "texel-tuning")]
-    {
-        _eval.trace.psqt_king[king_idx / 8][king_idx % 8] += if side == WHITE { 1 } else { -1 };
-    }
-    #[allow(clippy::let_and_return)]
-    let sum = pawn + knight + bishop + rook + queen + king;
     #[cfg(feature = "display-eval")]
     {
         println!("\nPSQT for {}:", if white { "White" } else { "Black" });
-        println!("\tPawns  : {}", pawn);
-        println!("\tKnights: {}", knight);
-        println!("\tBishops: {}", bishop);
-        println!("\tRooks: {}", rook);
-        println!("\tQueens: {}", queen);
-        println!("\tKing   : {}", king);
-        println!("Sum: {}", sum);
     }
-    sum
+    for pt in PIECE_TYPES.iter() {
+        let mut piece_sum = EvaluationScore::default();
+        let mut piece = pieces[*pt as usize][side];
+        while piece > 0 {
+            #[allow(unused_mut)]
+            let mut idx = piece.trailing_zeros() as usize;
+            piece ^= square(idx);
+            piece_sum +=
+                PSQT[*pt as usize][side][idx / 8][idx % 8] * if side == WHITE { 1 } else { -1 };
+            #[cfg(feature = "texel-tuning")]
+            {
+                if !white {
+                    idx = BLACK_INDEX[idx];
+                }
+                _eval.trace.psqt[*pt as usize][idx / 8][idx % 8] +=
+                    if side == WHITE { 1 } else { -1 };
+            }
+        }
+        res += piece_sum;
+        #[cfg(feature = "display-eval")]
+        {
+            println!("\t{:?}  : {}", *pt, piece_sum);
+        }
+    }
+    #[cfg(feature = "display-eval")]
+    {
+        println!("Sum: {}", res);
+    }
+    res
 }
 
 #[inline(always)]
@@ -122,15 +57,9 @@ pub fn psqt_toggle_piece(
     score: &mut EvaluationScore,
 ) {
     let temp = pieces[piece as usize][side];
-    let (rank, file) = if side == WHITE {
-        (square / 8, square % 8)
-    } else {
-        (BLACK_INDEX[square] / 8, BLACK_INDEX[square] % 8)
-    };
-    let mut new_score = piece.to_psqt()[rank][file];
+    let mut new_score = piece.to_psqt(side, square);
     if (temp & 1u64 << square) == 0u64 {
         new_score *= -1;
     }
-    new_score *= if side == WHITE { 1 } else { -1 };
     *score += new_score;
 }
