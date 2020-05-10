@@ -21,12 +21,12 @@ use crate::search::GradedMove;
 
 #[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
-    magic::MAGIC_BISHOP[square].apply(all_pieces)
+    magic::Magic::bishop(square, all_pieces)
 }
 
 #[inline(always)]
 pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
-    magic::MAGIC_ROOK[square].apply(all_pieces)
+    magic::Magic::rook(square, all_pieces)
 }
 
 //Pawn single pushes
