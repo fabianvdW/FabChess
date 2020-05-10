@@ -1,11 +1,8 @@
 use core_sdk::board_representation::game_state::GameState;
-use core_sdk::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use core_sdk::search::cache::Cache;
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
-use extended_sdk::misc::to_string_board;
 use std::sync::Arc;
-
 fn main() {
     /*for pattern in generate_rook_patterns(15).0 {
         if rook_attacks_slow(15, pattern.0) != rook_attack(15, pattern.0) {

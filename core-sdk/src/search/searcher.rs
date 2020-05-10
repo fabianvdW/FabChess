@@ -111,10 +111,13 @@ impl InterThreadCommunicationSystem {
             itcs_tx.push(tx);
             let tx_f = itcs.tx_f.clone();
             let self_arc = Arc::clone(&itcs);
-            thread::spawn(move || {
-                let mut thread = Thread::new(id, self_arc, rx, tx_f);
-                thread.run();
-            });
+            thread::Builder::new()
+                .stack_size(12 * 1024 * 1024)
+                .spawn(move || {
+                    let mut thread = Thread::new(id, self_arc, rx, tx_f);
+                    thread.run();
+                })
+                .expect("Could not build thread");
         }
     }
 

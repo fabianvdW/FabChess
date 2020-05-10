@@ -1,9 +1,11 @@
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
+use crate::bitboards::magic_constants::*;
 use crate::board_representation::game_state::{
     CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS,
     CASTLE_WHITE_KS, CASTLE_WHITE_QS,
 };
+use crate::move_generation::magic::Magic;
 use crate::move_generation::movegen::{bishop_attack, rook_attack};
 use std::fmt::Display;
 
@@ -40,6 +42,49 @@ pub(crate) fn arr_to_string<T: Display>(arr: &[T], name: &str) -> String {
     }
     res_str.push_str("];");
     res_str
+}
+
+pub(crate) fn magic_arr_to_string(arr: &[Magic], name: &str) -> String {
+    let mut res_str = String::new();
+    res_str.push_str(&format!(
+        "#[rustfmt::skip]\npub const {}: [Magic;{}] = [",
+        name,
+        arr.len()
+    ));
+    for i in arr {
+        res_str.push_str(&format!("{}, ", *i));
+    }
+    res_str.push_str("];");
+    res_str
+}
+pub fn print_magics() {
+    let mut res = Vec::with_capacity(0);
+    let mut previous_offset = 0;
+    for sq in 0..64 {
+        let mask = OCCUPANCY_MASKS_ROOK[sq];
+        res.push(Magic {
+            occupancy_mask: mask,
+            shift: mask.count_ones() as usize,
+            magic: MAGICS_ROOK[sq],
+            offset: previous_offset,
+        });
+        previous_offset += 1 << OCCUPANCY_MASKS_ROOK[sq].count_ones();
+    }
+    println!("{}", magic_arr_to_string(&res, "MAGIC_ROOK"));
+    println!("Offset: {}", previous_offset);
+    let mut res = Vec::with_capacity(0);
+    for sq in 0..64 {
+        let mask = OCCUPANCY_MASKS_BISHOP[sq];
+        res.push(Magic {
+            occupancy_mask: mask,
+            shift: mask.count_ones() as usize,
+            magic: MAGICS_BISHOP[sq],
+            offset: previous_offset,
+        });
+        previous_offset += 1 << OCCUPANCY_MASKS_BISHOP[sq].count_ones();
+    }
+    println!("{}", magic_arr_to_string(&res, "MAGIC_BISHOP"));
+    println!("Offset: {}", previous_offset);
 }
 
 pub fn print_castle_permisssion() {
