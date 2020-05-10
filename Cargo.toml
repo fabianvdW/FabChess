@@ -9,6 +9,8 @@ members = [
     "benchmarking",
     "tests"
 ]
+[profile.dev]
+opt-level = 1
 [profile.release]
 opt-level = 3
 lto = true
