@@ -28,7 +28,8 @@ pub fn main() {
         {
             lookup = fill_table(&patterns, |bb| unsafe {
                 std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize
-            });
+            })
+            .unwrap();
         }
         #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
         {
@@ -53,7 +54,8 @@ pub fn main() {
         {
             lookup = fill_table(&patterns, |bb| unsafe {
                 std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
-            });
+            })
+            .unwrap();
         }
         #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
         {
