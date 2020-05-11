@@ -47,19 +47,16 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
     }
     res
 }
-
 #[inline(always)]
-pub fn psqt_toggle_piece(
-    pieces: &mut [[u64; 2]; 6],
+pub fn psqt_remove_piece(
     piece: PieceType,
     square: usize,
     side: usize,
     score: &mut EvaluationScore,
 ) {
-    let temp = pieces[piece as usize][side];
-    let mut new_score = piece.to_psqt(side, square);
-    if (temp & 1u64 << square) == 0u64 {
-        new_score *= -1;
-    }
-    *score += new_score;
+    *score -= piece.to_psqt(side, square);
+}
+#[inline(always)]
+pub fn psqt_add_piece(piece: PieceType, square: usize, side: usize, score: &mut EvaluationScore) {
+    *score += piece.to_psqt(side, square);
 }
