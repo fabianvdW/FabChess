@@ -205,7 +205,7 @@ pub fn parse_move(
         //Castle
         //Kingside
         if my_string.len() == 3 {
-            if g.color_to_move == WHITE {
+            if g.get_color_to_move() == WHITE {
                 assert_eq!(true, g.castle_white_kingside());
             } else {
                 assert_eq!(true, g.castle_black_kingside());
@@ -214,7 +214,7 @@ pub fn parse_move(
                 return res;
             }
         } else {
-            if g.color_to_move == WHITE {
+            if g.get_color_to_move() == WHITE {
                 assert_eq!(true, g.castle_white_queenside());
             } else {
                 assert_eq!(true, g.castle_black_queenside());

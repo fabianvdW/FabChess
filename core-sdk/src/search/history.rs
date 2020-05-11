@@ -33,7 +33,7 @@ impl History {
         let mut occurences = 0;
         let mut index = self.pointer as isize - 1;
         while index >= 0 {
-            if self.hist[index as usize] == game_state.hash {
+            if self.hist[index as usize] == game_state.get_hash() {
                 occurences += 1;
             }
             if self.is_unique[index as usize] {

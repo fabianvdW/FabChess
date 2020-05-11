@@ -103,7 +103,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 
     thread
         .history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
+        .push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
 
     //Step 8. Iterate through moves
 
@@ -133,7 +133,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         if !incheck
             && !passes_delta_pruning(
                 capture_move,
-                p.game_state.phase.phase,
+                p.game_state.get_phase().phase,
                 *stand_pat.as_ref().unwrap(),
                 p.alpha,
             )
@@ -237,15 +237,19 @@ pub fn best_move_value(state: &GameState) -> i16 {
     let mut res = 0;
     let mut i = 4;
     while i > 0 {
-        if state.pieces[i][1 - state.color_to_move] != 0u64 {
+        if state.pieces[i][1 - state.get_color_to_move()] != 0u64 {
             res = PIECE_VALUES[i];
             break;
         }
         i -= 1;
     }
 
-    if (state.pieces[PieceType::Pawn as usize][state.color_to_move]
-        & RANKS[if state.color_to_move == WHITE { 6 } else { 1 }])
+    if (state.pieces[PieceType::Pawn as usize][state.get_color_to_move()]
+        & RANKS[if state.get_color_to_move() == WHITE {
+            6
+        } else {
+            1
+        }])
         != 0u64
     {
         res += PIECE_VALUES[PieceType::Queen as usize] - PIECE_VALUES[PieceType::Pawn as usize];
@@ -283,7 +287,7 @@ pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16
     let mut occ = game_state.get_all_pieces();
     let mut attadef = attacks_to(&game_state, mv.to as usize, occ);
     gain[0] = capture_value(mv);
-    let mut color_to_move = game_state.color_to_move;
+    let mut color_to_move = game_state.get_color_to_move();
     let mut attacked_piece = mv.piece_type as usize;
     let mut index = 0;
     let mut deleted_pieces = 0u64;

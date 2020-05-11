@@ -51,12 +51,12 @@ fn main() {
 
     for position in positions {
         let mut other = position.game_state.clone();
-        other.color_to_move = 1 - other.color_to_move;
+        other.set_color_to_move(1 - other.get_color_to_move());
         let (score, state) = stripped_q_search(
             -16000,
             16000,
             position.game_state.clone(),
-            if position.game_state.color_to_move == WHITE {
+            if position.game_state.get_color_to_move() == WHITE {
                 1
             } else {
                 -1
@@ -131,13 +131,13 @@ pub fn stripped_q_search(
     if !incheck && diff > 0 && best_move_value(&game_state) < diff {
         return (stand_pat, game_state);
     }
-    history.push(game_state.hash, game_state.half_moves == 0);
+    history.push(game_state.get_hash(), game_state.get_half_moves() == 0);
 
     let agsi = make_moves(
         &game_state,
         &mut move_list.move_lists[current_depth],
         &attack_container.attack_containers[current_depth],
-        game_state.phase.phase,
+        game_state.get_phase().phase,
         stand_pat,
         alpha,
         see_buffer,

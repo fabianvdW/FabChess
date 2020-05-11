@@ -34,7 +34,7 @@ pub fn generate_moves_bench(c: &mut Criterion) {
                 sum += movelist.move_list.len();
                 for mv in movelist.move_list.iter() {
                     let g = make_move(&states[i], mv.0);
-                    sum += (g.hash & 0xFF) as usize;
+                    sum += (g.get_hash() & 0xFF) as usize;
                 }
             }
             sum

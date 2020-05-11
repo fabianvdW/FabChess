@@ -283,7 +283,7 @@ impl Thread {
         self.itcs.register_pv(&scored_pv, no_fail);
         self.current_pv = scored_pv;
         self.pv_applicable.clear();
-        self.pv_applicable.push(root.hash);
+        self.pv_applicable.push(root.get_hash());
         let mut next_state = None;
         for mv in self.current_pv.pv.pv.iter() {
             if let Some(mv) = mv {
@@ -292,7 +292,8 @@ impl Thread {
                 } else {
                     next_state = Some(make_move(next_state.as_ref().unwrap(), *mv));
                 }
-                self.pv_applicable.push(next_state.as_ref().unwrap().hash);
+                self.pv_applicable
+                    .push(next_state.as_ref().unwrap().get_hash());
             } else {
                 break;
             }
@@ -343,7 +344,8 @@ impl Thread {
                     break;
                 }
                 ThreadInstruction::StartSearch(max_depth, state, tc, history, time_saved) => {
-                    self.root_plies_played = (state.full_moves - 1) * 2 + state.color_to_move;
+                    self.root_plies_played =
+                        (state.get_full_moves() - 1) * 2 + state.get_color_to_move();
                     self.history = history;
                     self.time_saved = time_saved;
                     self.pv_applicable.clear();
@@ -408,7 +410,11 @@ impl Thread {
                         beta,
                         curr_depth as i16,
                         &state,
-                        if state.color_to_move == WHITE { 1 } else { -1 },
+                        if state.get_color_to_move() == WHITE {
+                            1
+                        } else {
+                            -1
+                        },
                         0,
                     ),
                     self,
@@ -513,8 +519,8 @@ pub fn search_move(
     let mut hist: History = History::default();
     let mut relevant_hashes: Vec<u64> = Vec::with_capacity(100);
     for gs in history.iter().rev() {
-        relevant_hashes.push(gs.hash);
-        if gs.half_moves == 0 {
+        relevant_hashes.push(gs.get_hash());
+        if gs.get_half_moves() == 0 {
             break;
         }
     }

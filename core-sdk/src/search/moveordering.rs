@@ -201,10 +201,11 @@ impl MoveOrderer {
                     if mv.1.is_none() {
                         debug_assert!(!mv.0.is_capture());
                         mv.1 = Some(
-                            thread.hh_score[p.game_state.color_to_move][mv.0.from as usize]
+                            thread.hh_score[p.game_state.get_color_to_move()][mv.0.from as usize]
                                 [mv.0.to as usize] as f64
-                                / thread.bf_score[p.game_state.color_to_move][mv.0.from as usize]
-                                    [mv.0.to as usize] as f64
+                                / thread.bf_score[p.game_state.get_color_to_move()]
+                                    [mv.0.from as usize][mv.0.to as usize]
+                                    as f64
                                 / 1000.0,
                         );
                     }

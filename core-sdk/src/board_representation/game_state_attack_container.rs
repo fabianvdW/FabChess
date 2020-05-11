@@ -33,17 +33,17 @@ impl GameStateAttackContainer {
     }
 
     pub fn write_state(&mut self, game_state: &GameState) {
-        let all_pieces_without_stmking = game_state
-            .get_pieces_from_side_without_king(game_state.color_to_move)
-            | game_state.get_pieces_from_side(1 - game_state.color_to_move); // Enemy pieces can xray through my king
-        let all_pieces = all_pieces_without_stmking
-            | game_state.pieces[PieceType::King as usize][game_state.color_to_move];
+        let ctm = game_state.get_color_to_move();
+        let all_pieces_without_stmking = game_state.get_pieces_from_side_without_king(ctm)
+            | game_state.get_pieces_from_side(1 - ctm); // Enemy pieces can xray through my king
+        let all_pieces =
+            all_pieces_without_stmking | game_state.pieces[PieceType::King as usize][ctm];
 
         for side in 0..2 {
             self.attacks_minor_sum[side] = 0u64;
             self.attacks_major_sum[side] = 0u64;
             self.attacks_sum[side] = 0u64;
-            let occupancy_squares = if side == game_state.color_to_move {
+            let occupancy_squares = if side == ctm {
                 all_pieces
             } else {
                 all_pieces_without_stmking

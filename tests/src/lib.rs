@@ -172,12 +172,12 @@ mod tests {
             let mut g = GameState::standard();
             for _j in 0..200 {
                 assert_eq!(
-                    g.hash,
+                    g.get_hash(),
                     GameState::calculate_zobrist_hash(
-                        g.color_to_move,
+                        g.get_color_to_move(),
                         g.pieces,
                         g.castle_permissions(),
-                        g.en_passant,
+                        g.get_en_passant(),
                     )
                 );
                 attack_container.write_state(&g);
@@ -201,7 +201,8 @@ mod tests {
         for _i in 0..10_000 {
             let mut g = GameState::standard();
             assert!(
-                (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
+                (g.get_phase().phase - Phase::from_pieces(&g.pieces).phase).abs()
+                    < std::f64::EPSILON
             );
             for _j in 0..200 {
                 attack_container.write_state(&g);
@@ -214,7 +215,8 @@ mod tests {
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
                 assert!(
-                    (g.phase.phase - Phase::from_pieces(&g.pieces).phase).abs() < std::f64::EPSILON
+                    (g.get_phase().phase - Phase::from_pieces(&g.pieces).phase).abs()
+                        < std::f64::EPSILON
                 );
             }
         }
@@ -233,7 +235,7 @@ mod tests {
             let mut g = GameState::standard();
             let w_psqt = psqt(true, &g.pieces, &mut _eval);
             let b_psqt = psqt(false, &g.pieces, &mut _eval);
-            assert_eq!(g.psqt, w_psqt - b_psqt);
+            assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
                 attack_container.write_state(&g);
                 let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
@@ -246,7 +248,7 @@ mod tests {
                 );
                 let w_psqt = psqt(true, &g.pieces, &mut _eval);
                 let b_psqt = psqt(false, &g.pieces, &mut _eval);
-                assert_eq!(g.psqt, w_psqt - b_psqt);
+                assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             }
         }
     }
@@ -279,32 +281,32 @@ mod tests {
         let mut movelist = MoveList::default();
         let agsi = GameStateAttackContainer::from_state(&g);
         assert_eq!(
-            make_move(&g, parse_move(&g, "e1g1", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/5RK1 b - - 1 2").hash
+            make_move(&g, parse_move(&g, "e1g1", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/5RK1 b - - 1 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8q", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k1Q1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            make_move(&g, parse_move(&g, "g7g8q", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k1Q1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8b", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k1B1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            make_move(&g, parse_move(&g, "g7g8b", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k1B1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8n", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k1N1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            make_move(&g, parse_move(&g, "g7g8n", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k1N1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8r", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k1R1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").hash
+            make_move(&g, parse_move(&g, "g7g8r", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k1R1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "b5c6", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k3/6P1/2P5/8/6b1/8/2B5/4K2R b K - 0 2").hash
+            make_move(&g, parse_move(&g, "b5c6", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k3/6P1/2P5/8/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "c2d3", &mut movelist, &agsi).0).hash,
-            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/3B4/8/4K2R b K - 1 2").hash
+            make_move(&g, parse_move(&g, "c2d3", &mut movelist, &agsi).0).get_hash(),
+            GameState::from_fen("4k3/6P1/8/1Pp5/6b1/3B4/8/4K2R b K - 1 2").get_hash()
         );
     }
 }
