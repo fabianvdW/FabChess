@@ -117,15 +117,16 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
 #[inline(always)]
 pub fn find_captured_piece_type(g: &GameState, to: usize) -> PieceType {
     let to_board = square(to);
-    if g.pieces[PieceType::Pawn as usize][1 - g.color_to_move] & to_board != 0u64 {
+    let ctm = g.get_color_to_move();
+    if g.pieces[PieceType::Pawn as usize][1 - ctm] & to_board != 0u64 {
         PieceType::Pawn
-    } else if g.pieces[PieceType::Knight as usize][1 - g.color_to_move] & to_board != 0u64 {
+    } else if g.pieces[PieceType::Knight as usize][1 - ctm] & to_board != 0u64 {
         PieceType::Knight
-    } else if g.pieces[PieceType::Queen as usize][1 - g.color_to_move] & to_board != 0u64 {
+    } else if g.pieces[PieceType::Queen as usize][1 - ctm] & to_board != 0u64 {
         PieceType::Queen
-    } else if g.pieces[PieceType::Bishop as usize][1 - g.color_to_move] & to_board != 0u64 {
+    } else if g.pieces[PieceType::Bishop as usize][1 - ctm] & to_board != 0u64 {
         PieceType::Bishop
-    } else if g.pieces[PieceType::Rook as usize][1 - g.color_to_move] & to_board != 0u64 {
+    } else if g.pieces[PieceType::Rook as usize][1 - ctm] & to_board != 0u64 {
         PieceType::Rook
     } else {
         panic!("Shoudln't get here");
@@ -245,7 +246,7 @@ pub fn add_pawn_moves_to_movelist(
     while target_board != 0u64 {
         let pawn_index = target_board.trailing_zeros() as usize;
         let pawn = square(pawn_index);
-        let from_index = if g.color_to_move == WHITE {
+        let from_index = if g.get_color_to_move() == WHITE {
             pawn_index - shift
         } else {
             pawn_index + shift
@@ -296,13 +297,13 @@ pub fn add_normal_moves_to_movelist(
         let piece = square(piece_index);
         if piece & pinned_pieces == 0u64 {
             let piece_target = if let PieceType::Knight = piece_type {
-                attack_container.attack[MGSA_KNIGHT][g.color_to_move][index]
+                attack_container.attack[MGSA_KNIGHT][g.get_color_to_move()][index]
             } else if let PieceType::Bishop = piece_type {
-                attack_container.attack[MGSA_BISHOP][g.color_to_move][index]
+                attack_container.attack[MGSA_BISHOP][g.get_color_to_move()][index]
             } else if let PieceType::Rook = piece_type {
-                attack_container.attack[MGSA_ROOKS][g.color_to_move][index]
+                attack_container.attack[MGSA_ROOKS][g.get_color_to_move()][index]
             } else if let PieceType::Queen = piece_type {
-                attack_container.attack[MGSA_QUEEN][g.color_to_move][index]
+                attack_container.attack[MGSA_QUEEN][g.get_color_to_move()][index]
             } else {
                 panic!("Shouldn't get here")
             };
@@ -431,26 +432,26 @@ pub fn add_move_to_movelist(
 
 #[inline(always)]
 pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
+    let ctm = game_state.get_color_to_move();
     let mut checkers = 0u64;
-    let my_king = game_state.pieces[PieceType::King as usize][game_state.color_to_move];
+    let my_king = game_state.pieces[PieceType::King as usize][ctm];
     checkers |= KNIGHT_ATTACKS[my_king.trailing_zeros() as usize]
-        & game_state.pieces[PieceType::Knight as usize][1 - game_state.color_to_move];
-    checkers |= (pawn_west_targets(game_state.color_to_move, my_king)
-        | pawn_east_targets(game_state.color_to_move, my_king))
-        & game_state.pieces[PieceType::Pawn as usize][1 - game_state.color_to_move];
+        & game_state.pieces[PieceType::Knight as usize][1 - ctm];
+    checkers |= (pawn_west_targets(ctm, my_king) | pawn_east_targets(ctm, my_king))
+        & game_state.pieces[PieceType::Pawn as usize][1 - ctm];
     if early_exit && checkers != 0u64 {
         return checkers;
     }
     let all_pieces = game_state.get_all_pieces();
     checkers |= bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[PieceType::Bishop as usize][1 - game_state.color_to_move]
-            | game_state.pieces[PieceType::Queen as usize][1 - game_state.color_to_move]);
+        & (game_state.pieces[PieceType::Bishop as usize][1 - ctm]
+            | game_state.pieces[PieceType::Queen as usize][1 - ctm]);
     if early_exit && checkers != 0u64 {
         return checkers;
     }
     checkers |= rook_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[PieceType::Rook as usize][1 - game_state.color_to_move]
-            | game_state.pieces[PieceType::Queen as usize][1 - game_state.color_to_move]);
+        & (game_state.pieces[PieceType::Rook as usize][1 - ctm]
+            | game_state.pieces[PieceType::Queen as usize][1 - ctm]);
     checkers
 }
 
@@ -520,9 +521,9 @@ pub fn generate_moves(
     //1. General bitboards and variable initialization
     movelist.move_list.clear();
 
-    let side = g.color_to_move;
+    let side = g.get_color_to_move();
     let enemy = 1 - side;
-    let stm_color_iswhite: bool = g.color_to_move == WHITE;
+    let stm_color_iswhite: bool = side == WHITE;
 
     let mut side_pawns = g.pieces[PieceType::Pawn as usize][side];
     let side_pieces = g.get_pieces_from_side(side);
@@ -770,7 +771,7 @@ pub fn generate_moves(
                 }
                 //En passants
                 let stm_pawn_pin_enpassant =
-                    stm_pawn_pin_target & g.en_passant & capture_mask & ray_to_king;
+                    stm_pawn_pin_target & g.get_en_passant() & capture_mask & ray_to_king;
                 if stm_pawn_pin_enpassant != 0u64 {
                     stm_haslegalmove = true;
                     add_move_to_movelist(
@@ -868,7 +869,7 @@ pub fn generate_moves(
     );
     //En passants
     let stm_pawn_west_enpassants = attack_container.pawn_west_attacks[side]
-        & g.en_passant
+        & g.get_en_passant()
         & if stm_color_iswhite {
             capture_mask << 8
         } else {
@@ -934,7 +935,7 @@ pub fn generate_moves(
     );
     //En passants
     let stm_pawn_east_enpassants = attack_container.pawn_east_attacks[side]
-        & g.en_passant
+        & g.get_en_passant()
         & if stm_color_iswhite {
             capture_mask << 8
         } else {

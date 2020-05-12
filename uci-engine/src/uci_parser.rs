@@ -145,7 +145,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
         index += 2;
     }
     if movestogo.is_none() {
-        if engine.internal_state.color_to_move == 0 {
+        if engine.internal_state.get_color_to_move() == 0 {
             (TimeControl::Incremental(wtime, winc), depth)
         } else {
             (TimeControl::Incremental(btime, binc), depth)
@@ -154,7 +154,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
         if mvs == 0 {
             panic!("movestogo = 0");
         }
-        if engine.internal_state.color_to_move == 0 {
+        if engine.internal_state.get_color_to_move() == 0 {
             (TimeControl::Tournament(wtime, winc, mvs), depth)
         } else {
             (TimeControl::Tournament(btime, binc, mvs), depth)

@@ -134,7 +134,7 @@ pub fn check_for_draw(game_state: &GameState, history: &History) -> SearchInstru
         return SearchInstruction::StopSearching(0);
     }
 
-    if game_state.half_moves >= 100 {
+    if game_state.get_half_moves() >= 100 {
         return SearchInstruction::StopSearching(0);
     }
 
@@ -151,7 +151,7 @@ pub fn check_end_condition(
     in_check: bool,
 ) -> GameResult {
     if in_check && !has_legal_moves {
-        if game_state.color_to_move == WHITE {
+        if game_state.get_color_to_move() == WHITE {
             return GameResult::BlackWin;
         } else {
             return GameResult::WhiteWin;
@@ -187,8 +187,8 @@ pub fn concatenate_pv(at_depth: usize, thread: &mut Thread) {
 
 #[inline(always)]
 pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContainer) -> bool {
-    (game_state.pieces[PieceType::King as usize][game_state.color_to_move]
-        & attack_container.attacks_sum[1 - game_state.color_to_move])
+    (game_state.pieces[PieceType::King as usize][game_state.get_color_to_move()]
+        & attack_container.attacks_sum[1 - game_state.get_color_to_move()])
         != 0u64
 }
 

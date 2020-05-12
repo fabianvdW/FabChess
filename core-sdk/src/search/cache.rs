@@ -124,7 +124,7 @@ impl Cache {
         if self.entries == 0 {
             return;
         }
-        let index = p.game_state.hash as usize % self.buckets;
+        let index = p.game_state.get_hash() as usize % self.buckets;
         unsafe {
             (&mut *self.cache.get())
                 .get_unchecked_mut(index)
@@ -148,7 +148,9 @@ impl Cache {
         if self.entries == 0 {
             return SearchInstruction::ContinueSearching;
         }
-        let ce = self.get(p.game_state.hash).probe(p.game_state.hash);
+        let ce = self
+            .get(p.game_state.get_hash())
+            .probe(p.game_state.get_hash());
         if let Some(ce) = ce {
             *tt_entry = Some(ce);
             if ce.depth >= p.depth_left as i8
@@ -160,7 +162,7 @@ impl Cache {
                 return SearchInstruction::StopSearching(ce.score);
             }
             if ce.plies_played != root_plies as u16 {
-                self.age_entry(p.game_state.hash, root_plies as u16);
+                self.age_entry(p.game_state.get_hash(), root_plies as u16);
             }
         }
         SearchInstruction::ContinueSearching
@@ -186,7 +188,7 @@ impl CacheBucket {
         let pv_node = p.beta - p.alpha > 1;
         let write_entry = |cache_entry: &mut CacheEntry| {
             cache_entry.write(
-                p.game_state.hash,
+                p.game_state.get_hash(),
                 p.depth_left,
                 root_plies_played as u16,
                 score,
@@ -210,14 +212,14 @@ impl CacheBucket {
 
         if self.0[0].is_invalid()
             || self.0[0].plies_played < root_plies_played as u16
-            || self.0[0].validate_hash(p.game_state.hash)
+            || self.0[0].validate_hash(p.game_state.get_hash())
         {
             let res = self.0[0].is_invalid();
             renew_entry(&mut self.0[0]);
             return res;
         } else if self.0[1].is_invalid()
             || self.0[1].plies_played < root_plies_played as u16
-            || self.0[1].validate_hash(p.game_state.hash)
+            || self.0[1].validate_hash(p.game_state.get_hash())
         {
             let res = self.0[1].is_invalid();
             renew_entry(&mut self.0[1]);
@@ -225,7 +227,7 @@ impl CacheBucket {
             return res;
         } else if self.0[2].is_invalid()
             || self.0[2].plies_played < root_plies_played as u16
-            || self.0[2].validate_hash(p.game_state.hash)
+            || self.0[2].validate_hash(p.game_state.get_hash())
         {
             let res = self.0[2].is_invalid();
             renew_entry(&mut self.0[2]);
@@ -387,7 +389,7 @@ impl CacheEntry {
         let from_board = 1u64 << from;
         let to = ((mv & 0x03F0) >> 4) as u8;
         let to_board = 1u64 << to;
-        let color_to_move = game_state.color_to_move;
+        let color_to_move = game_state.get_color_to_move();
         let enemy_color = 1 - color_to_move;
         let piece_type = if (game_state.pieces[PieceType::Pawn as usize][color_to_move]
             & from_board)

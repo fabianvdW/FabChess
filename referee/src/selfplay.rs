@@ -78,8 +78,8 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     while let GameResult::Ingame = status {
         //Request move
         let latest_state = &history[history.len() - 1];
-        let player1_move = task.p1_is_white && latest_state.color_to_move == 0
-            || !task.p1_is_white && latest_state.color_to_move == 1;
+        let player1_move = task.p1_is_white && latest_state.get_color_to_move() == 0
+            || !task.p1_is_white && latest_state.get_color_to_move() == 1;
         //Prepare position string
         let mut position_string = String::new();
         position_string.push_str("position fen ");
@@ -204,7 +204,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
         //Make new state with move
         move_history.push(game_move);
         let state = make_move(latest_state, game_move);
-        if state.full_moves < 35 {
+        if state.get_full_moves() < 35 {
             draw_adjudication = 0;
         }
         attack_container.write_state(&state);
@@ -275,7 +275,7 @@ pub fn check_end_condition(
     in_check: bool,
     history: &[GameState],
 ) -> (GameResult, Option<EndConditionInformation>) {
-    let enemy_win = if game_state.color_to_move == 0 {
+    let enemy_win = if game_state.get_color_to_move() == 0 {
         GameResult::BlackWin
     } else {
         GameResult::WhiteWin
@@ -305,7 +305,7 @@ pub fn check_end_condition(
             Some(EndConditionInformation::DrawByMissingPieces),
         );
     }
-    if game_state.half_moves >= 100 {
+    if game_state.get_half_moves() >= 100 {
         return (
             GameResult::Draw,
             Some(EndConditionInformation::HundredMoveDraw),
@@ -324,7 +324,7 @@ pub fn check_end_condition(
 pub fn get_occurences(history: &[GameState], state: &GameState) -> usize {
     let mut occ = 0;
     for other in history {
-        if other.hash == state.hash {
+        if other.get_hash() == state.get_hash() {
             occ += 1;
         }
     }

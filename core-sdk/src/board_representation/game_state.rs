@@ -340,12 +340,39 @@ fn file_to_string(file: usize) -> &'static str {
         _ => panic!("invalid file"),
     }
 }
-
+#[derive(Clone)]
+pub struct Irreversible {
+    hash: u64,
+    en_passant: u64,
+    half_moves: usize,
+    castle_permissions: u8,
+    phase: Phase,
+    psqt: EvaluationScore,
+}
+impl Irreversible {
+    pub fn new(
+        hash: u64,
+        en_passant: u64,
+        half_moves: usize,
+        castle_permissions: u8,
+        phase: Phase,
+        psqt: EvaluationScore,
+    ) -> Self {
+        Irreversible {
+            hash,
+            en_passant,
+            half_moves,
+            castle_permissions,
+            phase,
+            psqt,
+        }
+    }
+}
 #[derive(Clone)]
 pub struct GameState {
     // 0 = White
     // 1 = Black
-    pub color_to_move: usize,
+    color_to_move: usize,
 
     //Array saving all the bitboards
     //Index 1:
@@ -360,37 +387,69 @@ pub struct GameState {
     // 1 -> Black
     pub pieces: [[u64; 2]; 6],
 
-    //Castle flags
-    pub castle_permissions: u8,
+    irreversible: Irreversible,
 
-    pub en_passant: u64,
-    //50 move draw counter
-    pub half_moves: usize,
-    pub full_moves: usize,
-    pub hash: u64,
-    pub psqt: EvaluationScore,
-    pub phase: Phase,
+    full_moves: usize,
 }
-//Getters
+//Getters and setters
 impl GameState {
+    pub fn get_full_moves(&self) -> usize {
+        self.full_moves
+    }
+    pub fn get_color_to_move(&self) -> usize {
+        self.color_to_move
+    }
+    pub fn set_color_to_move(&mut self, new: usize) {
+        self.color_to_move = new
+    }
+    pub fn get_hash(&self) -> u64 {
+        self.irreversible.hash
+    }
+    pub fn get_en_passant(&self) -> u64 {
+        self.irreversible.en_passant
+    }
+    pub fn get_half_moves(&self) -> usize {
+        self.irreversible.half_moves
+    }
+    pub fn get_phase(&self) -> &Phase {
+        &self.irreversible.phase
+    }
+    pub fn get_psqt(&self) -> EvaluationScore {
+        self.irreversible.psqt
+    }
+
     pub fn castle_white_kingside(&self) -> bool {
-        self.castle_permissions & CASTLE_WHITE_KS > 0
+        self.irreversible.castle_permissions & CASTLE_WHITE_KS > 0
     }
     pub fn castle_white_queenside(&self) -> bool {
-        self.castle_permissions & CASTLE_WHITE_QS > 0
+        self.irreversible.castle_permissions & CASTLE_WHITE_QS > 0
     }
     pub fn castle_black_kingside(&self) -> bool {
-        self.castle_permissions & CASTLE_BLACK_KS > 0
+        self.irreversible.castle_permissions & CASTLE_BLACK_KS > 0
     }
     pub fn castle_black_queenside(&self) -> bool {
-        self.castle_permissions & CASTLE_BLACK_QS > 0
+        self.irreversible.castle_permissions & CASTLE_BLACK_QS > 0
     }
     pub fn castle_permissions(&self) -> u8 {
-        self.castle_permissions
+        self.irreversible.castle_permissions
     }
 }
+
 //Utility functions
 impl GameState {
+    pub fn new(
+        color_to_move: usize,
+        pieces: [[u64; 2]; 6],
+        irreversible: Irreversible,
+        full_moves: usize,
+    ) -> Self {
+        GameState {
+            color_to_move,
+            pieces,
+            irreversible,
+            full_moves,
+        }
+    }
     pub fn relative_rank(side: usize, sq: usize) -> usize {
         if side == WHITE {
             sq / 8
@@ -623,17 +682,19 @@ impl GameState {
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces_arr, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces_arr, &mut _eval);
         let phase = Phase::from_pieces(&pieces_arr);
-        GameState {
+        GameState::new(
             color_to_move,
-            pieces: pieces_arr,
-            castle_permissions,
-            half_moves,
+            pieces_arr,
+            Irreversible::new(
+                hash,
+                en_passant,
+                half_moves,
+                castle_permissions,
+                phase,
+                p_w - p_b,
+            ),
             full_moves,
-            en_passant,
-            hash,
-            psqt: p_w - p_b,
-            phase,
-        }
+        )
     }
 
     pub fn get_piece_on(&self, shift: i32) -> &str {
@@ -719,17 +780,17 @@ impl GameState {
         }
         res_str.push_str(" ");
 
-        if self.en_passant == 0u64 {
+        if self.get_en_passant() == 0u64 {
             res_str.push_str("-");
         } else {
-            let idx = self.en_passant.trailing_zeros() as usize;
+            let idx = self.get_en_passant().trailing_zeros() as usize;
             let rank = idx / 8;
             let file = idx % 8;
             res_str.push_str(&format!("{}{}", file_to_string(file), rank + 1));
         }
         res_str.push_str(" ");
-        res_str.push_str(&format!("{} ", self.half_moves));
-        res_str.push_str(&format!("{}", self.full_moves));
+        res_str.push_str(&format!("{} ", self.get_half_moves()));
+        res_str.push_str(&format!("{}", self.get_full_moves()));
         res_str
     }
 
@@ -751,17 +812,19 @@ impl GameState {
         let p_w = crate::evaluation::psqt_evaluation::psqt(true, &pieces, &mut _eval);
         let p_b = crate::evaluation::psqt_evaluation::psqt(false, &pieces, &mut _eval);
         let phase = Phase::from_pieces(&pieces);
-        GameState {
+        GameState::new(
             color_to_move,
             pieces,
-            castle_permissions: CASTLE_ALL,
-            en_passant: 0u64,
-            half_moves: 0usize,
-            full_moves: 1usize,
-            hash: GameState::calculate_zobrist_hash(color_to_move, pieces, CASTLE_ALL, 0u64),
-            psqt: p_w - p_b,
-            phase,
-        }
+            Irreversible::new(
+                GameState::calculate_zobrist_hash(color_to_move, pieces, CASTLE_ALL, 0u64),
+                0u64,
+                0,
+                CASTLE_ALL,
+                phase,
+                p_w - p_b,
+            ),
+            1,
+        )
     }
 
     pub fn calculate_zobrist_hash(
@@ -913,7 +976,7 @@ impl GameState {
         }
 
         if mv.move_type == GameMoveType::EnPassant {
-            if (self.en_passant & square(mv.to as usize)) == 0u64 {
+            if (self.get_en_passant() & square(mv.to as usize)) == 0u64 {
                 return false;
             }
         } else if mv.move_type == GameMoveType::Castle {
@@ -1152,11 +1215,14 @@ impl Display for GameState {
             "Black Queenside: {}\n",
             self.castle_black_queenside()
         ));
-        res_str.push_str(&format!("En Passant Possible: {:x}\n", self.en_passant));
-        res_str.push_str(&format!("Half-Counter: {}\n", self.half_moves));
-        res_str.push_str(&format!("Full-Counter: {}\n", self.full_moves));
-        res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
-        res_str.push_str(&format!("Hash: {}\n", self.hash));
+        res_str.push_str(&format!(
+            "En Passant Possible: {:x}\n",
+            self.get_en_passant()
+        ));
+        res_str.push_str(&format!("Half-Counter: {}\n", self.get_half_moves()));
+        res_str.push_str(&format!("Full-Counter: {}\n", self.get_full_moves()));
+        res_str.push_str(&format!("Side to Move: {}\n", self.get_color_to_move()));
+        res_str.push_str(&format!("Hash: {}\n", self.get_hash()));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
@@ -1165,7 +1231,7 @@ impl Display for GameState {
 impl Debug for GameState {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
-        res_str.push_str(&format!("Color: {}\n", self.color_to_move));
+        res_str.push_str(&format!("Color: {}\n", self.get_color_to_move()));
         res_str.push_str(&format!(
             "WhitePawns: 0x{:x}u64\n",
             self.pieces[PieceType::Pawn as usize][WHITE]
@@ -1218,11 +1284,11 @@ impl Debug for GameState {
         res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside()));
         res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside()));
         res_str.push_str(&format!("CBQ: {}\n", self.castle_black_queenside()));
-        res_str.push_str(&format!("En-Passant: 0x{:x}u64\n", self.en_passant));
-        res_str.push_str(&format!("half_moves: {}\n", self.half_moves));
-        res_str.push_str(&format!("full_moves: {}\n", self.full_moves));
-        res_str.push_str(&format!("Side to Move: {}\n", self.color_to_move));
-        res_str.push_str(&format!("Hash: {}\n", self.hash));
+        res_str.push_str(&format!("En-Passant: 0x{:x}u64\n", self.get_en_passant()));
+        res_str.push_str(&format!("half_moves: {}\n", self.get_half_moves()));
+        res_str.push_str(&format!("full_moves: {}\n", self.get_full_moves()));
+        res_str.push_str(&format!("Side to Move: {}\n", self.get_color_to_move()));
+        res_str.push_str(&format!("Hash: {}\n", self.get_hash()));
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }

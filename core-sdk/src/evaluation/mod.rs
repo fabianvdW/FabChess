@@ -120,21 +120,21 @@ pub fn eval_game_state(
         #[cfg(feature = "texel-tuning")]
         trace: Trace::default(),
     };
-    let phase = g.phase.phase;
+    let phase = g.get_phase().phase;
     #[cfg(feature = "texel-tuning")]
     {
         result.trace.phase = phase;
     }
     let mut res = EvaluationScore::default();
 
-    if g.color_to_move == WHITE {
+    if g.get_color_to_move() == WHITE {
         res += TEMPO_BONUS;
     } else {
         res -= TEMPO_BONUS;
     }
     #[cfg(feature = "display-eval")]
     {
-        let tempo = if g.color_to_move == WHITE {
+        let tempo = if g.get_color_to_move() == WHITE {
             TEMPO_BONUS
         } else {
             TEMPO_BONUS * -1
@@ -143,7 +143,11 @@ pub fn eval_game_state(
     }
     #[cfg(feature = "texel-tuning")]
     {
-        result.trace.tempo_bonus = if g.color_to_move == WHITE { 1 } else { -1 };
+        result.trace.tempo_bonus = if g.get_color_to_move() == WHITE {
+            1
+        } else {
+            -1
+        };
     }
 
     let psqt_score: EvaluationScore =
@@ -154,7 +158,7 @@ pub fn eval_game_state(
             );
             psqt_w - psqt_b
         } else {
-            g.psqt
+            g.get_psqt()
         };
     #[cfg(feature = "display-eval")]
     {
@@ -757,7 +761,7 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Evaluat
     }
     let mut shields_missing = 0;
     let mut shields_on_open_missing = 0;
-    if g.full_moves >= 1 {
+    if g.get_full_moves() >= 1 {
         while pawn_shield != 0u64 {
             let idx = pawn_shield.trailing_zeros() as usize;
             if g.pieces[PieceType::Pawn as usize][side] & pawn_shield & FILES[idx % 8] == 0u64 {

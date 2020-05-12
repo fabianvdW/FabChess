@@ -50,5 +50,7 @@ pub fn load_openings_into_queue(
 }
 
 pub fn contains(queue: &[PlayTask], state: &GameState) -> bool {
-    queue.iter().any(|other| other.opening.hash == state.hash)
+    queue
+        .iter()
+        .any(|other| other.opening.get_hash() == state.get_hash())
 }

@@ -122,7 +122,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     };
     thread
         .history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
+        .push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
@@ -190,10 +190,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && current_max_score > MATED_IN_MAX
             && (futil_margin <= p.alpha
                 || p.depth_left <= HISTORY_PRUNING_DEPTH
-                    && thread.history_score[p.game_state.color_to_move][mv.from as usize]
+                    && thread.history_score[p.game_state.get_color_to_move()][mv.from as usize]
                         [mv.to as usize]
                         < HISTORY_PRUNING_THRESHOLD)
-            && p.game_state.has_non_pawns(p.game_state.color_to_move)
+            && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
             && !gives_check
         {
             //Step 14.5. Futility Pruning. Skip quiet moves if futil_margin can't raise alpha
@@ -207,7 +207,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             }
             //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
             if p.depth_left <= HISTORY_PRUNING_DEPTH
-                && thread.history_score[p.game_state.color_to_move][mv.from as usize]
+                && thread.history_score[p.game_state.get_color_to_move()][mv.from as usize]
                     [mv.to as usize]
                     < HISTORY_PRUNING_THRESHOLD
             {
@@ -231,7 +231,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             && current_max_score > MATED_IN_MAX
             && p.depth_left <= SEE_PRUNING_DEPTH
             && move_score < SEE_PRUNING_CAPTURE_MULT * p.depth_left as f64 * p.depth_left as f64
-            && p.game_state.has_non_pawns(p.game_state.color_to_move)
+            && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
             && !gives_check
         {
             index += 1;
@@ -343,7 +343,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             //Step 14.12 Move does not cause beta cutoff, add to quiet moves tried and update butterfly heuristic
             thread.quiets_tried[p.current_depth][quiets_tried] = Some(mv);
             quiets_tried += 1;
-            thread.bf_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
+            thread.bf_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] +=
                 p.depth_left as usize * p.depth_left as usize;
             //TODO: Update bf should maybe also be done in decrement history quiets
         }
@@ -439,7 +439,7 @@ pub fn max_depth(p: &CombinedSearchParameters, thread: &mut Thread) -> SearchIns
 pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option<GameMove> {
     //PV-Table lookup
     if thread.pv_applicable.len() > (p.current_depth + 1)
-        && thread.pv_applicable[p.current_depth] == p.game_state.hash
+        && thread.pv_applicable[p.current_depth] == p.game_state.get_hash()
     {
         if thread.current_pv.pv.pv[p.current_depth].is_none() {
             println!("Error will occur in thread {}", thread.id);
@@ -509,7 +509,7 @@ pub fn null_move_pruning(
     tt_entry: &Option<CacheEntry>,
 ) -> SearchInstruction {
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
-        && p.game_state.has_non_pawns(p.game_state.color_to_move)
+        && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
         && static_evaluation.expect("null move static") * p.color >= p.beta
         && (tt_entry.is_none() || !tt_entry.unwrap().alpha || tt_entry.unwrap().score >= p.beta)
     {
@@ -564,7 +564,7 @@ pub fn internal_iterative_deepening(
     }
     thread
         .history
-        .push(p.game_state.hash, p.game_state.half_moves == 0);
+        .push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
     *tt_move = thread.pv_table[p.current_depth].pv[0];
     SearchInstruction::ContinueSearching
 }
@@ -602,7 +602,8 @@ pub fn compute_lmr_reduction(
     if gives_check {
         reduction -= 1;
     }
-    if thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] > 0 {
+    if thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] > 0
+    {
         reduction -= 1;
     }
     reduction = reduction.min(p.depth_left - 1);
@@ -636,16 +637,16 @@ pub fn update_quiet_cutoff(
     mv: GameMove,
     quiets_tried: usize,
 ) {
-    thread.hh_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
+    thread.hh_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] +=
         p.depth_left as usize * p.depth_left as usize;
-    thread.history_score[p.game_state.color_to_move][mv.from as usize][mv.to as usize] +=
+    thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] +=
         p.depth_left as isize * p.depth_left as isize;
     decrement_history_quiets(
         thread,
         p.current_depth,
         quiets_tried,
         p.depth_left as isize,
-        p.game_state.color_to_move,
+        p.game_state.get_color_to_move(),
     );
     if let Some(s) = thread.killer_moves[p.current_depth][0] {
         if mv == s {
