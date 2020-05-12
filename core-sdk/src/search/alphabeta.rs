@@ -238,16 +238,13 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             continue;
         }
         //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
-        let reduction = if p.depth_left > 2
-            && !incheck
-            && (!isc || move_score < 0.)
-            && index >= 2
-            && (!root || index >= 5)
-        {
-            compute_lmr_reduction(&p, thread, mv, index, isc || isp, gives_check)
-        } else {
-            0
-        };
+        let reduction =
+            if p.depth_left > 2 && (!isc || move_score < 0.) && index >= 2 && (!root || index >= 5)
+            {
+                compute_lmr_reduction(&p, thread, mv, index, isc || isp, gives_check, incheck)
+            } else {
+                0
+            };
 
         let next_state = make_move(p.game_state, mv);
         //Step 14.8. Search the moves
@@ -590,6 +587,7 @@ pub fn compute_lmr_reduction(
     index: usize,
     iscp: bool,
     gives_check: bool,
+    in_check: bool,
 ) -> i16 {
     let mut reduction = ((f64::from(p.depth_left) / 2. - 1.).max(0.).sqrt()
         + (index as f64 / 2.0 - 1.).max(0.).sqrt()) as i16;
@@ -600,6 +598,9 @@ pub fn compute_lmr_reduction(
         reduction = (f64::from(reduction) * 0.66) as i16;
     }
     if gives_check {
+        reduction -= 1;
+    }
+    if in_check {
         reduction -= 1;
     }
     if thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] > 0
