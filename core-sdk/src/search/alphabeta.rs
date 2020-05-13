@@ -160,6 +160,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let mut current_max_score = STANDARD_SCORE;
     let mut index: usize = 0;
     let mut quiets_tried: usize = 0;
+    let mut search_quiets = true;
     let mut move_orderer = MoveOrderer {
         stage: 0,
         stages: &NORMAL_STAGES,
@@ -167,7 +168,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         has_legal_move: false,
     };
     loop {
-        let mv = move_orderer.next(thread, &p, pv_table_move, tt_move);
+        let mv = move_orderer.next(thread, &p, pv_table_move, tt_move, search_quiets);
         if mv.is_none() {
             break;
         }
@@ -203,6 +204,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                     thread.search_statistics.add_futil_pruning();
                 }
                 index += 1;
+                search_quiets = false;
                 continue;
             }
             //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
