@@ -601,7 +601,7 @@ pub fn compute_lmr_reduction(
         reduction -= 1;
     }
     if in_check {
-        reduction -= 1;
+        reduction -= 2;
     }
     if thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] > 0
     {
