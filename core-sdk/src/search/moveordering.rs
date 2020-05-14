@@ -60,6 +60,7 @@ impl MoveOrderer {
         p: &CombinedSearchParameters,
         pv_table_move: Option<GameMove>,
         tt_move: Option<GameMove>,
+        search_quiets: bool,
     ) -> Option<(GameMove, f64)> {
         if self.stage >= self.stages.len() {
             return None;
@@ -75,7 +76,7 @@ impl MoveOrderer {
                 {
                     Some((pv_table_move.unwrap(), 0.))
                 } else {
-                    self.next(thread, p, pv_table_move, tt_move)
+                    self.next(thread, p, pv_table_move, tt_move, search_quiets)
                 }
             }
             MoveOrderingStage::TTMove => {
@@ -89,7 +90,7 @@ impl MoveOrderer {
                 {
                     Some((tt_move.unwrap(), 0.))
                 } else {
-                    self.next(thread, p, pv_table_move, tt_move)
+                    self.next(thread, p, pv_table_move, tt_move, search_quiets)
                 }
             }
             MoveOrderingStage::GoodCaptureInitialization => {
@@ -124,7 +125,7 @@ impl MoveOrderer {
                 }
 
                 self.stage += 1;
-                self.next(thread, p, None, None)
+                self.next(thread, p, None, None, search_quiets)
             }
             MoveOrderingStage::GoodCapture => {
                 //We now have all of the captures sorted by mvv lva
@@ -132,7 +133,7 @@ impl MoveOrderer {
                 let highest_mvv_lva = our_list.highest_score();
                 if highest_mvv_lva.is_none() || (highest_mvv_lva.unwrap().1).1.unwrap() < 0. {
                     self.stage += 1;
-                    self.next(thread, p, pv_table_move, tt_move)
+                    self.next(thread, p, pv_table_move, tt_move, search_quiets)
                 } else {
                     let (gm_index, graded_move) = highest_mvv_lva.unwrap();
                     our_list.move_list.remove(gm_index);
@@ -155,7 +156,7 @@ impl MoveOrderer {
                             our_list
                                 .move_list
                                 .push(GradedMove(graded_move.0, Some(f64::from(see_value))));
-                            self.next(thread, p, None, None)
+                            self.next(thread, p, None, None, search_quiets)
                         }
                     }
                 }
@@ -190,36 +191,47 @@ impl MoveOrderer {
                     Some((res, 0.))
                 } else {
                     self.stage += 1;
-                    self.next(thread, p, None, None)
+                    self.next(thread, p, None, None, search_quiets)
                 }
             }
             MoveOrderingStage::QuietInitialization => {
-                for mv in thread.movelist.move_lists[p.current_depth]
-                    .move_list
-                    .iter_mut()
-                {
-                    if mv.1.is_none() {
-                        debug_assert!(!mv.0.is_capture());
-                        mv.1 = Some(
-                            thread.hh_score[p.game_state.get_color_to_move()][mv.0.from as usize]
-                                [mv.0.to as usize] as f64
-                                / thread.bf_score[p.game_state.get_color_to_move()]
+                if search_quiets {
+                    for mv in thread.movelist.move_lists[p.current_depth]
+                        .move_list
+                        .iter_mut()
+                    {
+                        if mv.1.is_none() {
+                            debug_assert!(!mv.0.is_capture());
+                            mv.1 = Some(
+                                thread.hh_score[p.game_state.get_color_to_move()]
                                     [mv.0.from as usize][mv.0.to as usize]
                                     as f64
-                                / 1000.0,
-                        );
+                                    / thread.bf_score[p.game_state.get_color_to_move()]
+                                        [mv.0.from as usize]
+                                        [mv.0.to as usize]
+                                        as f64
+                                    / 1000.0,
+                            );
+                        }
                     }
                 }
                 self.stage += 1;
-                self.next(thread, p, None, None)
+                self.next(thread, p, None, None, search_quiets)
             }
             MoveOrderingStage::Quiet => {
+                if !search_quiets {
+                    thread.movelist.move_lists[p.current_depth]
+                        .move_list
+                        .retain(|x| x.0.is_capture());
+                    self.stage += 1;
+                    return self.next(thread, p, None, None, search_quiets);
+                }
                 let our_list = &mut thread.movelist.move_lists[p.current_depth];
                 let highest = our_list.highest_score();
                 if let Some((index, gmv)) = highest {
                     if gmv.1.unwrap() < 0. {
                         self.stage += 1;
-                        return self.next(thread, p, None, None);
+                        return self.next(thread, p, None, None, search_quiets);
                     }
                     debug_assert!(!gmv.0.is_capture());
                     our_list.move_list.remove(index);

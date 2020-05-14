@@ -125,7 +125,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     };
 
     loop {
-        let mv = move_orderer.next(thread, &p, None, tt_move);
+        let mv = move_orderer.next(thread, &p, None, tt_move, false);
         if mv.is_none() {
             break;
         }
