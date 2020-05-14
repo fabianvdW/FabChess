@@ -217,7 +217,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             }
             if !incheck
                 && p.depth_left <= 4
-                && index > (3 * 2u32.pow((p.depth_left - 1) as u32)) as usize
+                && quiets_tried > (3 * 2u32.pow((p.depth_left - 1) as u32)) as usize
             {
                 index += 1;
                 search_quiets = false;
