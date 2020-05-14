@@ -234,6 +234,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             index += 1;
             continue;
         }
+
         //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
         let reduction =
             if p.depth_left > 2 && (!isc || move_score < 0.) && index >= 2 && (!root || index >= 5)
