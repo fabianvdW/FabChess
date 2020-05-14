@@ -215,6 +215,14 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 index += 1;
                 continue;
             }
+            if !incheck
+                && p.depth_left <= 4
+                && index > (3 * 2u32.pow((p.depth_left - 1) as u32)) as usize
+            {
+                index += 1;
+                search_quiets = false;
+                continue;
+            }
             //Step 14.7 SEE Pruning. Skip quiet moves which have negative SEE Score on low depths
             if p.depth_left <= SEE_PRUNING_DEPTH && false {
                 let see_value = 0.;
