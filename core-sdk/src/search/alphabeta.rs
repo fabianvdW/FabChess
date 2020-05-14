@@ -189,11 +189,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         if !root
             && is_quiet_move
             && current_max_score > MATED_IN_MAX
-            && (futil_margin <= p.alpha
-                || p.depth_left <= HISTORY_PRUNING_DEPTH
-                    && thread.history_score[p.game_state.get_color_to_move()][mv.from as usize]
-                        [mv.to as usize]
-                        < HISTORY_PRUNING_THRESHOLD)
             && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
             && !gives_check
         {
