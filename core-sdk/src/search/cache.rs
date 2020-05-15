@@ -1,5 +1,5 @@
 use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
-use crate::search::{CombinedSearchParameters, SearchInstruction};
+use crate::search::{CombinedSearchParameters, SearchInstruction, MATED_IN_MAX};
 use std::cell::UnsafeCell;
 
 pub const INVALID_STATIC_EVALUATION: i16 = -32768;
@@ -16,6 +16,29 @@ pub struct Cache {
 unsafe impl std::marker::Sync for Cache {}
 
 impl Cache {
+    pub fn score_to_tt_score(score: i16, current_depth: i16) -> i16 {
+        if score.abs() >= MATED_IN_MAX.abs() {
+            if score > -MATED_IN_MAX {
+                score + current_depth
+            } else {
+                score - current_depth
+            }
+        } else {
+            score
+        }
+    }
+    pub fn score_from_tt_score(score: i16, current_depth: i16) -> i16 {
+        if score.abs() >= MATED_IN_MAX.abs() {
+            if score > -MATED_IN_MAX {
+                score - current_depth
+            } else {
+                score + current_depth
+            }
+        } else {
+            score
+        }
+    }
+
     pub fn with_size_threaded(mb_size: usize, num_threads: usize) -> Self {
         let buckets = 1024 * 1024 * mb_size / 64;
         let entries = buckets * 3;
@@ -151,7 +174,8 @@ impl Cache {
         let ce = self
             .get(p.game_state.get_hash())
             .probe(p.game_state.get_hash());
-        if let Some(ce) = ce {
+        if let Some(mut ce) = ce {
+            ce.score = Cache::score_from_tt_score(ce.score, p.current_depth as i16);
             *tt_entry = Some(ce);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
@@ -185,6 +209,7 @@ impl CacheBucket {
     ) -> bool {
         let lower_bound = score >= p.beta;
         let upper_bound = score <= original_alpha;
+        let score = Cache::score_to_tt_score(score, p.current_depth as i16);
         let pv_node = p.beta - p.alpha > 1;
         let write_entry = |cache_entry: &mut CacheEntry| {
             cache_entry.write(
