@@ -6,6 +6,7 @@ use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
+use crate::search::quiescence::{piece_value, see};
 use crate::search::searcher::Thread;
 
 pub const LMP_DEPTH: usize = 4;
@@ -226,9 +227,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 continue;
             }
             //Step 14.7 SEE Pruning. Skip quiet moves which have negative SEE Score on low depths
-            if p.depth_left <= SEE_PRUNING_DEPTH && false {
-                let see_value = 0.;
-                if see_value < SEE_PRUNING_QUIET_MULT * (p.depth_left as f64 + 3.) {
+            let margin =
+                (SEE_PRUNING_QUIET_MULT * (p.depth_left as f64 * p.depth_left as f64)) as i16;
+            if p.depth_left <= SEE_PRUNING_DEPTH && -piece_value(mv.piece_type) < margin {
+                let see_value = see(p.game_state, mv, true, &mut thread.see_buffer);
+                if see_value < margin {
                     index += 1;
                     continue;
                 }
