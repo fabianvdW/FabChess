@@ -8,6 +8,7 @@ use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::searcher::Thread;
 
+pub const LMP_DEPTH = 4;
 pub const FUTILITY_MARGIN: i16 = 90;
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
@@ -215,8 +216,9 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 index += 1;
                 continue;
             }
+
             if !incheck
-                && p.depth_left <= 4
+                && p.depth_left <= LMP_DEPTH
                 && quiets_tried > (3 * 2u32.pow((p.depth_left - 1) as u32)) as usize
             {
                 index += 1;
