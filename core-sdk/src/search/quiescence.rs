@@ -286,7 +286,7 @@ pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16
     let mut from_set = 1u64 << mv.from;
     let mut occ = game_state.get_all_pieces();
     let mut attadef = attacks_to(&game_state, mv.to as usize, occ);
-    gain[0] = capture_value(mv);
+    gain[0] = move_value(mv);
     let mut color_to_move = game_state.get_color_to_move();
     let mut attacked_piece = mv.piece_type as usize;
     let mut index = 0;
@@ -368,14 +368,10 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn capture_value(mv: GameMove) -> i16 {
-    match &mv.move_type {
-        GameMoveType::Capture(c) => piece_value(*c),
-        GameMoveType::Promotion(_, b) => match b {
-            Some(c) => piece_value(*c),
-            _ => panic!("Promotion but no capture"),
-        },
-        _ => panic!("No capture"),
+pub fn move_value(mv: GameMove) -> i16 {
+    match mv.move_type {
+        GameMoveType::Capture(c) | GameMoveType::Promotion(_, Some(c)) => piece_value(c),
+        _ => 0,
     }
 }
 
