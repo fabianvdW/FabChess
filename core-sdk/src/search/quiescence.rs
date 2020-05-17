@@ -125,7 +125,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     };
 
     loop {
-        let mv = move_orderer.next(thread, &p, None, tt_move, false);
+        let mv = move_orderer.next(thread, &p, None, tt_move, incheck);
         if mv.is_none() {
             break;
         }
@@ -190,7 +190,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         clear_pv(p.current_depth, thread);
         return leaf_score(game_status, p.color, p.current_depth as i16);
     }
-
     //Step 10. Make TT entry
     if has_pv && p.depth_left == 0 && !thread.self_stop {
         thread.itcs.cache().insert(
