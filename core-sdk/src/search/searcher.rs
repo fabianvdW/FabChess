@@ -173,7 +173,11 @@ impl InterThreadCommunicationSystem {
             } else {
                 self.cache_status.load(Ordering::Relaxed)
             };
-            let score_string = if scored_pv.score.abs() > MATE_SCORE - 200 {
+            let score_string = if cfg!(feature = "avoid-adj") {
+                let score = scored_pv.score.min(200).max(-200);
+                let score = if score.abs() < 10 { 25 } else { score };
+                format!("score cp {}", score)
+            } else if scored_pv.score.abs() > MATE_SCORE - 200 {
                 let dtm = if scored_pv.score > 0 {
                     (MATE_SCORE - scored_pv.score) / 2 + 1
                 } else {
