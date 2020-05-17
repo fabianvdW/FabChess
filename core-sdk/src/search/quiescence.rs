@@ -1,5 +1,5 @@
 use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, GameState, PieceType, BLACK, WHITE,
+    GameMove, GameMoveType, GameState, PieceType, BLACK, WHITE,
 };
 use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
@@ -8,7 +8,7 @@ use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
 use crate::move_generation::makemove::make_move;
 use crate::search::cache::CacheEntry;
-use crate::search::moveordering::{MoveOrderer, QUIESCENCE_IN_CHECK_STAGES, QUIESCENCE_STAGES};
+use crate::search::moveordering::{MoveOrderer, QUIESCENCE_STAGES};
 
 pub const DELTA_PRUNING: i16 = 100;
 pub const PIECE_VALUES: [i16; 6] = [100, 400, 400, 650, 1100, 30000];
@@ -38,35 +38,21 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         // Before dropping into qsearch we make sure we're not in check in pvs
         thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
     }
-    let incheck = in_check(
-        p.game_state,
-        &thread.attack_container.attack_containers[p.current_depth],
-    );
-
     //Step 5. Get standing pat when not in check
-    let stand_pat = if !incheck {
-        Some(
-            eval_game_state(
-                &p.game_state,
-                &thread.attack_container.attack_containers[p.current_depth],
-                p.alpha * p.color,
-                p.beta * p.color,
-            )
-            .final_eval
-                * p.color,
-        )
-    } else {
-        None
-    };
+    let stand_pat = eval_game_state(
+        &p.game_state,
+        &thread.attack_container.attack_containers[p.current_depth],
+        p.alpha * p.color,
+        p.beta * p.color,
+    )
+    .final_eval
+        * p.color;
 
     //Step 6. Preliminary pruning
-    if !incheck {
-        if let SearchInstruction::StopSearching(res) = adjust_standpat(&mut p, stand_pat.unwrap()) {
-            return res;
-        } else if let SearchInstruction::StopSearching(res) = delta_pruning(&p, stand_pat.unwrap())
-        {
-            return res;
-        }
+    if let SearchInstruction::StopSearching(res) = adjust_standpat(&mut p, stand_pat) {
+        return res;
+    } else if let SearchInstruction::StopSearching(res) = delta_pruning(&p, stand_pat) {
+        return res;
     }
 
     //Step 7. TT Lookup
@@ -97,7 +83,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         None
     };
     //Only captures are valid tt moves (if not in check)
-    if tt_move.is_some() && !incheck && !tt_move.as_ref().unwrap().is_capture() {
+    if tt_move.is_some() && !tt_move.as_ref().unwrap().is_capture() {
         tt_move = None;
     }
 
@@ -107,21 +93,13 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
 
     //Step 8. Iterate through moves
 
-    let mut current_max_score = if incheck {
-        STANDARD_SCORE
-    } else {
-        *stand_pat.as_ref().unwrap()
-    };
+    let mut current_max_score = stand_pat;
+
     let mut has_pv = false;
     let mut move_orderer = MoveOrderer {
         stage: 0,
-        stages: if incheck {
-            &QUIESCENCE_IN_CHECK_STAGES
-        } else {
-            &QUIESCENCE_STAGES
-        },
-        gen_only_captures: !incheck,
-        has_legal_move: false,
+        stages: &QUIESCENCE_STAGES,
+        gen_only_captures: true,
     };
 
     loop {
@@ -130,17 +108,15 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             break;
         }
         let (capture_move, _) = mv.unwrap();
-        if !incheck
-            && !passes_delta_pruning(
-                capture_move,
-                p.game_state.get_phase().phase,
-                *stand_pat.as_ref().unwrap(),
-                p.alpha,
-            )
-        {
+        if !passes_delta_pruning(
+            capture_move,
+            p.game_state.get_phase().phase,
+            stand_pat,
+            p.alpha,
+        ) {
             continue;
         }
-        debug_assert!(incheck || capture_move.is_capture());
+        debug_assert!(capture_move.is_capture());
         let next_g = make_move(p.game_state, capture_move);
         //Step 8.4. Search move
         let score = -q_search(
@@ -184,13 +160,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             thread.search_statistics.add_q_beta_noncutoff();
         }
     }
-    //Step 9. Evaluate leafs correctly
-    let game_status = check_end_condition(p.game_state, move_orderer.has_legal_move, incheck);
-    if game_status != GameResult::Ingame {
-        clear_pv(p.current_depth, thread);
-        return leaf_score(game_status, p.color, p.current_depth as i16);
-    }
-
     //Step 10. Make TT entry
     if has_pv && p.depth_left == 0 && !thread.self_stop {
         thread.itcs.cache().insert(
@@ -199,11 +168,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             current_max_score,
             p.alpha,
             thread.root_plies_played,
-            if incheck {
-                None
-            } else {
-                Some(*stand_pat.as_ref().unwrap() * p.color)
-            },
+            Some(stand_pat * p.color),
         );
     }
 

@@ -1,16 +1,14 @@
-use core_sdk::board_representation::game_state::{
-    GameMove, GameMoveType, GameResult, GameState, WHITE,
-};
+use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, WHITE};
 use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
+use core_sdk::search::check_for_draw;
 use core_sdk::search::history::History;
 use core_sdk::search::in_check;
 use core_sdk::search::quiescence::{best_move_value, passes_delta_pruning, see, DELTA_PRUNING};
 use core_sdk::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
 use core_sdk::search::SearchInstruction;
-use core_sdk::search::{check_end_condition, check_for_draw, leaf_score};
 use core_sdk::search::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use std::fs;
 use tuning::loading::{
@@ -133,7 +131,7 @@ pub fn stripped_q_search(
     }
     history.push(game_state.get_hash(), game_state.get_half_moves() == 0);
 
-    let agsi = make_moves(
+    make_moves(
         &game_state,
         &mut move_list.move_lists[current_depth],
         &attack_container.attack_containers[current_depth],
@@ -143,7 +141,6 @@ pub fn stripped_q_search(
         see_buffer,
         incheck,
     );
-    let has_legal_move = agsi.stm_haslegalmove;
 
     let mut current_max_score = if incheck { STANDARD_SCORE } else { stand_pat };
     let mut current_best_state: Option<GameState> = None;
@@ -181,10 +178,6 @@ pub fn stripped_q_search(
         }
     }
     history.pop();
-    let game_status = check_end_condition(&game_state, has_legal_move, incheck);
-    if game_status != GameResult::Ingame {
-        return (leaf_score(game_status, color, depth_left), game_state);
-    }
     if current_best_state.is_none() {
         return (stand_pat, game_state);
     }

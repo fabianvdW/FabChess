@@ -267,7 +267,7 @@ pub fn eval_game_state(
             king_w - king_b,
             pawns_w - pawns_b,
             pieces_w - pieces_b,
-            if g.color_to_move == 0 {
+            if g.get_color_to_move() == 0 {
                 TEMPO_BONUS
             } else {
                 TEMPO_BONUS * -1

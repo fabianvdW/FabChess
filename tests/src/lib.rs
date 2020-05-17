@@ -181,8 +181,8 @@ mod tests {
                     )
                 );
                 attack_container.write_state(&g);
-                let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
-                if !agsi.stm_haslegalmove {
+                movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                if movelist.move_list.is_empty() {
                     break;
                 }
                 g = make_move(
@@ -206,8 +206,8 @@ mod tests {
             );
             for _j in 0..200 {
                 attack_container.write_state(&g);
-                let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
-                if !agsi.stm_haslegalmove {
+                movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                if movelist.move_list.is_empty() {
                     break;
                 }
                 g = make_move(
@@ -238,8 +238,8 @@ mod tests {
             assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
                 attack_container.write_state(&g);
-                let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
-                if !agsi.stm_haslegalmove {
+                movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                if movelist.move_list.is_empty() {
                     break;
                 }
                 g = make_move(

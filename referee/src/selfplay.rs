@@ -31,7 +31,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
-        agsi.stm_haslegalmove,
+        !movelist.move_list.is_empty(),
         agsi.stm_incheck,
         &history,
     )
@@ -209,7 +209,12 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
         }
         attack_container.write_state(&state);
         let agsi = movegen::generate_moves(&state, false, &mut movelist, &attack_container);
-        let check = check_end_condition(&state, agsi.stm_haslegalmove, agsi.stm_incheck, &history);
+        let check = check_end_condition(
+            &state,
+            !movelist.move_list.is_empty(),
+            agsi.stm_incheck,
+            &history,
+        );
         history.push(state);
         status = check.0;
         endcondition = check.1;

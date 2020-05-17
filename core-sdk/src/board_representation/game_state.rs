@@ -253,7 +253,7 @@ impl GameMove {
         let game_state = make_move(game_state, self);
         agsi.write_state(&game_state);
         let agsi = generate_moves(&game_state, false, &mut movelist, &agsi);
-        if agsi.stm_incheck && !agsi.stm_haslegalmove {
+        if agsi.stm_incheck && movelist.move_list.is_empty() {
             res_str.push_str("#");
         } else if agsi.stm_incheck {
             res_str.push_str("+");

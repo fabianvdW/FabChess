@@ -170,10 +170,9 @@ pub fn add_pin_moves_to_movelist(
     pinner_position: usize,
     enemy_queens: u64,
     other_pinner_piece_type: PieceType,
-) -> bool {
+) {
     let pin_quiet_targets = ray_to_king & push_mask & !square(pinned_piece_position);
     let pin_capture_possible = (capture_mask & enemy_pinner) != 0u64;
-    let haslegalmove = pin_capture_possible || pin_quiet_targets != 0u64;
     if !only_captures {
         add_moves_to_movelist(
             legal_moves,
@@ -196,7 +195,6 @@ pub fn add_pin_moves_to_movelist(
             }),
         );
     }
-    haslegalmove
 }
 
 #[inline(always)]
@@ -241,8 +239,7 @@ pub fn add_pawn_moves_to_movelist(
     is_capture: bool,
     is_promotion: bool,
     pinned_pieces: u64,
-) -> bool {
-    let mut stm_haslegalmove = false;
+) {
     while target_board != 0u64 {
         let pawn_index = target_board.trailing_zeros() as usize;
         let pawn = square(pawn_index);
@@ -253,7 +250,6 @@ pub fn add_pawn_moves_to_movelist(
         };
         let from_board = square(from_index);
         if from_board & pinned_pieces == 0u64 {
-            stm_haslegalmove = true;
             let mv_type = if is_capture {
                 GameMoveType::Capture(find_captured_piece_type(g, pawn_index))
             } else {
@@ -273,7 +269,6 @@ pub fn add_pawn_moves_to_movelist(
         }
         target_board ^= pawn;
     }
-    stm_haslegalmove
 }
 
 #[inline(always)]
@@ -289,13 +284,12 @@ pub fn add_normal_moves_to_movelist(
     push_mask: u64,
     capture_mask: u64,
     only_captures: bool,
-) -> bool {
-    let mut stm_haslegalmove = false;
+) {
     let mut index = 0;
     while piece_board != 0u64 {
         let piece_index = piece_board.trailing_zeros() as usize;
         let piece = square(piece_index);
-        if piece & pinned_pieces == 0u64 {
+        if pinned_pieces & piece == 0 {
             let piece_target = if let PieceType::Knight = piece_type {
                 attack_container.attack[MGSA_KNIGHT][g.get_color_to_move()][index]
             } else if let PieceType::Bishop = piece_type {
@@ -308,7 +302,6 @@ pub fn add_normal_moves_to_movelist(
                 panic!("Shouldn't get here")
             };
             let mut captures = piece_target & capture_mask & enemy_pieces;
-            stm_haslegalmove |= captures != 0u64;
             while captures != 0u64 {
                 let capture_index = captures.trailing_zeros() as usize;
                 add_move_to_movelist(
@@ -321,24 +314,20 @@ pub fn add_normal_moves_to_movelist(
                 captures ^= square(capture_index);
             }
 
-            if !only_captures || !stm_haslegalmove {
+            if !only_captures {
                 let quiets = piece_target & push_mask & empty_squares;
-                stm_haslegalmove |= quiets != 0u64;
-                if !only_captures {
-                    add_moves_to_movelist(
-                        legal_moves,
-                        piece_index,
-                        quiets,
-                        piece_type,
-                        GameMoveType::Quiet,
-                    );
-                }
+                add_moves_to_movelist(
+                    legal_moves,
+                    piece_index,
+                    quiets,
+                    piece_type,
+                    GameMoveType::Quiet,
+                );
             }
         }
         piece_board ^= piece;
         index += 1;
     }
-    stm_haslegalmove
 }
 
 #[inline(always)]
@@ -458,7 +447,6 @@ pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
 #[derive(Clone)]
 pub struct AdditionalGameStateInformation {
     pub stm_incheck: bool,
-    pub stm_haslegalmove: bool,
 }
 
 pub const MAX_MOVES: usize = 128;
@@ -531,14 +519,11 @@ pub fn generate_moves(
     let all_pieces = enemy_pieces | side_pieces;
     let empty_squares = !all_pieces;
 
-    let mut stm_haslegalmove = false;
-
     //----------------------------------------------------------------------
     //**********************************************************************
     //2. Safe King moves
     let stm_legal_kingmoves =
         attack_container.king_attacks[side] & !attack_container.attacks_sum[enemy] & !side_pieces;
-    stm_haslegalmove |= stm_legal_kingmoves != 0u64;
     add_king_moves_to_movelist(
         g,
         movelist,
@@ -558,10 +543,7 @@ pub fn generate_moves(
     let mut push_mask = 0xFFFF_FFFF_FFFF_FFFFu64;
     if checkers > 1 {
         //Double check, only safe king moves are legal
-        return AdditionalGameStateInformation {
-            stm_incheck,
-            stm_haslegalmove,
-        };
+        return AdditionalGameStateInformation { stm_incheck };
     } else if checkers == 1 {
         //Only a single checker
         capture_mask = check_board;
@@ -614,7 +596,7 @@ pub fn generate_moves(
             pinned_pieces |= pinned_piece;
             if pinned_piece & g.pieces[PieceType::Queen as usize][side] != 0u64 {
                 //Add possible queen pushes
-                stm_haslegalmove |= add_pin_moves_to_movelist(
+                add_pin_moves_to_movelist(
                     movelist,
                     only_captures,
                     ray_to_king,
@@ -629,7 +611,7 @@ pub fn generate_moves(
                 );
             } else if pinned_piece & g.pieces[PieceType::Rook as usize][side] != 0u64 {
                 //Add possible rook pushes
-                stm_haslegalmove |= add_pin_moves_to_movelist(
+                add_pin_moves_to_movelist(
                     movelist,
                     only_captures,
                     ray_to_king,
@@ -657,7 +639,6 @@ pub fn generate_moves(
                     b_double_push_pawn_targets(pinned_piece, empty_squares)
                 } & ray_to_king
                     & push_mask;
-                stm_haslegalmove |= (stm_pawn_pin_single_push | stm_pawn_pin_double_push) != 0u64;
                 if !only_captures {
                     add_moves_to_movelist(
                         movelist,
@@ -695,7 +676,7 @@ pub fn generate_moves(
             pinned_pieces |= pinned_piece;
             if pinned_piece & g.pieces[PieceType::Queen as usize][side] != 0u64 {
                 //Add possible queen pushes
-                stm_haslegalmove |= add_pin_moves_to_movelist(
+                add_pin_moves_to_movelist(
                     movelist,
                     only_captures,
                     ray_to_king,
@@ -710,7 +691,7 @@ pub fn generate_moves(
                 );
             } else if pinned_piece & g.pieces[PieceType::Bishop as usize][side] != 0u64 {
                 //Add possible bishop pushes
-                stm_haslegalmove |= add_pin_moves_to_movelist(
+                add_pin_moves_to_movelist(
                     movelist,
                     only_captures,
                     ray_to_king,
@@ -737,7 +718,6 @@ pub fn generate_moves(
                 let stm_pawn_pin_promotion_capture =
                     stm_pawn_pin_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
                 if stm_pawn_pin_promotion_capture != 0u64 {
-                    stm_haslegalmove = true;
                     add_promotion_move_to_movelist(
                         movelist,
                         pinned_piece_position,
@@ -754,7 +734,6 @@ pub fn generate_moves(
                 let stm_pawn_pin_nonpromotion_capture =
                     stm_pawn_pin_captures & !stm_pawn_pin_promotion_capture;
                 if stm_pawn_pin_nonpromotion_capture != 0u64 {
-                    stm_haslegalmove = true;
                     add_move_to_movelist(
                         movelist,
                         pinned_piece_position,
@@ -773,7 +752,6 @@ pub fn generate_moves(
                 let stm_pawn_pin_enpassant =
                     stm_pawn_pin_target & g.get_en_passant() & capture_mask & ray_to_king;
                 if stm_pawn_pin_enpassant != 0u64 {
-                    stm_haslegalmove = true;
                     add_move_to_movelist(
                         movelist,
                         pinned_piece_position,
@@ -796,7 +774,6 @@ pub fn generate_moves(
     } else {
         b_single_push_pawn_targets(side_pawns, empty_squares)
     } & push_mask;
-    stm_haslegalmove |= stm_pawns_single_push != 0u64;
     let stm_pawn_promotions = stm_pawns_single_push & RANKS[if stm_color_iswhite { 7 } else { 0 }];
     if !only_captures {
         add_pawn_moves_to_movelist(
@@ -822,24 +799,21 @@ pub fn generate_moves(
         );
     }
     //5.2 Double push
-    if !only_captures || !stm_haslegalmove {
+    if !only_captures {
         let stm_pawns_double_push = if stm_color_iswhite {
             w_double_push_pawn_targets(side_pawns, empty_squares)
         } else {
             b_double_push_pawn_targets(side_pawns, empty_squares)
         } & push_mask;
-        stm_haslegalmove |= stm_pawns_double_push != 0u64;
-        if !only_captures {
-            add_pawn_moves_to_movelist(
-                g,
-                movelist,
-                stm_pawns_double_push,
-                16,
-                false,
-                false,
-                pinned_pieces,
-            );
-        }
+        add_pawn_moves_to_movelist(
+            g,
+            movelist,
+            stm_pawns_double_push,
+            16,
+            false,
+            false,
+            pinned_pieces,
+        );
     }
     //5.3 West captures (normal capture, promotion capture, en passant)
     let stm_pawn_west_captures =
@@ -847,7 +821,7 @@ pub fn generate_moves(
     //Split up in promotion and non-promotion captures
     let stm_pawn_west_promotion_capture =
         stm_pawn_west_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
-    stm_haslegalmove |= add_pawn_moves_to_movelist(
+    add_pawn_moves_to_movelist(
         g,
         movelist,
         stm_pawn_west_promotion_capture,
@@ -858,7 +832,7 @@ pub fn generate_moves(
     );
     let stm_pawn_west_nonpromotion_capture =
         stm_pawn_west_captures & !stm_pawn_west_promotion_capture;
-    stm_haslegalmove |= add_pawn_moves_to_movelist(
+    add_pawn_moves_to_movelist(
         g,
         movelist,
         stm_pawn_west_nonpromotion_capture,
@@ -897,7 +871,6 @@ pub fn generate_moves(
                 | g.pieces[PieceType::Queen as usize][enemy])
             == 0u64
         {
-            stm_haslegalmove = true;
             add_move_to_movelist(
                 movelist,
                 pawn_from,
@@ -913,7 +886,7 @@ pub fn generate_moves(
     //Split up in promotion and non-promotion captures
     let stm_pawn_east_promotion_capture =
         stm_pawn_east_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
-    stm_haslegalmove |= add_pawn_moves_to_movelist(
+    add_pawn_moves_to_movelist(
         g,
         movelist,
         stm_pawn_east_promotion_capture,
@@ -924,7 +897,7 @@ pub fn generate_moves(
     );
     let stm_pawn_east_nonpromotion_capture =
         stm_pawn_east_captures & !stm_pawn_east_promotion_capture;
-    stm_haslegalmove |= add_pawn_moves_to_movelist(
+    add_pawn_moves_to_movelist(
         g,
         movelist,
         stm_pawn_east_nonpromotion_capture,
@@ -963,7 +936,6 @@ pub fn generate_moves(
                 | g.pieces[PieceType::Queen as usize][enemy])
             == 0u64
         {
-            stm_haslegalmove = true;
             add_move_to_movelist(
                 movelist,
                 pawn_from,
@@ -977,82 +949,44 @@ pub fn generate_moves(
     //----------------------------------------------------------------------
     //**********************************************************************
     //6. All other legal moves (knights, bishops, rooks, queens)
-    //6.1 Knights
-    stm_haslegalmove |= add_normal_moves_to_movelist(
-        g,
-        movelist,
-        attack_container,
+    for pt in [
         PieceType::Knight,
-        g.pieces[PieceType::Knight as usize][side],
-        pinned_pieces,
-        enemy_pieces,
-        empty_squares,
-        push_mask,
-        capture_mask,
-        only_captures,
-    );
-    //6.4 Queens
-    stm_haslegalmove |= add_normal_moves_to_movelist(
-        g,
-        movelist,
-        attack_container,
         PieceType::Queen,
-        g.pieces[PieceType::Queen as usize][side],
-        pinned_pieces,
-        enemy_pieces,
-        empty_squares,
-        push_mask,
-        capture_mask,
-        only_captures,
-    );
-
-    //6.2 Bishops
-    stm_haslegalmove |= add_normal_moves_to_movelist(
-        g,
-        movelist,
-        attack_container,
         PieceType::Bishop,
-        g.pieces[PieceType::Bishop as usize][side],
-        pinned_pieces,
-        enemy_pieces,
-        empty_squares,
-        push_mask,
-        capture_mask,
-        only_captures,
-    );
-    //6.3 Rooks
-    stm_haslegalmove |= add_normal_moves_to_movelist(
-        g,
-        movelist,
-        attack_container,
         PieceType::Rook,
-        g.pieces[PieceType::Rook as usize][side],
-        pinned_pieces,
-        enemy_pieces,
-        empty_squares,
-        push_mask,
-        capture_mask,
-        only_captures,
-    );
+    ]
+    .iter()
+    {
+        add_normal_moves_to_movelist(
+            g,
+            movelist,
+            attack_container,
+            *pt,
+            g.pieces[*pt as usize][side],
+            pinned_pieces,
+            enemy_pieces,
+            empty_squares,
+            push_mask,
+            capture_mask,
+            only_captures,
+        )
+    }
     //----------------------------------------------------------------------
     //**********************************************************************
     //7. Castling
-    if (!only_captures || !stm_haslegalmove) && checkers == 0 {
+    if !only_captures && checkers == 0 {
         if stm_color_iswhite {
             if g.castle_white_kingside()
                 && (all_pieces | attack_container.attacks_sum[enemy])
                     & (square(square::F1) | square(square::G1))
                     == 0u64
             {
-                stm_haslegalmove = true;
-                if !only_captures {
-                    movelist.add_move(GameMove {
-                        from: g.king_square(side) as u8,
-                        to: square::G1 as u8,
-                        move_type: GameMoveType::Castle,
-                        piece_type: PieceType::King,
-                    });
-                }
+                movelist.add_move(GameMove {
+                    from: g.king_square(side) as u8,
+                    to: square::G1 as u8,
+                    move_type: GameMoveType::Castle,
+                    piece_type: PieceType::King,
+                });
             }
             if g.castle_white_queenside()
                 && ((all_pieces | attack_container.attacks_sum[enemy])
@@ -1060,15 +994,12 @@ pub fn generate_moves(
                     | all_pieces & square(square::B1))
                     == 0u64
             {
-                stm_haslegalmove = true;
-                if !only_captures {
-                    movelist.add_move(GameMove {
-                        from: g.king_square(side) as u8,
-                        to: square::C1 as u8,
-                        move_type: GameMoveType::Castle,
-                        piece_type: PieceType::King,
-                    });
-                }
+                movelist.add_move(GameMove {
+                    from: g.king_square(side) as u8,
+                    to: square::C1 as u8,
+                    move_type: GameMoveType::Castle,
+                    piece_type: PieceType::King,
+                });
             }
         } else {
             if g.castle_black_kingside()
@@ -1076,15 +1007,12 @@ pub fn generate_moves(
                     & (square(square::F8) | square(square::G8))
                     == 0u64
             {
-                stm_haslegalmove = true;
-                if !only_captures {
-                    movelist.add_move(GameMove {
-                        from: g.king_square(side) as u8,
-                        to: square::G8 as u8,
-                        move_type: GameMoveType::Castle,
-                        piece_type: PieceType::King,
-                    });
-                }
+                movelist.add_move(GameMove {
+                    from: g.king_square(side) as u8,
+                    to: square::G8 as u8,
+                    move_type: GameMoveType::Castle,
+                    piece_type: PieceType::King,
+                });
             }
             if g.castle_black_queenside()
                 && ((all_pieces | attack_container.attacks_sum[enemy])
@@ -1092,21 +1020,15 @@ pub fn generate_moves(
                     | all_pieces & square(square::B8))
                     == 0u64
             {
-                stm_haslegalmove = true;
-                if !only_captures {
-                    movelist.add_move(GameMove {
-                        from: g.king_square(side) as u8,
-                        to: square::C8 as u8,
-                        move_type: GameMoveType::Castle,
-                        piece_type: PieceType::King,
-                    });
-                }
+                movelist.add_move(GameMove {
+                    from: g.king_square(side) as u8,
+                    to: square::C8 as u8,
+                    move_type: GameMoveType::Castle,
+                    piece_type: PieceType::King,
+                });
             }
         }
     }
     //----------------------------------------------------------------------
-    AdditionalGameStateInformation {
-        stm_incheck,
-        stm_haslegalmove,
-    }
+    AdditionalGameStateInformation { stm_incheck }
 }
