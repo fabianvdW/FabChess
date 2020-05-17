@@ -29,14 +29,6 @@ pub const NORMAL_STAGES: [MoveOrderingStage; 8] = [
 ];
 pub const QUIESCENCE_STAGES: [MoveOrderingStage; 3] =
     [TTMove, GoodCaptureInitialization, GoodCapture];
-pub const QUIESCENCE_IN_CHECK_STAGES: [MoveOrderingStage; 6] = [
-    TTMove,
-    GoodCaptureInitialization,
-    GoodCapture,
-    QuietInitialization,
-    Quiet,
-    BadCapture,
-];
 pub enum MoveOrderingStage {
     PVMove,
     TTMove,
