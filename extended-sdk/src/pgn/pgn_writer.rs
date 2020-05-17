@@ -168,11 +168,11 @@ mod tests {
         loop {
             attack_container.write_state(&g);
             let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
-            if !agsi.stm_haslegalmove || g.get_half_moves() >= 100 {
+            if movelist.move_list.is_empty() || g.get_half_moves() >= 100 {
                 if g.get_half_moves() >= 100 {
                     res = GameResult::Draw;
                 }
-                if !agsi.stm_haslegalmove {
+                if movelist.move_list.is_empty() {
                     if agsi.stm_incheck {
                         if g.get_color_to_move() == WHITE {
                             res = GameResult::BlackWin;

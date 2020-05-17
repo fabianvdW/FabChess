@@ -43,7 +43,6 @@ pub struct MoveOrderer {
     pub stage: usize,
     pub stages: &'static [MoveOrderingStage],
     pub gen_only_captures: bool,
-    pub has_legal_move: bool,
 }
 impl MoveOrderer {
     pub fn next(
@@ -87,13 +86,12 @@ impl MoveOrderer {
             }
             MoveOrderingStage::GoodCaptureInitialization => {
                 //Generate moves first!
-                let agsi = movegen::generate_moves(
+                movegen::generate_moves(
                     &p.game_state,
                     self.gen_only_captures,
                     &mut thread.movelist.move_lists[p.current_depth],
                     &thread.attack_container.attack_containers[p.current_depth],
                 );
-                self.has_legal_move = agsi.stm_haslegalmove;
                 let our_mvlist = &mut thread.movelist.move_lists[p.current_depth];
 
                 if let Some(pv_move) = pv_table_move {

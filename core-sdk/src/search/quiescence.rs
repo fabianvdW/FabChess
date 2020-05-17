@@ -100,7 +100,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         stage: 0,
         stages: &QUIESCENCE_STAGES,
         gen_only_captures: true,
-        has_legal_move: false,
     };
 
     loop {

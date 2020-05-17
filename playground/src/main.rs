@@ -19,7 +19,7 @@ fn main() {
     }*/
     //go_infinite_from_startpos();
     let param_string = format!("{}", Parameters::default());
-    let mut param_file = Path::new("parameters.txt");
+    let param_file = Path::new("parameters.txt");
     let mut file = File::create(param_file).unwrap();
     write!(file, "{}", param_string).unwrap();
 }
