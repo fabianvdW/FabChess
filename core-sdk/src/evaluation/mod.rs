@@ -127,18 +127,14 @@ pub fn eval_game_state(
     }
     let mut res = EvaluationScore::default();
 
-    if g.get_color_to_move() == WHITE {
-        res += TEMPO_BONUS;
+    let tempo = if g.get_color_to_move() == WHITE {
+        TEMPO_BONUS
     } else {
-        res -= TEMPO_BONUS;
-    }
+        TEMPO_BONUS * -1
+    };
+    res += tempo;
     #[cfg(feature = "display-eval")]
     {
-        let tempo = if g.get_color_to_move() == WHITE {
-            TEMPO_BONUS
-        } else {
-            TEMPO_BONUS * -1
-        };
         println!("\nTempo:{}", tempo);
     }
     #[cfg(feature = "texel-tuning")]
