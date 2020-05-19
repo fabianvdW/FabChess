@@ -281,50 +281,24 @@ pub fn eval_game_state(
     result
 }
 pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
-    if phase < 128.
-        && (g.pieces[PieceType::Pawn as usize][WHITE] | g.pieces[PieceType::Pawn as usize][BLACK])
-            .count_ones()
-            <= 8
-    {
-        let score = res.interpolate(phase);
-        let side_ahead = if score >= 0 { WHITE } else { BLACK };
-        let side_losing = 1 - side_ahead;
-        let winning_pawns = g.pieces[PieceType::Pawn as usize][side_ahead].count_ones() as usize;
-        let losing_pawns = g.pieces[PieceType::Pawn as usize][side_losing].count_ones() as usize;
-        let winning_majors = (g.pieces[PieceType::Rook as usize][side_ahead]
-            | g.pieces[PieceType::Queen as usize][side_ahead])
-            .count_ones() as usize;
-        let losing_majors = (g.pieces[PieceType::Rook as usize][side_losing]
-            | g.pieces[PieceType::Queen as usize][side_losing])
-            .count_ones() as usize;
-        let winning_minors = (g.pieces[PieceType::Bishop as usize][side_ahead]
-            | g.pieces[PieceType::Knight as usize][side_ahead])
-            .count_ones() as usize;
+    let score = res.interpolate(phase);
+    let side_ahead = if score >= 0 { WHITE } else { BLACK };
+    let side_losing = 1 - side_ahead;
+    let winning_pawns = g.pieces[PieceType::Pawn as usize][side_ahead].count_ones() as usize;
+    if winning_pawns <= 1 {
         let losing_minors = (g.pieces[PieceType::Bishop as usize][side_losing]
             | g.pieces[PieceType::Knight as usize][side_losing])
             .count_ones() as usize;
-        let pawn_diff = winning_pawns as isize - losing_pawns as isize;
-        let minor_diff = winning_minors as isize - losing_minors as isize;
-        let major_diff = winning_majors as isize - losing_majors as isize;
         let score = score.abs();
-        let winnable_ahead = score.abs() >= BISHOP_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1;
+        let winnable_ahead = score.abs() >= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1;
 
-        if winning_majors + losing_majors <= 3 && winning_minors + losing_minors <= 5 {
-            let mut factor = 1.;
-            if !winnable_ahead {
-                if winning_pawns == 0
-                    || winning_pawns == 1 && minor_diff == 0 && winning_minors == 1
-                {
-                    factor /= 4.;
-                }
-            }
-            if major_diff <= 1
-                && major_diff - losing_minors as isize <= 0
-                && pawn_diff - losing_minors as isize <= 0
-                && major_diff + minor_diff + pawn_diff <= 1
-            {
-                factor /= 3.;
-            }
+        if !winnable_ahead
+            && (winning_pawns == 0
+                || losing_minors >= 1
+                    && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1
+                        <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1)
+        {
+            let factor = 1. / 16.;
             *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
         }
     }
