@@ -125,6 +125,9 @@ pub fn eval_game_state(
     {
         result.trace.phase = phase;
     }
+    if is_guaranteed_draw(&g) {
+        return result;
+    }
     let mut res = EvaluationScore::default();
 
     let tempo = if g.get_color_to_move() == WHITE {
@@ -280,6 +283,32 @@ pub fn eval_game_state(
     result.final_eval = final_res;
     result
 }
+pub fn is_guaranteed_draw(g: &GameState) -> bool {
+    if g.pieces[PieceType::Pawn as usize][WHITE]
+        | g.pieces[PieceType::Pawn as usize][BLACK]
+        | g.pieces[PieceType::Queen as usize][WHITE]
+        | g.pieces[PieceType::Queen as usize][BLACK]
+        | g.pieces[PieceType::Rook as usize][WHITE]
+        | g.pieces[PieceType::Rook as usize][BLACK]
+        > 0
+    {
+        return false;
+    }
+    let white_knights = g.pieces[PieceType::Knight as usize][WHITE].count_ones() as usize;
+    let black_knights = g.pieces[PieceType::Knight as usize][BLACK].count_ones() as usize;
+    let white_bishops = g.pieces[PieceType::Bishop as usize][WHITE].count_ones() as usize;
+    let black_bishops = g.pieces[PieceType::Bishop as usize][BLACK].count_ones() as usize;
+    if white_knights + white_bishops <= 2 && black_knights + black_bishops <= 2 {
+        if white_knights + white_bishops < 2 || black_knights + black_bishops < 2 {
+            if !(white_bishops == 2 && black_bishops == 0)
+                && !(black_bishops == 2 && white_bishops == 0)
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
 pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
     let score = res.interpolate(phase);
     let side_ahead = if score >= 0 { WHITE } else { BLACK };
@@ -292,13 +321,15 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
         let score = score.abs();
         let winnable_ahead = score.abs() >= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1;
 
-        if !winnable_ahead
-            && (winning_pawns == 0
-                || losing_minors >= 1
-                    && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1
-                        <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1)
-        {
+        if !winnable_ahead && (winning_pawns == 0) {
             let factor = 1. / 16.;
+            *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
+        } else if !winnable_ahead
+            && losing_minors >= 1
+            && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1
+                <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1
+        {
+            let factor = 1. / 8.;
             *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
         }
     }
