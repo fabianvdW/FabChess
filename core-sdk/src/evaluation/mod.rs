@@ -250,6 +250,7 @@ pub fn eval_game_state(
     }
     res += king_w - king_b;
 
+    endgame_rescaling(g, &mut res, phase);
     res.1 = (f64::from(res.1) / 1.5) as i16;
     //Phasing is done the same way stockfish does it
     let final_res = res.interpolate(phase);
@@ -279,7 +280,29 @@ pub fn eval_game_state(
     result.final_eval = final_res;
     result
 }
+pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
+    let score = res.interpolate(phase);
+    let side_ahead = if score >= 0 { WHITE } else { BLACK };
+    let side_losing = 1 - side_ahead;
+    let winning_pawns = g.pieces[PieceType::Pawn as usize][side_ahead].count_ones() as usize;
+    if winning_pawns <= 1 {
+        let losing_minors = (g.pieces[PieceType::Bishop as usize][side_losing]
+            | g.pieces[PieceType::Knight as usize][side_losing])
+            .count_ones() as usize;
+        let score = score.abs();
+        let winnable_ahead = score.abs() >= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1;
 
+        if !winnable_ahead
+            && (winning_pawns == 0
+                || losing_minors >= 1
+                    && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1
+                        <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1)
+        {
+            let factor = 1. / 16.;
+            *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
+        }
+    }
+}
 pub fn knights(
     white: bool,
     g: &GameState,
@@ -1051,14 +1074,10 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
     let side = if white { WHITE } else { BLACK };
 
     let my_pawns = g.pieces[PieceType::Pawn as usize][side].count_ones() as i16;
-    let mut my_knights = g.pieces[PieceType::Knight as usize][side].count_ones() as i16;
-    let mut my_bishops = g.pieces[PieceType::Bishop as usize][side].count_ones() as i16;
+    let my_knights = g.pieces[PieceType::Knight as usize][side].count_ones() as i16;
+    let my_bishops = g.pieces[PieceType::Bishop as usize][side].count_ones() as i16;
     let my_rooks = g.pieces[PieceType::Rook as usize][side].count_ones() as i16;
     let my_queens = g.pieces[PieceType::Queen as usize][side].count_ones() as i16;
-    if my_pawns + my_knights + my_bishops + my_rooks + my_queens == 1 {
-        my_knights = 0;
-        my_bishops = 0;
-    }
     res += PAWN_PIECE_VALUE * my_pawns;
 
     let pawns_on_board = (g.pieces[PieceType::Pawn as usize][WHITE]
