@@ -1,6 +1,6 @@
 [package]
 name = "uci-engine"
-version = "1.14.1"
+version = "1.15.0"
 authors = ["fabianvdW <fabianvonderwarth@gmail.com>"]
 edition = "2018"
 
