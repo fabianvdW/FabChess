@@ -49,9 +49,8 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     //Step 3. Check for draw or mate distance pruning if not root (need best move at root)
     if !root {
-        if let SearchInstruction::StopSearching(res) = check_for_draw(p.game_state, &thread.history)
-        {
-            return res;
+        if let SearchInstruction::StopSearching(r) = check_for_draw(p.game_state, &thread.history) {
+            return r;
         }
         //Mate distance pruning
         if let SearchInstruction::StopSearching(res) = mate_distance_pruning(&mut p) {
