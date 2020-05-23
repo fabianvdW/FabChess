@@ -293,16 +293,8 @@ pub fn check_end_condition(
     }
 
     //Missing pieces
-    if game_state.pieces[PieceType::Pawn as usize][WHITE]
-        | game_state.pieces[PieceType::Knight as usize][WHITE]
-        | game_state.pieces[PieceType::Bishop as usize][WHITE]
-        | game_state.pieces[PieceType::Rook as usize][WHITE]
-        | game_state.pieces[PieceType::Queen as usize][WHITE]
-        | game_state.pieces[PieceType::Pawn as usize][BLACK]
-        | game_state.pieces[PieceType::Knight as usize][BLACK]
-        | game_state.pieces[PieceType::Bishop as usize][BLACK]
-        | game_state.pieces[PieceType::Rook as usize][BLACK]
-        | game_state.pieces[PieceType::Queen as usize][BLACK]
+    if game_state.get_pieces_from_side_without_king(WHITE)
+        | game_state.get_pieces_from_side_without_king(BLACK)
         == 0u64
     {
         return (

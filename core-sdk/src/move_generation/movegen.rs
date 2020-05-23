@@ -117,16 +117,16 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
 #[inline(always)]
 pub fn find_captured_piece_type(g: &GameState, to: usize) -> PieceType {
     let to_board = square(to);
-    let ctm = g.get_color_to_move();
-    if g.pieces[PieceType::Pawn as usize][1 - ctm] & to_board != 0u64 {
+    let side = g.get_color_to_move();
+    if g.get_piece(PieceType::Pawn, 1 - side) & to_board != 0u64 {
         PieceType::Pawn
-    } else if g.pieces[PieceType::Knight as usize][1 - ctm] & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Knight, 1 - side) & to_board != 0u64 {
         PieceType::Knight
-    } else if g.pieces[PieceType::Queen as usize][1 - ctm] & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Queen, 1 - side) & to_board != 0u64 {
         PieceType::Queen
-    } else if g.pieces[PieceType::Bishop as usize][1 - ctm] & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Bishop, 1 - side) & to_board != 0u64 {
         PieceType::Bishop
-    } else if g.pieces[PieceType::Rook as usize][1 - ctm] & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Rook, 1 - side) & to_board != 0u64 {
         PieceType::Rook
     } else {
         panic!("Shoudln't get here");
@@ -423,24 +423,22 @@ pub fn add_move_to_movelist(
 pub fn get_checkers(game_state: &GameState, early_exit: bool) -> u64 {
     let ctm = game_state.get_color_to_move();
     let mut checkers = 0u64;
-    let my_king = game_state.pieces[PieceType::King as usize][ctm];
+    let my_king = game_state.get_piece(PieceType::King, ctm);
     checkers |= KNIGHT_ATTACKS[my_king.trailing_zeros() as usize]
-        & game_state.pieces[PieceType::Knight as usize][1 - ctm];
+        & game_state.get_piece(PieceType::Knight, 1 - ctm);
     checkers |= (pawn_west_targets(ctm, my_king) | pawn_east_targets(ctm, my_king))
-        & game_state.pieces[PieceType::Pawn as usize][1 - ctm];
+        & game_state.get_piece(PieceType::Pawn, 1 - ctm);
     if early_exit && checkers != 0u64 {
         return checkers;
     }
     let all_pieces = game_state.get_all_pieces();
     checkers |= bishop_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[PieceType::Bishop as usize][1 - ctm]
-            | game_state.pieces[PieceType::Queen as usize][1 - ctm]);
+        & game_state.get_bishop_like_bb(1 - ctm);
     if early_exit && checkers != 0u64 {
         return checkers;
     }
     checkers |= rook_attack(my_king.trailing_zeros() as usize, all_pieces)
-        & (game_state.pieces[PieceType::Rook as usize][1 - ctm]
-            | game_state.pieces[PieceType::Queen as usize][1 - ctm]);
+        & game_state.get_rook_like_bb(1 - ctm);
     checkers
 }
 
@@ -513,7 +511,7 @@ pub fn generate_moves(
     let enemy = 1 - side;
     let stm_color_iswhite: bool = side == WHITE;
 
-    let mut side_pawns = g.pieces[PieceType::Pawn as usize][side];
+    let mut side_pawns = g.get_piece(PieceType::Pawn, side);
     let side_pieces = g.get_pieces_from_side(side);
     let enemy_pieces = g.get_pieces_from_side(enemy);
     let all_pieces = enemy_pieces | side_pieces;
@@ -529,7 +527,7 @@ pub fn generate_moves(
         movelist,
         only_captures,
         stm_legal_kingmoves,
-        g.king_square(side),
+        g.get_king_square(side),
         enemy_pieces,
     );
     //----------------------------------------------------------------------
@@ -548,19 +546,15 @@ pub fn generate_moves(
         //Only a single checker
         capture_mask = check_board;
         //If it's a slider, we can also push in its way
-        if check_board
-            & (g.pieces[PieceType::Bishop as usize][enemy]
-                | g.pieces[PieceType::Rook as usize][enemy]
-                | g.pieces[PieceType::Queen as usize][enemy])
-            != 0u64
+        if check_board & (g.get_bishop_like_bb(enemy) | g.get_piece(PieceType::Rook, enemy)) != 0u64
         {
             let checker_square = check_board.trailing_zeros() as usize;
-            if check_board & (FREEFIELD_ROOK_ATTACKS[g.king_square(side)]) != 0u64 {
+            if check_board & (FREEFIELD_ROOK_ATTACKS[g.get_king_square(side)]) != 0u64 {
                 //Checker is rook-like
-                push_mask = ROOK_RAYS[g.king_square(side)][checker_square];
+                push_mask = ROOK_RAYS[g.get_king_square(side)][checker_square];
             } else {
                 //Checker is bishop-like
-                push_mask = BISHOP_RAYS[g.king_square(side)][checker_square];
+                push_mask = BISHOP_RAYS[g.get_king_square(side)][checker_square];
             }
         } else {
             //else, we can't do push (quiet) moves
@@ -573,28 +567,23 @@ pub fn generate_moves(
     //4. Pins and pinned pieces
     let mut pinned_pieces = 0u64;
     //4.1 Rook-Like pins
-    if FREEFIELD_ROOK_ATTACKS[g.king_square(side)]
-        & (g.pieces[PieceType::Rook as usize][enemy] | g.pieces[PieceType::Queen as usize][enemy])
-        != 0u64
-    {
-        let stm_rook_attacks_from_king = rook_attack(g.king_square(side), all_pieces);
+    if FREEFIELD_ROOK_ATTACKS[g.get_king_square(side)] & g.get_rook_like_bb(enemy) != 0u64 {
+        let stm_rook_attacks_from_king = rook_attack(g.get_king_square(side), all_pieces);
         let stm_xray_rook_attacks_from_king = xray_rook_attacks(
             stm_rook_attacks_from_king,
             all_pieces,
             side_pieces,
-            g.king_square(side),
+            g.get_king_square(side),
         );
-        let mut enemy_rooks_on_xray = stm_xray_rook_attacks_from_king
-            & (g.pieces[PieceType::Rook as usize][enemy]
-                | g.pieces[PieceType::Queen as usize][enemy]);
+        let mut enemy_rooks_on_xray = stm_xray_rook_attacks_from_king & g.get_rook_like_bb(enemy);
         while enemy_rooks_on_xray != 0u64 {
             let enemy_rook_position = enemy_rooks_on_xray.trailing_zeros() as usize;
             let enemy_rook = square(enemy_rook_position);
-            let ray_to_king = ROOK_RAYS[g.king_square(side)][enemy_rook_position];
+            let ray_to_king = ROOK_RAYS[g.get_king_square(side)][enemy_rook_position];
             let pinned_piece = ray_to_king & side_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
             pinned_pieces |= pinned_piece;
-            if pinned_piece & g.pieces[PieceType::Queen as usize][side] != 0u64 {
+            if pinned_piece & g.get_piece(PieceType::Queen, side) != 0u64 {
                 //Add possible queen pushes
                 add_pin_moves_to_movelist(
                     movelist,
@@ -606,10 +595,10 @@ pub fn generate_moves(
                     pinned_piece_position,
                     PieceType::Queen,
                     enemy_rook_position,
-                    g.pieces[PieceType::Queen as usize][enemy],
+                    g.get_piece(PieceType::Queen, enemy),
                     PieceType::Rook,
                 );
-            } else if pinned_piece & g.pieces[PieceType::Rook as usize][side] != 0u64 {
+            } else if pinned_piece & g.get_piece(PieceType::Rook, side) != 0u64 {
                 //Add possible rook pushes
                 add_pin_moves_to_movelist(
                     movelist,
@@ -621,7 +610,7 @@ pub fn generate_moves(
                     pinned_piece_position,
                     PieceType::Rook,
                     enemy_rook_position,
-                    g.pieces[PieceType::Queen as usize][enemy],
+                    g.get_piece(PieceType::Queen, enemy),
                     PieceType::Rook,
                 );
             } else if pinned_piece & side_pawns != 0u64 {
@@ -653,28 +642,24 @@ pub fn generate_moves(
         }
     }
     //4.2 Bishop-Like pins
-    if FREEFIELD_BISHOP_ATTACKS[g.king_square(side)]
-        & (g.pieces[PieceType::Bishop as usize][enemy] | g.pieces[PieceType::Queen as usize][enemy])
-        != 0u64
-    {
-        let stm_bishop_attacks_from_king = bishop_attack(g.king_square(side), all_pieces);
+    if FREEFIELD_BISHOP_ATTACKS[g.get_king_square(side)] & g.get_bishop_like_bb(enemy) != 0u64 {
+        let stm_bishop_attacks_from_king = bishop_attack(g.get_king_square(side), all_pieces);
         let stm_xray_bishop_attacks_from_king = xray_bishop_attacks(
             stm_bishop_attacks_from_king,
             all_pieces,
             side_pieces,
-            g.king_square(side),
+            g.get_king_square(side),
         );
-        let mut enemy_bishop_on_xray = stm_xray_bishop_attacks_from_king
-            & (g.pieces[PieceType::Bishop as usize][enemy]
-                | g.pieces[PieceType::Queen as usize][enemy]);
+        let mut enemy_bishop_on_xray =
+            stm_xray_bishop_attacks_from_king & g.get_bishop_like_bb(enemy);
         while enemy_bishop_on_xray != 0u64 {
             let enemy_bishop_position = enemy_bishop_on_xray.trailing_zeros() as usize;
             let enemy_bishop = square(enemy_bishop_position);
-            let ray_to_king = BISHOP_RAYS[g.king_square(side)][enemy_bishop_position];
+            let ray_to_king = BISHOP_RAYS[g.get_king_square(side)][enemy_bishop_position];
             let pinned_piece = ray_to_king & side_pieces;
             let pinned_piece_position = pinned_piece.trailing_zeros() as usize;
             pinned_pieces |= pinned_piece;
-            if pinned_piece & g.pieces[PieceType::Queen as usize][side] != 0u64 {
+            if pinned_piece & g.get_piece(PieceType::Queen, side) != 0u64 {
                 //Add possible queen pushes
                 add_pin_moves_to_movelist(
                     movelist,
@@ -686,10 +671,10 @@ pub fn generate_moves(
                     pinned_piece_position,
                     PieceType::Queen,
                     enemy_bishop_position,
-                    g.pieces[PieceType::Queen as usize][enemy],
+                    g.get_piece(PieceType::Queen, enemy),
                     PieceType::Bishop,
                 );
-            } else if pinned_piece & g.pieces[PieceType::Bishop as usize][side] != 0u64 {
+            } else if pinned_piece & g.get_piece(PieceType::Bishop, side) != 0u64 {
                 //Add possible bishop pushes
                 add_pin_moves_to_movelist(
                     movelist,
@@ -701,7 +686,7 @@ pub fn generate_moves(
                     pinned_piece_position,
                     PieceType::Bishop,
                     enemy_bishop_position,
-                    g.pieces[PieceType::Queen as usize][enemy],
+                    g.get_piece(PieceType::Queen, enemy),
                     PieceType::Bishop,
                 );
             } else if pinned_piece & side_pawns != 0u64 {
@@ -723,7 +708,7 @@ pub fn generate_moves(
                         pinned_piece_position,
                         enemy_bishop_position,
                         GameMoveType::Capture(
-                            if enemy_bishop & g.pieces[PieceType::Queen as usize][enemy] != 0u64 {
+                            if enemy_bishop & g.get_piece(PieceType::Queen, enemy) != 0u64 {
                                 PieceType::Queen
                             } else {
                                 PieceType::Bishop
@@ -740,7 +725,7 @@ pub fn generate_moves(
                         enemy_bishop_position,
                         PieceType::Pawn,
                         GameMoveType::Capture(
-                            if enemy_bishop & g.pieces[PieceType::Queen as usize][enemy] != 0u64 {
+                            if enemy_bishop & g.get_piece(PieceType::Queen, enemy) != 0u64 {
                                 PieceType::Queen
                             } else {
                                 PieceType::Bishop
@@ -865,10 +850,9 @@ pub fn generate_moves(
         };
         let all_pieces_without_en_passants =
             all_pieces & !square(pawn_from) & !square(removed_piece_index);
-        if rook_attack(g.king_square(side), all_pieces_without_en_passants)
-            & RANKS[g.king_square(side) / 8]
-            & (g.pieces[PieceType::Rook as usize][enemy]
-                | g.pieces[PieceType::Queen as usize][enemy])
+        if rook_attack(g.get_king_square(side), all_pieces_without_en_passants)
+            & RANKS[g.get_king_square(side) / 8]
+            & g.get_rook_like_bb(enemy)
             == 0u64
         {
             add_move_to_movelist(
@@ -930,10 +914,9 @@ pub fn generate_moves(
         };
         let all_pieces_without_en_passants =
             all_pieces & !square(pawn_from) & !square(removed_piece_index);
-        if rook_attack(g.king_square(side), all_pieces_without_en_passants)
-            & RANKS[g.king_square(side) / 8]
-            & (g.pieces[PieceType::Rook as usize][enemy]
-                | g.pieces[PieceType::Queen as usize][enemy])
+        if rook_attack(g.get_king_square(side), all_pieces_without_en_passants)
+            & RANKS[g.get_king_square(side) / 8]
+            & g.get_rook_like_bb(enemy)
             == 0u64
         {
             add_move_to_movelist(
@@ -962,7 +945,7 @@ pub fn generate_moves(
             movelist,
             attack_container,
             *pt,
-            g.pieces[*pt as usize][side],
+            g.get_piece(*pt, side),
             pinned_pieces,
             enemy_pieces,
             empty_squares,
@@ -982,7 +965,7 @@ pub fn generate_moves(
                     == 0u64
             {
                 movelist.add_move(GameMove {
-                    from: g.king_square(side) as u8,
+                    from: g.get_king_square(side) as u8,
                     to: square::G1 as u8,
                     move_type: GameMoveType::Castle,
                     piece_type: PieceType::King,
@@ -995,7 +978,7 @@ pub fn generate_moves(
                     == 0u64
             {
                 movelist.add_move(GameMove {
-                    from: g.king_square(side) as u8,
+                    from: g.get_king_square(side) as u8,
                     to: square::C1 as u8,
                     move_type: GameMoveType::Castle,
                     piece_type: PieceType::King,
@@ -1008,7 +991,7 @@ pub fn generate_moves(
                     == 0u64
             {
                 movelist.add_move(GameMove {
-                    from: g.king_square(side) as u8,
+                    from: g.get_king_square(side) as u8,
                     to: square::G8 as u8,
                     move_type: GameMoveType::Castle,
                     piece_type: PieceType::King,
@@ -1021,7 +1004,7 @@ pub fn generate_moves(
                     == 0u64
             {
                 movelist.add_move(GameMove {
-                    from: g.king_square(side) as u8,
+                    from: g.get_king_square(side) as u8,
                     to: square::C8 as u8,
                     move_type: GameMoveType::Castle,
                     piece_type: PieceType::King,
