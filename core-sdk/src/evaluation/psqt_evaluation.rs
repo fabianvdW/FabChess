@@ -1,7 +1,7 @@
 use super::EvaluationResult;
 use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
-use crate::board_representation::game_state::{PieceType, BLACK, PIECE_TYPES, WHITE};
+use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE};
 use crate::evaluation::params::PSQT;
 
 pub const BLACK_INDEX: [usize; 64] = [
@@ -10,16 +10,18 @@ pub const BLACK_INDEX: [usize; 64] = [
     8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7,
 ];
 
-pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn psqt(game_state: &GameState, side: usize, _eval: &mut EvaluationResult) -> EvaluationScore {
     let mut res = EvaluationScore::default();
-    let side = if white { WHITE } else { BLACK };
     #[cfg(feature = "display-eval")]
     {
-        println!("\nPSQT for {}:", if white { "White" } else { "Black" });
+        println!(
+            "\nPSQT for {}:",
+            if side == WHITE { "White" } else { "Black" }
+        );
     }
     for pt in PIECE_TYPES.iter() {
         let mut piece_sum = EvaluationScore::default();
-        let mut piece = pieces[*pt as usize][side];
+        let mut piece = game_state.get_piece(*pt, side);
         while piece > 0 {
             #[allow(unused_mut)]
             let mut idx = piece.trailing_zeros() as usize;
@@ -28,7 +30,7 @@ pub fn psqt(white: bool, pieces: &[[u64; 2]; 6], _eval: &mut EvaluationResult) -
                 PSQT[*pt as usize][side][idx / 8][idx % 8] * if side == WHITE { 1 } else { -1 };
             #[cfg(feature = "texel-tuning")]
             {
-                if !white {
+                if side != WHITE {
                     idx = BLACK_INDEX[idx];
                 }
                 _eval.trace.psqt[*pt as usize][idx / 8][idx % 8] +=

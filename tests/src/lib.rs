@@ -2,8 +2,8 @@ extern crate rand;
 #[cfg(test)]
 mod tests {
     use core_sdk::board_representation::game_state::GameState;
+    use core_sdk::board_representation::game_state::{BLACK, WHITE};
     use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
-    use core_sdk::evaluation::phase::Phase;
     use core_sdk::evaluation::psqt_evaluation::psqt;
     use core_sdk::move_generation::makemove::make_move;
     use core_sdk::move_generation::movegen;
@@ -171,15 +171,11 @@ mod tests {
         for _i in 0..10000 {
             let mut g = GameState::standard();
             for _j in 0..200 {
-                assert_eq!(
-                    g.get_hash(),
-                    GameState::calculate_zobrist_hash(
-                        g.get_color_to_move(),
-                        g.pieces,
-                        g.castle_permissions(),
-                        g.get_en_passant(),
-                    )
-                );
+                assert_eq!(g.get_hash(), {
+                    let mut other = g.clone();
+                    other.initialize_zobrist_hash();
+                    other.get_hash()
+                });
                 attack_container.write_state(&g);
                 movegen::generate_moves(&g, false, &mut movelist, &attack_container);
                 if movelist.move_list.is_empty() {
@@ -201,7 +197,12 @@ mod tests {
         for _i in 0..10_000 {
             let mut g = GameState::standard();
             assert!(
-                (g.get_phase().phase - Phase::from_pieces(&g.pieces).phase).abs()
+                (g.get_phase().phase - {
+                    let mut other = g.clone();
+                    other.initialize_phase();
+                    other.get_phase().phase
+                })
+                .abs()
                     < std::f64::EPSILON
             );
             for _j in 0..200 {
@@ -215,7 +216,12 @@ mod tests {
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
                 assert!(
-                    (g.get_phase().phase - Phase::from_pieces(&g.pieces).phase).abs()
+                    (g.get_phase().phase - {
+                        let mut other = g.clone();
+                        other.initialize_phase();
+                        other.get_phase().phase
+                    })
+                    .abs()
                         < std::f64::EPSILON
                 );
             }
@@ -233,8 +239,8 @@ mod tests {
 
         for _i in 0..100_000 {
             let mut g = GameState::standard();
-            let w_psqt = psqt(true, &g.pieces, &mut _eval);
-            let b_psqt = psqt(false, &g.pieces, &mut _eval);
+            let w_psqt = psqt(&g, WHITE, &mut _eval);
+            let b_psqt = psqt(&g, BLACK, &mut _eval);
             assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
                 attack_container.write_state(&g);
@@ -246,8 +252,8 @@ mod tests {
                     &g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
-                let w_psqt = psqt(true, &g.pieces, &mut _eval);
-                let b_psqt = psqt(false, &g.pieces, &mut _eval);
+                let w_psqt = psqt(&g, WHITE, &mut _eval);
+                let b_psqt = psqt(&g, BLACK, &mut _eval);
                 assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             }
         }

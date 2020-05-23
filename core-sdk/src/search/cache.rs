@@ -1,4 +1,6 @@
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use crate::board_representation::game_state::{
+    GameMove, GameMoveType, GameState, PieceType, PIECE_TYPES,
+};
 use crate::search::{CombinedSearchParameters, SearchInstruction, MATED_IN_MAX};
 use std::cell::UnsafeCell;
 
@@ -416,28 +418,12 @@ impl CacheEntry {
         let to_board = 1u64 << to;
         let color_to_move = game_state.get_color_to_move();
         let enemy_color = 1 - color_to_move;
-        let piece_type = if (game_state.pieces[PieceType::Pawn as usize][color_to_move]
-            & from_board)
-            != 0u64
-        {
-            PieceType::Pawn
-        } else if (game_state.pieces[PieceType::Knight as usize][color_to_move] & from_board)
-            != 0u64
-        {
-            PieceType::Knight
-        } else if (game_state.pieces[PieceType::Bishop as usize][color_to_move] & from_board)
-            != 0u64
-        {
-            PieceType::Bishop
-        } else if (game_state.pieces[PieceType::Rook as usize][color_to_move] & from_board) != 0u64
-        {
-            PieceType::Rook
-        } else if (game_state.pieces[PieceType::Queen as usize][color_to_move] & from_board) != 0u64
-        {
-            PieceType::Queen
-        } else {
-            PieceType::King
-        };
+        let mut piece_type = PieceType::Pawn;
+        for pt in PIECE_TYPES.iter() {
+            if game_state.get_piece(*pt, color_to_move) & from_board > 0 {
+                piece_type = *pt;
+            }
+        }
         if typ == 1 {
             GameMove {
                 from,
@@ -462,28 +448,12 @@ impl CacheEntry {
                     move_type: GameMoveType::EnPassant,
                 };
             }
-            let captured_piece_type = if (game_state.pieces[PieceType::Pawn as usize][enemy_color]
-                & to_board)
-                != 0u64
-            {
-                PieceType::Pawn
-            } else if (game_state.pieces[PieceType::Knight as usize][enemy_color] & to_board)
-                != 0u64
-            {
-                PieceType::Knight
-            } else if (game_state.pieces[PieceType::Bishop as usize][enemy_color] & to_board)
-                != 0u64
-            {
-                PieceType::Bishop
-            } else if (game_state.pieces[PieceType::Rook as usize][enemy_color] & to_board) != 0u64
-            {
-                PieceType::Rook
-            } else if (game_state.pieces[PieceType::Queen as usize][enemy_color] & to_board) != 0u64
-            {
-                PieceType::Queen
-            } else {
-                PieceType::King
-            };
+            let mut captured_piece_type = PieceType::King;
+            for pt in PIECE_TYPES.iter() {
+                if game_state.get_piece(*pt, enemy_color) & to_board > 0 {
+                    captured_piece_type = *pt;
+                }
+            }
             if typ == 3 {
                 GameMove {
                     from,
