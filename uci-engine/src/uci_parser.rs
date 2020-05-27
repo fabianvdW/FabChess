@@ -31,7 +31,7 @@ pub fn parse_loop() {
     let mut line = String::new();
     loop {
         line.clear();
-        stdin.read_line(&mut line).ok().unwrap();
+        stdin.read_line(&mut line).unwrap();
         if line.is_empty() {
             break;
         }
