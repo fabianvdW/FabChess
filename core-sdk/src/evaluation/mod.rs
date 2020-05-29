@@ -980,7 +980,7 @@ pub fn pawns(
             } else {
                 bitboards::b_front_span(square(idx))
             } & (enemy_defended | enemy_pieces)
-                & defended
+                & !defended
                 == 0u64
         {
             //Passed and not blocked
