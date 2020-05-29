@@ -9,7 +9,6 @@ pub mod statistics;
 pub mod timecontrol;
 
 use crate::board_representation::game_state::*;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::search::searcher::Thread;
 use crate::search::timecontrol::TimeControlInformation;
 use history::History;
@@ -180,13 +179,6 @@ pub fn concatenate_pv(at_depth: usize, thread: &mut Thread) {
         thread.pv_table[at_depth].pv[index + 1] = None;
         index += 1;
     }
-}
-
-#[inline(always)]
-pub fn in_check(game_state: &GameState, attack_container: &GameStateAttackContainer) -> bool {
-    (game_state.get_piece(PieceType::King, game_state.get_color_to_move())
-        & attack_container.attacks_sum[1 - game_state.get_color_to_move()])
-        != 0u64
 }
 
 #[inline(always)]

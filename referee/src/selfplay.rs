@@ -1,7 +1,6 @@
 use crate::async_communication::{stderr_listener, write_all};
 use crate::engine::{EndConditionInformation, EngineReaction, EngineStatus, PlayTask, TaskResult};
 use core_sdk::board_representation::game_state::*;
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use log::warn;
@@ -22,12 +21,10 @@ pub async fn cleanup(mut e1: Child, mut e2: Child, e1_err: JoinHandle<()>, e2_er
 }
 pub async fn play_game(mut task: PlayTask) -> TaskResult {
     let mut movelist = movegen::MoveList::default();
-    let mut attack_container = GameStateAttackContainer::default();
     //-------------------------------------------------------------
     //Set game up
     let opening_fen = task.opening.to_fen();
-    attack_container.write_state(&task.opening);
-    let agsi = movegen::generate_moves(&task.opening, false, &mut movelist, &attack_container);
+    let agsi = movegen::generate_moves(&task.opening, false, &mut movelist);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
     let mut status = check_end_condition(
         &task.opening,
@@ -207,8 +204,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
         if state.get_full_moves() < 35 {
             draw_adjudication = 0;
         }
-        attack_container.write_state(&state);
-        let agsi = movegen::generate_moves(&state, false, &mut movelist, &attack_container);
+        let agsi = movegen::generate_moves(&state, false, &mut movelist);
         let check = check_end_condition(
             &state,
             !movelist.move_list.is_empty(),

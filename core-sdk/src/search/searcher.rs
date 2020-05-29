@@ -9,10 +9,9 @@ use super::MATED_IN_MAX;
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::{GameState, WHITE};
 //use crate::logging::log;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{generate_moves, MoveList};
-use crate::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
+use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::{CombinedSearchParameters, ScoredPrincipalVariation, MATE_SCORE};
 use crate::UCIOptions;
 use std::cell::UnsafeCell;
@@ -258,7 +257,6 @@ pub struct Thread {
     pub root_plies_played: usize,
     pub history: History,
     pub movelist: ReservedMoveList,
-    pub attack_container: ReservedAttackContainer,
     pub pv_table: Vec<PrincipalVariation>,
     pub killer_moves: [[Option<GameMove>; 2]; MAX_SEARCH_DEPTH],
     pub quiets_tried: [[Option<GameMove>; 128]; MAX_SEARCH_DEPTH],
@@ -319,7 +317,6 @@ impl Thread {
             root_plies_played: 0,
             history: History::default(),
             movelist: ReservedMoveList::default(),
-            attack_container: ReservedAttackContainer::default(),
             pv_table,
             killer_moves: [[None; 2]; MAX_SEARCH_DEPTH],
             quiets_tried: [[None; 128]; MAX_SEARCH_DEPTH],
@@ -499,12 +496,7 @@ pub fn search_move(
     let time_saved_before = itcs.saved_time.load(Ordering::Relaxed);
     //Step 1. Check how many legal moves there are
     let mut movelist = MoveList::default();
-    generate_moves(
-        &game_state,
-        false,
-        &mut movelist,
-        &GameStateAttackContainer::from_state(&game_state),
-    );
+    generate_moves(&game_state, false, &mut movelist);
 
     //Step2. Check legal moves
     if movelist.move_list.is_empty() {

@@ -1,13 +1,11 @@
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, WHITE};
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
 use core_sdk::search::check_for_draw;
 use core_sdk::search::history::History;
-use core_sdk::search::in_check;
 use core_sdk::search::quiescence::{best_move_value, passes_delta_pruning, see, DELTA_PRUNING};
-use core_sdk::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
+use core_sdk::search::reserved_memory::ReservedMoveList;
 use core_sdk::search::SearchInstruction;
 use core_sdk::search::{MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use std::fs;
@@ -44,7 +42,6 @@ fn main() {
 
     let mut history = History::default();
     let mut move_list = ReservedMoveList::default();
-    let mut attack_container = ReservedAttackContainer::default();
     let mut see_buffer = vec![0i16; MAX_SEARCH_DEPTH];
 
     for position in positions {
@@ -63,7 +60,6 @@ fn main() {
             0,
             &mut history,
             &mut move_list,
-            &mut attack_container,
             &mut see_buffer,
         );
         quiet_nonstripped.push(LabelledGameState {
@@ -98,24 +94,15 @@ pub fn stripped_q_search(
     depth_left: i16,
     history: &mut History,
     move_list: &mut ReservedMoveList,
-    attack_container: &mut ReservedAttackContainer,
     see_buffer: &mut Vec<i16>,
 ) -> (i16, GameState) {
     //Check for draw
     if let SearchInstruction::StopSearching(res) = check_for_draw(&game_state, history) {
         return (res, game_state);
     }
-    attack_container.attack_containers[current_depth].write_state(&game_state);
-    let incheck = in_check(
-        &game_state,
-        &attack_container.attack_containers[current_depth],
-    );
-    let static_evaluation = eval_game_state(
-        &game_state,
-        &attack_container.attack_containers[current_depth],
-        -16000,
-        16000,
-    );
+    let incheck = game_state.in_check();
+
+    let static_evaluation = eval_game_state(&game_state, -16000, 16000);
     //Standing pat pruning
     let stand_pat = static_evaluation.final_eval * color;
     if !incheck && stand_pat >= beta {
@@ -134,7 +121,6 @@ pub fn stripped_q_search(
     make_moves(
         &game_state,
         &mut move_list.move_lists[current_depth],
-        &attack_container.attack_containers[current_depth],
         game_state.get_phase().phase,
         stand_pat,
         alpha,
@@ -165,7 +151,6 @@ pub fn stripped_q_search(
             depth_left - 1,
             history,
             move_list,
-            attack_container,
             see_buffer,
         );
 
@@ -190,14 +175,13 @@ pub fn stripped_q_search(
 pub fn make_moves(
     game_state: &GameState,
     move_list: &mut MoveList,
-    attack_container: &GameStateAttackContainer,
     phase: f64,
     stand_pat: i16,
     alpha: i16,
     see_buffer: &mut Vec<i16>,
     incheck: bool,
 ) -> AdditionalGameStateInformation {
-    let agsi = movegen::generate_moves(&game_state, !incheck, move_list, attack_container);
+    let agsi = movegen::generate_moves(&game_state, !incheck, move_list);
     for gmv in move_list.move_list.iter_mut() {
         let mv: GameMove = gmv.0;
         if let GameMoveType::EnPassant = mv.move_type {

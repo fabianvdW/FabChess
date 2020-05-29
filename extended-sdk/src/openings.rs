@@ -6,9 +6,6 @@ use std::io::BufReader;
 
 pub fn load_db_until(db: &str, until: usize) -> (Vec<GameState>, Vec<Vec<GameMove>>) {
     let movelist = movegen::MoveList::default();
-    let attack_container =
-        core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer::default(
-        );
     let mut res: Vec<GameState> = Vec::with_capacity(100_000);
     let mut res_mvs = Vec::with_capacity(100_000);
     let res_file = File::open(db).expect("Unable to open opening database");
@@ -18,7 +15,6 @@ pub fn load_db_until(db: &str, until: usize) -> (Vec<GameState>, Vec<Vec<GameMov
         is_opening: true,
         opening_load_untilply: until,
         move_list: movelist,
-        attack_container,
     };
     for game in parser {
         if game.1.len() > until {

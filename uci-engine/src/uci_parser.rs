@@ -1,6 +1,5 @@
 use super::uci_engine::UCIEngine;
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
@@ -25,7 +24,6 @@ pub fn parse_loop() {
     *itcs.cache() =
         Cache::with_size_threaded(itcs.uci_options().hash_size, itcs.uci_options().threads);
     let mut movelist = movegen::MoveList::default();
-    let mut attack_container = GameStateAttackContainer::default();
 
     let stdin = io::stdin();
     let mut line = String::new();
@@ -56,7 +54,7 @@ pub fn parse_loop() {
             }
             "isready" => isready(&itcs, true),
             "position" => {
-                history = position(&mut us, &arg[1..], &mut movelist, &mut attack_container);
+                history = position(&mut us, &arg[1..], &mut movelist);
             }
             "go" => {
                 isready(&itcs, false);
@@ -88,7 +86,7 @@ pub fn parse_loop() {
             "static" => {
                 println!(
                     "cp {}",
-                    core_sdk::evaluation::eval_game_state_from_null(&us.internal_state).final_eval
+                    core_sdk::evaluation::eval_game_state(&us.internal_state, 0, 0).final_eval
                 );
             }
             _ => {
@@ -168,7 +166,6 @@ pub fn position(
     engine: &mut UCIEngine,
     cmd: &[&str],
     movelist: &mut movegen::MoveList,
-    attack_container: &mut GameStateAttackContainer,
 ) -> Vec<GameState> {
     let mut move_index = 1;
     match cmd[0] {
@@ -196,14 +193,8 @@ pub fn position(
             //Parse the move and make it
             let mv = cmd[move_index];
             let (from, to, promo) = GameMove::string_to_move(mv);
-            engine.internal_state = scout_and_make_draftmove(
-                from,
-                to,
-                promo,
-                &engine.internal_state,
-                movelist,
-                attack_container,
-            );
+            engine.internal_state =
+                scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
             history.push(engine.internal_state.clone());
             move_index += 1;
         }
@@ -218,10 +209,8 @@ pub fn scout_and_make_draftmove(
     promo_pieces: Option<PieceType>,
     game_state: &GameState,
     movelist: &mut movegen::MoveList,
-    attack_container: &mut GameStateAttackContainer,
 ) -> GameState {
-    attack_container.write_state(game_state);
-    movegen::generate_moves(&game_state, false, movelist, attack_container);
+    movegen::generate_moves(&game_state, false, movelist);
     for gmv in movelist.move_list.iter() {
         let mv = gmv.0;
         if mv.from as usize == from && mv.to as usize == to {
