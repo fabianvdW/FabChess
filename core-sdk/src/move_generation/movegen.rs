@@ -1056,8 +1056,7 @@ pub fn generate_moves(
                 });
             }
             if g.castle_white_queenside()
-                && (all_pieces & (square(square::C1) | square(square::D1))
-                    | all_pieces & square(square::B1))
+                && all_pieces & (square(square::C1) | square(square::D1) | square(square::B1))
                     == 0u64
                 && stm_legal_kingmoves & square(square::D1) > 0
                 && !g.square_attacked(square::C1, all_pieces, 0u64)
@@ -1083,8 +1082,7 @@ pub fn generate_moves(
                 });
             }
             if g.castle_black_queenside()
-                && (all_pieces & (square(square::C8) | square(square::D8))
-                    | all_pieces & square(square::B8))
+                && all_pieces & (square(square::C8) | square(square::D8 | square(square::B8)))
                     == 0u64
                 && stm_legal_kingmoves & square(square::D8) > 0
                 && !g.square_attacked(square::C8, all_pieces, 0u64)
