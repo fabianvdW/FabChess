@@ -1045,7 +1045,7 @@ pub fn generate_moves(
         if stm_color_iswhite {
             if g.castle_white_kingside()
                 && all_pieces & (square(square::F1) | square(square::G1)) == 0u64
-                && !g.square_attacked(square::F1, all_pieces, 0u64)
+                && stm_legal_kingmoves & square(square::F1) > 0
                 && !g.square_attacked(square::G1, all_pieces, 0u64)
             {
                 movelist.add_move(GameMove {
@@ -1059,8 +1059,8 @@ pub fn generate_moves(
                 && (all_pieces & (square(square::C1) | square(square::D1))
                     | all_pieces & square(square::B1))
                     == 0u64
+                && stm_legal_kingmoves & square(square::D1) > 0
                 && !g.square_attacked(square::C1, all_pieces, 0u64)
-                && !g.square_attacked(square::D1, all_pieces, 0u64)
             {
                 movelist.add_move(GameMove {
                     from: g.get_king_square(side) as u8,
@@ -1072,7 +1072,7 @@ pub fn generate_moves(
         } else {
             if g.castle_black_kingside()
                 && all_pieces & (square(square::F8) | square(square::G8)) == 0u64
-                && !g.square_attacked(square::F8, all_pieces, 0u64)
+                && stm_legal_kingmoves & square(square::F8) > 0
                 && !g.square_attacked(square::G8, all_pieces, 0u64)
             {
                 movelist.add_move(GameMove {
@@ -1086,8 +1086,8 @@ pub fn generate_moves(
                 && (all_pieces & (square(square::C8) | square(square::D8))
                     | all_pieces & square(square::B8))
                     == 0u64
+                && stm_legal_kingmoves & square(square::D8) > 0
                 && !g.square_attacked(square::C8, all_pieces, 0u64)
-                && !g.square_attacked(square::D8, all_pieces, 0u64)
             {
                 movelist.add_move(GameMove {
                     from: g.get_king_square(side) as u8,
