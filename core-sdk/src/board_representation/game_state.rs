@@ -1,7 +1,6 @@
 use crate::bitboards::bitboards::constants::square;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS};
 use crate::bitboards::bitboards::square;
-use crate::board_representation::game_state_attack_container::GameStateAttackContainer;
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
@@ -180,8 +179,7 @@ impl GameMove {
 
     pub fn to_san(self, game_state: &GameState) -> String {
         let mut movelist = MoveList::default();
-        let mut agsi = GameStateAttackContainer::from_state(game_state);
-        generate_moves(game_state, false, &mut movelist, &agsi);
+        generate_moves(game_state, false, &mut movelist);
         let mut res_str = String::new();
         if let GameMoveType::Castle = self.move_type {
             if self.to == 2 || self.to == 58 {
@@ -245,8 +243,7 @@ impl GameMove {
             }
         }
         let game_state = make_move(game_state, self);
-        agsi.write_state(&game_state);
-        let agsi = generate_moves(&game_state, false, &mut movelist, &agsi);
+        let agsi = generate_moves(&game_state, false, &mut movelist);
         if agsi.stm_incheck && movelist.move_list.is_empty() {
             res_str.push_str("#");
         } else if agsi.stm_incheck {
@@ -442,6 +439,10 @@ impl GameState {
     }
     pub fn get_all_pieces(&self) -> u64 {
         self.get_pieces_from_side(WHITE) | self.get_pieces_from_side(BLACK)
+    }
+    pub fn get_all_pieces_without_ctm_king(&self) -> u64 {
+        self.get_pieces_from_side_without_king(self.color_to_move)
+            | self.get_pieces_from_side(1 - self.color_to_move)
     }
     pub fn castle_white_kingside(&self) -> bool {
         self.irreversible.castle_permissions & CASTLE_WHITE_KS > 0
@@ -816,11 +817,7 @@ impl GameState {
         }
     }
 
-    pub fn is_valid_tt_move(
-        &self,
-        mv: GameMove,
-        attack_container: &GameStateAttackContainer,
-    ) -> bool {
+    pub fn is_valid_tt_move(&self, mv: GameMove) -> bool {
         //println!("{}",self.to_fen());
         //println!("{:?}", mv);
         if self.get_piece(mv.piece_type, self.color_to_move) & square(mv.from as usize) == 0u64 {
@@ -850,37 +847,45 @@ impl GameState {
                 return false;
             }
             let all_piece = self.get_all_pieces();
-            let blocked = all_piece | attack_container.attacks_sum[1 - self.color_to_move];
             if mv.to != square::G1 as u8
                 && mv.to != square::C1 as u8
                 && mv.to != square::G8 as u8
                 && mv.to != square::C8 as u8
-                || attack_container.attacks_sum[1 - self.color_to_move] & square(mv.from as usize)
-                    != 0u64
+                || self.in_check()
             {
                 return false;
             }
             let is_invalid_wk = || {
                 mv.to == square::G1 as u8
                     && (!self.castle_white_kingside()
-                        || blocked & (square(square::F1) | square(square::G1)) != 0u64)
+                        || all_piece & (square(square::F1) | square(square::G1)) > 0
+                        || self.square_attacked(square::F1, all_piece, 0u64)
+                        || self.square_attacked(square::G1, all_piece, 0u64))
             };
             let is_invalid_wq = || {
                 mv.to == square::C1 as u8
                     && (!self.castle_white_queenside()
-                        || blocked & (square(square::C1) | square(square::D1)) != 0u64
-                        || all_piece & square(square::B1) != 0u64)
+                        || all_piece
+                            & (square(square::B1) | square(square::C1) | square(square::D1))
+                            > 0
+                        || self.square_attacked(square::C1, all_piece, 0u64)
+                        || self.square_attacked(square::D1, all_piece, 0u64))
             };
             let is_invalid_bk = || {
                 mv.to == square::G8 as u8
                     && (!self.castle_black_kingside()
-                        || blocked & (square(square::F8) | square(square::G8)) != 0u64)
+                        || all_piece & (square(square::F8) | square(square::G8)) > 0
+                        || self.square_attacked(square::F8, all_piece, 0u64)
+                        || self.square_attacked(square::G8, all_piece, 0u64))
             };
             let is_invalid_bq = || {
                 mv.to == square::C8 as u8
                     && (!self.castle_black_queenside()
-                        || blocked & (square(square::C8) | square(square::D8)) != 0u64
-                        || all_piece & square(square::B8) != 0u64)
+                        || all_piece
+                            & (square(square::B8) | square(square::C8) | square(square::D8))
+                            > 0
+                        || self.square_attacked(square::C8, all_piece, 0u64)
+                        || self.square_attacked(square::D8, all_piece, 0u64))
             };
             if is_invalid_wk() || is_invalid_wq() || is_invalid_bk() || is_invalid_bq() {
                 return false;
@@ -901,8 +906,7 @@ impl GameState {
         let mut all_pieces = self.get_all_pieces();
         match mv.piece_type {
             PieceType::King => {
-                if square(mv.to as usize) & (attack_container.attacks_sum[1 - self.color_to_move])
-                    != 0u64
+                if self.square_attacked(mv.to as usize, all_pieces ^ square(mv.from as usize), 0u64)
                     || mv.move_type != GameMoveType::Castle
                         && square(mv.to as usize) & (KING_ATTACKS[mv.from as usize]) == 0u64
                 {

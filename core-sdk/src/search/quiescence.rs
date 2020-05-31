@@ -24,7 +24,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 2. Max search-depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p, thread) {
+    if let SearchInstruction::StopSearching(res) = max_depth(&p) {
         return res;
     }
 
@@ -33,20 +33,9 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         return res;
     }
 
-    //Step 4. Attacks and in check  flag. Attacks are only recalculated when parent is also a qnode
-    if p.depth_left < 0 {
-        // Before dropping into qsearch we make sure we're not in check in pvs
-        thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
-    }
     //Step 5. Get standing pat when not in check
-    let stand_pat = eval_game_state(
-        &p.game_state,
-        &thread.attack_container.attack_containers[p.current_depth],
-        p.alpha * p.color,
-        p.beta * p.color,
-    )
-    .final_eval
-        * p.color;
+    let stand_pat =
+        eval_game_state(&p.game_state, p.alpha * p.color, p.beta * p.color).final_eval * p.color;
 
     //Step 6. Preliminary pruning
     if let SearchInstruction::StopSearching(res) = adjust_standpat(&mut p, stand_pat) {

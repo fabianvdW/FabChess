@@ -43,7 +43,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 2. Max Search depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p, thread) {
+    if let SearchInstruction::StopSearching(res) = max_depth(&p) {
         return res;
     }
 
@@ -65,11 +65,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 4. Attacks and in check  flag
-    thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
-    let incheck = in_check(
-        p.game_state,
-        &thread.attack_container.attack_containers[p.current_depth],
-    );
+    let incheck = p.game_state.in_check();
 
     //Step 5. Check extensions if not at root
     if incheck && !root {
@@ -127,7 +123,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
-    make_eval(&p, thread, &mut static_evaluation, prunable);
+    make_eval(&p, &mut static_evaluation, prunable);
 
     //Step 10. Prunings
     if prunable {
@@ -420,18 +416,10 @@ pub fn mate_distance_pruning(p: &mut CombinedSearchParameters) -> SearchInstruct
 }
 
 #[inline(always)]
-pub fn max_depth(p: &CombinedSearchParameters, thread: &mut Thread) -> SearchInstruction {
+pub fn max_depth(p: &CombinedSearchParameters) -> SearchInstruction {
     if p.current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        thread.attack_container.attack_containers[p.current_depth].write_state(p.game_state);
         SearchInstruction::StopSearching(
-            eval_game_state(
-                p.game_state,
-                &thread.attack_container.attack_containers[p.current_depth],
-                p.alpha * p.color,
-                p.beta * p.color,
-            )
-            .final_eval
-                * p.color,
+            eval_game_state(p.game_state, p.alpha * p.color, p.beta * p.color).final_eval * p.color,
         )
     } else {
         SearchInstruction::ContinueSearching
@@ -459,7 +447,6 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 #[inline(always)]
 pub fn make_eval(
     p: &CombinedSearchParameters,
-    thread: &mut Thread,
     static_evaluation: &mut Option<i16>,
     prunable: bool,
 ) {
@@ -468,12 +455,7 @@ pub fn make_eval(
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || p.depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = eval_game_state(
-            p.game_state,
-            &thread.attack_container.attack_containers[p.current_depth],
-            p.alpha * p.color,
-            p.beta * p.color,
-        );
+        let eval_res = eval_game_state(p.game_state, p.alpha * p.color, p.beta * p.color);
         *static_evaluation = Some(eval_res.final_eval);
         #[cfg(feature = "search-statistics")]
         {

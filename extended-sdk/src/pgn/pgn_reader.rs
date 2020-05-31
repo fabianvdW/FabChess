@@ -1,7 +1,6 @@
 use core_sdk::board_representation::game_state::{
     char_to_file, char_to_rank, GameMove, GameMoveType, GameState, PieceType, WHITE,
 };
-use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use std::fs::File;
@@ -12,7 +11,6 @@ pub struct GameParser {
     pub is_opening: bool,
     pub opening_load_untilply: usize,
     pub move_list: movegen::MoveList,
-    pub attack_container: GameStateAttackContainer,
 }
 
 impl Iterator for GameParser {
@@ -42,13 +40,7 @@ impl Iterator for GameParser {
                     }
                     //println!("{} || len: {}", move_str, move_str.len());
                     let last_state = &vec_gs[vec_gs.len() - 1];
-                    self.attack_container.write_state(last_state);
-                    let parsed_move = parse_move(
-                        last_state,
-                        &move_str,
-                        &mut self.move_list,
-                        &self.attack_container,
-                    );
+                    let parsed_move = parse_move(last_state, &move_str, &mut self.move_list);
                     vec_gs.push(parsed_move.1);
                     vec_res.push(parsed_move.0);
                     if self.is_opening && vec_res.len() == self.opening_load_untilply {
@@ -192,7 +184,6 @@ pub fn parse_move(
     g: &GameState,
     move_str: &str,
     movelist: &mut movegen::MoveList,
-    attack_container: &GameStateAttackContainer,
 ) -> (GameMove, GameState) {
     let mut my_string = move_str.to_string();
     my_string = my_string
@@ -200,7 +191,7 @@ pub fn parse_move(
         .replace("+", "")
         .replace("=", "")
         .replace("x", "");
-    movegen::generate_moves(&g, false, movelist, &attack_container);
+    movegen::generate_moves(&g, false, movelist);
     if my_string.contains('-') {
         //Castle
         //Kingside

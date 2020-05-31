@@ -152,7 +152,6 @@ pub fn get_pgn_string(
 mod tests {
     use crate::pgn::pgn_writer::PGNMetadata;
     use core_sdk::board_representation::game_state::*;
-    use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core_sdk::move_generation::makemove::make_move;
     use core_sdk::move_generation::movegen;
     use rand::Rng;
@@ -160,14 +159,12 @@ mod tests {
     #[test]
     fn pgn_writer_test() {
         let mut movelist = movegen::MoveList::default();
-        let mut attack_container = GameStateAttackContainer::default();
         let mut rng = rand::thread_rng();
         let mut g = GameState::from_fen("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -");
         let mut moves = Vec::with_capacity(100);
         let mut res = GameResult::Ingame;
         loop {
-            attack_container.write_state(&g);
-            let agsi = movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+            let agsi = movegen::generate_moves(&g, false, &mut movelist);
             if movelist.move_list.is_empty() || g.get_half_moves() >= 100 {
                 if g.get_half_moves() >= 100 {
                     res = GameResult::Draw;

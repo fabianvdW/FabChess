@@ -10,7 +10,7 @@ use crate::board_representation::game_state::GameState;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
 use crate::search::cache::DEFAULT_HASH_SIZE;
-use crate::search::reserved_memory::{ReservedAttackContainer, ReservedMoveList};
+use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::searcher::{
     InterThreadCommunicationSystem, DEFAULT_SKIP_RATIO, DEFAULT_THREADS,
 };
@@ -41,21 +41,14 @@ impl Default for UCIOptions {
 pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let mut count = 0u64;
     let mut movelist = ReservedMoveList::default();
-    let mut attack_container = ReservedAttackContainer::default();
     let now = Instant::now();
 
-    attack_container.attack_containers[depth].write_state(g);
-    let _ = movegen::generate_moves(
-        &g,
-        false,
-        &mut movelist.move_lists[depth],
-        &attack_container.attack_containers[depth],
-    );
+    let _ = movegen::generate_moves(&g, false, &mut movelist.move_lists[depth]);
     let len = movelist.move_lists[depth].move_list.len();
     for i in 0..len {
         let gmv = movelist.move_lists[depth].move_list[i];
         let next_g = make_move(&g, gmv.0);
-        let res = perft(&next_g, depth - 1, &mut movelist, &mut attack_container);
+        let res = perft(&next_g, depth - 1, &mut movelist);
         println!("{:?}: {}", gmv.0, res);
         count += res;
     }
@@ -70,36 +63,20 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     count
 }
 
-pub fn perft(
-    g: &GameState,
-    depth: usize,
-    movelist: &mut ReservedMoveList,
-    attack_container: &mut ReservedAttackContainer,
-) -> u64 {
-    attack_container.attack_containers[depth].write_state(g);
+pub fn perft(g: &GameState, depth: usize, movelist: &mut ReservedMoveList) -> u64 {
     if depth == 1 {
-        let _ = movegen::generate_moves(
-            &g,
-            false,
-            &mut movelist.move_lists[depth],
-            &attack_container.attack_containers[depth],
-        );
+        let _ = movegen::generate_moves(&g, false, &mut movelist.move_lists[depth]);
         movelist.move_lists[depth].move_list.len() as u64
     } else {
         if depth == 0 {
             return 1;
         }
         let mut res = 0;
-        let _ = movegen::generate_moves(
-            &g,
-            false,
-            &mut movelist.move_lists[depth],
-            &attack_container.attack_containers[depth],
-        );
+        let _ = movegen::generate_moves(&g, false, &mut movelist.move_lists[depth]);
         let len = movelist.move_lists[depth].move_list.len();
         for i in 0..len {
             let mv = movelist.move_lists[depth].move_list[i].0;
-            res += perft(&make_move(&g, mv), depth - 1, movelist, attack_container);
+            res += perft(&make_move(&g, mv), depth - 1, movelist);
         }
         res
     }

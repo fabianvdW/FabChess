@@ -3,13 +3,11 @@ extern crate rand;
 mod tests {
     use core_sdk::board_representation::game_state::GameState;
     use core_sdk::board_representation::game_state::{BLACK, WHITE};
-    use core_sdk::board_representation::game_state_attack_container::GameStateAttackContainer;
     use core_sdk::evaluation::psqt_evaluation::psqt;
     use core_sdk::move_generation::makemove::make_move;
     use core_sdk::move_generation::movegen;
     use core_sdk::move_generation::movegen::MoveList;
     use core_sdk::perft;
-    use core_sdk::search::reserved_memory::ReservedAttackContainer;
     use core_sdk::search::reserved_memory::ReservedMoveList;
     use extended_sdk::misc::KING_BASE_PATH;
     use extended_sdk::pgn::pgn_reader::{parse_move, GameParser, PGNParser};
@@ -56,7 +54,6 @@ mod tests {
     #[test]
     fn perft_test() {
         let mut movelist = ReservedMoveList::default();
-        let mut attack_container = ReservedAttackContainer::default();
         #[rustfmt::skip]
             let cases = [
             (20, 1, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
@@ -152,12 +149,7 @@ mod tests {
             println!("{}", case.2);
             assert_eq!(
                 case.0,
-                perft(
-                    &GameState::from_fen(case.2),
-                    case.1,
-                    &mut movelist,
-                    &mut attack_container,
-                )
+                perft(&GameState::from_fen(case.2), case.1, &mut movelist,)
             );
         }
     }
@@ -166,7 +158,6 @@ mod tests {
     fn zobrist_hash_test() {
         //Tests incremental update of hash
         let mut movelist = movegen::MoveList::default();
-        let mut attack_container = GameStateAttackContainer::default();
         let mut rng = rand::thread_rng();
         for _i in 0..10000 {
             let mut g = GameState::standard();
@@ -176,8 +167,7 @@ mod tests {
                     other.initialize_zobrist_hash();
                     other.get_hash()
                 });
-                attack_container.write_state(&g);
-                movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                movegen::generate_moves(&g, false, &mut movelist);
                 if movelist.move_list.is_empty() {
                     break;
                 }
@@ -193,7 +183,6 @@ mod tests {
     fn phase_incremental() {
         let mut rng = rand::thread_rng();
         let mut movelist = movegen::MoveList::default();
-        let mut attack_container = GameStateAttackContainer::default();
         for _i in 0..10_000 {
             let mut g = GameState::standard();
             assert!(
@@ -206,8 +195,7 @@ mod tests {
                     < std::f64::EPSILON
             );
             for _j in 0..200 {
-                attack_container.write_state(&g);
-                movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                movegen::generate_moves(&g, false, &mut movelist);
                 if movelist.move_list.is_empty() {
                     break;
                 }
@@ -231,7 +219,6 @@ mod tests {
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
         let mut movelist = movegen::MoveList::default();
-        let mut attack_container = GameStateAttackContainer::default();
         let mut _eval = core_sdk::evaluation::EvaluationResult {
             final_eval: 0,
             trace: core_sdk::evaluation::trace::Trace::default(),
@@ -243,8 +230,7 @@ mod tests {
             let b_psqt = psqt(&g, BLACK, &mut _eval);
             assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
-                attack_container.write_state(&g);
-                movegen::generate_moves(&g, false, &mut movelist, &attack_container);
+                movegen::generate_moves(&g, false, &mut movelist);
                 if movelist.move_list.is_empty() {
                     break;
                 }
@@ -274,7 +260,6 @@ mod tests {
                 is_opening: false,
                 opening_load_untilply: 0usize,
                 move_list: movegen::MoveList::default(),
-                attack_container: GameStateAttackContainer::default(),
             };
             for _game in parser.into_iter() {
                 //println!("{}", game.1);
@@ -285,33 +270,32 @@ mod tests {
     fn make_test() {
         let g = GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/4K2R w K c6 0 2");
         let mut movelist = MoveList::default();
-        let agsi = GameStateAttackContainer::from_state(&g);
         assert_eq!(
-            make_move(&g, parse_move(&g, "e1g1", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "e1g1", &mut movelist).0).get_hash(),
             GameState::from_fen("4k3/6P1/8/1Pp5/6b1/8/2B5/5RK1 b - - 1 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8q", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "g7g8q", &mut movelist).0).get_hash(),
             GameState::from_fen("4k1Q1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8b", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "g7g8b", &mut movelist).0).get_hash(),
             GameState::from_fen("4k1B1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8n", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "g7g8n", &mut movelist).0).get_hash(),
             GameState::from_fen("4k1N1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "g7g8r", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "g7g8r", &mut movelist).0).get_hash(),
             GameState::from_fen("4k1R1/8/8/1Pp5/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "b5c6", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "b5c6", &mut movelist).0).get_hash(),
             GameState::from_fen("4k3/6P1/2P5/8/6b1/8/2B5/4K2R b K - 0 2").get_hash()
         );
         assert_eq!(
-            make_move(&g, parse_move(&g, "c2d3", &mut movelist, &agsi).0).get_hash(),
+            make_move(&g, parse_move(&g, "c2d3", &mut movelist).0).get_hash(),
             GameState::from_fen("4k3/6P1/8/1Pp5/6b1/3B4/8/4K2R b K - 1 2").get_hash()
         );
     }

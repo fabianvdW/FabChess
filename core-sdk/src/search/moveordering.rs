@@ -59,11 +59,7 @@ impl MoveOrderer {
         match self.stages[self.stage] {
             MoveOrderingStage::PVMove => {
                 self.stage += 1;
-                if pv_table_move.is_some()
-                    && p.game_state.is_valid_tt_move(
-                        pv_table_move.unwrap(),
-                        &thread.attack_container.attack_containers[p.current_depth],
-                    )
+                if pv_table_move.is_some() && p.game_state.is_valid_tt_move(pv_table_move.unwrap())
                 {
                     Some((pv_table_move.unwrap(), 0.))
                 } else {
@@ -74,10 +70,7 @@ impl MoveOrderer {
                 self.stage += 1;
                 if tt_move.is_some()
                     && tt_move != pv_table_move
-                    && p.game_state.is_valid_tt_move(
-                        tt_move.unwrap(),
-                        &thread.attack_container.attack_containers[p.current_depth],
-                    )
+                    && p.game_state.is_valid_tt_move(tt_move.unwrap())
                 {
                     Some((tt_move.unwrap(), 0.))
                 } else {
@@ -90,7 +83,6 @@ impl MoveOrderer {
                     &p.game_state,
                     self.gen_only_captures,
                     &mut thread.movelist.move_lists[p.current_depth],
-                    &thread.attack_container.attack_containers[p.current_depth],
                 );
                 let our_mvlist = &mut thread.movelist.move_lists[p.current_depth];
 
