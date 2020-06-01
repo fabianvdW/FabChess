@@ -366,7 +366,6 @@ pub fn add_pawn_moves_to_movelist(
     shift: usize,
     is_capture: bool,
     is_promotion: bool,
-    pinned_pieces: u64,
 ) {
     while target_board != 0u64 {
         let pawn_index = target_board.trailing_zeros() as usize;
@@ -376,24 +375,21 @@ pub fn add_pawn_moves_to_movelist(
         } else {
             pawn_index + shift
         };
-        let from_board = square(from_index);
-        if from_board & pinned_pieces == 0u64 {
-            let mv_type = if is_capture {
-                GameMoveType::Capture(find_captured_piece_type(g, pawn_index))
-            } else {
-                GameMoveType::Quiet
-            };
-            if is_promotion {
-                add_promotion_move_to_movelist(legal_moves, from_index, pawn_index, mv_type);
-            } else {
-                add_move_to_movelist(
-                    legal_moves,
-                    from_index,
-                    pawn_index,
-                    PieceType::Pawn,
-                    mv_type,
-                )
-            }
+        let mv_type = if is_capture {
+            GameMoveType::Capture(find_captured_piece_type(g, pawn_index))
+        } else {
+            GameMoveType::Quiet
+        };
+        if is_promotion {
+            add_promotion_move_to_movelist(legal_moves, from_index, pawn_index, mv_type);
+        } else {
+            add_move_to_movelist(
+                legal_moves,
+                from_index,
+                pawn_index,
+                PieceType::Pawn,
+                mv_type,
+            )
         }
         target_board ^= pawn;
     }
@@ -405,7 +401,6 @@ pub fn add_normal_moves_to_movelist(
     legal_moves: &mut MoveList,
     piece_type: PieceType,
     mut piece_board: u64,
-    pinned_pieces: u64,
     enemy_pieces: u64,
     empty_squares: u64,
     push_mask: u64,
@@ -415,31 +410,29 @@ pub fn add_normal_moves_to_movelist(
     while piece_board != 0u64 {
         let piece_index = piece_board.trailing_zeros() as usize;
         let piece = square(piece_index);
-        if pinned_pieces & piece == 0 {
-            let piece_target = piece_type.attacks(piece_index, g.get_all_pieces());
-            let mut captures = piece_target & capture_mask & enemy_pieces;
-            while captures != 0u64 {
-                let capture_index = captures.trailing_zeros() as usize;
-                add_move_to_movelist(
-                    legal_moves,
-                    piece_index,
-                    capture_index,
-                    piece_type,
-                    GameMoveType::Capture(find_captured_piece_type(g, capture_index)),
-                );
-                captures ^= square(capture_index);
-            }
+        let piece_target = piece_type.attacks(piece_index, g.get_all_pieces());
+        let mut captures = piece_target & capture_mask & enemy_pieces;
+        while captures != 0u64 {
+            let capture_index = captures.trailing_zeros() as usize;
+            add_move_to_movelist(
+                legal_moves,
+                piece_index,
+                capture_index,
+                piece_type,
+                GameMoveType::Capture(find_captured_piece_type(g, capture_index)),
+            );
+            captures ^= square(capture_index);
+        }
 
-            if !only_captures {
-                let quiets = piece_target & push_mask & empty_squares;
-                add_moves_to_movelist(
-                    legal_moves,
-                    piece_index,
-                    quiets,
-                    piece_type,
-                    GameMoveType::Quiet,
-                );
-            }
+        if !only_captures {
+            let quiets = piece_target & push_mask & empty_squares;
+            add_moves_to_movelist(
+                legal_moves,
+                piece_index,
+                quiets,
+                piece_type,
+                GameMoveType::Quiet,
+            );
         }
         piece_board ^= piece;
     }
@@ -860,27 +853,11 @@ pub fn generate_moves(
     } & push_mask;
     let stm_pawn_promotions = stm_pawns_single_push & RANKS[if stm_color_iswhite { 7 } else { 0 }];
     if !only_captures {
-        add_pawn_moves_to_movelist(
-            g,
-            movelist,
-            stm_pawn_promotions,
-            8,
-            false,
-            true,
-            pinned_pieces,
-        );
+        add_pawn_moves_to_movelist(g, movelist, stm_pawn_promotions, 8, false, true);
     }
     if !only_captures {
         let stm_pawns_quiet_single_push = stm_pawns_single_push & !stm_pawn_promotions;
-        add_pawn_moves_to_movelist(
-            g,
-            movelist,
-            stm_pawns_quiet_single_push,
-            8,
-            false,
-            false,
-            pinned_pieces,
-        );
+        add_pawn_moves_to_movelist(g, movelist, stm_pawns_quiet_single_push, 8, false, false);
     }
     //5.2 Double push
     if !only_captures {
@@ -889,15 +866,7 @@ pub fn generate_moves(
         } else {
             b_double_push_pawn_targets(side_pawns, empty_squares)
         } & push_mask;
-        add_pawn_moves_to_movelist(
-            g,
-            movelist,
-            stm_pawns_double_push,
-            16,
-            false,
-            false,
-            pinned_pieces,
-        );
+        add_pawn_moves_to_movelist(g, movelist, stm_pawns_double_push, 16, false, false);
     }
     //5.3 West captures (normal capture, promotion capture, en passant)
     let west_targets = pawn_west_targets(side, side_pawns);
@@ -905,15 +874,7 @@ pub fn generate_moves(
     //Split up in promotion and non-promotion captures
     let stm_pawn_west_promotion_capture =
         stm_pawn_west_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
-    add_pawn_moves_to_movelist(
-        g,
-        movelist,
-        stm_pawn_west_promotion_capture,
-        7,
-        true,
-        true,
-        pinned_pieces,
-    );
+    add_pawn_moves_to_movelist(g, movelist, stm_pawn_west_promotion_capture, 7, true, true);
     let stm_pawn_west_nonpromotion_capture =
         stm_pawn_west_captures & !stm_pawn_west_promotion_capture;
     add_pawn_moves_to_movelist(
@@ -923,7 +884,6 @@ pub fn generate_moves(
         7,
         true,
         false,
-        pinned_pieces,
     );
     //En passants
     let stm_pawn_west_enpassants = west_targets
@@ -969,15 +929,7 @@ pub fn generate_moves(
     //Split up in promotion and non-promotion captures
     let stm_pawn_east_promotion_capture =
         stm_pawn_east_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
-    add_pawn_moves_to_movelist(
-        g,
-        movelist,
-        stm_pawn_east_promotion_capture,
-        9,
-        true,
-        true,
-        pinned_pieces,
-    );
+    add_pawn_moves_to_movelist(g, movelist, stm_pawn_east_promotion_capture, 9, true, true);
     let stm_pawn_east_nonpromotion_capture =
         stm_pawn_east_captures & !stm_pawn_east_promotion_capture;
     add_pawn_moves_to_movelist(
@@ -987,7 +939,6 @@ pub fn generate_moves(
         9,
         true,
         false,
-        pinned_pieces,
     );
     //En passants
     let stm_pawn_east_enpassants = east_targets
@@ -1043,8 +994,7 @@ pub fn generate_moves(
             g,
             movelist,
             *pt,
-            g.get_piece(*pt, side),
-            pinned_pieces,
+            g.get_piece(*pt, side) & !pinned_pieces,
             enemy_pieces,
             empty_squares,
             push_mask,
