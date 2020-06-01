@@ -445,49 +445,27 @@ pub fn add_promotion_move_to_movelist(
     to_square: usize,
     move_type: GameMoveType,
 ) {
-    let new_types = if let GameMoveType::Capture(x) = move_type {
-        (
-            GameMoveType::Promotion(PieceType::Queen, Some(x)),
-            GameMoveType::Promotion(PieceType::Rook, Some(x)),
-            GameMoveType::Promotion(PieceType::Bishop, Some(x)),
-            GameMoveType::Promotion(PieceType::Knight, Some(x)),
-        )
+    let capture = if let GameMoveType::Capture(x) = move_type {
+        Some(x)
     } else {
-        (
-            GameMoveType::Promotion(PieceType::Queen, None),
-            GameMoveType::Promotion(PieceType::Rook, None),
-            GameMoveType::Promotion(PieceType::Bishop, None),
-            GameMoveType::Promotion(PieceType::Knight, None),
-        )
+        None
     };
-    add_move_to_movelist(
-        legal_moves,
-        from_square,
-        to_square,
-        PieceType::Pawn,
-        new_types.0,
-    );
-    add_move_to_movelist(
-        legal_moves,
-        from_square,
-        to_square,
-        PieceType::Pawn,
-        new_types.1,
-    );
-    add_move_to_movelist(
-        legal_moves,
-        from_square,
-        to_square,
-        PieceType::Pawn,
-        new_types.2,
-    );
-    add_move_to_movelist(
-        legal_moves,
-        from_square,
-        to_square,
-        PieceType::Pawn,
-        new_types.3,
-    );
+    for pt in [
+        PieceType::Queen,
+        PieceType::Rook,
+        PieceType::Bishop,
+        PieceType::Knight,
+    ]
+    .iter()
+    {
+        add_move_to_movelist(
+            legal_moves,
+            from_square,
+            to_square,
+            PieceType::Pawn,
+            GameMoveType::Promotion(*pt, capture),
+        );
+    }
 }
 
 #[inline(always)]
