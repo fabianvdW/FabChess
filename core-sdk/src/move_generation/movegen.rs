@@ -4,10 +4,7 @@ use crate::bitboards::bitboards::constants::{
     square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KING_ATTACKS,
     KNIGHT_ATTACKS, RANKS, ROOK_RAYS,
 };
-use crate::bitboards::bitboards::{
-    east_attacks, noea_attacks, north_attacks, nowe_attacks, soea_attacks, south_attacks,
-    sowe_attacks, square, west_attacks,
-};
+use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, WHITE,
 };
@@ -22,12 +19,14 @@ impl GameState {
         } else {
             self.get_all_pieces_without_ctm_king()
         };
-        let mut res = rook_kogge_stone(self.get_rook_like_bb(side), occupied_squares);
-        let mut queens = self.get_piece(PieceType::Queen, side);
-        while queens > 0 {
-            let idx = queens.trailing_zeros() as usize;
-            res |= PieceType::Bishop.attacks(idx, occupied_squares);
-            queens ^= square(idx);
+        let mut res = 0u64;
+        for pt in [PieceType::Rook, PieceType::Queen].iter() {
+            let mut piece = self.get_piece(*pt, side);
+            while piece > 0 {
+                let idx = piece.trailing_zeros() as usize;
+                res |= (*pt).attacks(idx, occupied_squares);
+                piece ^= square(idx);
+            }
         }
         res
     }
@@ -115,6 +114,7 @@ impl GameState {
         )
     }
 }
+
 impl PieceType {
     //Occ not needed for PieceType::King, PieceType::Knight
     #[inline(always)]
@@ -129,20 +129,7 @@ impl PieceType {
         }
     }
 }
-#[inline(always)]
-pub fn bishop_kogge_stone(bishops: u64, all_pieces: u64) -> u64 {
-    nowe_attacks(bishops, all_pieces)
-        | noea_attacks(bishops, all_pieces)
-        | sowe_attacks(bishops, all_pieces)
-        | soea_attacks(bishops, all_pieces)
-}
-#[inline(always)]
-pub fn rook_kogge_stone(rooks: u64, all_pieces: u64) -> u64 {
-    north_attacks(rooks, all_pieces)
-        | south_attacks(rooks, all_pieces)
-        | west_attacks(rooks, all_pieces)
-        | east_attacks(rooks, all_pieces)
-}
+
 #[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
     magic::Magic::bishop(square, all_pieces)
@@ -198,6 +185,7 @@ pub fn b_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
 pub fn pawn_targets(side: usize, pawns: u64) -> u64 {
     pawn_east_targets(side, pawns) | pawn_west_targets(side, pawns)
 }
+
 //Pawn east targets
 #[inline(always)]
 pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
@@ -515,6 +503,7 @@ pub const MAX_MOVES: usize = 128;
 pub struct MoveList {
     pub move_list: Vec<GradedMove>,
 }
+
 impl Default for MoveList {
     fn default() -> Self {
         let move_list = Vec::with_capacity(MAX_MOVES);
