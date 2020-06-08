@@ -4,7 +4,7 @@ use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
-use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
+use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::quiescence::{piece_value, see};
 use crate::search::searcher::Thread;
@@ -85,12 +85,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     //Step 8. TT Lookup
     //TODO Correctly insert and retrieve mates into the TT
     let mut tt_entry: Option<CacheEntry> = None;
-    if let SearchInstruction::StopSearching(res) =
-        thread
-            .itcs
-            .cache()
-            .lookup(&p, &mut tt_entry, thread.root_plies_played)
-    {
+    if let SearchInstruction::StopSearching(res) = thread.itcs.cache().lookup(&p, &mut tt_entry) {
         #[cfg(feature = "search-statistics")]
         {
             thread.search_statistics.add_cache_hit_aj_replace_ns();
@@ -108,15 +103,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     } else {
         None
     };
-    let mut static_evaluation = if let Some(ce) = tt_entry {
-        if ce.static_evaluation != INVALID_STATIC_EVALUATION {
-            Some(ce.static_evaluation)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let mut static_evaluation = None;
     thread
         .history
         .push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
@@ -376,8 +363,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
             current_max_score,
             original_alpha,
-            thread.root_plies_played,
-            static_evaluation,
         );
     }
 
@@ -496,7 +481,9 @@ pub fn null_move_pruning(
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
         && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
         && static_evaluation.expect("null move static") * p.color >= p.beta
-        && (tt_entry.is_none() || !tt_entry.unwrap().alpha || tt_entry.unwrap().score >= p.beta)
+        && (tt_entry.is_none()
+            || !tt_entry.unwrap().upper_bound()
+            || tt_entry.unwrap().score >= p.beta)
     {
         let nextgs = make_nullmove(p.game_state);
         let rat = -principal_variation_search(

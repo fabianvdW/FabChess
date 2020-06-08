@@ -1,6 +1,6 @@
 use core_sdk::board_representation::game_state::GameState;
 use core_sdk::evaluation::parameters::Parameters;
-use core_sdk::search::cache::Cache;
+use core_sdk::search::cache::{Cache, CacheBucket, CacheEntry};
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem};
 use core_sdk::search::timecontrol::TimeControl;
 use std::fs::File;
@@ -18,6 +18,7 @@ fn main() {
         }
     }*/
     //go_infinite_from_startpos();
+    println!("{}", std::mem::size_of::<CacheBucket>());
     let param_string = format!("{}", Parameters::default());
     let param_file = Path::new("parameters.txt");
     let mut file = File::create(param_file).unwrap();
