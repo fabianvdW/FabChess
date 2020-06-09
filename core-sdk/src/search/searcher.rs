@@ -255,6 +255,7 @@ pub struct Thread {
     pub id: usize,
     pub itcs: Arc<InterThreadCommunicationSystem>,
     pub root_plies_played: usize,
+    pub current_search_depth: usize,
     pub history: History,
     pub movelist: ReservedMoveList,
     pub pv_table: Vec<PrincipalVariation>,
@@ -315,6 +316,7 @@ impl Thread {
             id,
             itcs,
             root_plies_played: 0,
+            current_search_depth: 0,
             history: History::default(),
             movelist: ReservedMoveList::default(),
             pv_table,
@@ -347,6 +349,7 @@ impl Thread {
                 ThreadInstruction::StartSearch(max_depth, state, tc, history, time_saved) => {
                     self.root_plies_played =
                         (state.get_full_moves() - 1) * 2 + state.get_color_to_move();
+                    self.current_search_depth = 0;
                     self.history = history;
                     self.time_saved = time_saved;
                     self.pv_applicable.clear();
@@ -382,6 +385,7 @@ impl Thread {
             if curr_depth as i16 > max_depth {
                 break;
             }
+            self.current_search_depth = curr_depth;
             //Start Aspiration Window
             if self.itcs.uci_options().debug_print {
                 println!(

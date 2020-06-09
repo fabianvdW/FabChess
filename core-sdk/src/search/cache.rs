@@ -1,6 +1,7 @@
 use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, PIECE_TYPES,
 };
+use crate::search::searcher::Thread;
 use crate::search::{CombinedSearchParameters, SearchInstruction, MATED_IN_MAX};
 use std::cell::UnsafeCell;
 
@@ -129,6 +130,7 @@ impl Cache {
     pub fn insert(
         &self,
         p: &CombinedSearchParameters,
+        thread: &Thread,
         mv: GameMove,
         score: i16,
         original_alpha: i16,
@@ -140,7 +142,7 @@ impl Cache {
         unsafe {
             (&mut *self.cache.get())
                 .get_unchecked_mut(index)
-                .replace_entry(p, mv, score, original_alpha);
+                .replace_entry(p, thread, mv, score, original_alpha);
         };
     }
 
@@ -182,6 +184,7 @@ impl CacheBucket {
     pub fn replace_entry(
         &mut self,
         p: &CombinedSearchParameters,
+        thread: &Thread,
         mv: GameMove,
         score: i16,
         original_alpha: i16,
@@ -209,10 +212,21 @@ impl CacheBucket {
             }
         });
         if exists.is_none() {
-            for i in (0..self.0.len() - 1).rev() {
-                self.swap_entries(i, i + 1);
+            for i in 0..self.0.len() {
+                if self.0[i].is_invalid() {
+                    write_entry(&mut self.0[i]);
+                    return true;
+                }
             }
-            write_entry(&mut self.0[0]);
+            if p.depth_left as usize >= 2 * thread.current_search_depth / 3 {
+                self.swap_entries(3, 4);
+                write_entry(&mut self.0[3]);
+            } else if p.depth_left as usize >= thread.current_search_depth / 3 {
+                self.swap_entries(1, 2);
+                write_entry(&mut self.0[1]);
+            } else {
+                write_entry(&mut self.0[0]);
+            }
         }
         true
     }
@@ -224,17 +238,15 @@ impl CacheBucket {
         if self.0[0].validate_hash(hash) {
             return Some(self.0[0]);
         } else if self.0[1].validate_hash(hash) {
-            self.swap_entries(0, 1);
-            return Some(self.0[0]);
+            return Some(self.0[1]);
         } else if self.0[2].validate_hash(hash) {
-            self.swap_entries(0, 2);
-            return Some(self.0[0]);
+            self.swap_entries(1, 2);
+            return Some(self.0[1]);
         } else if self.0[3].validate_hash(hash) {
-            self.swap_entries(0, 3);
-            return Some(self.0[0]);
+            return Some(self.0[3]);
         } else if self.0[4].validate_hash(hash) {
-            self.swap_entries(0, 4);
-            return Some(self.0[0]);
+            self.swap_entries(3, 4);
+            return Some(self.0[3]);
         }
         None
     }

@@ -355,11 +355,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             thread.search_statistics.add_normal_node_non_beta_cutoff();
         }
     }
-
     //Step 16. Make TT Entry
     if !thread.self_stop {
         thread.itcs.cache().insert(
             &p,
+            thread,
             thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
             current_max_score,
             original_alpha,
