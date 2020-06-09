@@ -155,9 +155,10 @@ impl Cache {
         let ce = unsafe {
             (&mut *self.cache.get())
                 .get_mut(p.game_state.get_hash() as usize % self.buckets)
-                .map(|bucket| bucket.probe(p.game_state.get_hash()))
+                .unwrap()
+                .probe(p.game_state.get_hash())
         };
-        if let Some(Some(mut ce)) = ce {
+        if let Some(mut ce) = ce {
             ce.score = Cache::score_from_tt_score(ce.score, p.current_depth as i16);
             *tt_entry = Some(ce);
             if ce.depth >= p.depth_left as i8
@@ -321,6 +322,7 @@ impl CacheEntry {
         self.lower_hash = ((hash & 0xFFFF_0000) >> 16) as u16 ^ mv;
         self.depth = depth as i8;
         self.score = score;
+        self.flags = 0u8;
         self.flags |= lower_bound as u8;
         self.flags |= (upper_bound as u8) << 1;
         self.mv = mv;
