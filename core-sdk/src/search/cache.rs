@@ -202,33 +202,27 @@ impl CacheBucket {
                 mv,
             );
         };
-        let exists = self.probe(p.game_state.get_hash());
-        exists.map(|ce| {
-            if ce.depth < p.depth_left as i8
-                || ce.depth == p.depth_left as i8 && (ce.upper_bound() && score > ce.score)
-                || (ce.lower_bound() && score < ce.score)
-            {
-                write_entry(&mut self.0[0]);
-            }
-        });
-        if exists.is_none() {
-            for i in 0..self.0.len() {
-                if self.0[i].is_invalid() {
-                    write_entry(&mut self.0[i]);
-                    return true;
-                }
-            }
-            if p.depth_left as usize >= 2 * thread.current_search_depth / 3 {
-                self.swap_entries(3, 4);
-                write_entry(&mut self.0[3]);
-            } else if p.depth_left as usize >= thread.current_search_depth / 3 {
-                self.swap_entries(1, 2);
-                write_entry(&mut self.0[1]);
-            } else {
-                write_entry(&mut self.0[0]);
+        for i in 0..self.0.len() {
+            if self.0[i].is_invalid() {
+                write_entry(&mut self.0[i]);
+                return true;
+            } else if self.0[i].validate_hash(p.game_state.get_hash()) {
+                if self.0[i].depth < p.depth_left as i8
+                    || self.0[i].depth == p.depth_left as i8
+                        && (self.0[i].upper_bound() && score < self.0[i].score
+                            || self.0[i].lower_bound() && score < self.0[i].score)
+                {}
+                write_entry(&mut self.0[i]);
+                return true;
             }
         }
-        true
+        for i in 0..self.0.len() {
+            if self.0[i].depth < (p.depth_left as usize + i) as i8 {
+                write_entry(&mut self.0[i]);
+                return true;
+            }
+        }
+        false
     }
 
     pub fn probe(&mut self, hash: u64) -> Option<CacheEntry> {
@@ -240,13 +234,11 @@ impl CacheBucket {
         } else if self.0[1].validate_hash(hash) {
             return Some(self.0[1]);
         } else if self.0[2].validate_hash(hash) {
-            self.swap_entries(1, 2);
-            return Some(self.0[1]);
+            return Some(self.0[2]);
         } else if self.0[3].validate_hash(hash) {
             return Some(self.0[3]);
         } else if self.0[4].validate_hash(hash) {
-            self.swap_entries(3, 4);
-            return Some(self.0[3]);
+            return Some(self.0[4]);
         }
         None
     }
