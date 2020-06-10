@@ -217,7 +217,7 @@ impl CacheBucket {
             }
         }
         for i in 0..self.0.len() {
-            if self.0[i].depth < (p.depth_left as usize + i) as i8 {
+            if self.0[i].depth < p.depth_left as i8 {
                 write_entry(&mut self.0[i]);
                 return true;
             }
