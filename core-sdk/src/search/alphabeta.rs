@@ -338,7 +338,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 thread.search_statistics.add_normal_node_beta_cutoff(index);
             }
             if !isc {
-                update_quiet_cutoff(&p, thread, mv, quiets_tried);
+                update_quiet_cutoff(&p, &tt_entry, &tt_move, thread, mv, quiets_tried);
             }
             break;
         } else if !isc {
@@ -622,14 +622,20 @@ pub fn uci_report_pv(
 #[inline(always)]
 pub fn update_quiet_cutoff(
     p: &CombinedSearchParameters,
+    tt_entry: &Option<CacheEntry>,
+    tt_move: &Option<GameMove>,
     thread: &mut Thread,
     mv: GameMove,
     quiets_tried: usize,
 ) {
+    let mut bonus_mult = 1;
+    if tt_entry.is_some() && tt_move.unwrap() != mv {
+        bonus_mult = 2;
+    }
     thread.hh_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] +=
-        p.depth_left as usize * p.depth_left as usize;
+        bonus_mult * p.depth_left as usize * p.depth_left as usize;
     thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] +=
-        p.depth_left as isize * p.depth_left as isize;
+        bonus_mult as isize * p.depth_left as isize * p.depth_left as isize;
     decrement_history_quiets(
         thread,
         p.current_depth,
