@@ -496,6 +496,7 @@ pub fn search_move(
     *itcs.last_cache_status.lock().unwrap() = None;
     itcs.cache_status.store(0, Ordering::Relaxed);
     *itcs.timeout_flag.write().unwrap() = false;
+    itcs.cache().inc_age();
 
     let time_saved_before = itcs.saved_time.load(Ordering::Relaxed);
     //Step 1. Check how many legal moves there are

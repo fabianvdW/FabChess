@@ -14,12 +14,16 @@ pub const MAX_HASH_SIZE: usize = 131_072; //IN MB
 pub struct Cache {
     pub entries: usize,
     pub buckets: usize,
+    pub age: u8,
     pub cache: UnsafeCell<Vec<CacheBucket>>,
 }
 
 unsafe impl std::marker::Sync for Cache {}
 
 impl Cache {
+    pub fn inc_age(&mut self) {
+        self.age = self.age.wrapping_add(1);
+    }
     pub fn score_to_tt_score(score: i16, current_depth: i16) -> i16 {
         if score.abs() >= MATED_IN_MAX.abs() {
             if score > -MATED_IN_MAX {
@@ -42,7 +46,6 @@ impl Cache {
             score
         }
     }
-
     pub fn with_size_threaded(mb_size: usize, num_threads: usize) -> Self {
         let buckets = 1024 * 1024 * mb_size / 64;
         let entries = buckets * 5;
@@ -51,6 +54,7 @@ impl Cache {
             entries,
             buckets,
             cache,
+            age: 0,
         }
     }
 
@@ -142,7 +146,7 @@ impl Cache {
         unsafe {
             (&mut *self.cache.get())
                 .get_unchecked_mut(index)
-                .replace_entry(p, thread, mv, score, original_alpha);
+                .replace_entry(p, thread, mv, score, original_alpha, self.age);
         };
     }
 
@@ -188,6 +192,7 @@ impl CacheBucket {
         mv: GameMove,
         score: i16,
         original_alpha: i16,
+        age: u8,
     ) -> bool {
         let lower_bound = score >= p.beta;
         let upper_bound = score <= original_alpha;
@@ -200,10 +205,11 @@ impl CacheBucket {
                 upper_bound,
                 lower_bound,
                 mv,
+                age,
             );
         };
         for i in 0..self.0.len() {
-            if self.0[i].is_invalid() {
+            if self.0[i].is_invalid() || self.0[i].age_diff(age) >= 3 {
                 write_entry(&mut self.0[i]);
                 return true;
             } else if self.0[i].validate_hash(p.game_state.get_hash()) {
@@ -211,9 +217,10 @@ impl CacheBucket {
                     || self.0[i].depth == p.depth_left as i8
                         && (self.0[i].upper_bound() && score < self.0[i].score
                             || self.0[i].lower_bound() && score < self.0[i].score)
-                {}
-                write_entry(&mut self.0[i]);
-                return true;
+                {
+                    write_entry(&mut self.0[i]);
+                    return true;
+                }
             }
         }
         for i in 0..self.0.len() {
@@ -283,6 +290,27 @@ impl CacheEntry {
     pub fn upper_bound(&self) -> bool {
         self.flags & 2 > 0
     }
+    pub fn get_age(&self) -> u8 {
+        self.flags >> 2
+    }
+    pub fn age_diff(&self, current_age: u8) -> usize {
+        let current_age = if current_age >= 32 {
+            current_age as isize - 64
+        } else {
+            current_age as isize
+        };
+        let my_age = self.get_age();
+        let my_age = if my_age >= 32 {
+            my_age as isize - 64
+        } else {
+            my_age as isize
+        };
+        (my_age - current_age).abs() as usize
+    }
+    pub fn inc_age(&mut self, new_age: u8) {
+        self.flags &= 0x3;
+        self.flags |= (new_age) << 2;
+    }
     pub fn exact_bound(&self) -> bool {
         !self.lower_bound() && !self.upper_bound()
     }
@@ -320,6 +348,7 @@ impl CacheEntry {
         upper_bound: bool,
         lower_bound: bool,
         mv: GameMove,
+        current_age: u8,
     ) {
         let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
@@ -329,6 +358,7 @@ impl CacheEntry {
         self.flags = 0u8;
         self.flags |= lower_bound as u8;
         self.flags |= (upper_bound as u8) << 1;
+        self.flags |= current_age << 2;
         self.mv = mv;
     }
 
