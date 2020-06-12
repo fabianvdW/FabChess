@@ -85,12 +85,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     //Step 8. TT Lookup
     //TODO Correctly insert and retrieve mates into the TT
     let mut tt_entry: Option<CacheEntry> = None;
-    if let SearchInstruction::StopSearching(res) =
-        thread
-            .itcs
-            .cache()
-            .lookup(&p, &mut tt_entry, thread.root_plies_played)
-    {
+    if let SearchInstruction::StopSearching(res) = thread.itcs.cache().lookup(&p, &mut tt_entry) {
         #[cfg(feature = "search-statistics")]
         {
             thread.search_statistics.add_cache_hit_aj_replace_ns();
@@ -376,7 +371,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT"),
             current_max_score,
             original_alpha,
-            thread.root_plies_played,
             static_evaluation,
         );
     }
@@ -496,7 +490,9 @@ pub fn null_move_pruning(
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
         && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
         && static_evaluation.expect("null move static") * p.color >= p.beta
-        && (tt_entry.is_none() || !tt_entry.unwrap().alpha || tt_entry.unwrap().score >= p.beta)
+        && (tt_entry.is_none()
+            || !tt_entry.unwrap().is_lower_bound()
+            || tt_entry.unwrap().score >= p.beta)
     {
         let nextgs = make_nullmove(p.game_state);
         let rat = -principal_variation_search(

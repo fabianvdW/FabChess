@@ -491,6 +491,7 @@ pub fn search_move(
     *itcs.start_time.write().unwrap() = Instant::now();
     *itcs.last_cache_status.lock().unwrap() = None;
     itcs.cache_status.store(0, Ordering::Relaxed);
+    itcs.cache().increase_age();
     *itcs.timeout_flag.write().unwrap() = false;
 
     let time_saved_before = itcs.saved_time.load(Ordering::Relaxed);
