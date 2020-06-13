@@ -4,7 +4,6 @@ use crate::board_representation::game_state::{
 use crate::search::{CombinedSearchParameters, SearchInstruction, MATED_IN_MAX};
 use std::cell::UnsafeCell;
 
-pub const INVALID_STATIC_EVALUATION: i16 = -32768;
 pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131_072; //IN MB
@@ -109,7 +108,7 @@ impl Cache {
             let bucket = unsafe { (&*self.cache.get()).get(index).unwrap() };
             index += 1;
             full += bucket.fill_status();
-            counted_entries += 3;
+            counted_entries += 5;
         }
         //Count upper 500 entries
         let mut index = unsafe { (&*self.cache.get()).len() - 1 };
@@ -117,7 +116,7 @@ impl Cache {
             let bucket = unsafe { (&*self.cache.get()).get(index).unwrap() };
             debug_assert!(index > 0);
             full += bucket.fill_status();
-            counted_entries += 3;
+            counted_entries += 5;
             if index == 0 {
                 break;
             }
@@ -150,7 +149,6 @@ impl Cache {
         mv: GameMove,
         score: i16,
         original_alpha: i16,
-        static_evaluation: Option<i16>,
     ) {
         if self.entries == 0 {
             return;
@@ -159,14 +157,7 @@ impl Cache {
         unsafe {
             (&mut *self.cache.get())
                 .get_unchecked_mut(index)
-                .replace_entry(
-                    p,
-                    mv,
-                    score,
-                    original_alpha,
-                    static_evaluation,
-                    self.current_age,
-                );
+                .replace_entry(p, mv, score, original_alpha, self.current_age);
         };
     }
 
@@ -202,7 +193,7 @@ impl Cache {
 
 #[repr(align(64))]
 #[derive(Copy, Clone)]
-pub struct CacheBucket([CacheEntry; 3]);
+pub struct CacheBucket([CacheEntry; 5]);
 
 pub const MAXIMUM_AGE_DIFF_REPLACE: usize = 3;
 impl CacheBucket {
@@ -212,7 +203,6 @@ impl CacheBucket {
         mv: GameMove,
         score: i16,
         original_alpha: i16,
-        static_evaluation: Option<i16>,
         current_age: u8,
     ) -> bool {
         let lower_bound = score >= p.beta;
@@ -224,7 +214,6 @@ impl CacheBucket {
                 p.game_state.get_hash(),
                 p.depth_left,
                 score,
-                static_evaluation,
                 pv_node,
                 upper_bound,
                 lower_bound,
@@ -242,47 +231,23 @@ impl CacheBucket {
                 false
             }
         };
-
-        if self.0[0].is_invalid()
-            || self.0[0].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-            || self.0[0].validate_hash(p.game_state.get_hash())
-        {
-            let res = self.0[0].is_invalid();
-            renew_entry(&mut self.0[0]);
-            return res;
-        } else if self.0[1].is_invalid()
-            || self.0[1].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-            || self.0[1].validate_hash(p.game_state.get_hash())
-        {
-            let res = self.0[1].is_invalid();
-            renew_entry(&mut self.0[1]);
-            self.0.swap(0, 1);
-            return res;
-        } else if self.0[2].is_invalid()
-            || self.0[2].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-            || self.0[2].validate_hash(p.game_state.get_hash())
-        {
-            let res = self.0[2].is_invalid();
-            renew_entry(&mut self.0[2]);
-            self.0.swap(0, 2);
-            self.0.swap(1, 2);
-            return res;
+        for i in 0..self.0.len() {
+            if self.0[i].is_invalid()
+                || self.0[i].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
+                || self.0[i].validate_hash(p.game_state.get_hash())
+            {
+                let res = self.0[i].is_invalid();
+                renew_entry(&mut self.0[i]);
+                return res;
+            }
         }
-        let mut min_score = self.0[2].get_score();
-        let mut min_entry = 2;
-
-        if self.0[1].get_score() < min_score {
-            min_score = self.0[1].get_score();
-            min_entry = 1;
-        }
-        if self.0[0].get_score() < min_score {
-            min_score = self.0[0].get_score();
-            min_entry = 0;
-        }
-
         let new_score = p.depth_left as f64 * if pv_node { 1. } else { 0.7 };
-        if new_score >= min_score {
-            write_entry(&mut self.0[min_entry]);
+
+        for i in 0..self.0.len() {
+            if self.0[i].get_score() < new_score {
+                write_entry(&mut self.0[i]);
+                return true;
+            }
         }
         false
     }
@@ -291,35 +256,36 @@ impl CacheBucket {
         if hash == 0u64 {
             return None;
         }
-        if self.0[0].validate_hash(hash) {
-            return Some(self.0[0]);
-        } else if self.0[1].validate_hash(hash) {
-            return Some(self.0[1]);
-        } else if self.0[2].validate_hash(hash) {
-            return Some(self.0[2]);
+        for i in 0..self.0.len() {
+            if self.0[i].validate_hash(hash) {
+                return Some(self.0[i]);
+            }
         }
         None
     }
 
     pub fn age_entry(&mut self, hash: u64, new_age: u8) {
-        if self.0[0].validate_hash(hash) {
-            self.0[0].set_age(new_age);
-        } else if self.0[1].validate_hash(hash) {
-            self.0[1].set_age(new_age);
-        } else if self.0[2].validate_hash(hash) {
-            self.0[2].set_age(new_age)
+        for i in 0..self.0.len() {
+            if self.0[i].validate_hash(hash) {
+                self.0[i].set_age(new_age);
+                return;
+            }
         }
     }
 
     pub fn fill_status(&self) -> usize {
-        (if self.0[0].is_invalid() { 0 } else { 1 })
-            + (if self.0[1].is_invalid() { 0 } else { 1 })
-            + (if self.0[2].is_invalid() { 0 } else { 1 })
+        let mut res = 0;
+        for i in 0..self.0.len() {
+            if !self.0[i].is_invalid() {
+                res += 1;
+            }
+        }
+        res
     }
 }
 impl Default for CacheBucket {
     fn default() -> Self {
-        CacheBucket([CacheEntry::invalid(); 3])
+        CacheBucket([CacheEntry::invalid(); 5])
     }
 }
 
@@ -333,9 +299,8 @@ pub struct CacheEntry {
     pub depth: i8,
     pub score: i16,
     pub upper_hash: u32,
-    pub lower_hash: u32,
+    pub lower_hash: u16,
     pub mv: u16,
-    pub static_evaluation: i16,
 }
 
 impl CacheEntry {
@@ -383,7 +348,7 @@ impl CacheEntry {
 
     pub fn validate_hash(&self, hash: u64) -> bool {
         (self.upper_hash as u64) == (hash >> 32)
-            && ((self.lower_hash ^ self.mv as u32) as u64) == (hash & 0xFFFF_FFFF)
+            && ((self.lower_hash ^ self.mv) as u64) << 16 == (hash & 0xFFFF_0000)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
@@ -397,7 +362,6 @@ impl CacheEntry {
             score: 0,
             flags: 0,
             mv: 0,
-            static_evaluation: INVALID_STATIC_EVALUATION,
         }
     }
     pub fn write(
@@ -405,7 +369,6 @@ impl CacheEntry {
         hash: u64,
         depth: i16,
         score: i16,
-        static_evaluation: Option<i16>,
         pv_node: bool,
         alpha: bool,
         beta: bool,
@@ -414,7 +377,7 @@ impl CacheEntry {
     ) {
         let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
-        self.lower_hash = (hash & 0xFFFF_FFFF) as u32 ^ mv as u32;
+        self.lower_hash = (((hash & 0xFFFF_0000) >> 16) ^ mv as u64) as u16;
         self.depth = depth as i8;
         self.score = score;
         self.flags = 0u8;
@@ -423,11 +386,6 @@ impl CacheEntry {
         self.flags |= (pv_node as u8) << 2;
         self.flags |= current_age << 3;
         self.mv = mv;
-        self.static_evaluation = if let Some(se) = static_evaluation {
-            se
-        } else {
-            INVALID_STATIC_EVALUATION
-        };
     }
 
     #[inline(always)]

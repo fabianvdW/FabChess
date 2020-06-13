@@ -152,7 +152,6 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             thread.pv_table[p.current_depth].pv[0].expect("Can't unwrap move for TT in qsearch!"),
             current_max_score,
             p.alpha,
-            Some(stand_pat * p.color),
         );
     }
 
