@@ -3,6 +3,8 @@ use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
+use crate::evaluation::nn::nn_evaluate_game_state;
+use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
@@ -43,7 +45,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 2. Max Search depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p) {
+    if let SearchInstruction::StopSearching(res) = max_depth(thread, &p) {
         return res;
     }
 
@@ -118,7 +120,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
-    make_eval(&p, &mut static_evaluation, prunable);
+    make_eval(thread, &p, &mut static_evaluation, prunable);
 
     //Step 10. Prunings
     if prunable {
@@ -410,11 +412,14 @@ pub fn mate_distance_pruning(p: &mut CombinedSearchParameters) -> SearchInstruct
 }
 
 #[inline(always)]
-pub fn max_depth(p: &CombinedSearchParameters) -> SearchInstruction {
+pub fn max_depth(thread: &mut Thread, p: &CombinedSearchParameters) -> SearchInstruction {
     if p.current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        SearchInstruction::StopSearching(
-            eval_game_state(p.game_state, p.alpha * p.color, p.beta * p.color).final_eval * p.color,
-        )
+        let eval_res = if cfg!(feature = "nn-eval") {
+            nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container)
+        } else {
+            eval_game_state(p.game_state, &mut NNTrace::new())
+        };
+        SearchInstruction::StopSearching(eval_res.final_eval * p.color)
     } else {
         SearchInstruction::ContinueSearching
     }
@@ -440,6 +445,7 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 
 #[inline(always)]
 pub fn make_eval(
+    thread: &mut Thread,
     p: &CombinedSearchParameters,
     static_evaluation: &mut Option<i16>,
     prunable: bool,
@@ -449,7 +455,11 @@ pub fn make_eval(
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || p.depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = eval_game_state(p.game_state, p.alpha * p.color, p.beta * p.color);
+        let eval_res = if cfg!(feature = "nn-eval") {
+            nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container)
+        } else {
+            eval_game_state(p.game_state, &mut NNTrace::new())
+        };
         *static_evaluation = Some(eval_res.final_eval);
         #[cfg(feature = "search-statistics")]
         {

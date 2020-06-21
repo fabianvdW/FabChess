@@ -6,6 +6,8 @@ use super::super::move_generation::movegen;
 use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
+use crate::evaluation::nn::nn_evaluate_game_state;
+use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::make_move;
 use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_STAGES};
@@ -24,7 +26,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 2. Max search-depth reached
-    if let SearchInstruction::StopSearching(res) = max_depth(&p) {
+    if let SearchInstruction::StopSearching(res) = max_depth(thread, &p) {
         return res;
     }
 
@@ -34,8 +36,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 5. Get standing pat when not in check
-    let stand_pat =
-        eval_game_state(&p.game_state, p.alpha * p.color, p.beta * p.color).final_eval * p.color;
+    let stand_pat = if cfg!(feature = "nn-eval") {
+        nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container).final_eval
+    } else {
+        eval_game_state(&p.game_state, &mut NNTrace::new()).final_eval
+    } * p.color;
 
     //Step 6. Preliminary pruning
     if let SearchInstruction::StopSearching(res) = adjust_standpat(&mut p, stand_pat) {

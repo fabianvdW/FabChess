@@ -2,6 +2,7 @@ use crate::bitboards::bitboards::constants::square;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS};
 use crate::bitboards::bitboards::square;
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
+use crate::evaluation::nn_trace::NNTrace;
 use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
@@ -12,6 +13,7 @@ use crate::move_generation::movegen::{
     w_pawn_east_targets, w_pawn_west_targets, MoveList,
 };
 use std::fmt::{Debug, Display, Formatter, Result};
+
 pub const CASTLE_WHITE_KS: u8 = 0b1000;
 pub const CASTLE_WHITE_QS: u8 = 0b100;
 pub const CASTLE_BLACK_KS: u8 = 0b10;
@@ -531,8 +533,10 @@ impl GameState {
             #[cfg(feature = "texel-tuning")]
             trace: crate::evaluation::trace::Trace::default(),
         };
-        let p_w = crate::evaluation::psqt_evaluation::psqt(self, WHITE, &mut _eval);
-        let p_b = crate::evaluation::psqt_evaluation::psqt(self, BLACK, &mut _eval);
+        let p_w =
+            crate::evaluation::psqt_evaluation::psqt(self, WHITE, &mut _eval, &mut NNTrace::new());
+        let p_b =
+            crate::evaluation::psqt_evaluation::psqt(self, BLACK, &mut _eval, &mut NNTrace::new());
         self.irreversible.psqt = p_w - p_b
     }
     pub fn initialize_phase(&mut self) {

@@ -77,7 +77,185 @@ pub fn evaluate_single2(score: &mut (f64, f64), trace: i8, param_mg: f64, param_
     score.0 += f64::from(trace) * param_mg;
     score.1 += f64::from(trace) * param_eg;
 }
-
+impl Trace {
+    pub fn csv_header() -> String {
+        let mut res = String::new();
+        let mut entries = Vec::new();
+        entries.push("Tempo_bonus");
+        for _ in 0..4 {
+            entries.push("Shielding pawn missing");
+        }
+        for _ in 0..4 {
+            entries.push("Shielding pawn on open missing");
+        }
+        entries.push("Pawn doubled");
+        entries.push("Pawn isolated");
+        entries.push("Pawn backward");
+        for _ in 0..64 {
+            entries.push("Pawn supported");
+        }
+        entries.push("Pawn attack center");
+        entries.push("Pawn mobility");
+        for _ in 0..7 {
+            entries.push("Pawn passed");
+        }
+        for _ in 0..7 {
+            entries.push("Pawn passed notblocked");
+        }
+        for _ in 0..7 {
+            entries.push("Pawn passed kingdistance");
+        }
+        for _ in 0..7 {
+            entries.push("Pawn passed enemykingdist");
+        }
+        for _ in 0..13 {
+            entries.push("Pawn passed subdist");
+        }
+        entries.push("Rook behind support passser");
+        entries.push("Rook behind enemy passer");
+        entries.push("Pawn passed weak");
+        entries.push("Knight supported");
+        for _ in 0..64 {
+            entries.push("Knight outpost");
+        }
+        entries.push("BishopxKing");
+        entries.push("RookxKing");
+        entries.push("QueenxKing");
+        entries.push("Rook on open");
+        entries.push("Rook on semi open");
+        entries.push("Queen on open");
+        entries.push("Queen on semi open");
+        entries.push("Rook on 7th");
+        entries.push("Pawns");
+        entries.push("Knights");
+        entries.push("Knight val with pawn");
+        entries.push("Bishops");
+        entries.push("Bishop bonus");
+        entries.push("Rooks");
+        entries.push("Queens");
+        for _ in 0..5 {
+            entries.push("Diagonaly adjacent pawn");
+        }
+        for _ in 0..9 {
+            entries.push("Knight mobility");
+        }
+        for _ in 0..14 {
+            entries.push("Bishop mobility");
+        }
+        for _ in 0..15 {
+            entries.push("Rook mobility")
+        }
+        for _ in 0..28 {
+            entries.push("Queen mobility")
+        }
+        for _ in 0..2 {
+            entries.push("Attackers");
+        }
+        for _ in 0..2 {
+            entries.push("Knight attacked sq");
+        }
+        for _ in 0..2 {
+            entries.push("Bishop attacked sq")
+        }
+        for _ in 0..2 {
+            entries.push("Rook attacked sq")
+        }
+        for _ in 0..2 {
+            entries.push("Queen attacked sq")
+        }
+        for _ in 0..2 {
+            entries.push("Knight safe check")
+        }
+        for _ in 0..2 {
+            entries.push("Bishop safe check")
+        }
+        for _ in 0..2 {
+            entries.push("Rook safe check")
+        }
+        for _ in 0..2 {
+            entries.push("Queen safe check")
+        }
+        for _ in 0..6 * 8 * 8 {
+            entries.push("Psqt");
+        }
+        entries.push("Phase");
+        let s = entries.join(",");
+        res.push_str(&s);
+        res
+    }
+    pub fn psqt_to_csv(psqt: &[[i8; 8]; 8]) -> String {
+        let mut res = String::new();
+        let mut entries = Vec::with_capacity(64);
+        for i in 0..8 {
+            for j in 0..8 {
+                entries.push(psqt[i][j].to_string());
+            }
+        }
+        res.push_str(&entries.join(","));
+        res
+    }
+    pub fn dump_as_csv(&self) -> String {
+        let mut res = String::new();
+        let mut entries = Vec::with_capacity(60);
+        entries.push(self.tempo_bonus.to_string());
+        entries.push(format!("{:?}", self.shielding_pawn_missing));
+        entries.push(format!("{:?}", self.shielding_pawn_onopen_missing));
+        entries.push(self.pawn_doubled.to_string());
+        entries.push(self.pawn_isolated.to_string());
+        entries.push(self.pawn_backward.to_string());
+        entries.push(Trace::psqt_to_csv(&self.pawn_supported));
+        entries.push(self.pawn_attack_center.to_string());
+        entries.push(self.pawn_mobility.to_string());
+        entries.push(format!("{:?}", self.pawn_passed));
+        entries.push(format!("{:?}", self.pawn_passed_notblocked));
+        entries.push(format!("{:?}", self.pawn_passed_kingdistance));
+        entries.push(format!("{:?}", self.pawn_passed_enemykingdistance));
+        entries.push(format!("{:?}", self.pawn_passed_subdistance));
+        entries.push(self.rook_behind_support_passer.to_string());
+        entries.push(self.rook_behind_enemy_passer.to_string());
+        entries.push(self.pawn_passed_weak.to_string());
+        entries.push(self.knight_supported.to_string());
+        entries.push(Trace::psqt_to_csv(&self.knight_outpost_table));
+        entries.push(self.bishop_xray_king.to_string());
+        entries.push(self.rook_xray_king.to_string());
+        entries.push(self.queen_xray_king.to_string());
+        entries.push(self.rook_on_open.to_string());
+        entries.push(self.rook_on_semi_open.to_string());
+        entries.push(self.queen_on_open.to_string());
+        entries.push(self.queen_on_semi_open.to_string());
+        entries.push(self.rook_on_seventh.to_string());
+        entries.push(self.pawns.to_string());
+        entries.push(self.knights.to_string());
+        entries.push(self.knight_value_with_pawns.to_string());
+        entries.push(self.bishops.to_string());
+        entries.push(self.bishop_bonus.to_string());
+        entries.push(self.rooks.to_string());
+        entries.push(self.queens.to_string());
+        entries.push(format!("{:?}", self.diagonally_adjacent_squares_withpawns));
+        entries.push(format!("{:?}", self.knight_mobility));
+        entries.push(format!("{:?}", self.bishop_mobility));
+        entries.push(format!("{:?}", self.rook_mobility));
+        entries.push(format!("{:?}", self.queen_mobility));
+        entries.push(format!("{:?}", self.attackers));
+        entries.push(format!("{:?}", self.knight_attacked_sq));
+        entries.push(format!("{:?}", self.bishop_attacked_sq));
+        entries.push(format!("{:?}", self.rook_attacked_sq));
+        entries.push(format!("{:?}", self.queen_attacked_sq));
+        entries.push(format!("{:?}", self.knight_safe_check));
+        entries.push(format!("{:?}", self.bishop_safe_check));
+        entries.push(format!("{:?}", self.rook_safe_check));
+        entries.push(format!("{:?}", self.queen_safe_check));
+        for i in 0..6 {
+            entries.push(Trace::psqt_to_csv(&self.psqt[i]));
+        }
+        entries.push(format!("{:?}", self.phase));
+        res.push_str(&entries.join(","));
+        res = res.replace("[", "");
+        res = res.replace("]", "");
+        res = res.replace(" ", "");
+        res
+    }
+}
 impl Trace {
     pub fn evaluate(&self, params: &Parameters) -> f64 {
         //PSQT Evaluation

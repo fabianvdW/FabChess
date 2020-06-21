@@ -2,6 +2,7 @@ use super::EvaluationResult;
 use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
 use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE};
+use crate::evaluation::nn_trace::{trace_pos, NNTrace};
 use crate::evaluation::params::PSQT;
 
 pub const BLACK_INDEX: [usize; 64] = [
@@ -10,7 +11,12 @@ pub const BLACK_INDEX: [usize; 64] = [
     8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7,
 ];
 
-pub fn psqt(game_state: &GameState, side: usize, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn psqt(
+    game_state: &GameState,
+    side: usize,
+    _eval: &mut EvaluationResult,
+    _nn_trace: &mut NNTrace,
+) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     #[cfg(feature = "display-eval")]
     {
@@ -35,6 +41,14 @@ pub fn psqt(game_state: &GameState, side: usize, _eval: &mut EvaluationResult) -
                 }
                 _eval.trace.psqt[*pt as usize][idx / 8][idx % 8] +=
                     if side == WHITE { 1 } else { -1 };
+            }
+            #[cfg(feature = "nn-eval")]
+            {
+                if side != WHITE {
+                    idx = BLACK_INDEX[idx];
+                }
+                _nn_trace.trace[trace_pos::PSQT + 64 * (*pt as usize) + 8 * (idx / 8) + idx % 8] +=
+                    if side == WHITE { 1f32 } else { -1f32 };
             }
         }
         res += piece_sum;

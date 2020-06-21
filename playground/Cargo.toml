@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 core-sdk = { path = "../core-sdk"}
 extended-sdk = {path = "../extended-sdk"}
+ndarray = "0.13.1"

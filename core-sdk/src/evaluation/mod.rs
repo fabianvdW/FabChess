@@ -1,3 +1,5 @@
+pub mod nn;
+pub mod nn_trace;
 pub mod parameters;
 pub mod params;
 pub mod phase;
@@ -7,6 +9,7 @@ pub mod trace;
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::*;
 use crate::board_representation::game_state::{GameState, PieceType, BLACK, WHITE};
+use crate::evaluation::nn_trace::{trace_pos, NNTrace};
 #[cfg(feature = "texel-tuning")]
 use crate::evaluation::trace::Trace;
 use crate::move_generation::movegen;
@@ -97,11 +100,7 @@ pub struct EvaluationResult {
     pub trace: Trace,
 }
 
-pub fn eval_game_state(
-    g: &GameState,
-    _alpha: i16, //Lazy Eval components, unneeded currently
-    _beta: i16,
-) -> EvaluationResult {
+pub fn eval_game_state(g: &GameState, _nn_trace: &mut NNTrace) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
         println!("Evaluating GameState fen: {}", g.to_fen());
@@ -116,7 +115,12 @@ pub fn eval_game_state(
     {
         result.trace.phase = phase;
     }
-    if is_guaranteed_draw(&g) {
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace.mapv_inplace(|_| 0.);
+        _nn_trace.trace[trace_pos::PHASE] = phase as f32;
+    }
+    if is_guaranteed_draw(&g) && !cfg!(feature = "nn-eval") {
         return result;
     }
     let mut res = EvaluationScore::default();
@@ -139,6 +143,14 @@ pub fn eval_game_state(
             -1
         };
     }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::TEMPO_BONUS] = if g.get_color_to_move() == WHITE {
+            1f32
+        } else {
+            -1f32
+        };
+    }
     //Initialize all attacks
     let (white_defended_by_minors, white_defended_by_majors) = (
         g.get_minor_attacks_from_side(WHITE),
@@ -155,13 +167,18 @@ pub fn eval_game_state(
         | black_defended_by_majors
         | KING_ATTACKS[g.get_king_square(BLACK)];
 
-    let psqt_score: EvaluationScore =
-        if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
-            let (psqt_w, psqt_b) = (psqt(&g, WHITE, &mut result), psqt(&g, BLACK, &mut result));
-            psqt_w - psqt_b
-        } else {
-            g.get_psqt()
-        };
+    let psqt_score: EvaluationScore = if cfg!(feature = "display-eval")
+        || cfg!(feature = "texel-tuning")
+        || cfg!(feature = "nn-eval")
+    {
+        let (psqt_w, psqt_b) = (
+            psqt(&g, WHITE, &mut result, _nn_trace),
+            psqt(&g, BLACK, &mut result, _nn_trace),
+        );
+        psqt_w - psqt_b
+    } else {
+        g.get_psqt()
+    };
     #[cfg(feature = "display-eval")]
     {
         println!("\nPSQT Sum: {}", psqt_score);
@@ -169,8 +186,8 @@ pub fn eval_game_state(
     res += psqt_score;
 
     let (pieces_w, pieces_b) = (
-        piece_values(true, g, &mut result),
-        piece_values(false, g, &mut result),
+        piece_values(true, g, &mut result, _nn_trace),
+        piece_values(false, g, &mut result, _nn_trace),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -195,8 +212,22 @@ pub fn eval_game_state(
     }*/
 
     let (pawns_w, pawns_b) = (
-        pawns(true, g, &mut result, white_defended, black_defended),
-        pawns(false, g, &mut result, black_defended, white_defended),
+        pawns(
+            true,
+            g,
+            &mut result,
+            white_defended,
+            black_defended,
+            _nn_trace,
+        ),
+        pawns(
+            false,
+            g,
+            &mut result,
+            black_defended,
+            white_defended,
+            _nn_trace,
+        ),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -221,8 +252,8 @@ pub fn eval_game_state(
     }*/
 
     let (knights_w, knights_b) = (
-        knights(true, g, &mut result),
-        knights(false, g, &mut result),
+        knights(true, g, &mut result, _nn_trace),
+        knights(false, g, &mut result, _nn_trace),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -242,6 +273,7 @@ pub fn eval_game_state(
             &mut result,
             black_defended_by_minors,
             black_defended,
+            _nn_trace,
         ),
         piecewise(
             false,
@@ -249,6 +281,7 @@ pub fn eval_game_state(
             &mut result,
             white_defended_by_minors,
             white_defended,
+            _nn_trace,
         ),
     );
     #[cfg(feature = "display-eval")]
@@ -262,7 +295,10 @@ pub fn eval_game_state(
     }
     res += piecewise_w - piecewise_b;
 
-    let (king_w, king_b) = (king(true, g, &mut result), king(false, g, &mut result));
+    let (king_w, king_b) = (
+        king(true, g, &mut result, _nn_trace),
+        king(false, g, &mut result, _nn_trace),
+    );
     #[cfg(feature = "display-eval")]
     {
         println!("\nKing Sum: {} - {} -> {}", king_w, king_b, king_w - king_b);
@@ -347,7 +383,12 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
         }
     }
 }
-pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn knights(
+    white: bool,
+    g: &GameState,
+    _eval: &mut EvaluationResult,
+    _nn_trace: &mut NNTrace,
+) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
 
@@ -360,6 +401,11 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Eval
     {
         _eval.trace.knight_supported +=
             supported_knights_amount as i8 * if side == WHITE { 1 } else { -1 };
+    }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::KNIGHT_SUPPORTED] +=
+            supported_knights_amount as f32 * if side == WHITE { 1. } else { -1. };
     }
     let mut outpost = EvaluationScore::default();
     let mut _outposts = 0;
@@ -383,6 +429,11 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Eval
             {
                 _eval.trace.knight_outpost_table[idx / 8][idx % 8] +=
                     if side == WHITE { 1 } else { -1 };
+            }
+            #[cfg(feature = "nn-eval")]
+            {
+                _nn_trace.trace[trace_pos::KNIGHT_OUTPOST_TABLE + 8 * (idx / 8) + idx % 8] +=
+                    if side == WHITE { 1. } else { -1. };
             }
         }
     }
@@ -408,6 +459,7 @@ pub fn piecewise(
     _eval: &mut EvaluationResult,
     enemy_defend_by_minors: u64,
     enemy_defended: u64,
+    _nn_trace: &mut NNTrace,
 ) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
 
@@ -455,6 +507,16 @@ pub fn piecewise(
                 _eval.trace.knight_safe_check[side] += 1;
             }
         }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace[trace_pos::KNIGHT_MOBILITY + mobility] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::KNIGHT_ATTACKED_SQ + side] +=
+                enemy_king_attacks.count_ones() as f32;
+            if has_safe_check {
+                _nn_trace.trace[trace_pos::KNIGHT_SAFE_CHECK + side] += 1.;
+            }
+        }
         knights ^= square(idx);
     }
     //Bishops
@@ -498,6 +560,19 @@ pub fn piecewise(
             _eval.trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 _eval.trace.bishop_safe_check[side] += 1;
+            }
+        }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace
+                [trace_pos::DIAGONALLY_ADJACENT_SQUARES_WITHPAWNS + diagonally_adjacent_pawns] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::BISHOP_MOBILITY + mobility] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::BISHOP_ATTACKED_SQ + side] +=
+                enemy_king_attacks.count_ones() as f32;
+            if has_safe_check {
+                _nn_trace.trace[trace_pos::BISHOP_SAFE_CHECK + side] += 1.;
             }
         }
         bishops ^= square(idx);
@@ -550,6 +625,16 @@ pub fn piecewise(
             _eval.trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 _eval.trace.rook_safe_check[side] += 1;
+            }
+        }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace[trace_pos::ROOK_MOBILITY + mobility] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::ROOK_ATTACKED_SQ + side] +=
+                enemy_king_attacks.count_ones() as f32;
+            if has_safe_check {
+                _nn_trace.trace[trace_pos::ROOK_SAFE_CHECK + side] += 1.;
             }
         }
         rooks ^= square(idx);
@@ -611,6 +696,16 @@ pub fn piecewise(
                 _eval.trace.queen_safe_check[side] += 1;
             }
         }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace[trace_pos::QUEEN_MOBILITY + mobility] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::QUEEN_ATTACKED_SQ + side] +=
+                enemy_king_attacks.count_ones() as f32;
+            if has_safe_check {
+                _nn_trace.trace[trace_pos::QUEEN_SAFE_CHECK + side] += 1.;
+            }
+        }
         queens ^= square(idx);
     }
     #[cfg(feature = "texel-tuning")]
@@ -625,6 +720,25 @@ pub fn piecewise(
         _eval.trace.bishop_xray_king += bishop_xray_king as i8 * if side == WHITE { 1 } else { -1 };
         _eval.trace.rook_xray_king += rook_xray_king as i8 * if side == WHITE { 1 } else { -1 };
         _eval.trace.queen_xray_king += queen_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+    }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::ROOK_ON_OPEN] +=
+            rooks_onopen as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::ROOK_ON_SEMI_OPEN] +=
+            rooks_on_semi_open as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::ROOK_ON_SEVENTH] +=
+            rooks_onseventh as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::QUEEN_ON_OPEN] +=
+            queens_onopen as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::QUEEN_ON_SEMI_OPEN] +=
+            queens_on_semi_open as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::BISHOP_XRAY_KING] +=
+            bishop_xray_king as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::ROOK_XRAY_KING] +=
+            rook_xray_king as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::QUEEN_XRAY_KING] +=
+            queen_xray_king as f32 * if side == WHITE { 1. } else { -1. };
     }
 
     let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0
@@ -652,6 +766,11 @@ pub fn piecewise(
     {
         _eval.trace.attackers[side] =
             (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
+    }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::ATTACKERS + side] =
+            (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as f32;
     }
     #[allow(clippy::let_and_return)]
     let res = mk
@@ -772,7 +891,12 @@ pub fn piecewise(
     res
 }
 
-pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn king(
+    white: bool,
+    g: &GameState,
+    _eval: &mut EvaluationResult,
+    _nn_trace: &mut NNTrace,
+) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
     let mut pawn_shield = if white {
         SHIELDING_PAWNS_WHITE[g.get_king_square(side)]
@@ -812,6 +936,13 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Evaluat
         _eval.trace.shielding_pawn_onopen_missing[shields_on_open_missing] +=
             if side == WHITE { 1 } else { -1 };
     }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::SHIELDING_PAWN_MISSING + shields_missing] +=
+            if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::SHIELDING_PAWN_ONOPEN_MISSING + shields_on_open_missing] +=
+            if side == WHITE { 1. } else { -1. };
+    }
     #[allow(clippy::let_and_return)]
     let res = SHIELDING_PAWN_MISSING[shields_missing]
         + SHIELDING_PAWN_MISSING_ON_OPEN_FILE[shields_on_open_missing];
@@ -842,6 +973,7 @@ pub fn pawns(
     _eval: &mut EvaluationResult,
     defended: u64,
     enemy_defended: u64,
+    _nn_trace: &mut NNTrace,
 ) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
@@ -899,6 +1031,11 @@ pub fn pawns(
         {
             _eval.trace.pawn_supported[index / 8][index % 8] += if side == WHITE { 1 } else { -1 };
         }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace[trace_pos::PAWN_SUPPORTED + 8 * (index / 8) + index % 8] +=
+                if side == WHITE { 1. } else { -1. };
+        }
     }
     res += supp;
     let center_attack_pawns = (pawns
@@ -926,6 +1063,19 @@ pub fn pawns(
         _eval.trace.pawn_attack_center +=
             center_attack_pawns as i8 * if side == WHITE { 1 } else { -1 };
         _eval.trace.pawn_mobility += pawn_mobility as i8 * if side == WHITE { 1 } else { -1 };
+    }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::PAWN_DOUBLED] +=
+            doubled_pawns as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::PAWN_ISOLATED] +=
+            isolated_pawns as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::PAWN_BACKWARD] +=
+            backward_pawns as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::PAWN_ATTACK_CENTER] +=
+            center_attack_pawns as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::PAWN_MOBILITY] +=
+            pawn_mobility as f32 * if side == WHITE { 1. } else { -1. };
     }
     //Passers
     let mut passed_pawns: u64 = pawns
@@ -957,6 +1107,13 @@ pub fn pawns(
         _eval.trace.rook_behind_enemy_passer +=
             enemy_rooks_attack_passer as i8 * if side == WHITE { 1 } else { -1 };
     }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::ROOK_BEHIND_SUPPORT_PASSER] +=
+            rooks_support_passer as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::ROOK_BEHIND_ENEMY_PASSER] +=
+            enemy_rooks_attack_passer as f32 * if side == WHITE { 1. } else { -1. };
+    }
     while passed_pawns != 0u64 {
         let idx = passed_pawns.trailing_zeros() as usize;
         //Passed and blocked
@@ -966,6 +1123,11 @@ pub fn pawns(
         {
             _eval.trace.pawn_passed[GameState::relative_rank(side, idx)] +=
                 if side == WHITE { 1 } else { -1 };
+        }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace[trace_pos::PAWN_PASSED + GameState::relative_rank(side, idx)] +=
+                if side == WHITE { 1. } else { -1. };
         }
         //A weak passer is an attacked and not defended passer
         let weak_passer = square(idx) & enemy_defended != 0u64 && square(idx) & defended == 0u64;
@@ -991,6 +1153,12 @@ pub fn pawns(
                 _eval.trace.pawn_passed_notblocked[GameState::relative_rank(side, idx)] +=
                     if side == WHITE { 1 } else { -1 };
             }
+            #[cfg(feature = "nn-eval")]
+            {
+                _nn_trace.trace
+                    [trace_pos::PAWN_PASSED_NOTBLOCKED + GameState::relative_rank(side, idx)] +=
+                    if side == WHITE { 1. } else { -1. };
+            }
         }
 
         //Distance to kings
@@ -1008,11 +1176,25 @@ pub fn pawns(
                 if side == WHITE { 1 } else { -1 };
             _eval.trace.pawn_passed_subdistance[sub_dist] += if side == WHITE { 1 } else { -1 };
         }
+        #[cfg(feature = "nn-eval")]
+        {
+            _nn_trace.trace[trace_pos::PAWN_PASSED_KINGDISTANCE + d_myking - 1] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::PAWN_PASSED_ENEMYKINGDISTANCE + d_enemyking - 1] +=
+                if side == WHITE { 1. } else { -1. };
+            _nn_trace.trace[trace_pos::PAWN_PASSED_SUBKINGDISTANCE + sub_dist] +=
+                if side == WHITE { 1. } else { -1. };
+        }
         passed_pawns ^= square(idx);
     }
     #[cfg(feature = "texel-tuning")]
     {
         _eval.trace.pawn_passed_weak += weak_passers as i8 * if side == WHITE { 1 } else { -1 };
+    }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::PAWN_PASSED_WEAK] +=
+            weak_passers as f32 * if side == WHITE { 1. } else { -1. };
     }
     res += passer_score + PAWN_PASSED_WEAK * weak_passers + passer_dist;
     #[cfg(feature = "display-eval")]
@@ -1069,7 +1251,12 @@ pub fn pawns(
     res
 }
 
-pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn piece_values(
+    white: bool,
+    g: &GameState,
+    _eval: &mut EvaluationResult,
+    _nn_trace: &mut NNTrace,
+) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
 
@@ -1104,6 +1291,21 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
         }
         _eval.trace.rooks += my_rooks as i8 * if side == WHITE { 1 } else { -1 };
         _eval.trace.queens += my_queens as i8 * if side == WHITE { 1 } else { -1 };
+    }
+    #[cfg(feature = "nn-eval")]
+    {
+        _nn_trace.trace[trace_pos::PAWNS] += my_pawns as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::KNIGHT_VALUE_WITH_PAWNS] = pawns_on_board as f32;
+        _nn_trace.trace[trace_pos::KNIGHTS] +=
+            my_knights as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::BISHOPS] +=
+            my_bishops as f32 * if side == WHITE { 1. } else { -1. };
+        if my_bishops > 1 {
+            _nn_trace.trace[trace_pos::BISHOP_BONUS] += if side == WHITE { 1. } else { -1. };
+        }
+        _nn_trace.trace[trace_pos::ROOKS] += my_rooks as f32 * if side == WHITE { 1. } else { -1. };
+        _nn_trace.trace[trace_pos::QUEENS] +=
+            my_queens as f32 * if side == WHITE { 1. } else { -1. };
     }
     #[cfg(feature = "display-eval")]
     {

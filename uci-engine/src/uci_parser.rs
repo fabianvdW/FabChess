@@ -1,5 +1,7 @@
 use super::uci_engine::UCIEngine;
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
+use core_sdk::evaluation::nn::get_evaluation_parameters;
+use core_sdk::evaluation::nn_trace::NNTrace;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
@@ -86,7 +88,20 @@ pub fn parse_loop() {
             "static" => {
                 println!(
                     "cp {}",
-                    core_sdk::evaluation::eval_game_state(&us.internal_state, 0, 0).final_eval
+                    if cfg!(feature = "nn-eval") {
+                        core_sdk::evaluation::nn::nn_evaluate_game_state(
+                            &get_evaluation_parameters(),
+                            &us.internal_state,
+                            &mut NNTrace::new(),
+                        )
+                        .final_eval
+                    } else {
+                        core_sdk::evaluation::eval_game_state(
+                            &us.internal_state,
+                            &mut NNTrace::new(),
+                        )
+                        .final_eval
+                    }
                 );
             }
             _ => {
