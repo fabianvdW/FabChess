@@ -1,6 +1,7 @@
 use super::super::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BLACK, WHITE,
 };
+#[cfg(not(feature = "nn-eval"))]
 use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
 use super::alphabeta::*;
@@ -8,8 +9,6 @@ use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
 #[cfg(feature = "nn-eval")]
 use crate::evaluation::nn::nn_evaluate_game_state;
-#[cfg(feature = "nn-eval")]
-use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::make_move;
 use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_STAGES};

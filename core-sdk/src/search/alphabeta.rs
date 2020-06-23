@@ -2,11 +2,10 @@ use super::super::board_representation::game_state::*;
 use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
+#[cfg(not(feature = "nn-eval"))]
 use crate::evaluation::eval_game_state;
 #[cfg(feature = "nn-eval")]
 use crate::evaluation::nn::nn_evaluate_game_state;
-#[cfg(feature = "nn-eval")]
-use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
@@ -419,15 +418,11 @@ pub fn max_depth(_thread: &mut Thread, p: &CombinedSearchParameters) -> SearchIn
         let eval_res = {
             #[cfg(feature = "nn-eval")]
             {
-                nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container)
+                nn_evaluate_game_state(&_thread.nn, p.game_state, &mut _thread.trace_container)
             }
             #[cfg(not(feature = "nn-eval"))]
             {
-                eval_game_state(
-                    p.game_state,
-                    #[cfg(feature = "nn-eval")]
-                    &mut NNTrace::new(),
-                )
+                eval_game_state(p.game_state)
             }
         };
         SearchInstruction::StopSearching(eval_res.final_eval * p.color)
@@ -469,7 +464,7 @@ pub fn make_eval(
         let eval_res = {
             #[cfg(feature = "nn-eval")]
             {
-                nn_evaluate_game_state(&thread.nn, p.game_state, &mut _thread.trace_container)
+                nn_evaluate_game_state(&_thread.nn, p.game_state, &mut _thread.trace_container)
             }
             #[cfg(not(feature = "nn-eval"))]
             {

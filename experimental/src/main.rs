@@ -11,13 +11,12 @@ use tuning::{load_positions, FileFormatSupported, LabelledGameState, Statistics}
 
 fn main() {
     //let position_file = "D:/FenCollection/Lichess/lichess-quiet.txt";
-    let position_file = "D:/FenCollection/Andrews/andrew_data.epd2";
-    let position_file = "D:/FenCollection/Andrews/subset.epd2";
+    let position_file = "D:/FenCollection/Andrews/andrew_data_quiet.txt";
     let mut stats = Statistics::default();
     let mut positions = Vec::new();
     load_positions(
         position_file,
-        FileFormatSupported::EPD,
+        FileFormatSupported::OwnEncoding,
         &mut positions,
         &mut stats,
     );
@@ -25,6 +24,7 @@ fn main() {
     println!("Loaded {} positions", positions.len());
     //dump_nn_traces(&positions, "training_big.dat").unwrap();
     dump_nn_traces(&positions, "andrews_dataset.dat").unwrap();
+    dump_nn_traces(&positions[..200_000_0], "andrews_dataset_subset.dat").unwrap();
 }
 pub const THREADS: usize = 4;
 pub fn dump_nn_traces(positions: &[LabelledGameState], path: &str) -> std::io::Result<()> {
@@ -34,8 +34,8 @@ pub fn dump_nn_traces(positions: &[LabelledGameState], path: &str) -> std::io::R
         .append(false)
         .open(path)
         .unwrap();
-    let mut now = Instant::now();
-    let mut buf_writer = Arc::new(Mutex::new(BufWriter::new(file)));
+    let now = Instant::now();
+    let buf_writer = Arc::new(Mutex::new(BufWriter::new(file)));
     buf_writer
         .lock()
         .unwrap()

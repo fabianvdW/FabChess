@@ -15,7 +15,7 @@ use tuning::loading::{
     load_positions, save_positions, FileFormatSupported, LabelledGameState, Statistics,
 };
 
-const FEN_DIR: &str = "D:/FenCollection/TestDir";
+const FEN_DIR: &str = "D:/FenCollection/Andrews";
 
 fn main() {
     //2. Transform all FEN-Positions in Quiet positions
@@ -45,9 +45,10 @@ fn main() {
     let mut move_list = ReservedMoveList::default();
     let mut see_buffer = vec![0i16; MAX_SEARCH_DEPTH];
 
-    for position in positions {
-        let mut other = position.game_state.clone();
-        other.set_color_to_move(1 - other.get_color_to_move());
+    for (i, position) in positions.iter().enumerate() {
+        if i % 1000 == 0 {
+            println!("{}", i);
+        }
         let (score, state) = stripped_q_search(
             -16000,
             16000,
@@ -141,11 +142,11 @@ pub fn stripped_q_search(
             break;
         }
         let (i, capture_move) = capture_move.unwrap();
+        move_list.move_lists[current_depth].move_list.remove(i);
         if capture_move.1.unwrap() < 0. {
             continue;
         }
         let capture_move = capture_move.0;
-        move_list.move_lists[current_depth].move_list.remove(i);
         let next_g = make_move(&game_state, capture_move);
         let (score, other_state) = stripped_q_search(
             -beta,
