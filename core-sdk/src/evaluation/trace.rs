@@ -183,77 +183,63 @@ impl Trace {
         res.push_str(&s);
         res
     }
-    pub fn psqt_to_csv(psqt: &[[i8; 8]; 8]) -> String {
-        let mut res = String::new();
-        let mut entries = Vec::with_capacity(64);
-        for i in 0..8 {
-            for j in 0..8 {
-                entries.push(psqt[i][j].to_string());
-            }
-        }
-        res.push_str(&entries.join(","));
-        res
-    }
-    pub fn dump_as_csv(&self) -> String {
-        let mut res = String::new();
-        let mut entries = Vec::with_capacity(60);
-        entries.push(self.tempo_bonus.to_string());
-        entries.push(format!("{:?}", self.shielding_pawn_missing));
-        entries.push(format!("{:?}", self.shielding_pawn_onopen_missing));
-        entries.push(self.pawn_doubled.to_string());
-        entries.push(self.pawn_isolated.to_string());
-        entries.push(self.pawn_backward.to_string());
-        entries.push(Trace::psqt_to_csv(&self.pawn_supported));
-        entries.push(self.pawn_attack_center.to_string());
-        entries.push(self.pawn_mobility.to_string());
-        entries.push(format!("{:?}", self.pawn_passed));
-        entries.push(format!("{:?}", self.pawn_passed_notblocked));
-        entries.push(format!("{:?}", self.pawn_passed_kingdistance));
-        entries.push(format!("{:?}", self.pawn_passed_enemykingdistance));
-        entries.push(format!("{:?}", self.pawn_passed_subdistance));
-        entries.push(self.rook_behind_support_passer.to_string());
-        entries.push(self.rook_behind_enemy_passer.to_string());
-        entries.push(self.pawn_passed_weak.to_string());
-        entries.push(self.knight_supported.to_string());
-        entries.push(Trace::psqt_to_csv(&self.knight_outpost_table));
-        entries.push(self.bishop_xray_king.to_string());
-        entries.push(self.rook_xray_king.to_string());
-        entries.push(self.queen_xray_king.to_string());
-        entries.push(self.rook_on_open.to_string());
-        entries.push(self.rook_on_semi_open.to_string());
-        entries.push(self.queen_on_open.to_string());
-        entries.push(self.queen_on_semi_open.to_string());
-        entries.push(self.rook_on_seventh.to_string());
-        entries.push(self.pawns.to_string());
-        entries.push(self.knights.to_string());
-        entries.push(self.knight_value_with_pawns.to_string());
-        entries.push(self.bishops.to_string());
-        entries.push(self.bishop_bonus.to_string());
-        entries.push(self.rooks.to_string());
-        entries.push(self.queens.to_string());
-        entries.push(format!("{:?}", self.diagonally_adjacent_squares_withpawns));
-        entries.push(format!("{:?}", self.knight_mobility));
-        entries.push(format!("{:?}", self.bishop_mobility));
-        entries.push(format!("{:?}", self.rook_mobility));
-        entries.push(format!("{:?}", self.queen_mobility));
-        entries.push(format!("{:?}", self.attackers));
-        entries.push(format!("{:?}", self.knight_attacked_sq));
-        entries.push(format!("{:?}", self.bishop_attacked_sq));
-        entries.push(format!("{:?}", self.rook_attacked_sq));
-        entries.push(format!("{:?}", self.queen_attacked_sq));
-        entries.push(format!("{:?}", self.knight_safe_check));
-        entries.push(format!("{:?}", self.bishop_safe_check));
-        entries.push(format!("{:?}", self.rook_safe_check));
-        entries.push(format!("{:?}", self.queen_safe_check));
-        for i in 0..6 {
-            entries.push(Trace::psqt_to_csv(&self.psqt[i]));
-        }
-        entries.push(format!("{:?}", self.phase));
-        res.push_str(&entries.join(","));
-        res = res.replace("[", "");
-        res = res.replace("]", "");
-        res = res.replace(" ", "");
-        res
+
+    //This returns a dump of the trace as csv, which still contains "[", "]" from pretty print of rust arrays
+    //Need to remove them for actual analysis
+    pub fn dump_as_csv(&self, res: &mut String) {
+        res.push_str(&format!("{},", self.tempo_bonus.to_string()));
+        res.push_str(&format!("{:?},", self.shielding_pawn_missing));
+        res.push_str(&format!("{:?},", self.shielding_pawn_onopen_missing));
+        res.push_str(&format!("{},", self.pawn_doubled.to_string()));
+        res.push_str(&format!("{},", self.pawn_isolated.to_string()));
+        res.push_str(&format!("{},", self.pawn_backward.to_string()));
+        res.push_str(&format!("{:?},", self.pawn_supported));
+        res.push_str(&format!("{},", self.pawn_attack_center.to_string()));
+        res.push_str(&format!("{},", self.pawn_mobility.to_string()));
+        res.push_str(&format!("{:?},", self.pawn_passed));
+        res.push_str(&format!("{:?},", self.pawn_passed_notblocked));
+        res.push_str(&format!("{:?},", self.pawn_passed_kingdistance));
+        res.push_str(&format!("{:?},", self.pawn_passed_enemykingdistance));
+        res.push_str(&format!("{:?},", self.pawn_passed_subdistance));
+        res.push_str(&format!("{},", self.rook_behind_support_passer.to_string()));
+        res.push_str(&format!("{},", self.rook_behind_enemy_passer.to_string()));
+        res.push_str(&format!("{},", self.pawn_passed_weak.to_string()));
+        res.push_str(&format!("{},", self.knight_supported.to_string()));
+        res.push_str(&format!("{:?},", self.knight_outpost_table));
+        res.push_str(&format!("{},", self.bishop_xray_king.to_string()));
+        res.push_str(&format!("{},", self.rook_xray_king.to_string()));
+        res.push_str(&format!("{},", self.queen_xray_king.to_string()));
+        res.push_str(&format!("{},", self.rook_on_open.to_string()));
+        res.push_str(&format!("{},", self.rook_on_semi_open.to_string()));
+        res.push_str(&format!("{},", self.queen_on_open.to_string()));
+        res.push_str(&format!("{},", self.queen_on_semi_open.to_string()));
+        res.push_str(&format!("{},", self.rook_on_seventh.to_string()));
+        res.push_str(&format!("{},", self.pawns.to_string()));
+        res.push_str(&format!("{},", self.knights.to_string()));
+        res.push_str(&format!("{},", self.knight_value_with_pawns.to_string()));
+        res.push_str(&format!("{},", self.bishops.to_string()));
+        res.push_str(&format!("{},", self.bishop_bonus.to_string()));
+        res.push_str(&format!("{},", self.rooks.to_string()));
+        res.push_str(&format!("{},", self.queens.to_string()));
+        res.push_str(&format!(
+            "{:?},",
+            self.diagonally_adjacent_squares_withpawns
+        ));
+        res.push_str(&format!("{:?},", self.knight_mobility));
+        res.push_str(&format!("{:?},", self.bishop_mobility));
+        res.push_str(&format!("{:?},", self.rook_mobility));
+        res.push_str(&format!("{:?},", self.queen_mobility));
+        res.push_str(&format!("{:?},", self.attackers));
+        res.push_str(&format!("{:?},", self.knight_attacked_sq));
+        res.push_str(&format!("{:?},", self.bishop_attacked_sq));
+        res.push_str(&format!("{:?},", self.rook_attacked_sq));
+        res.push_str(&format!("{:?},", self.queen_attacked_sq));
+        res.push_str(&format!("{:?},", self.knight_safe_check));
+        res.push_str(&format!("{:?},", self.bishop_safe_check));
+        res.push_str(&format!("{:?},", self.rook_safe_check));
+        res.push_str(&format!("{:?},", self.queen_safe_check));
+        res.push_str(&format!("{:?},", self.psqt));
+        res.push_str(&format!("{:?}", self.phase));
     }
 }
 impl Trace {
