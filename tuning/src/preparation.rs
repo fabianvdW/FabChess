@@ -1,5 +1,7 @@
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, WHITE};
 use core_sdk::evaluation::eval_game_state;
+#[cfg(feature = "nn-eval")]
+use core_sdk::evaluation::nn_trace::NNTrace;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
 use core_sdk::search::check_for_draw;
@@ -13,8 +15,7 @@ use tuning::loading::{
     load_positions, save_positions, FileFormatSupported, LabelledGameState, Statistics,
 };
 
-//const FEN_DIR: &str = "D:/FenCollection/Real";
-const FEN_DIR: &str = "D:/FenCollection/Lichess";
+const FEN_DIR: &str = "D:/FenCollection/TestDir";
 
 fn main() {
     //2. Transform all FEN-Positions in Quiet positions
@@ -102,7 +103,11 @@ pub fn stripped_q_search(
     }
     let incheck = game_state.in_check();
 
-    let static_evaluation = eval_game_state(&game_state, -16000, 16000);
+    let static_evaluation = eval_game_state(
+        &game_state,
+        #[cfg(feature = "nn-eval")]
+        &mut NNTrace::new(),
+    );
     //Standing pat pruning
     let stand_pat = static_evaluation.final_eval * color;
     if !incheck && stand_pat >= beta {

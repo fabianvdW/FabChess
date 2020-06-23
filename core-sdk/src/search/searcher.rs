@@ -9,6 +9,7 @@ use super::MATED_IN_MAX;
 use super::MAX_SEARCH_DEPTH;
 use crate::board_representation::game_state::{GameState, WHITE};
 //use crate::logging::log;
+#[cfg(feature = "nn-eval")]
 use crate::evaluation::nn::{get_evaluation_parameters, NN};
 use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::make_move;
@@ -256,6 +257,7 @@ pub enum ThreadInstruction {
 pub struct Thread {
     pub id: usize,
     pub itcs: Arc<InterThreadCommunicationSystem>,
+    #[cfg(feature = "nn-eval")]
     pub nn: NN,
     pub trace_container: NNTrace,
     pub root_plies_played: usize,
@@ -318,6 +320,7 @@ impl Thread {
         Thread {
             id,
             itcs,
+            #[cfg(feature = "nn-eval")]
             nn: get_evaluation_parameters(),
             trace_container: NNTrace::new(),
             root_plies_played: 0,

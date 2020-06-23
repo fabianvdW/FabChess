@@ -6,7 +6,9 @@ use super::super::move_generation::movegen;
 use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
+#[cfg(feature = "nn-eval")]
 use crate::evaluation::nn::nn_evaluate_game_state;
+#[cfg(feature = "nn-eval")]
 use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::make_move;
 use crate::search::cache::CacheEntry;
@@ -36,11 +38,17 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 5. Get standing pat when not in check
-    let stand_pat = if cfg!(feature = "nn-eval") {
-        nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container).final_eval
-    } else {
-        eval_game_state(&p.game_state, &mut NNTrace::new()).final_eval
-    } * p.color;
+    let eval_res = {
+        #[cfg(feature = "nn-eval")]
+        {
+            nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container)
+        }
+        #[cfg(not(feature = "nn-eval"))]
+        {
+            eval_game_state(p.game_state)
+        }
+    };
+    let stand_pat = eval_res.final_eval * p.color;
 
     //Step 6. Preliminary pruning
     if let SearchInstruction::StopSearching(res) = adjust_standpat(&mut p, stand_pat) {

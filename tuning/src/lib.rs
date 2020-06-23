@@ -6,6 +6,7 @@ pub mod loading;
 pub use crate::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
 use core_sdk::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
 use core_sdk::evaluation::eval_game_state;
+#[cfg(feature = "nn-eval")]
 use core_sdk::evaluation::nn_trace::NNTrace;
 pub use core_sdk::evaluation::parameters::Parameters;
 use core_sdk::evaluation::trace::Trace;
@@ -48,7 +49,11 @@ pub const L2_REGULARIZATION: f64 = 0.;
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(1);
     for state in labelledstates {
-        let eval = eval_game_state(&state.game_state, &mut NNTrace::new());
+        let eval = eval_game_state(
+            &state.game_state,
+            #[cfg(feature = "nn-eval")]
+            &mut NNTrace::new(),
+        );
         res.push(TexelState {
             label: state.label,
             eval: eval.final_eval as f64,

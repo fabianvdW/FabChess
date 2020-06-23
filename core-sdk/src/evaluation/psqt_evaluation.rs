@@ -2,6 +2,7 @@ use super::EvaluationResult;
 use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
 use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE};
+#[cfg(feature = "nn-eval")]
 use crate::evaluation::nn_trace::{trace_pos, NNTrace};
 use crate::evaluation::params::PSQT;
 
@@ -15,7 +16,7 @@ pub fn psqt(
     game_state: &GameState,
     side: usize,
     _eval: &mut EvaluationResult,
-    _nn_trace: &mut NNTrace,
+    #[cfg(feature = "nn-eval")] _nn_trace: &mut NNTrace,
 ) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     #[cfg(feature = "display-eval")]

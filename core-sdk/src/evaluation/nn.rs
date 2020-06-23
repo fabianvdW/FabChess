@@ -1,7 +1,10 @@
+#[cfg(feature = "nn-eval")]
 use crate::board_representation::game_state::GameState;
+#[cfg(feature = "nn-eval")]
 use crate::evaluation::nn_trace::NNTrace;
-#[cfg(feature = "texel-tuning")]
+#[cfg(all(feature = "texel-tuning", feature = "nn-eval"))]
 use crate::evaluation::trace::Trace;
+#[cfg(feature = "nn-eval")]
 use crate::evaluation::{eval_game_state, EvaluationResult};
 #[cfg(feature = "nn-eval")]
 use ndarray::Array1;
