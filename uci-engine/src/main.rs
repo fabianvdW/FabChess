@@ -21,7 +21,7 @@ fn main() {
         core_sdk::bench(
             args.nth(2)
                 .and_then(|depth| depth.parse::<usize>().ok())
-                .unwrap_or(13),
+                .unwrap_or(10),
         );
     } else {
         uci_parser::parse_loop();
