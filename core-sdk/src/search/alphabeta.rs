@@ -31,7 +31,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     let root = p.current_depth == 0;
     let is_pv_node = p.beta - p.alpha > 1;
     //Step 1. Check timeout and if stop flag is set, if we are main thread
-    if thread.search_statistics.nodes_searched % 4096 == 0 {
+    if thread.search_statistics.nodes_searched % 1024 == 0 {
         checkup(thread)
     }
     if thread.search_statistics.nodes_searched % 8192 == 0 {
