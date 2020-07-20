@@ -1,14 +1,10 @@
 use super::super::board_representation::game_state::{
     GameMove, GameMoveType, GameState, PieceType, BLACK, WHITE,
 };
-#[cfg(not(feature = "nn-eval"))]
-use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
 use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
-#[cfg(feature = "nn-eval")]
-use crate::evaluation::nn::nn_evaluate_game_state;
 use crate::move_generation::makemove::make_move;
 use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_STAGES};
@@ -37,16 +33,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 5. Get standing pat when not in check
-    let eval_res = {
-        #[cfg(feature = "nn-eval")]
-        {
-            nn_evaluate_game_state(&thread.nn, p.game_state, &mut thread.trace_container)
-        }
-        #[cfg(not(feature = "nn-eval"))]
-        {
-            eval_game_state(p.game_state)
-        }
-    };
+    let eval_res = thread.nn.evaluate_game_state(p.game_state);
     let stand_pat = eval_res.final_eval * p.color;
 
     //Step 6. Preliminary pruning
@@ -236,7 +223,7 @@ pub fn passes_delta_pruning(capture_move: GameMove, phase: f64, eval: i16, alpha
         GameMoveType::EnPassant => &PieceType::Pawn,
         _ => panic!("No capture!"),
     };
-    eval + captured_piece.to_piece_score().interpolate(phase) + DELTA_PRUNING >= alpha
+    eval + captured_piece.to_piece_score() + DELTA_PRUNING >= alpha
 }
 
 #[inline(always)]

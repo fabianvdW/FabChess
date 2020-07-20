@@ -1,10 +1,7 @@
-use super::EvaluationResult;
-use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
-use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE};
-#[cfg(feature = "nn-eval")]
-use crate::evaluation::nn_trace::{trace_pos, NNTrace};
-use crate::evaluation::params::PSQT;
+use crate::board_representation::game_state::{GameState, PIECE_TYPES, WHITE};
+use crate::evaluation::nn::NN;
+use crate::evaluation::nn_trace::trace_pos;
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -15,65 +12,26 @@ pub const BLACK_INDEX: [usize; 64] = [
 pub fn psqt(
     game_state: &GameState,
     side: usize,
-    _eval: &mut EvaluationResult,
-    #[cfg(feature = "nn-eval")] _nn_trace: &mut NNTrace,
-) -> EvaluationScore {
-    let mut res = EvaluationScore::default();
-    #[cfg(feature = "display-eval")]
-    {
-        println!(
-            "\nPSQT for {}:",
-            if side == WHITE { "White" } else { "Black" }
-        );
-    }
+    nn: &mut NN,
+    #[cfg(feature = "texel-tuning")] nn_trace: &mut NNTrace,
+) {
+    let side_mult = if side == WHITE { 1f32 } else { -1f32 };
     for pt in PIECE_TYPES.iter() {
-        let mut piece_sum = EvaluationScore::default();
         let mut piece = game_state.get_piece(*pt, side);
         while piece > 0 {
             #[allow(unused_mut)]
             let mut idx = piece.trailing_zeros() as usize;
             piece ^= square(idx);
-            piece_sum +=
-                PSQT[*pt as usize][side][idx / 8][idx % 8] * if side == WHITE { 1 } else { -1 };
+            if side != WHITE {
+                idx = BLACK_INDEX[idx];
+            }
+            let position_in_arr = trace_pos::PSQT * 64 * (*pt as usize) + 8 * (idx / 8) + idx % 8;
             #[cfg(feature = "texel-tuning")]
             {
-                if side != WHITE {
-                    idx = BLACK_INDEX[idx];
-                }
-                _eval.trace.psqt[*pt as usize][idx / 8][idx % 8] +=
-                    if side == WHITE { 1 } else { -1 };
+                nn_trace.trace[position_in_arr] += side_mult;
             }
-            #[cfg(feature = "nn-eval")]
-            {
-                if side != WHITE {
-                    idx = BLACK_INDEX[idx];
-                }
-                _nn_trace.trace[trace_pos::PSQT + 64 * (*pt as usize) + 8 * (idx / 8) + idx % 8] +=
-                    if side == WHITE { 1f32 } else { -1f32 };
-            }
-        }
-        res += piece_sum;
-        #[cfg(feature = "display-eval")]
-        {
-            println!("\t{:?}  : {}", *pt, piece_sum);
+            nn.internal_state
+                .evaluate_feature_1d(position_in_arr, side_mult);
         }
     }
-    #[cfg(feature = "display-eval")]
-    {
-        println!("Sum: {}", res);
-    }
-    res
-}
-#[inline(always)]
-pub fn psqt_remove_piece(
-    piece: PieceType,
-    square: usize,
-    side: usize,
-    score: &mut EvaluationScore,
-) {
-    *score -= piece.to_psqt(side, square);
-}
-#[inline(always)]
-pub fn psqt_add_piece(piece: PieceType, square: usize, side: usize, score: &mut EvaluationScore) {
-    *score += piece.to_psqt(side, square);
 }

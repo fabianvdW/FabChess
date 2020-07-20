@@ -1,14 +1,11 @@
 pub const FEATURES: usize = 676;
-#[cfg(feature = "nn-eval")]
 use ndarray::Array1;
 pub struct NNTrace {
-    #[cfg(feature = "nn-eval")]
     pub trace: Array1<f32>,
 }
 impl NNTrace {
     pub fn new() -> Self {
         NNTrace {
-            #[cfg(feature = "nn-eval")]
             trace: Array1::zeros(FEATURES),
         }
     }

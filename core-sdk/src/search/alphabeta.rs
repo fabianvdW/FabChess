@@ -2,10 +2,6 @@ use super::super::board_representation::game_state::*;
 use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
-#[cfg(not(feature = "nn-eval"))]
-use crate::evaluation::eval_game_state;
-#[cfg(feature = "nn-eval")]
-use crate::evaluation::nn::nn_evaluate_game_state;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
@@ -413,18 +409,9 @@ pub fn mate_distance_pruning(p: &mut CombinedSearchParameters) -> SearchInstruct
 }
 
 #[inline(always)]
-pub fn max_depth(_thread: &mut Thread, p: &CombinedSearchParameters) -> SearchInstruction {
+pub fn max_depth(thread: &mut Thread, p: &CombinedSearchParameters) -> SearchInstruction {
     if p.current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        let eval_res = {
-            #[cfg(feature = "nn-eval")]
-            {
-                nn_evaluate_game_state(&_thread.nn, p.game_state, &mut _thread.trace_container)
-            }
-            #[cfg(not(feature = "nn-eval"))]
-            {
-                eval_game_state(p.game_state)
-            }
-        };
+        let eval_res = thread.nn.evaluate_game_state(p.game_state);
         SearchInstruction::StopSearching(eval_res.final_eval * p.color)
     } else {
         SearchInstruction::ContinueSearching
@@ -451,7 +438,7 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 
 #[inline(always)]
 pub fn make_eval(
-    _thread: &mut Thread,
+    thread: &mut Thread,
     p: &CombinedSearchParameters,
     static_evaluation: &mut Option<i16>,
     prunable: bool,
@@ -461,16 +448,7 @@ pub fn make_eval(
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || p.depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = {
-            #[cfg(feature = "nn-eval")]
-            {
-                nn_evaluate_game_state(&_thread.nn, p.game_state, &mut _thread.trace_container)
-            }
-            #[cfg(not(feature = "nn-eval"))]
-            {
-                eval_game_state(p.game_state)
-            }
-        };
+        let eval_res = thread.nn.evaluate_game_state(p.game_state);
         *static_evaluation = Some(eval_res.final_eval);
         #[cfg(feature = "search-statistics")]
         {

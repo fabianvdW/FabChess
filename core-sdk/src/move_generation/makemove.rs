@@ -4,7 +4,6 @@ use crate::board_representation::game_state::{
     GameMove, GameMoveType, GameState, Irreversible, PieceType, WHITE,
 };
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
-use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
 
 #[inline(always)]
 pub fn toggle_piece(
@@ -56,7 +55,6 @@ pub fn make_nullmove(g: &GameState) -> GameState {
             half_moves,
             g.castle_permissions(),
             g.get_phase().clone(),
-            g.get_psqt(),
         ),
         full_moves,
     )
@@ -85,7 +83,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     let mut piece_bb = g.get_piece_bb_array();
     let mut color_bb = g.get_color_bb_array();
     let mut hash = g.get_hash() ^ ZOBRIST_KEYS.side_to_move;
-    let mut psqt = g.get_psqt();
     let mut phase = g.get_phase().clone();
     //Remove piece from original square
     toggle_piece(
@@ -96,12 +93,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         g.get_color_to_move(),
     );
     toggle_hash(mv.piece_type, mv.from, g.get_color_to_move(), &mut hash);
-    psqt_remove_piece(
-        mv.piece_type,
-        mv.from as usize,
-        g.get_color_to_move(),
-        &mut psqt,
-    );
     let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
@@ -114,7 +105,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             color_to_move,
         );
         toggle_hash(piece, square, color_to_move, &mut hash);
-        psqt_remove_piece(piece, square as usize, color_to_move, &mut psqt);
         phase.delete_piece(piece);
     }
     //Move rook for castling
@@ -127,12 +117,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             g.get_color_to_move(),
         );
         toggle_hash(mv.piece_type, mv.to, g.get_color_to_move(), &mut hash);
-        psqt_add_piece(
-            mv.piece_type,
-            mv.to as usize,
-            g.get_color_to_move(),
-            &mut psqt,
-        );
         let (rook_from, rook_to) = rook_castling(mv.to as usize);
         toggle_piece(
             &mut piece_bb,
@@ -147,12 +131,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             g.get_color_to_move(),
             &mut hash,
         );
-        psqt_remove_piece(
-            PieceType::Rook,
-            rook_from as usize,
-            g.get_color_to_move(),
-            &mut psqt,
-        );
         toggle_piece(
             &mut piece_bb,
             &mut color_bb,
@@ -166,12 +144,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             g.get_color_to_move(),
             &mut hash,
         );
-        psqt_add_piece(
-            PieceType::Rook,
-            rook_to as usize,
-            g.get_color_to_move(),
-            &mut psqt,
-        );
     } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
         //If promotion, add promotion piece
         toggle_piece(
@@ -182,12 +154,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             g.get_color_to_move(),
         );
         toggle_hash(promo_piece, mv.to, g.get_color_to_move(), &mut hash);
-        psqt_add_piece(
-            promo_piece,
-            mv.to as usize,
-            g.get_color_to_move(),
-            &mut psqt,
-        );
         phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
@@ -199,12 +165,6 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             g.get_color_to_move(),
         );
         toggle_hash(mv.piece_type, mv.to, g.get_color_to_move(), &mut hash);
-        psqt_add_piece(
-            mv.piece_type,
-            mv.to as usize,
-            g.get_color_to_move(),
-            &mut psqt,
-        );
     }
     //Step 3. Update Castling Rights
     let castle_permissions = g.castle_permissions()
@@ -235,14 +195,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         color_to_move,
         piece_bb,
         color_bb,
-        Irreversible::new(
-            hash,
-            en_passant,
-            half_moves,
-            castle_permissions,
-            phase,
-            psqt,
-        ),
+        Irreversible::new(hash, en_passant, half_moves, castle_permissions, phase),
         full_moves,
     )
 }

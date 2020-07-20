@@ -4,9 +4,7 @@ use crate::bitboards::bitboards::square;
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 #[cfg(feature = "nn-eval")]
 use crate::evaluation::nn_trace::NNTrace;
-use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
-use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen::{
     b_pawn_east_targets, b_pawn_west_targets, bishop_attack, double_push_pawn_targets,
@@ -71,27 +69,21 @@ pub enum PieceType {
 }
 impl PieceType {
     #[inline(always)]
-    pub fn to_psqt(self, side: usize, sq: usize) -> EvaluationScore {
-        PSQT[self as usize][side][sq / 8][sq % 8]
-    }
-
-    #[inline(always)]
     pub fn to_zobrist_key(self, side: usize, sq: usize) -> u64 {
         ZOBRIST_KEYS.pieces[side][self as usize][sq]
     }
 
     #[inline(always)]
-    pub fn to_piece_score(self) -> EvaluationScore {
+    pub fn to_piece_score(self) -> i16 {
         match &self {
-            PieceType::Pawn => PAWN_PIECE_VALUE,
-            PieceType::Knight => KNIGHT_PIECE_VALUE,
-            PieceType::Bishop => BISHOP_PIECE_VALUE,
-            PieceType::Rook => ROOK_PIECE_VALUE,
-            PieceType::Queen => QUEEN_PIECE_VALUE,
+            PieceType::Pawn => 100,
+            PieceType::Knight => 450,
+            PieceType::Bishop => 490,
+            PieceType::Rook => 650,
+            PieceType::Queen => 1500,
             PieceType::King => panic!("King has no piece score"),
         }
     }
-
     #[inline(always)]
     pub fn to_phase_score(self) -> i16 {
         match &self {
@@ -341,7 +333,6 @@ pub struct Irreversible {
     half_moves: usize,
     castle_permissions: u8,
     phase: Phase,
-    psqt: EvaluationScore,
 }
 impl Irreversible {
     pub fn new(
@@ -350,7 +341,6 @@ impl Irreversible {
         half_moves: usize,
         castle_permissions: u8,
         phase: Phase,
-        psqt: EvaluationScore,
     ) -> Self {
         Irreversible {
             hash,
@@ -358,7 +348,6 @@ impl Irreversible {
             half_moves,
             castle_permissions,
             phase,
-            psqt,
         }
     }
 }
@@ -414,9 +403,6 @@ impl GameState {
     }
     pub fn get_phase(&self) -> &Phase {
         &self.irreversible.phase
-    }
-    pub fn get_psqt(&self) -> EvaluationScore {
-        self.irreversible.psqt
     }
 
     pub fn get_piece(&self, piece_type: PieceType, side: usize) -> u64 {
@@ -528,34 +514,12 @@ impl GameState {
             }
         }
     }
-    pub fn initialize_psqt(&mut self) {
-        let mut _eval = crate::evaluation::EvaluationResult {
-            final_eval: 0,
-            #[cfg(feature = "texel-tuning")]
-            trace: crate::evaluation::trace::Trace::default(),
-        };
-        let p_w = crate::evaluation::psqt_evaluation::psqt(
-            self,
-            WHITE,
-            &mut _eval,
-            #[cfg(feature = "nn-eval")]
-            &mut NNTrace::new(),
-        );
-        let p_b = crate::evaluation::psqt_evaluation::psqt(
-            self,
-            BLACK,
-            &mut _eval,
-            #[cfg(feature = "nn-eval")]
-            &mut NNTrace::new(),
-        );
-        self.irreversible.psqt = p_w - p_b
-    }
+
     pub fn initialize_phase(&mut self) {
         self.irreversible.phase = Phase::from_state(self);
     }
     pub fn initialize(&mut self) {
         self.initialize_zobrist_hash();
-        self.initialize_psqt();
         self.initialize_phase();
     }
     pub fn from_fen(fen: &str) -> GameState {
@@ -654,7 +618,6 @@ impl GameState {
                 half_moves,
                 castle_permissions,
                 Phase::default(),
-                EvaluationScore(0, 0),
             ),
             full_moves,
         );
@@ -755,14 +718,7 @@ impl GameState {
             color_to_move,
             piece_bb,
             color_bb,
-            Irreversible::new(
-                0u64,
-                0u64,
-                0,
-                CASTLE_ALL,
-                Phase::default(),
-                EvaluationScore(0, 0),
-            ),
+            Irreversible::new(0u64, 0u64, 0, CASTLE_ALL, Phase::default()),
             1,
         );
         res.initialize();
