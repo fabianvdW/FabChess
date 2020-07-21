@@ -184,7 +184,7 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
     }
     false
 }
-pub fn endgame_rescaling(g: &GameState, mut res_score: i16, phase: f64) -> i16 {
+pub fn endgame_rescaling(g: &GameState, res_score: i16, phase: f64) -> i16 {
     let side_ahead = if res_score >= 0 { WHITE } else { BLACK };
     let side_losing = 1 - side_ahead;
     let winning_pawns = g.get_piece(PieceType::Pawn, side_ahead).count_ones() as usize;
@@ -247,7 +247,7 @@ pub fn knights(
             if !white {
                 idx = BLACK_INDEX[idx];
             }
-            let mut position_in_arr = trace_pos::KNIGHT_OUTPOST_TABLE + 8 * (idx / 8) + idx % 8;
+            let position_in_arr = trace_pos::KNIGHT_OUTPOST_TABLE + 8 * (idx / 8) + idx % 8;
             #[cfg(feature = "nn-eval")]
             {
                 nn_trace.trace[position_in_arr] += side_mult;
@@ -566,7 +566,7 @@ pub fn king(
     #[cfg(feature = "texel-tuning")] nn_trace: &mut NNTrace,
 ) {
     let side = if white { WHITE } else { BLACK };
-    let mut side_mult = if white { 1f32 } else { -1f32 };
+    let side_mult = if white { 1f32 } else { -1f32 };
     let mut pawn_shield = if white {
         SHIELDING_PAWNS_WHITE[g.get_king_square(side)]
     } else {

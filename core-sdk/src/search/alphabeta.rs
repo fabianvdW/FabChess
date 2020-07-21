@@ -2,6 +2,8 @@ use super::super::board_representation::game_state::*;
 use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
+#[cfg(feature = "texel-tuning")]
+use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
@@ -411,7 +413,11 @@ pub fn mate_distance_pruning(p: &mut CombinedSearchParameters) -> SearchInstruct
 #[inline(always)]
 pub fn max_depth(thread: &mut Thread, p: &CombinedSearchParameters) -> SearchInstruction {
     if p.current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        let eval_res = thread.nn.evaluate_game_state(p.game_state);
+        let eval_res = thread.nn.evaluate_game_state(
+            p.game_state,
+            #[cfg(feature = "texel-tuning")]
+            &mut NNTrace::new(),
+        );
         SearchInstruction::StopSearching(eval_res.final_eval * p.color)
     } else {
         SearchInstruction::ContinueSearching
@@ -448,7 +454,11 @@ pub fn make_eval(
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || p.depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = thread.nn.evaluate_game_state(p.game_state);
+        let eval_res = thread.nn.evaluate_game_state(
+            p.game_state,
+            #[cfg(feature = "texel-tuning")]
+            &mut NNTrace::new(),
+        );
         *static_evaluation = Some(eval_res.final_eval);
         #[cfg(feature = "search-statistics")]
         {

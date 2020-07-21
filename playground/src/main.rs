@@ -1,10 +1,16 @@
 use core_sdk::board_representation::game_state::GameState;
-use core_sdk::evaluation::nn::{get_evaluation_parameters, nn_evaluate_game_state};
+use core_sdk::evaluation::nn::NN;
 use core_sdk::evaluation::nn_trace::NNTrace;
 use ndarray::Array;
 
 fn main() {
-    let nn = get_evaluation_parameters();
+    let state = GameState::standard();
+    let mut nn = NN::default();
+    let mut trace = NNTrace::new();
+    println!("{}", nn.evaluate_game_state(&state, &mut trace).final_eval);
+    println!("{}", nn.feedforward_trace(&state, &mut trace).final_eval);
+    println!("{}", nn.evaluate_game_state(&state, &mut trace).final_eval);
+    /*let nn = get_evaluation_parameters();
     let input = Array::zeros(676);
     println!("Nn: {}", nn(&input));
     let state = GameState::standard();
@@ -21,5 +27,5 @@ fn main() {
     println!(
         "{}",
         nn_evaluate_game_state(&nn, &state, &mut NNTrace::new()).final_eval
-    );
+    );*/
 }

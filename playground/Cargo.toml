@@ -5,8 +5,10 @@ authors = ["fabianvdW <fabianvonderwarth@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+[dependencies.core-sdk]
+path = "../core-sdk"
+default-features = false
+features = ["texel-tuning"]
 [dependencies]
-core-sdk = { path = "../core-sdk"}
 extended-sdk = {path = "../extended-sdk"}
 ndarray = "0.13.1"

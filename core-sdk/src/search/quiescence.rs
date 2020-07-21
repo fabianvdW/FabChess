@@ -5,6 +5,8 @@ use super::super::move_generation::movegen;
 use super::alphabeta::*;
 use super::*;
 use crate::bitboards::bitboards::constants::{KING_ATTACKS, KNIGHT_ATTACKS, RANKS};
+#[cfg(feature = "texel-tuning")]
+use crate::evaluation::nn_trace::NNTrace;
 use crate::move_generation::makemove::make_move;
 use crate::search::cache::CacheEntry;
 use crate::search::moveordering::{MoveOrderer, QUIESCENCE_STAGES};
@@ -33,7 +35,11 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     }
 
     //Step 5. Get standing pat when not in check
-    let eval_res = thread.nn.evaluate_game_state(p.game_state);
+    let eval_res = thread.nn.evaluate_game_state(
+        p.game_state,
+        #[cfg(feature = "texel-tuning")]
+        &mut NNTrace::new(),
+    );
     let stand_pat = eval_res.final_eval * p.color;
 
     //Step 6. Preliminary pruning

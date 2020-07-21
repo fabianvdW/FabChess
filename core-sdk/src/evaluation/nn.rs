@@ -1,7 +1,8 @@
 use crate::board_representation::game_state::GameState;
+use crate::evaluation::nn_trace::NNTrace;
 use crate::evaluation::{endgame_rescaling, eval_game_state, is_guaranteed_draw, EvaluationResult};
-use ndarray::{Array1, ArrayBase, OwnedRepr};
-use std::ops::{Add, AddAssign};
+use ndarray::prelude::*;
+use std::ops::Add;
 
 pub struct NN {
     pub internal_state: NNState,
@@ -14,36 +15,64 @@ impl Default for NN {
     }
 }
 impl NN {
-    pub fn evaluate_game_state(&mut self, game_state: &GameState) -> EvaluationResult {
+    pub fn evaluate_game_state(
+        &mut self,
+        game_state: &GameState,
+        #[cfg(feature = "texel-tuning")] nn_trace: &mut NNTrace,
+    ) -> EvaluationResult {
         if is_guaranteed_draw(game_state) {
             return EvaluationResult { final_eval: 0 };
         }
-        eval_game_state(game_state, self);
+        eval_game_state(
+            game_state,
+            self,
+            #[cfg(feature = "texel-tuning")]
+            nn_trace,
+        );
         let mut res = EvaluationResult { final_eval: 0 };
         //We expect o_0 to already be in the "after" matrix mulitply form
         //only need to add bias and activate
+        self.feedforward_after_o_0();
+        res.final_eval = self.make_final_eval(game_state);
+        res
+    }
+    pub fn feedforward_trace(
+        &mut self,
+        game_state: &GameState,
+        nn_trace: &mut NNTrace,
+    ) -> EvaluationResult {
+        if is_guaranteed_draw(game_state) {
+            return EvaluationResult { final_eval: 0 };
+        }
+        self.internal_state.o_0 = nn_trace.trace.dot(&self.internal_state.w_0);
+        self.feedforward_after_o_0();
+        EvaluationResult {
+            final_eval: self.make_final_eval(game_state),
+        }
+    }
+    fn make_final_eval(&self, game_state: &GameState) -> i16 {
+        let final_eval = ((self.internal_state.o_1[0] * 100.) as isize)
+            .max(-10000)
+            .min(10000) as i16;
+        endgame_rescaling(game_state, final_eval, game_state.get_phase().phase)
+    }
+    fn feedforward_after_o_0(&mut self) {
         self.internal_state.o_0_after_activation =
-            self.internal_state.o_0.add(&self.internal_state.b_0);
+            (&self.internal_state.o_0).add(&self.internal_state.b_0);
         self.internal_state
             .o_0_after_activation
             .mapv_inplace(|x| x.max(0.));
         self.internal_state.o_1 = self
             .internal_state
-            .o_0
+            .o_0_after_activation
             .dot(&self.internal_state.w_1)
             .add(&self.internal_state.b_1);
-        res.final_eval = ((self.internal_state.o_1[0] * 100.) as isize)
-            .max(-10000)
-            .min(10000) as i16;
-        res.final_eval =
-            endgame_rescaling(game_state, res.final_eval, game_state.get_phase().phase);
-        res
     }
 }
 pub struct NNState {
-    w_0: ArrayBase<OwnedRepr<f32>, (usize, usize)>,
+    w_0: Array2<f32>,
     b_0: Array1<f32>,
-    w_1: ArrayBase<OwnedRepr<f32>, (usize, usize)>,
+    w_1: Array2<f32>,
     b_1: Array1<f32>,
     pub o_0: Array1<f32>,
     o_0_after_activation: Array1<f32>,
@@ -52,7 +81,7 @@ pub struct NNState {
 impl NNState {
     pub fn evaluate_feature_1d(&mut self, feature: usize, value: f32) {
         if value != 0. {
-            self.o_0.add_assign(value * self.w_0[feature]);
+            self.o_0.scaled_add(value, &self.w_0.slice(s![feature, ..]));
         }
     }
 }
@@ -69,8 +98,8 @@ impl Default for NNState {
             b_0,
             w_1,
             b_1,
-            o_0: Array1::zeros(0),
-            o_0_after_activation: Array1::zeros(0),
+            o_0: Array1::zeros(LAYER_1_WEIGHTS_SHAPE.0),
+            o_0_after_activation: Array1::zeros(LAYER_1_WEIGHTS_SHAPE.0),
             o_1: Array1::zeros(1),
         }
     }

@@ -2,6 +2,8 @@ use crate::bitboards::bitboards::constants::square;
 use crate::board_representation::game_state::{GameState, PIECE_TYPES, WHITE};
 use crate::evaluation::nn::NN;
 use crate::evaluation::nn_trace::trace_pos;
+#[cfg(feature = "texel-tuning")]
+use crate::evaluation::nn_trace::NNTrace;
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -25,7 +27,7 @@ pub fn psqt(
             if side != WHITE {
                 idx = BLACK_INDEX[idx];
             }
-            let position_in_arr = trace_pos::PSQT * 64 * (*pt as usize) + 8 * (idx / 8) + idx % 8;
+            let position_in_arr = trace_pos::PSQT + 64 * (*pt as usize) + 8 * (idx / 8) + idx % 8;
             #[cfg(feature = "texel-tuning")]
             {
                 nn_trace.trace[position_in_arr] += side_mult;
