@@ -5,8 +5,6 @@ pub mod uci_parser;
 
 fn main() {
     let now = Instant::now();
-    core_sdk::search::init_constants();
-
     let new_now = Instant::now();
     println!(
         "{}",

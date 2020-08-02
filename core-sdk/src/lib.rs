@@ -1,5 +1,3 @@
-extern crate rand;
-
 pub mod bitboards;
 pub mod board_representation;
 pub mod evaluation;

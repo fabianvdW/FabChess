@@ -10,7 +10,16 @@ pub struct UCIEngine<'a> {
 impl<'a> UCIEngine<'a> {
     pub fn standard() -> UCIEngine<'a> {
         UCIEngine {
-            name: &"FabChess v1.15",
+            name: {
+                #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
+                {
+                    &"FabChess v1.15 BMI2"
+                }
+                #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
+                {
+                    &"FabChess v1.15"
+                }
+            },
             author: &"Fabian von der Warth",
             contributors: &["Erik Imgrund", "Marcin Mielniczuk"],
             internal_state: GameState::standard(),

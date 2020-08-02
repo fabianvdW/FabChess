@@ -19,10 +19,6 @@ pub const MATE_SCORE: i16 = 15000;
 pub const MATED_IN_MAX: i16 = -14000;
 pub const STANDARD_SCORE: i16 = -32767;
 
-pub fn init_constants() {
-    quiescence::PIECE_VALUES.len();
-}
-
 pub struct CombinedSearchParameters<'a> {
     pub alpha: i16,
     pub beta: i16,

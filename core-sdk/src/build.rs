@@ -15,24 +15,28 @@ pub const MAGICS_ROOK : [u64;64] = [2630106718943609138u64, 18032010559799296u64
 pub const ATTACKS_SIZE: usize = 107648;
 pub fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
+    let has_bmi2 = env::var("CARGO_CFG_TARGET_FEATURE")
+        .unwrap()
+        .contains("bmi2");
     let magic_path = Path::new(&out_dir).join("magic_attacks.rs");
     let mut file = File::create(magic_path).unwrap();
-
+    if has_bmi2 {
+        write!(file, "{}\n", "//Tables for BMI2").unwrap();
+    } else {
+        write!(file, "{}\n", "//Tables for magics").unwrap();
+    }
     //Rook magics
     let mut attacks = [0u64; ATTACKS_SIZE];
     let mut previous_offset = 0;
     for sq in 0..64 {
         let patterns = generate_rook_patterns(sq);
         let lookup;
-        #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
-        {
+        if has_bmi2 {
             lookup = fill_table(&patterns, |bb| unsafe {
                 std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize
             })
             .unwrap();
-        }
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
-        {
+        } else {
             lookup = fill_table(&patterns, |bb| {
                 apply_magic(
                     MAGICS_ROOK[sq],
@@ -50,15 +54,12 @@ pub fn main() {
     for sq in 0..64 {
         let patterns = generate_bishop_patterns(sq);
         let lookup;
-        #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
-        {
+        if has_bmi2 {
             lookup = fill_table(&patterns, |bb| unsafe {
                 std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
             })
             .unwrap();
-        }
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
-        {
+        } else {
             lookup = fill_table(&patterns, |bb| {
                 apply_magic(
                     MAGICS_BISHOP[sq],
