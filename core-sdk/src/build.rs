@@ -15,9 +15,7 @@ pub const MAGICS_ROOK : [u64;64] = [2630106718943609138u64, 18032010559799296u64
 pub const ATTACKS_SIZE: usize = 107648;
 pub fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
-    let has_bmi2 = env::var("CARGO_CFG_TARGET_FEATURE")
-        .unwrap()
-        .contains("bmi2");
+    let has_bmi2 = env::var("CARGO_CFG_TARGET_FEATURE").map_or(false, |x| x.contains("bmi2"));
     let magic_path = Path::new(&out_dir).join("magic_attacks.rs");
     let mut file = File::create(magic_path).unwrap();
     if has_bmi2 {
