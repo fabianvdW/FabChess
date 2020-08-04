@@ -32,10 +32,8 @@ pub fn main() {
         let patterns = generate_rook_patterns(sq);
         let lookup;
         if has_bmi2 {
-            lookup = fill_table(&patterns, |bb| unsafe {
-                std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize
-            })
-            .unwrap();
+            lookup =
+                fill_table(&patterns, |bb| pext(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize).unwrap();
         } else {
             lookup = fill_table(&patterns, |bb| {
                 apply_magic(
@@ -55,8 +53,8 @@ pub fn main() {
         let patterns = generate_bishop_patterns(sq);
         let lookup;
         if has_bmi2 {
-            lookup = fill_table(&patterns, |bb| unsafe {
-                std::arch::x86_64::_pext_u64(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
+            lookup = fill_table(&patterns, |bb| {
+                pext(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
             })
             .unwrap();
         } else {
@@ -102,6 +100,19 @@ pub fn generate_single_magic(pattern: &Vec<(u64, u64)>) -> u64 {
 #[inline(always)]
 pub fn apply_magic(magic: u64, bb: u64, bits: usize) -> usize {
     (bb.wrapping_mul(magic) >> (64 - bits)) as usize
+}
+pub fn pext(board: u64, mut mask: u64) -> u64 {
+    let mut res = 0u64;
+    let mut temp_index = 0;
+    while mask > 0u64 {
+        let idx = mask.trailing_zeros();
+        if board & (1 << idx) > 0 {
+            res |= 1 << temp_index;
+        }
+        mask ^= 1 << idx;
+        temp_index += 1;
+    }
+    res
 }
 pub fn pdep(mut mask: u64, temp: u64) -> u64 {
     let mut res = 0u64;
