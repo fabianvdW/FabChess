@@ -534,13 +534,18 @@ impl GameState {
         }
     }
     pub fn initialize_psqt(&mut self) {
-        let mut _eval = crate::evaluation::EvaluationResult {
-            final_eval: 0,
+        let p_w = crate::evaluation::psqt_evaluation::psqt(
+            self,
+            WHITE,
             #[cfg(feature = "texel-tuning")]
-            trace: crate::evaluation::trace::Trace::default(),
-        };
-        let p_w = crate::evaluation::psqt_evaluation::psqt(self, WHITE, &mut _eval);
-        let p_b = crate::evaluation::psqt_evaluation::psqt(self, BLACK, &mut _eval);
+            &mut crate::evaluation::trace::Trace::default(),
+        );
+        let p_b = crate::evaluation::psqt_evaluation::psqt(
+            self,
+            BLACK,
+            #[cfg(feature = "texel-tuning")]
+            &mut crate::evaluation::trace::Trace::default(),
+        );
         self.irreversible.psqt = p_w - p_b
     }
     pub fn initialize_phase(&mut self) {
@@ -1030,22 +1035,10 @@ impl Display for GameState {
             res_str.push_str("\n+---+---+---+---+---+---+---+---+\n");
         }
         res_str.push_str("Castle Rights: \n");
-        res_str.push_str(&format!(
-            "White Kingside: {}\n",
-            self.castle_white_kingside()
-        ));
-        res_str.push_str(&format!(
-            "White Queenside: {}\n",
-            self.castle_white_queenside()
-        ));
-        res_str.push_str(&format!(
-            "Black Kingside: {}\n",
-            self.castle_black_kingside()
-        ));
-        res_str.push_str(&format!(
-            "Black Queenside: {}\n",
-            self.castle_black_queenside()
-        ));
+        res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside()));
+        res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside()));
+        res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside()));
+        res_str.push_str(&format!("CBQ: {}\n", self.castle_black_queenside()));
         res_str.push_str(&format!(
             "En Passant Possible: {:x}\n",
             self.get_en_passant()
@@ -1063,54 +1056,16 @@ impl Debug for GameState {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
         res_str.push_str(&format!("Color: {}\n", self.get_color_to_move()));
-        res_str.push_str(&format!(
-            "WhitePawns: 0x{:x}u64\n",
-            self.get_piece(PieceType::Pawn, WHITE)
-        ));
-        res_str.push_str(&format!(
-            "WhiteKnights: 0x{:x}u64\n",
-            self.get_piece(PieceType::Knight, WHITE)
-        ));
-        res_str.push_str(&format!(
-            "WhiteBishops: 0x{:x}u64\n",
-            self.get_piece(PieceType::Bishop, WHITE)
-        ));
-        res_str.push_str(&format!(
-            "WhiteRooks: 0x{:x}u64\n",
-            self.get_piece(PieceType::Rook, WHITE)
-        ));
-        res_str.push_str(&format!(
-            "WhiteQueens: 0x{:x}u64\n",
-            self.get_piece(PieceType::Queen, WHITE)
-        ));
-        res_str.push_str(&format!(
-            "WhiteKing: 0x{:x}u64\n",
-            self.get_piece(PieceType::King, WHITE)
-        ));
-        res_str.push_str(&format!(
-            "BlackPawns: 0x{:x}u64\n",
-            self.get_piece(PieceType::Pawn, BLACK)
-        ));
-        res_str.push_str(&format!(
-            "BlackKnights: 0x{:x}u64\n",
-            self.get_piece(PieceType::Knight, BLACK)
-        ));
-        res_str.push_str(&format!(
-            "BlackBishops: 0x{:x}u64\n",
-            self.get_piece(PieceType::Bishop, BLACK)
-        ));
-        res_str.push_str(&format!(
-            "BlackRooks: 0x{:x}u64\n",
-            self.get_piece(PieceType::Rook, BLACK)
-        ));
-        res_str.push_str(&format!(
-            "BlackQueens: 0x{:x}u64\n",
-            self.get_piece(PieceType::Queen, BLACK)
-        ));
-        res_str.push_str(&format!(
-            "BlackKing: 0x{:x}u64\n",
-            self.get_piece(PieceType::King, BLACK)
-        ));
+        for &color in [WHITE, BLACK].iter() {
+            for &piece_type in PIECE_TYPES.iter() {
+                res_str.push_str(&format!(
+                    "{}{:?}: 0x{:x}u64\n",
+                    if color == WHITE { "White" } else { "Black" },
+                    piece_type,
+                    self.get_piece(piece_type, color)
+                ))
+            }
+        }
         res_str.push_str(&format!("CWK: {}\n", self.castle_white_kingside()));
         res_str.push_str(&format!("CWQ: {}\n", self.castle_white_queenside()));
         res_str.push_str(&format!("CBK: {}\n", self.castle_black_kingside()));

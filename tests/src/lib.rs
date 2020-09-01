@@ -219,15 +219,18 @@ mod tests {
     fn psqt_incremental_test() {
         let mut rng = rand::thread_rng();
         let mut movelist = movegen::MoveList::default();
-        let mut _eval = core_sdk::evaluation::EvaluationResult {
-            final_eval: 0,
-            trace: core_sdk::evaluation::trace::Trace::default(),
-        };
-
         for _i in 0..100_000 {
             let mut g = GameState::standard();
-            let w_psqt = psqt(&g, WHITE, &mut _eval);
-            let b_psqt = psqt(&g, BLACK, &mut _eval);
+            let w_psqt = psqt(
+                &g,
+                WHITE,
+                &mut core_sdk::evaluation::trace::Trace::default(),
+            );
+            let b_psqt = psqt(
+                &g,
+                BLACK,
+                &mut core_sdk::evaluation::trace::Trace::default(),
+            );
             assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
                 movegen::generate_moves(&g, false, &mut movelist);
@@ -238,8 +241,16 @@ mod tests {
                     &g,
                     movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
                 );
-                let w_psqt = psqt(&g, WHITE, &mut _eval);
-                let b_psqt = psqt(&g, BLACK, &mut _eval);
+                let w_psqt = psqt(
+                    &g,
+                    WHITE,
+                    &mut core_sdk::evaluation::trace::Trace::default(),
+                );
+                let b_psqt = psqt(
+                    &g,
+                    BLACK,
+                    &mut core_sdk::evaluation::trace::Trace::default(),
+                );
                 assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             }
         }

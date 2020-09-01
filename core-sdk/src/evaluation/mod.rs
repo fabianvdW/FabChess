@@ -151,7 +151,20 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
 
     let psqt_score: EvaluationScore =
         if cfg!(feature = "display-eval") || cfg!(feature = "texel-tuning") {
-            let (psqt_w, psqt_b) = (psqt(&g, WHITE, &mut result), psqt(&g, BLACK, &mut result));
+            let (psqt_w, psqt_b) = (
+                psqt(
+                    &g,
+                    WHITE,
+                    #[cfg(feature = "texel-tuning")]
+                    &mut result.trace,
+                ),
+                psqt(
+                    &g,
+                    BLACK,
+                    #[cfg(feature = "texel-tuning")]
+                    &mut result.trace,
+                ),
+            );
             psqt_w - psqt_b
         } else {
             g.get_psqt()
@@ -163,8 +176,18 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     res += psqt_score;
 
     let (pieces_w, pieces_b) = (
-        piece_values(true, g, &mut result),
-        piece_values(false, g, &mut result),
+        piece_values(
+            true,
+            g,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
+        piece_values(
+            false,
+            g,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -178,8 +201,22 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     res += pieces_w - pieces_b;
 
     let (pawns_w, pawns_b) = (
-        pawns(true, g, &mut result, white_defended, black_defended),
-        pawns(false, g, &mut result, black_defended, white_defended),
+        pawns(
+            true,
+            g,
+            white_defended,
+            black_defended,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
+        pawns(
+            false,
+            g,
+            black_defended,
+            white_defended,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -193,8 +230,18 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     res += pawns_w - pawns_b;
 
     let (knights_w, knights_b) = (
-        knights(true, g, &mut result),
-        knights(false, g, &mut result),
+        knights(
+            true,
+            g,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
+        knights(
+            false,
+            g,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
     );
     #[cfg(feature = "display-eval")]
     {
@@ -211,16 +258,18 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         piecewise(
             true,
             g,
-            &mut result,
             black_defended_by_minors,
             black_defended,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
         ),
         piecewise(
             false,
             g,
-            &mut result,
             white_defended_by_minors,
             white_defended,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
         ),
     );
     #[cfg(feature = "display-eval")]
@@ -234,7 +283,20 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     }
     res += piecewise_w - piecewise_b;
 
-    let (king_w, king_b) = (king(true, g, &mut result), king(false, g, &mut result));
+    let (king_w, king_b) = (
+        king(
+            true,
+            g,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
+        king(
+            false,
+            g,
+            #[cfg(feature = "texel-tuning")]
+            &mut result.trace,
+        ),
+    );
     #[cfg(feature = "display-eval")]
     {
         println!("\nKing Sum: {} - {} -> {}", king_w, king_b, king_w - king_b);
@@ -319,7 +381,11 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
         }
     }
 }
-pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn knights(
+    white: bool,
+    g: &GameState,
+    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
+) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
 
@@ -330,7 +396,7 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Eval
     res += KNIGHT_SUPPORTED_BY_PAWN * supported_knights_amount;
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.knight_supported +=
+        trace.knight_supported +=
             supported_knights_amount as i8 * if side == WHITE { 1 } else { -1 };
     }
     let mut outpost = EvaluationScore::default();
@@ -353,8 +419,7 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Eval
             outpost += KNIGHT_OUTPOST_TABLE[idx / 8][idx % 8];
             #[cfg(feature = "texel-tuning")]
             {
-                _eval.trace.knight_outpost_table[idx / 8][idx % 8] +=
-                    if side == WHITE { 1 } else { -1 };
+                trace.knight_outpost_table[idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
             }
         }
     }
@@ -377,9 +442,9 @@ pub fn knights(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Eval
 pub fn piecewise(
     white: bool,
     g: &GameState,
-    _eval: &mut EvaluationResult,
     enemy_defend_by_minors: u64,
     enemy_defended: u64,
+    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
 ) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
 
@@ -421,10 +486,10 @@ pub fn piecewise(
         }
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.knight_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-            _eval.trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            trace.knight_mobility[mobility] += if side == WHITE { 1 } else { -1 };
+            trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
-                _eval.trace.knight_safe_check[side] += 1;
+                trace.knight_safe_check[side] += 1;
             }
         }
         knights ^= square(idx);
@@ -464,12 +529,12 @@ pub fn piecewise(
         }
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.diagonally_adjacent_squares_withpawns[diagonally_adjacent_pawns] +=
+            trace.diagonally_adjacent_squares_withpawns[diagonally_adjacent_pawns] +=
                 if side == WHITE { 1 } else { -1 };
-            _eval.trace.bishop_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-            _eval.trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            trace.bishop_mobility[mobility] += if side == WHITE { 1 } else { -1 };
+            trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
-                _eval.trace.bishop_safe_check[side] += 1;
+                trace.bishop_safe_check[side] += 1;
             }
         }
         bishops ^= square(idx);
@@ -518,10 +583,10 @@ pub fn piecewise(
         }
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.rook_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-            _eval.trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            trace.rook_mobility[mobility] += if side == WHITE { 1 } else { -1 };
+            trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
-                _eval.trace.rook_safe_check[side] += 1;
+                trace.rook_safe_check[side] += 1;
             }
         }
         rooks ^= square(idx);
@@ -577,26 +642,24 @@ pub fn piecewise(
 
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.queen_mobility[mobility] += if side == WHITE { 1 } else { -1 };
-            _eval.trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
+            trace.queen_mobility[mobility] += if side == WHITE { 1 } else { -1 };
+            trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
-                _eval.trace.queen_safe_check[side] += 1;
+                trace.queen_safe_check[side] += 1;
             }
         }
         queens ^= square(idx);
     }
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.rook_on_open += rooks_onopen as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.rook_on_semi_open +=
-            rooks_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.rook_on_seventh += rooks_onseventh as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.queen_on_open += queens_onopen as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.queen_on_semi_open +=
-            queens_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.bishop_xray_king += bishop_xray_king as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.rook_xray_king += rook_xray_king as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.queen_xray_king += queen_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+        trace.rook_on_open += rooks_onopen as i8 * if side == WHITE { 1 } else { -1 };
+        trace.rook_on_semi_open += rooks_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
+        trace.rook_on_seventh += rooks_onseventh as i8 * if side == WHITE { 1 } else { -1 };
+        trace.queen_on_open += queens_onopen as i8 * if side == WHITE { 1 } else { -1 };
+        trace.queen_on_semi_open += queens_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
+        trace.bishop_xray_king += bishop_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+        trace.rook_xray_king += rook_xray_king as i8 * if side == WHITE { 1 } else { -1 };
+        trace.queen_xray_king += queen_xray_king as i8 * if side == WHITE { 1 } else { -1 };
     }
 
     let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0
@@ -622,7 +685,7 @@ pub fn piecewise(
     let attack = EvaluationScore(attack_mg, attack_eg);
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.attackers[side] =
+        trace.attackers[side] =
             (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
     }
     #[allow(clippy::let_and_return)]
@@ -744,7 +807,11 @@ pub fn piecewise(
     res
 }
 
-pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn king(
+    white: bool,
+    g: &GameState,
+    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
+) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
     let mut pawn_shield = if white {
         SHIELDING_PAWNS_WHITE[g.get_king_square(side)]
@@ -780,8 +847,8 @@ pub fn king(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> Evaluat
     }
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.shielding_pawn_missing[shields_missing] += if side == WHITE { 1 } else { -1 };
-        _eval.trace.shielding_pawn_onopen_missing[shields_on_open_missing] +=
+        trace.shielding_pawn_missing[shields_missing] += if side == WHITE { 1 } else { -1 };
+        trace.shielding_pawn_onopen_missing[shields_on_open_missing] +=
             if side == WHITE { 1 } else { -1 };
     }
     #[allow(clippy::let_and_return)]
@@ -811,9 +878,9 @@ pub fn get_distance(sq: isize, sq2: isize) -> usize {
 pub fn pawns(
     white: bool,
     g: &GameState,
-    _eval: &mut EvaluationResult,
     defended: u64,
     enemy_defended: u64,
+    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
 ) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
@@ -869,7 +936,7 @@ pub fn pawns(
         supp += PAWN_SUPPORTED_VALUE[index / 8][index % 8];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.pawn_supported[index / 8][index % 8] += if side == WHITE { 1 } else { -1 };
+            trace.pawn_supported[index / 8][index % 8] += if side == WHITE { 1 } else { -1 };
         }
     }
     res += supp;
@@ -892,12 +959,11 @@ pub fn pawns(
 
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.pawn_doubled += doubled_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.pawn_isolated += isolated_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.pawn_backward += backward_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.pawn_attack_center +=
-            center_attack_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.pawn_mobility += pawn_mobility as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawn_doubled += doubled_pawns as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawn_isolated += isolated_pawns as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawn_backward += backward_pawns as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawn_attack_center += center_attack_pawns as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawn_mobility += pawn_mobility as i8 * if side == WHITE { 1 } else { -1 };
     }
     //Passers
     let mut passed_pawns: u64 = pawns
@@ -924,9 +990,9 @@ pub fn pawns(
         + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.rook_behind_support_passer +=
+        trace.rook_behind_support_passer +=
             rooks_support_passer as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.rook_behind_enemy_passer +=
+        trace.rook_behind_enemy_passer +=
             enemy_rooks_attack_passer as i8 * if side == WHITE { 1 } else { -1 };
     }
     while passed_pawns != 0u64 {
@@ -936,7 +1002,7 @@ pub fn pawns(
         passer_score += PAWN_PASSED_VALUES[GameState::relative_rank(side, idx)];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.pawn_passed[GameState::relative_rank(side, idx)] +=
+            trace.pawn_passed[GameState::relative_rank(side, idx)] +=
                 if side == WHITE { 1 } else { -1 };
         }
         //A weak passer is an attacked and not defended passer
@@ -960,7 +1026,7 @@ pub fn pawns(
             passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[GameState::relative_rank(side, idx)];
             #[cfg(feature = "texel-tuning")]
             {
-                _eval.trace.pawn_passed_notblocked[GameState::relative_rank(side, idx)] +=
+                trace.pawn_passed_notblocked[GameState::relative_rank(side, idx)] +=
                     if side == WHITE { 1 } else { -1 };
             }
         }
@@ -974,17 +1040,16 @@ pub fn pawns(
             + PASSED_SUBTRACT_DISTANCE[sub_dist];
         #[cfg(feature = "texel-tuning")]
         {
-            _eval.trace.pawn_passed_kingdistance[d_myking - 1] +=
+            trace.pawn_passed_kingdistance[d_myking - 1] += if side == WHITE { 1 } else { -1 };
+            trace.pawn_passed_enemykingdistance[d_enemyking - 1] +=
                 if side == WHITE { 1 } else { -1 };
-            _eval.trace.pawn_passed_enemykingdistance[d_enemyking - 1] +=
-                if side == WHITE { 1 } else { -1 };
-            _eval.trace.pawn_passed_subdistance[sub_dist] += if side == WHITE { 1 } else { -1 };
+            trace.pawn_passed_subdistance[sub_dist] += if side == WHITE { 1 } else { -1 };
         }
         passed_pawns ^= square(idx);
     }
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.pawn_passed_weak += weak_passers as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawn_passed_weak += weak_passers as i8 * if side == WHITE { 1 } else { -1 };
     }
     res += passer_score + PAWN_PASSED_WEAK * weak_passers + passer_dist;
     #[cfg(feature = "display-eval")]
@@ -1041,7 +1106,11 @@ pub fn pawns(
     res
 }
 
-pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) -> EvaluationScore {
+pub fn piece_values(
+    white: bool,
+    g: &GameState,
+    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
+) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
 
@@ -1067,15 +1136,15 @@ pub fn piece_values(white: bool, g: &GameState, _eval: &mut EvaluationResult) ->
 
     #[cfg(feature = "texel-tuning")]
     {
-        _eval.trace.pawns += my_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.knight_value_with_pawns = pawns_on_board as u8;
-        _eval.trace.knights += my_knights as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.bishops += my_bishops as i8 * if side == WHITE { 1 } else { -1 };
+        trace.pawns += my_pawns as i8 * if side == WHITE { 1 } else { -1 };
+        trace.knight_value_with_pawns = pawns_on_board as u8;
+        trace.knights += my_knights as i8 * if side == WHITE { 1 } else { -1 };
+        trace.bishops += my_bishops as i8 * if side == WHITE { 1 } else { -1 };
         if my_bishops > 1 {
-            _eval.trace.bishop_bonus += if side == WHITE { 1 } else { -1 };
+            trace.bishop_bonus += if side == WHITE { 1 } else { -1 };
         }
-        _eval.trace.rooks += my_rooks as i8 * if side == WHITE { 1 } else { -1 };
-        _eval.trace.queens += my_queens as i8 * if side == WHITE { 1 } else { -1 };
+        trace.rooks += my_rooks as i8 * if side == WHITE { 1 } else { -1 };
+        trace.queens += my_queens as i8 * if side == WHITE { 1 } else { -1 };
     }
     #[cfg(feature = "display-eval")]
     {
