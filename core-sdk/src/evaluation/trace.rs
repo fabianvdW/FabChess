@@ -52,34 +52,34 @@ pub struct Trace {
     pub rook_safe_check: [u8; 2],
     pub queen_safe_check: [u8; 2],
     pub psqt: [[[i8; 8]; 8]; 6],
-    pub phase: f64,
+    pub phase: f32,
 }
 
 pub fn evaluate_psqt(
-    score: &mut (f64, f64),
+    score: &mut (f32, f32),
     trace_psqt: &[[i8; 8]; 8],
-    param_psqt: &[[[f64; 8]; 8]; 2],
+    param_psqt: &[[[f32; 8]; 8]; 2],
 ) {
     for i in 0..8 {
         for j in 0..8 {
-            score.0 += f64::from(trace_psqt[i][j]) * param_psqt[MG][i][j];
-            score.1 += f64::from(trace_psqt[i][j]) * param_psqt[EG][i][j];
+            score.0 += f32::from(trace_psqt[i][j]) * param_psqt[MG][i][j];
+            score.1 += f32::from(trace_psqt[i][j]) * param_psqt[EG][i][j];
         }
     }
 }
 
-pub fn evaluate_single(score: &mut (f64, f64), trace: i8, param: &[f64; 2]) {
-    score.0 += f64::from(trace) * param[MG];
-    score.1 += f64::from(trace) * param[EG];
+pub fn evaluate_single(score: &mut (f32, f32), trace: i8, param: &[f32; 2]) {
+    score.0 += f32::from(trace) * param[MG];
+    score.1 += f32::from(trace) * param[EG];
 }
 
-pub fn evaluate_single2(score: &mut (f64, f64), trace: i8, param_mg: f64, param_eg: f64) {
-    score.0 += f64::from(trace) * param_mg;
-    score.1 += f64::from(trace) * param_eg;
+pub fn evaluate_single2(score: &mut (f32, f32), trace: i8, param_mg: f32, param_eg: f32) {
+    score.0 += f32::from(trace) * param_mg;
+    score.1 += f32::from(trace) * param_eg;
 }
 
 impl Trace {
-    pub fn evaluate(&self, params: &Parameters) -> f64 {
+    pub fn evaluate(&self, params: &Parameters) -> f32 {
         //PSQT Evaluation
         let mut psqt_res = (0., 0.);
         for pt in PIECE_TYPES.iter() {
@@ -182,57 +182,57 @@ impl Trace {
             &params.rook_on_seventh,
         );
         piecewise_res.0 += (params.attack_weight[MG][self.attackers[WHITE] as usize]
-            * params.safety_table[MG].safety_table[((f64::from(self.knight_attacked_sq[WHITE])
+            * params.safety_table[MG].safety_table[((f32::from(self.knight_attacked_sq[WHITE])
                 * params.knight_attack_value[MG]
-                + f64::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[MG]
-                + f64::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[MG]
-                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[MG]
-                + f64::from(self.knight_safe_check[WHITE]) * params.knight_check_value[MG]
-                + f64::from(self.bishop_safe_check[WHITE]) * params.bishop_check_value[MG]
-                + f64::from(self.rook_safe_check[WHITE]) * params.rook_check_value[MG]
-                + f64::from(self.queen_safe_check[WHITE]) * params.queen_check_value[MG])
+                + f32::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[MG]
+                + f32::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[MG]
+                + f32::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[MG]
+                + f32::from(self.knight_safe_check[WHITE]) * params.knight_check_value[MG]
+                + f32::from(self.bishop_safe_check[WHITE]) * params.bishop_check_value[MG]
+                + f32::from(self.rook_safe_check[WHITE]) * params.rook_check_value[MG]
+                + f32::from(self.queen_safe_check[WHITE]) * params.queen_check_value[MG])
                 as usize)
                 .max(0)
                 .min(99)]
             - params.attack_weight[MG][self.attackers[BLACK] as usize]
                 * params.safety_table[MG].safety_table
-                    [((f64::from(self.knight_attacked_sq[BLACK]) * params.knight_attack_value[MG]
-                        + f64::from(self.bishop_attacked_sq[BLACK])
+                    [((f32::from(self.knight_attacked_sq[BLACK]) * params.knight_attack_value[MG]
+                        + f32::from(self.bishop_attacked_sq[BLACK])
                             * params.bishop_attack_value[MG]
-                        + f64::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[MG]
-                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[MG]
-                        + f64::from(self.knight_safe_check[BLACK]) * params.knight_check_value[MG]
-                        + f64::from(self.bishop_safe_check[BLACK]) * params.bishop_check_value[MG]
-                        + f64::from(self.rook_safe_check[BLACK]) * params.rook_check_value[MG]
-                        + f64::from(self.queen_safe_check[BLACK]) * params.queen_check_value[MG])
+                        + f32::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[MG]
+                        + f32::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[MG]
+                        + f32::from(self.knight_safe_check[BLACK]) * params.knight_check_value[MG]
+                        + f32::from(self.bishop_safe_check[BLACK]) * params.bishop_check_value[MG]
+                        + f32::from(self.rook_safe_check[BLACK]) * params.rook_check_value[MG]
+                        + f32::from(self.queen_safe_check[BLACK]) * params.queen_check_value[MG])
                         as usize)
                         .max(0)
                         .min(99)])
             / 100.0;
         piecewise_res.1 += (params.attack_weight[EG][self.attackers[WHITE] as usize]
-            * params.safety_table[EG].safety_table[((f64::from(self.knight_attacked_sq[WHITE])
+            * params.safety_table[EG].safety_table[((f32::from(self.knight_attacked_sq[WHITE])
                 * params.knight_attack_value[EG]
-                + f64::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[EG]
-                + f64::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[EG]
-                + f64::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[EG]
-                + f64::from(self.knight_safe_check[WHITE]) * params.knight_check_value[EG]
-                + f64::from(self.bishop_safe_check[WHITE]) * params.bishop_check_value[EG]
-                + f64::from(self.rook_safe_check[WHITE]) * params.rook_check_value[EG]
-                + f64::from(self.queen_safe_check[WHITE]) * params.queen_check_value[EG])
+                + f32::from(self.bishop_attacked_sq[WHITE]) * params.bishop_attack_value[EG]
+                + f32::from(self.rook_attacked_sq[WHITE]) * params.rook_attack_value[EG]
+                + f32::from(self.queen_attacked_sq[WHITE]) * params.queen_attack_value[EG]
+                + f32::from(self.knight_safe_check[WHITE]) * params.knight_check_value[EG]
+                + f32::from(self.bishop_safe_check[WHITE]) * params.bishop_check_value[EG]
+                + f32::from(self.rook_safe_check[WHITE]) * params.rook_check_value[EG]
+                + f32::from(self.queen_safe_check[WHITE]) * params.queen_check_value[EG])
                 as usize)
                 .max(0)
                 .min(99)]
             - params.attack_weight[EG][self.attackers[BLACK] as usize]
                 * params.safety_table[EG].safety_table
-                    [((f64::from(self.knight_attacked_sq[BLACK]) * params.knight_attack_value[EG]
-                        + f64::from(self.bishop_attacked_sq[BLACK])
+                    [((f32::from(self.knight_attacked_sq[BLACK]) * params.knight_attack_value[EG]
+                        + f32::from(self.bishop_attacked_sq[BLACK])
                             * params.bishop_attack_value[EG]
-                        + f64::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[EG]
-                        + f64::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[EG]
-                        + f64::from(self.knight_safe_check[BLACK]) * params.knight_check_value[EG]
-                        + f64::from(self.bishop_safe_check[BLACK]) * params.bishop_check_value[EG]
-                        + f64::from(self.rook_safe_check[BLACK]) * params.rook_check_value[EG]
-                        + f64::from(self.queen_safe_check[BLACK]) * params.queen_check_value[EG])
+                        + f32::from(self.rook_attacked_sq[BLACK]) * params.rook_attack_value[EG]
+                        + f32::from(self.queen_attacked_sq[BLACK]) * params.queen_attack_value[EG]
+                        + f32::from(self.knight_safe_check[BLACK]) * params.knight_check_value[EG]
+                        + f32::from(self.bishop_safe_check[BLACK]) * params.bishop_check_value[EG]
+                        + f32::from(self.rook_safe_check[BLACK]) * params.rook_check_value[EG]
+                        + f32::from(self.queen_safe_check[BLACK]) * params.queen_check_value[EG])
                         as usize)
                         .max(0)
                         .min(99)])

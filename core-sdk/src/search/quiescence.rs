@@ -211,7 +211,7 @@ pub fn best_move_value(state: &GameState) -> i16 {
 }
 
 #[inline(always)]
-pub fn passes_delta_pruning(capture_move: GameMove, phase: f64, eval: i16, alpha: i16) -> bool {
+pub fn passes_delta_pruning(capture_move: GameMove, phase: f32, eval: i16, alpha: i16) -> bool {
     if phase == 0.0 || eval >= alpha {
         return true;
     }

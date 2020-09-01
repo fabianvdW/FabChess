@@ -175,7 +175,7 @@ pub fn stripped_q_search(
 pub fn make_moves(
     game_state: &GameState,
     move_list: &mut MoveList,
-    phase: f64,
+    phase: f32,
     stand_pat: i16,
     alpha: i16,
     see_buffer: &mut Vec<i16>,

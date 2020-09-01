@@ -341,7 +341,7 @@ fn file_to_string(file: usize) -> &'static str {
 pub struct Irreversible {
     hash: u64,
     en_passant: u64,
-    half_moves: usize,
+    half_moves: u16,
     castle_permissions: u8,
     phase: Phase,
     psqt: EvaluationScore,
@@ -350,7 +350,7 @@ impl Irreversible {
     pub fn new(
         hash: u64,
         en_passant: u64,
-        half_moves: usize,
+        half_moves: u16,
         castle_permissions: u8,
         phase: Phase,
         psqt: EvaluationScore,
@@ -413,7 +413,7 @@ impl GameState {
         self.irreversible.en_passant
     }
     pub fn get_half_moves(&self) -> usize {
-        self.irreversible.half_moves
+        self.irreversible.half_moves as usize
     }
     pub fn get_phase(&self) -> &Phase {
         &self.irreversible.phase
