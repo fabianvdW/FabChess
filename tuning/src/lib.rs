@@ -47,7 +47,7 @@ pub const L2_REGULARIZATION: f64 = 0.;
 pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(1);
     for state in labelledstates {
-        let eval = eval_game_state(&state.game_state, 0, 0);
+        let eval = eval_game_state(&state.game_state);
         res.push(TexelState {
             label: state.label,
             eval: eval.final_eval as f64,

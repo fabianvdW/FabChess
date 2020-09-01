@@ -102,7 +102,7 @@ pub fn stripped_q_search(
     }
     let incheck = game_state.in_check();
 
-    let static_evaluation = eval_game_state(&game_state, -16000, 16000);
+    let static_evaluation = eval_game_state(&game_state);
     //Standing pat pruning
     let stand_pat = static_evaluation.final_eval * color;
     if !incheck && stand_pat >= beta {

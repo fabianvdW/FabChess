@@ -10,7 +10,7 @@ pub fn evaluation_bench(c: &mut Criterion) {
         b.iter(|| {
             let mut sum = 0;
             for i in 0..BENCHMARKING_POSITIONS_AMOUNT {
-                sum += eval_game_state(&states[i], -16000, 16000).final_eval as isize;
+                sum += eval_game_state(&states[i]).final_eval as isize;
             }
             sum
         })
