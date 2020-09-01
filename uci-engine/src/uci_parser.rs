@@ -86,7 +86,7 @@ pub fn parse_loop() {
             "static" => {
                 println!(
                     "cp {}",
-                    core_sdk::evaluation::eval_game_state(&us.internal_state, 0, 0).final_eval
+                    core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval
                 );
             }
             _ => {

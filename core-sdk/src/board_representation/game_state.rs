@@ -67,6 +67,30 @@ pub enum PieceType {
     Queen = 4,
 }
 impl PieceType {
+    pub fn is_valid_promotion_piece(self) -> bool {
+        self != PieceType::Pawn && self != PieceType::King
+    }
+    pub fn lowercase(self) -> &'static str {
+        match self {
+            PieceType::Pawn => "p",
+            PieceType::Knight => "n",
+            PieceType::Bishop => "b",
+            PieceType::Rook => "r",
+            PieceType::Queen => "q",
+            PieceType::King => "k",
+        }
+    }
+    pub fn uppercase(self) -> &'static str {
+        match self {
+            PieceType::Pawn => "P",
+            PieceType::Knight => "N",
+            PieceType::Bishop => "B",
+            PieceType::Rook => "R",
+            PieceType::Queen => "Q",
+            PieceType::King => "K",
+        }
+    }
+
     #[inline(always)]
     pub fn to_psqt(self, side: usize, sq: usize) -> EvaluationScore {
         PSQT[self as usize][side][sq / 8][sq % 8]
@@ -114,9 +138,9 @@ impl GameMove {
     #[inline(always)]
     pub fn is_capture(self) -> bool {
         match self.move_type {
-            GameMoveType::Capture(_) => true,
-            GameMoveType::Promotion(_, Some(_)) => true,
-            GameMoveType::EnPassant => true,
+            GameMoveType::Capture(_)
+            | GameMoveType::Promotion(_, Some(_))
+            | GameMoveType::EnPassant => true,
             _ => false,
         }
     }
@@ -124,16 +148,14 @@ impl GameMove {
     pub fn get_captured_piece(self) -> PieceType {
         debug_assert!(self.is_capture());
         match self.move_type {
-            GameMoveType::Capture(p) => p,
-            GameMoveType::Promotion(_, Some(p)) => p,
+            GameMoveType::Capture(p) | GameMoveType::Promotion(_, Some(p)) => p,
             GameMoveType::EnPassant => PieceType::Pawn,
             _ => panic!("Captured piece type  called on a capture"),
         }
     }
     pub fn get_maybe_captured_piece(self) -> Option<PieceType> {
         match self.move_type {
-            GameMoveType::Capture(p) => Some(p),
-            GameMoveType::Promotion(_, p) => p,
+            GameMoveType::Capture(p) | GameMoveType::Promotion(_, Some(p)) => Some(p),
             GameMoveType::EnPassant => Some(PieceType::Pawn),
             _ => None,
         }
@@ -181,20 +203,17 @@ impl GameMove {
         let mut movelist = MoveList::default();
         generate_moves(game_state, false, &mut movelist);
         let mut res_str = String::new();
-        if let GameMoveType::Castle = self.move_type {
+        if self.move_type == GameMoveType::Castle {
             if self.to == 2 || self.to == 58 {
                 res_str.push_str("O-O-O");
             } else {
                 res_str.push_str("O-O");
             }
         } else {
-            res_str.push_str(match self.piece_type {
-                PieceType::Pawn => "",
-                PieceType::Knight => "N",
-                PieceType::Bishop => "B",
-                PieceType::Rook => "R",
-                PieceType::Queen => "Q",
-                PieceType::King => "K",
+            res_str.push_str(if self.piece_type != PieceType::Pawn {
+                self.piece_type.uppercase()
+            } else {
+                ""
             });
             //Check for disambiguities
             let mut file_needed = false;
@@ -230,16 +249,8 @@ impl GameMove {
             res_str.push_str(file_to_string((self.to % 8) as usize));
             res_str.push_str(&format!("{}", self.to / 8 + 1));
             if let GameMoveType::Promotion(promo_piece, _) = self.move_type {
-                res_str.push_str(&format!(
-                    "={}",
-                    match promo_piece {
-                        PieceType::Queen => "Q",
-                        PieceType::Rook => "R",
-                        PieceType::Bishop => "B",
-                        PieceType::Knight => "N",
-                        _ => panic!("Invalid promotion piece"),
-                    }
-                ));
+                assert!(promo_piece.is_valid_promotion_piece());
+                res_str.push_str(&format!("={}", promo_piece.uppercase()));
             }
         }
         let game_state = make_move(game_state, self);
@@ -264,13 +275,8 @@ impl Debug for GameMove {
             self.to / 8 + 1
         ));
         if let GameMoveType::Promotion(s, _) = &self.move_type {
-            match s {
-                PieceType::Queen => res_str.push_str("q"),
-                PieceType::Rook => res_str.push_str("r"),
-                PieceType::Bishop => res_str.push_str("b"),
-                PieceType::Knight => res_str.push_str("n"),
-                _ => panic!("Invalid promotion piece type!"),
-            }
+            assert!(s.is_valid_promotion_piece());
+            res_str.push_str(s.lowercase());
         };
         write!(formatter, "{}", res_str)
     }
@@ -422,6 +428,10 @@ impl GameState {
     pub fn get_piece_bb(&self, piece_type: PieceType) -> u64 {
         self.piece_bb[piece_type as usize]
     }
+    pub fn get_piece_amt(&self, piece_type: PieceType, side: usize) -> usize {
+        self.get_piece(piece_type, side).count_ones() as usize
+    }
+
     pub fn get_bishop_like_bb(&self, side: usize) -> u64 {
         self.get_piece(PieceType::Bishop, side) | self.get_piece(PieceType::Queen, side)
     }
@@ -486,15 +496,13 @@ impl GameState {
         }
     }
     pub fn get_piece_on(&self, shift: i32) -> &str {
-        pub const PIECE_DESCRIPTION: [&str; 6] = ["p", "n", "b", "r", "q", "k"];
-        pub const UPPERCASE_PIECE_DESCRIPTION: [&str; 6] = ["P", "N", "B", "R", "Q", "K"];
         for side in 0..2 {
             for piece_type in PIECE_TYPES.iter() {
                 if (self.get_piece(*piece_type, side) >> shift) & 1u64 > 0 {
                     if side == WHITE {
-                        return UPPERCASE_PIECE_DESCRIPTION[*piece_type as usize];
+                        return piece_type.uppercase();
                     } else {
-                        return PIECE_DESCRIPTION[*piece_type as usize];
+                        return piece_type.lowercase();
                     }
                 }
             }
@@ -762,6 +770,8 @@ impl GameState {
             || self.get_piece(PieceType::Queen, side) != 0u64
     }
 
+    //Calculates if a given move gives check. Does not necessarily return true even if move gives check
+    //For instance, won't ever return true on a castling move that gives check.
     pub fn gives_check(&self, mv: GameMove) -> bool {
         if mv.move_type == GameMoveType::Castle {
             return false; // In theory a castle move can give_check, but it is too much hasssle to compute that
@@ -773,7 +783,7 @@ impl GameState {
         let king_position = self.get_king_square(1 - self.color_to_move);
         let bishop_like_attack = bishop_attack(king_position, occ_board);
         let rook_like_attack = rook_attack(king_position, occ_board);
-        //CHeck discovered check
+        //Check discovered check
         if bishop_like_attack & self.get_bishop_like_bb(self.color_to_move) != 0u64
             || rook_like_attack & self.get_rook_like_bb(self.color_to_move) != 0u64
         {
@@ -810,16 +820,14 @@ impl GameState {
                     PieceType::Knight => {
                         KNIGHT_ATTACKS[king_position] & square(mv.to as usize) != 0u64
                     }
-                    _ => panic!("Not a valid promotion piece. Game_state.rs #1"),
+                    _ => panic!("Not a valid promotion piece."),
                 },
-                _ => panic!("Not a valid pawn move. Game_state.rs #2"),
+                _ => panic!("Not a valid pawn move."),
             },
         }
     }
 
     pub fn is_valid_tt_move(&self, mv: GameMove) -> bool {
-        //println!("{}",self.to_fen());
-        //println!("{:?}", mv);
         if self.get_piece(mv.piece_type, self.color_to_move) & square(mv.from as usize) == 0u64 {
             return false;
         }

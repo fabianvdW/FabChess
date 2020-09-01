@@ -20,8 +20,6 @@ use std::ops;
 pub const MG: usize = 0;
 pub const EG: usize = 1;
 
-pub const FIRST_LAZY_MARGIN: i16 = 450;
-pub const SECOND_LAZY_MARGIN: i16 = 250;
 #[derive(Copy, Clone, PartialEq)]
 pub struct EvaluationScore(pub i16, pub i16);
 impl EvaluationScore {
@@ -97,11 +95,7 @@ pub struct EvaluationResult {
     pub trace: Trace,
 }
 
-pub fn eval_game_state(
-    g: &GameState,
-    _alpha: i16, //Lazy Eval components, unneeded currently
-    _beta: i16,
-) -> EvaluationResult {
+pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     #[cfg(feature = "display-eval")]
     {
         println!("Evaluating GameState fen: {}", g.to_fen());
@@ -183,17 +177,6 @@ pub fn eval_game_state(
     }
     res += pieces_w - pieces_b;
 
-    /*let lazy_eval = EvaluationScore(res.0, (f64::from(res.1) / 1.5) as i16);
-    let lazy_eval = lazy_eval.interpolate(phase);
-
-    if lazy_eval + FIRST_LAZY_MARGIN < alpha {
-        result.final_eval = lazy_eval + FIRST_LAZY_MARGIN;
-        return result;
-    } else if lazy_eval - FIRST_LAZY_MARGIN > beta {
-        result.final_eval = lazy_eval - FIRST_LAZY_MARGIN;
-        return result;
-    }*/
-
     let (pawns_w, pawns_b) = (
         pawns(true, g, &mut result, white_defended, black_defended),
         pawns(false, g, &mut result, black_defended, white_defended),
@@ -208,17 +191,6 @@ pub fn eval_game_state(
         );
     }
     res += pawns_w - pawns_b;
-
-    /*let lazy_eval = EvaluationScore(res.0, (f64::from(res.1) / 1.5) as i16);
-    let lazy_eval = lazy_eval.interpolate(phase);
-
-    if lazy_eval + SECOND_LAZY_MARGIN < alpha {
-        result.final_eval = lazy_eval + SECOND_LAZY_MARGIN;
-        return result;
-    } else if lazy_eval - SECOND_LAZY_MARGIN > beta {
-        result.final_eval = lazy_eval - SECOND_LAZY_MARGIN;
-        return result;
-    }*/
 
     let (knights_w, knights_b) = (
         knights(true, g, &mut result),
@@ -307,10 +279,10 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
     {
         return false;
     }
-    let white_knights = g.get_piece(PieceType::Knight, WHITE).count_ones() as usize;
-    let black_knights = g.get_piece(PieceType::Knight, BLACK).count_ones() as usize;
-    let white_bishops = g.get_piece(PieceType::Bishop, WHITE).count_ones() as usize;
-    let black_bishops = g.get_piece(PieceType::Bishop, BLACK).count_ones() as usize;
+    let white_knights = g.get_piece_amt(PieceType::Knight, WHITE);
+    let black_knights = g.get_piece_amt(PieceType::Knight, BLACK);
+    let white_bishops = g.get_piece_amt(PieceType::Bishop, WHITE);
+    let black_bishops = g.get_piece_amt(PieceType::Bishop, BLACK);
     if white_knights + white_bishops <= 2 && black_knights + black_bishops <= 2 {
         if white_knights + white_bishops < 2 || black_knights + black_bishops < 2 {
             if !(white_bishops == 2 && black_bishops == 0)

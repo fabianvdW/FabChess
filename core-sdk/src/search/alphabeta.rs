@@ -412,9 +412,7 @@ pub fn mate_distance_pruning(p: &mut CombinedSearchParameters) -> SearchInstruct
 #[inline(always)]
 pub fn max_depth(p: &CombinedSearchParameters) -> SearchInstruction {
     if p.current_depth >= (MAX_SEARCH_DEPTH - 1) {
-        SearchInstruction::StopSearching(
-            eval_game_state(p.game_state, p.alpha * p.color, p.beta * p.color).final_eval * p.color,
-        )
+        SearchInstruction::StopSearching(eval_game_state(p.game_state).final_eval * p.color)
     } else {
         SearchInstruction::ContinueSearching
     }
@@ -449,7 +447,7 @@ pub fn make_eval(
             && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH)
             || p.depth_left <= FUTILITY_DEPTH)
     {
-        let eval_res = eval_game_state(p.game_state, p.alpha * p.color, p.beta * p.color);
+        let eval_res = eval_game_state(p.game_state);
         *static_evaluation = Some(eval_res.final_eval);
         #[cfg(feature = "search-statistics")]
         {
