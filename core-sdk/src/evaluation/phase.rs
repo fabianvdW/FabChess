@@ -5,7 +5,7 @@ const EG_LIMIT: i16 = 2350;
 
 #[derive(Clone)]
 pub struct Phase {
-    pub phase: f64,
+    pub phase: f32,
     pub material_score: i16,
 }
 
@@ -19,7 +19,7 @@ impl Phase {
         if tmp < EG_LIMIT {
             tmp = EG_LIMIT;
         }
-        self.phase = f64::from(tmp - EG_LIMIT) * 128. / f64::from(MG_LIMIT - EG_LIMIT);
+        self.phase = f32::from(tmp - EG_LIMIT) * 128. / f32::from(MG_LIMIT - EG_LIMIT);
     }
     #[inline(always)]
     pub fn from_state(game_state: &GameState) -> Self {

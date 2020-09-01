@@ -192,7 +192,7 @@ mod tests {
                     other.get_phase().phase
                 })
                 .abs()
-                    < std::f64::EPSILON
+                    < std::f32::EPSILON
             );
             for _j in 0..200 {
                 movegen::generate_moves(&g, false, &mut movelist);
@@ -210,7 +210,7 @@ mod tests {
                         other.get_phase().phase
                     })
                     .abs()
-                        < std::f64::EPSILON
+                        < std::f32::EPSILON
                 );
             }
         }

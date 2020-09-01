@@ -10,7 +10,7 @@ pub enum FileFormatSupported {
 
 pub struct LabelledGameState {
     pub game_state: GameState,
-    pub label: f64,
+    pub label: f32,
 }
 
 pub struct Statistics {
@@ -48,7 +48,7 @@ pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
         res_str.push_str(&format!(
             "{} |{}\n",
             pos.game_state.to_fen(),
-            if (pos.label - 1.0).abs() < std::f64::EPSILON {
+            if (pos.label - 1.0).abs() < std::f32::EPSILON {
                 "White"
             } else if pos.label == 0.0 {
                 "Black"
@@ -91,11 +91,11 @@ pub fn load_positions(
                 if is_newgame {
                     is_newgame = false;
                     stats.games += 1;
-                    if game_result - 1.0 < std::f64::EPSILON {
+                    if game_result - 1.0 < std::f32::EPSILON {
                         stats.white_wins += 1;
                     } else if game_result == 0.0 {
                         stats.black_wins += 1;
-                    } else if game_result - 0.5 < std::f64::EPSILON {
+                    } else if game_result - 0.5 < std::f32::EPSILON {
                         stats.draws += 1;
                     }
                 }

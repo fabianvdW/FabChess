@@ -53,7 +53,7 @@ pub fn make_nullmove(g: &GameState) -> GameState {
         Irreversible::new(
             hash,
             en_passant,
-            half_moves,
+            half_moves as u16,
             g.castle_permissions(),
             g.get_phase().clone(),
             g.get_psqt(),
@@ -238,7 +238,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         Irreversible::new(
             hash,
             en_passant,
-            half_moves,
+            half_moves as u16,
             castle_permissions,
             phase,
             psqt,

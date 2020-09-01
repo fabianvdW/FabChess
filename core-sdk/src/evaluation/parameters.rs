@@ -7,7 +7,7 @@ use std::fs;
 
 #[derive(Clone)]
 pub struct SafetyTable {
-    pub safety_table: [f64; 100],
+    pub safety_table: [f32; 100],
 }
 
 impl Debug for SafetyTable {
@@ -22,58 +22,58 @@ impl Debug for SafetyTable {
 
 #[derive(Clone, Debug)]
 pub struct Parameters {
-    pub tempo_bonus: [f64; 2],
-    pub shielding_pawn_missing: [[f64; 4]; 2],
-    pub shielding_pawn_onopen_missing: [[f64; 4]; 2],
-    pub pawn_doubled: [f64; 2],
-    pub pawn_isolated: [f64; 2],
-    pub pawn_backward: [f64; 2],
-    pub pawn_supported: [[[f64; 8]; 8]; 2],
-    pub pawn_attack_center: [f64; 2],
-    pub pawn_mobility: [f64; 2],
-    pub pawn_passed: [[f64; 7]; 2],
-    pub pawn_passed_notblocked: [[f64; 7]; 2],
-    pub pawn_passed_kingdistance: [[f64; 7]; 2],
-    pub pawn_passed_enemykingdistance: [[f64; 7]; 2],
-    pub pawn_passed_subdistance: [[f64; 13]; 2],
-    pub rook_behind_support_passer: [f64; 2],
-    pub rook_behind_enemy_passer: [f64; 2],
-    pub pawn_passed_weak: [f64; 2],
-    pub knight_supported: [f64; 2],
-    pub knight_outpost_table: [[[f64; 8]; 8]; 2],
-    pub bishop_xray_king: [f64; 2],
-    pub rook_xray_king: [f64; 2],
-    pub queen_xray_king: [f64; 2],
-    pub rook_on_open: [f64; 2],
-    pub rook_on_semi_open: [f64; 2],
-    pub queen_on_open: [f64; 2],
-    pub queen_on_semi_open: [f64; 2],
-    pub rook_on_seventh: [f64; 2],
-    pub pawn_piece_value: [f64; 2],
-    pub knight_piece_value: [f64; 2],
-    pub knight_value_with_pawns: [f64; 17],
-    pub bishop_piece_value: [f64; 2],
-    pub bishop_pair: [f64; 2],
-    pub rook_piece_value: [f64; 2],
-    pub queen_piece_value: [f64; 2],
-    pub diagonally_adjacent_squares_withpawns: [[f64; 5]; 2],
-    pub knight_mobility: [[f64; 9]; 2],
-    pub bishop_mobility: [[f64; 14]; 2],
-    pub rook_mobility: [[f64; 15]; 2],
-    pub queen_mobility: [[f64; 28]; 2],
-    pub attack_weight: [[f64; 8]; 2],
+    pub tempo_bonus: [f32; 2],
+    pub shielding_pawn_missing: [[f32; 4]; 2],
+    pub shielding_pawn_onopen_missing: [[f32; 4]; 2],
+    pub pawn_doubled: [f32; 2],
+    pub pawn_isolated: [f32; 2],
+    pub pawn_backward: [f32; 2],
+    pub pawn_supported: [[[f32; 8]; 8]; 2],
+    pub pawn_attack_center: [f32; 2],
+    pub pawn_mobility: [f32; 2],
+    pub pawn_passed: [[f32; 7]; 2],
+    pub pawn_passed_notblocked: [[f32; 7]; 2],
+    pub pawn_passed_kingdistance: [[f32; 7]; 2],
+    pub pawn_passed_enemykingdistance: [[f32; 7]; 2],
+    pub pawn_passed_subdistance: [[f32; 13]; 2],
+    pub rook_behind_support_passer: [f32; 2],
+    pub rook_behind_enemy_passer: [f32; 2],
+    pub pawn_passed_weak: [f32; 2],
+    pub knight_supported: [f32; 2],
+    pub knight_outpost_table: [[[f32; 8]; 8]; 2],
+    pub bishop_xray_king: [f32; 2],
+    pub rook_xray_king: [f32; 2],
+    pub queen_xray_king: [f32; 2],
+    pub rook_on_open: [f32; 2],
+    pub rook_on_semi_open: [f32; 2],
+    pub queen_on_open: [f32; 2],
+    pub queen_on_semi_open: [f32; 2],
+    pub rook_on_seventh: [f32; 2],
+    pub pawn_piece_value: [f32; 2],
+    pub knight_piece_value: [f32; 2],
+    pub knight_value_with_pawns: [f32; 17],
+    pub bishop_piece_value: [f32; 2],
+    pub bishop_pair: [f32; 2],
+    pub rook_piece_value: [f32; 2],
+    pub queen_piece_value: [f32; 2],
+    pub diagonally_adjacent_squares_withpawns: [[f32; 5]; 2],
+    pub knight_mobility: [[f32; 9]; 2],
+    pub bishop_mobility: [[f32; 14]; 2],
+    pub rook_mobility: [[f32; 15]; 2],
+    pub queen_mobility: [[f32; 28]; 2],
+    pub attack_weight: [[f32; 8]; 2],
     pub safety_table: [SafetyTable; 2],
-    pub knight_attack_value: [f64; 2],
-    pub bishop_attack_value: [f64; 2],
-    pub rook_attack_value: [f64; 2],
-    pub queen_attack_value: [f64; 2],
-    pub knight_check_value: [f64; 2],
-    pub bishop_check_value: [f64; 2],
-    pub rook_check_value: [f64; 2],
-    pub queen_check_value: [f64; 2],
-    pub psqt: [[[[f64; 8]; 8]; 2]; 6],
+    pub knight_attack_value: [f32; 2],
+    pub bishop_attack_value: [f32; 2],
+    pub rook_attack_value: [f32; 2],
+    pub queen_attack_value: [f32; 2],
+    pub knight_check_value: [f32; 2],
+    pub bishop_check_value: [f32; 2],
+    pub rook_check_value: [f32; 2],
+    pub queen_check_value: [f32; 2],
+    pub psqt: [[[[f32; 8]; 8]; 2]; 6],
 }
-pub fn vectorized_psqt_to_string(psqt: &[[[[f64; 8]; 8]; 2]; 6]) -> String {
+pub fn vectorized_psqt_to_string(psqt: &[[[[f32; 8]; 8]; 2]; 6]) -> String {
     let mut res_str = String::new();
     res_str.push_str("[");
     for pt in PIECE_TYPES.iter() {
@@ -100,7 +100,7 @@ pub fn vectorized_psqt_to_string(psqt: &[[[[f64; 8]; 8]; 2]; 6]) -> String {
     res_str
 }
 
-pub fn array_to_string(array: &[f64]) -> String {
+pub fn array_to_string(array: &[f32]) -> String {
     let mut res_str = String::new();
     res_str.push_str("[");
     for x in array.iter() {
@@ -110,16 +110,16 @@ pub fn array_to_string(array: &[f64]) -> String {
     res_str
 }
 
-pub fn apply_gradient_arr(to: &mut [f64], gradient_arr: &[f64], norm: f64) {
+pub fn apply_gradient_arr(to: &mut [f32], gradient_arr: &[f32], norm: f32) {
     for i in 0..to.len() {
         to[i] += gradient_arr[i] / norm;
     }
 }
 
 pub fn apply_gradient_psqt(
-    to: &mut [[[f64; 8]; 8]; 2],
-    gradient_psqt: &[[[f64; 8]; 8]; 2],
-    norm: f64,
+    to: &mut [[[f32; 8]; 8]; 2],
+    gradient_psqt: &[[[f32; 8]; 8]; 2],
+    norm: f32,
 ) {
     for i in 0..2 {
         for j in 0..8 {
@@ -129,7 +129,7 @@ pub fn apply_gradient_psqt(
         }
     }
 }
-pub fn arrays_to_evalstring(array1: &[f64], array2: &[f64]) -> String {
+pub fn arrays_to_evalstring(array1: &[f32], array2: &[f32]) -> String {
     let mut res_str = String::new();
     res_str.push_str("[");
     for (index, x) in array1.iter().enumerate() {
@@ -142,7 +142,7 @@ pub fn arrays_to_evalstring(array1: &[f64], array2: &[f64]) -> String {
     res_str.push_str("]");
     res_str
 }
-pub fn psqts_to_evalstring(psqt1: &[[f64; 8]; 8], psqt2: &[[f64; 8]; 8]) -> String {
+pub fn psqts_to_evalstring(psqt1: &[[f32; 8]; 8], psqt2: &[[f32; 8]; 8]) -> String {
     let mut res_str = String::new();
     res_str.push_str("[");
     for (index, x) in psqt1.iter().enumerate() {
@@ -424,85 +424,85 @@ impl Parameters {
 
     #[allow(clippy::needless_range_loop)]
     pub fn default() -> Self {
-        let mut shielding_pawn_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
+        let mut shielding_pawn_missing: [[f32; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
-            shielding_pawn_missing[MG][i] = f64::from(SHIELDING_PAWN_MISSING[i].0);
-            shielding_pawn_missing[EG][i] = f64::from(SHIELDING_PAWN_MISSING[i].1);
+            shielding_pawn_missing[MG][i] = f32::from(SHIELDING_PAWN_MISSING[i].0);
+            shielding_pawn_missing[EG][i] = f32::from(SHIELDING_PAWN_MISSING[i].1);
         }
-        let mut shielding_pawn_onopen_missing: [[f64; 4]; 2] = [[0.; 4]; 2];
+        let mut shielding_pawn_onopen_missing: [[f32; 4]; 2] = [[0.; 4]; 2];
         for i in 0..4 {
             shielding_pawn_onopen_missing[MG][i] =
-                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE[i].0);
+                f32::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE[i].0);
             shielding_pawn_onopen_missing[EG][i] =
-                f64::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE[i].1);
+                f32::from(SHIELDING_PAWN_MISSING_ON_OPEN_FILE[i].1);
         }
-        let mut pawn_passed: [[f64; 7]; 2] = [[0.; 7]; 2];
+        let mut pawn_passed: [[f32; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed[MG][i] = f64::from(PAWN_PASSED_VALUES[i].0);
-            pawn_passed[EG][i] = f64::from(PAWN_PASSED_VALUES[i].1);
+            pawn_passed[MG][i] = f32::from(PAWN_PASSED_VALUES[i].0);
+            pawn_passed[EG][i] = f32::from(PAWN_PASSED_VALUES[i].1);
         }
-        let mut pawn_passed_notblocked: [[f64; 7]; 2] = [[0.; 7]; 2];
+        let mut pawn_passed_notblocked: [[f32; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_notblocked[MG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES[i].0);
-            pawn_passed_notblocked[EG][i] = f64::from(PAWN_PASSED_NOT_BLOCKED_VALUES[i].1);
+            pawn_passed_notblocked[MG][i] = f32::from(PAWN_PASSED_NOT_BLOCKED_VALUES[i].0);
+            pawn_passed_notblocked[EG][i] = f32::from(PAWN_PASSED_NOT_BLOCKED_VALUES[i].1);
         }
-        let mut pawn_passed_kingdistance: [[f64; 7]; 2] = [[0.; 7]; 2];
+        let mut pawn_passed_kingdistance: [[f32; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_kingdistance[MG][i] = f64::from(PASSED_KING_DISTANCE[i].0);
-            pawn_passed_kingdistance[EG][i] = f64::from(PASSED_KING_DISTANCE[i].1);
+            pawn_passed_kingdistance[MG][i] = f32::from(PASSED_KING_DISTANCE[i].0);
+            pawn_passed_kingdistance[EG][i] = f32::from(PASSED_KING_DISTANCE[i].1);
         }
-        let mut pawn_passed_enemykingdistance: [[f64; 7]; 2] = [[0.; 7]; 2];
+        let mut pawn_passed_enemykingdistance: [[f32; 7]; 2] = [[0.; 7]; 2];
         for i in 0..7 {
-            pawn_passed_enemykingdistance[MG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE[i].0);
-            pawn_passed_enemykingdistance[EG][i] = f64::from(PASSED_ENEMY_KING_DISTANCE[i].1);
+            pawn_passed_enemykingdistance[MG][i] = f32::from(PASSED_ENEMY_KING_DISTANCE[i].0);
+            pawn_passed_enemykingdistance[EG][i] = f32::from(PASSED_ENEMY_KING_DISTANCE[i].1);
         }
-        let mut pawn_passed_subdistance: [[f64; 13]; 2] = [[0.; 13]; 2];
+        let mut pawn_passed_subdistance: [[f32; 13]; 2] = [[0.; 13]; 2];
         for i in 0..13 {
-            pawn_passed_subdistance[MG][i] = f64::from(PASSED_SUBTRACT_DISTANCE[i].0);
-            pawn_passed_subdistance[EG][i] = f64::from(PASSED_SUBTRACT_DISTANCE[i].1);
+            pawn_passed_subdistance[MG][i] = f32::from(PASSED_SUBTRACT_DISTANCE[i].0);
+            pawn_passed_subdistance[EG][i] = f32::from(PASSED_SUBTRACT_DISTANCE[i].1);
         }
-        let mut knight_outpost_table: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
+        let mut knight_outpost_table: [[[f32; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                knight_outpost_table[MG][i][j] = f64::from(KNIGHT_OUTPOST_TABLE[i][j].0);
-                knight_outpost_table[EG][i][j] = f64::from(KNIGHT_OUTPOST_TABLE[i][j].1);
+                knight_outpost_table[MG][i][j] = f32::from(KNIGHT_OUTPOST_TABLE[i][j].0);
+                knight_outpost_table[EG][i][j] = f32::from(KNIGHT_OUTPOST_TABLE[i][j].1);
             }
         }
-        let mut knight_value_with_pawns: [f64; 17] = [0.; 17];
+        let mut knight_value_with_pawns: [f32; 17] = [0.; 17];
         for i in 0..17 {
-            knight_value_with_pawns[i] = f64::from(KNIGHT_VALUE_WITH_PAWNS[i]);
+            knight_value_with_pawns[i] = f32::from(KNIGHT_VALUE_WITH_PAWNS[i]);
         }
-        let mut diagonally_adjacent_squares_withpawns: [[f64; 5]; 2] = [[0.; 5]; 2];
+        let mut diagonally_adjacent_squares_withpawns: [[f32; 5]; 2] = [[0.; 5]; 2];
         for i in 0..5 {
             diagonally_adjacent_squares_withpawns[MG][i] =
-                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[i].0);
+                f32::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[i].0);
             diagonally_adjacent_squares_withpawns[EG][i] =
-                f64::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[i].1);
+                f32::from(DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[i].1);
         }
-        let mut knight_mobility: [[f64; 9]; 2] = [[0.; 9]; 2];
+        let mut knight_mobility: [[f32; 9]; 2] = [[0.; 9]; 2];
         for i in 0..9 {
-            knight_mobility[MG][i] = f64::from(KNIGHT_MOBILITY_BONUS[i].0);
-            knight_mobility[EG][i] = f64::from(KNIGHT_MOBILITY_BONUS[i].1);
+            knight_mobility[MG][i] = f32::from(KNIGHT_MOBILITY_BONUS[i].0);
+            knight_mobility[EG][i] = f32::from(KNIGHT_MOBILITY_BONUS[i].1);
         }
-        let mut bishop_mobility: [[f64; 14]; 2] = [[0.; 14]; 2];
+        let mut bishop_mobility: [[f32; 14]; 2] = [[0.; 14]; 2];
         for i in 0..14 {
-            bishop_mobility[MG][i] = f64::from(BISHOP_MOBILITY_BONUS[i].0);
-            bishop_mobility[EG][i] = f64::from(BISHOP_MOBILITY_BONUS[i].1);
+            bishop_mobility[MG][i] = f32::from(BISHOP_MOBILITY_BONUS[i].0);
+            bishop_mobility[EG][i] = f32::from(BISHOP_MOBILITY_BONUS[i].1);
         }
-        let mut rook_mobility: [[f64; 15]; 2] = [[0.; 15]; 2];
+        let mut rook_mobility: [[f32; 15]; 2] = [[0.; 15]; 2];
         for i in 0..15 {
-            rook_mobility[MG][i] = f64::from(ROOK_MOBILITY_BONUS[i].0);
-            rook_mobility[EG][i] = f64::from(ROOK_MOBILITY_BONUS[i].1);
+            rook_mobility[MG][i] = f32::from(ROOK_MOBILITY_BONUS[i].0);
+            rook_mobility[EG][i] = f32::from(ROOK_MOBILITY_BONUS[i].1);
         }
-        let mut queen_mobility: [[f64; 28]; 2] = [[0.; 28]; 2];
+        let mut queen_mobility: [[f32; 28]; 2] = [[0.; 28]; 2];
         for i in 0..28 {
-            queen_mobility[MG][i] = f64::from(QUEEN_MOBILITY_BONUS[i].0);
-            queen_mobility[EG][i] = f64::from(QUEEN_MOBILITY_BONUS[i].1);
+            queen_mobility[MG][i] = f32::from(QUEEN_MOBILITY_BONUS[i].0);
+            queen_mobility[EG][i] = f32::from(QUEEN_MOBILITY_BONUS[i].1);
         }
-        let mut attack_weight: [[f64; 8]; 2] = [[0.; 8]; 2];
+        let mut attack_weight: [[f32; 8]; 2] = [[0.; 8]; 2];
         for i in 0..8 {
-            attack_weight[MG][i] = f64::from(ATTACK_WEIGHT[i].0);
-            attack_weight[EG][i] = f64::from(ATTACK_WEIGHT[i].1);
+            attack_weight[MG][i] = f32::from(ATTACK_WEIGHT[i].0);
+            attack_weight[EG][i] = f32::from(ATTACK_WEIGHT[i].1);
         }
         let mut safety_table: [SafetyTable; 2] = [
             SafetyTable {
@@ -513,131 +513,131 @@ impl Parameters {
             },
         ];
         for i in 0..100 {
-            safety_table[MG].safety_table[i] = f64::from(SAFETY_TABLE[i].0);
-            safety_table[EG].safety_table[i] = f64::from(SAFETY_TABLE[i].1);
+            safety_table[MG].safety_table[i] = f32::from(SAFETY_TABLE[i].0);
+            safety_table[EG].safety_table[i] = f32::from(SAFETY_TABLE[i].1);
         }
         let mut psqt = [[[[0.; 8]; 8]; 2]; 6];
         for pt in PIECE_TYPES.iter() {
             for i in 0..8 {
                 for j in 0..8 {
-                    psqt[*pt as usize][MG][i][j] = f64::from(PSQT[*pt as usize][0][i][j].0);
-                    psqt[*pt as usize][EG][i][j] = f64::from(PSQT[*pt as usize][0][i][j].1);
+                    psqt[*pt as usize][MG][i][j] = f32::from(PSQT[*pt as usize][0][i][j].0);
+                    psqt[*pt as usize][EG][i][j] = f32::from(PSQT[*pt as usize][0][i][j].1);
                 }
             }
         }
-        let mut psqt_pawn_supported: [[[f64; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
+        let mut psqt_pawn_supported: [[[f32; 8]; 8]; 2] = [[[0.; 8]; 8]; 2];
         for i in 0..8 {
             for j in 0..8 {
-                psqt_pawn_supported[MG][i][j] = f64::from(PAWN_SUPPORTED_VALUE[i][j].0);
-                psqt_pawn_supported[EG][i][j] = f64::from(PAWN_SUPPORTED_VALUE[i][j].1);
+                psqt_pawn_supported[MG][i][j] = f32::from(PAWN_SUPPORTED_VALUE[i][j].0);
+                psqt_pawn_supported[EG][i][j] = f32::from(PAWN_SUPPORTED_VALUE[i][j].1);
             }
         }
         Parameters {
-            tempo_bonus: [f64::from(TEMPO_BONUS.0), f64::from(TEMPO_BONUS.1)],
+            tempo_bonus: [f32::from(TEMPO_BONUS.0), f32::from(TEMPO_BONUS.1)],
             shielding_pawn_missing,
             shielding_pawn_onopen_missing,
             pawn_doubled: [
-                f64::from(PAWN_DOUBLED_VALUE.0),
-                f64::from(PAWN_DOUBLED_VALUE.1),
+                f32::from(PAWN_DOUBLED_VALUE.0),
+                f32::from(PAWN_DOUBLED_VALUE.1),
             ],
             pawn_isolated: [
-                f64::from(PAWN_ISOLATED_VALUE.0),
-                f64::from(PAWN_ISOLATED_VALUE.1),
+                f32::from(PAWN_ISOLATED_VALUE.0),
+                f32::from(PAWN_ISOLATED_VALUE.1),
             ],
             pawn_backward: [
-                f64::from(PAWN_BACKWARD_VALUE.0),
-                f64::from(PAWN_BACKWARD_VALUE.1),
+                f32::from(PAWN_BACKWARD_VALUE.0),
+                f32::from(PAWN_BACKWARD_VALUE.1),
             ],
             pawn_supported: psqt_pawn_supported,
             pawn_attack_center: [
-                f64::from(PAWN_ATTACK_CENTER.0),
-                f64::from(PAWN_ATTACK_CENTER.1),
+                f32::from(PAWN_ATTACK_CENTER.0),
+                f32::from(PAWN_ATTACK_CENTER.1),
             ],
-            pawn_mobility: [f64::from(PAWN_MOBILITY.0), f64::from(PAWN_MOBILITY.1)],
+            pawn_mobility: [f32::from(PAWN_MOBILITY.0), f32::from(PAWN_MOBILITY.1)],
             pawn_passed,
             pawn_passed_notblocked,
             pawn_passed_kingdistance,
             pawn_passed_enemykingdistance,
             pawn_passed_subdistance,
             rook_behind_support_passer: [
-                f64::from(ROOK_BEHIND_SUPPORT_PASSER.0),
-                f64::from(ROOK_BEHIND_SUPPORT_PASSER.1),
+                f32::from(ROOK_BEHIND_SUPPORT_PASSER.0),
+                f32::from(ROOK_BEHIND_SUPPORT_PASSER.1),
             ],
             rook_behind_enemy_passer: [
-                f64::from(ROOK_BEHIND_ENEMY_PASSER.0),
-                f64::from(ROOK_BEHIND_ENEMY_PASSER.1),
+                f32::from(ROOK_BEHIND_ENEMY_PASSER.0),
+                f32::from(ROOK_BEHIND_ENEMY_PASSER.1),
             ],
-            pawn_passed_weak: [f64::from(PAWN_PASSED_WEAK.0), f64::from(PAWN_PASSED_WEAK.1)],
+            pawn_passed_weak: [f32::from(PAWN_PASSED_WEAK.0), f32::from(PAWN_PASSED_WEAK.1)],
             knight_supported: [
-                f64::from(KNIGHT_SUPPORTED_BY_PAWN.0),
-                f64::from(KNIGHT_SUPPORTED_BY_PAWN.1),
+                f32::from(KNIGHT_SUPPORTED_BY_PAWN.0),
+                f32::from(KNIGHT_SUPPORTED_BY_PAWN.1),
             ],
             knight_outpost_table,
-            bishop_xray_king: [f64::from(BISHOP_XRAY_KING.0), f64::from(BISHOP_XRAY_KING.1)],
-            rook_xray_king: [f64::from(ROOK_XRAY_KING.0), f64::from(ROOK_XRAY_KING.1)],
-            queen_xray_king: [f64::from(QUEEN_XRAY_KING.0), f64::from(QUEEN_XRAY_KING.1)],
+            bishop_xray_king: [f32::from(BISHOP_XRAY_KING.0), f32::from(BISHOP_XRAY_KING.1)],
+            rook_xray_king: [f32::from(ROOK_XRAY_KING.0), f32::from(ROOK_XRAY_KING.1)],
+            queen_xray_king: [f32::from(QUEEN_XRAY_KING.0), f32::from(QUEEN_XRAY_KING.1)],
             rook_on_open: [
-                f64::from(ROOK_ON_OPEN_FILE_BONUS.0),
-                f64::from(ROOK_ON_OPEN_FILE_BONUS.1),
+                f32::from(ROOK_ON_OPEN_FILE_BONUS.0),
+                f32::from(ROOK_ON_OPEN_FILE_BONUS.1),
             ],
             rook_on_semi_open: [
-                f64::from(ROOK_ON_SEMI_OPEN_FILE_BONUS.0),
-                f64::from(ROOK_ON_SEMI_OPEN_FILE_BONUS.1),
+                f32::from(ROOK_ON_SEMI_OPEN_FILE_BONUS.0),
+                f32::from(ROOK_ON_SEMI_OPEN_FILE_BONUS.1),
             ],
             queen_on_open: [
-                f64::from(QUEEN_ON_OPEN_FILE_BONUS.0),
-                f64::from(QUEEN_ON_OPEN_FILE_BONUS.1),
+                f32::from(QUEEN_ON_OPEN_FILE_BONUS.0),
+                f32::from(QUEEN_ON_OPEN_FILE_BONUS.1),
             ],
             queen_on_semi_open: [
-                f64::from(QUEEN_ON_SEMI_OPEN_FILE_BONUS.0),
-                f64::from(QUEEN_ON_SEMI_OPEN_FILE_BONUS.1),
+                f32::from(QUEEN_ON_SEMI_OPEN_FILE_BONUS.0),
+                f32::from(QUEEN_ON_SEMI_OPEN_FILE_BONUS.1),
             ],
-            rook_on_seventh: [f64::from(ROOK_ON_SEVENTH.0), f64::from(ROOK_ON_SEVENTH.1)],
-            pawn_piece_value: [f64::from(PAWN_PIECE_VALUE.0), f64::from(PAWN_PIECE_VALUE.1)],
+            rook_on_seventh: [f32::from(ROOK_ON_SEVENTH.0), f32::from(ROOK_ON_SEVENTH.1)],
+            pawn_piece_value: [f32::from(PAWN_PIECE_VALUE.0), f32::from(PAWN_PIECE_VALUE.1)],
             knight_piece_value: [
-                f64::from(KNIGHT_PIECE_VALUE.0),
-                f64::from(KNIGHT_PIECE_VALUE.1),
+                f32::from(KNIGHT_PIECE_VALUE.0),
+                f32::from(KNIGHT_PIECE_VALUE.1),
             ],
             knight_value_with_pawns,
             bishop_piece_value: [
-                f64::from(BISHOP_PIECE_VALUE.0),
-                f64::from(BISHOP_PIECE_VALUE.1),
+                f32::from(BISHOP_PIECE_VALUE.0),
+                f32::from(BISHOP_PIECE_VALUE.1),
             ],
             bishop_pair: [
-                f64::from(BISHOP_PAIR_BONUS.0),
-                f64::from(BISHOP_PAIR_BONUS.1),
+                f32::from(BISHOP_PAIR_BONUS.0),
+                f32::from(BISHOP_PAIR_BONUS.1),
             ],
-            rook_piece_value: [f64::from(ROOK_PIECE_VALUE.0), f64::from(ROOK_PIECE_VALUE.1)],
+            rook_piece_value: [f32::from(ROOK_PIECE_VALUE.0), f32::from(ROOK_PIECE_VALUE.1)],
             queen_piece_value: [
-                f64::from(QUEEN_PIECE_VALUE.0),
-                f64::from(QUEEN_PIECE_VALUE.1),
+                f32::from(QUEEN_PIECE_VALUE.0),
+                f32::from(QUEEN_PIECE_VALUE.1),
             ],
             knight_attack_value: [
-                f64::from(KNIGHT_ATTACK_WORTH.0),
-                f64::from(KNIGHT_ATTACK_WORTH.1),
+                f32::from(KNIGHT_ATTACK_WORTH.0),
+                f32::from(KNIGHT_ATTACK_WORTH.1),
             ],
             bishop_attack_value: [
-                f64::from(BISHOP_ATTACK_WORTH.0),
-                f64::from(BISHOP_ATTACK_WORTH.1),
+                f32::from(BISHOP_ATTACK_WORTH.0),
+                f32::from(BISHOP_ATTACK_WORTH.1),
             ],
             rook_attack_value: [
-                f64::from(ROOK_ATTACK_WORTH.0),
-                f64::from(ROOK_ATTACK_WORTH.1),
+                f32::from(ROOK_ATTACK_WORTH.0),
+                f32::from(ROOK_ATTACK_WORTH.1),
             ],
             queen_attack_value: [
-                f64::from(QUEEN_ATTACK_WORTH.0),
-                f64::from(QUEEN_ATTACK_WORTH.1),
+                f32::from(QUEEN_ATTACK_WORTH.0),
+                f32::from(QUEEN_ATTACK_WORTH.1),
             ],
             knight_check_value: [
-                f64::from(KNIGHT_SAFE_CHECK.0),
-                f64::from(KNIGHT_SAFE_CHECK.1),
+                f32::from(KNIGHT_SAFE_CHECK.0),
+                f32::from(KNIGHT_SAFE_CHECK.1),
             ],
             bishop_check_value: [
-                f64::from(BISHOP_SAFE_CHECK.0),
-                f64::from(BISHOP_SAFE_CHECK.1),
+                f32::from(BISHOP_SAFE_CHECK.0),
+                f32::from(BISHOP_SAFE_CHECK.1),
             ],
-            rook_check_value: [f64::from(ROOK_SAFE_CHECK.0), f64::from(ROOK_SAFE_CHECK.1)],
-            queen_check_value: [f64::from(QUEEN_SAFE_CHECK.0), f64::from(QUEEN_SAFE_CHECK.1)],
+            rook_check_value: [f32::from(ROOK_SAFE_CHECK.0), f32::from(ROOK_SAFE_CHECK.1)],
+            queen_check_value: [f32::from(QUEEN_SAFE_CHECK.0), f32::from(QUEEN_SAFE_CHECK.1)],
             diagonally_adjacent_squares_withpawns,
             knight_mobility,
             bishop_mobility,
@@ -710,9 +710,9 @@ impl Parameters {
             psqt: [[[[0.; 8]; 8]; 2]; 6],
         }
     }
-    pub fn calculate_norm(&self) -> f64 {
+    pub fn calculate_norm(&self) -> f32 {
         //Norm gradient
-        let mut norm: f64 = 0.;
+        let mut norm: f32 = 0.;
         for i in 0..2 {
             norm += self.tempo_bonus[i].powf(2.);
             for j in 0..4 {
@@ -801,7 +801,7 @@ impl Parameters {
         norm
     }
 
-    pub fn apply_gradient(&mut self, gradient: &Parameters, lr: f64) {
+    pub fn apply_gradient(&mut self, gradient: &Parameters, lr: f32) {
         let norm = gradient.calculate_norm() / lr;
         for i in 0..2 {
             apply_gradient_arr(

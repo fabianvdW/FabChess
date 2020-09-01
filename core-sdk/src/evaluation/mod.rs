@@ -23,8 +23,8 @@ pub const EG: usize = 1;
 #[derive(Copy, Clone, PartialEq)]
 pub struct EvaluationScore(pub i16, pub i16);
 impl EvaluationScore {
-    pub fn interpolate(self, phase: f64) -> i16 {
-        ((f64::from(self.0) * phase + f64::from(self.1) * (128.0 - phase)) / 128.0) as i16
+    pub fn interpolate(self, phase: f32) -> i16 {
+        ((f32::from(self.0) * phase + f32::from(self.1) * (128.0 - phase)) / 128.0) as i16
     }
 }
 impl Default for EvaluationScore {
@@ -356,7 +356,7 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
     }
     false
 }
-pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f64) {
+pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32) {
     let score = res.interpolate(phase);
     let side_ahead = if score >= 0 { WHITE } else { BLACK };
     let side_losing = 1 - side_ahead;
