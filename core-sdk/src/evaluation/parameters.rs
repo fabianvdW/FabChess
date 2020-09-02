@@ -41,9 +41,6 @@ pub struct Parameters {
     pub pawn_passed_weak: [f32; 2],
     pub knight_supported: [f32; 2],
     pub knight_outpost_table: [[[f32; 8]; 8]; 2],
-    pub bishop_xray_king: [f32; 2],
-    pub rook_xray_king: [f32; 2],
-    pub queen_xray_king: [f32; 2],
     pub rook_on_open: [f32; 2],
     pub rook_on_semi_open: [f32; 2],
     pub queen_on_open: [f32; 2],
@@ -261,21 +258,6 @@ impl Display for Parameters {
                 &self.knight_outpost_table[MG],
                 &self.knight_outpost_table[EG]
             )
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_XRAY_KING: EvaluationScore = EvaluationScore({}, {});\n",
-            self.bishop_xray_king[MG].round() as isize,
-            self.bishop_xray_king[EG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_XRAY_KING: EvaluationScore = EvaluationScore({}, {});\n",
-            self.rook_xray_king[MG].round() as isize,
-            self.rook_xray_king[EG].round() as isize
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_XRAY_KING: EvaluationScore = EvaluationScore({}, {});\n",
-            self.queen_xray_king[MG].round() as isize,
-            self.queen_xray_king[EG].round() as isize
         ));
         res_str.push_str(&format!(
             "pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
@@ -573,9 +555,6 @@ impl Parameters {
                 f32::from(KNIGHT_SUPPORTED_BY_PAWN.1),
             ],
             knight_outpost_table,
-            bishop_xray_king: [f32::from(BISHOP_XRAY_KING.0), f32::from(BISHOP_XRAY_KING.1)],
-            rook_xray_king: [f32::from(ROOK_XRAY_KING.0), f32::from(ROOK_XRAY_KING.1)],
-            queen_xray_king: [f32::from(QUEEN_XRAY_KING.0), f32::from(QUEEN_XRAY_KING.1)],
             rook_on_open: [
                 f32::from(ROOK_ON_OPEN_FILE_BONUS.0),
                 f32::from(ROOK_ON_OPEN_FILE_BONUS.1),
@@ -670,9 +649,6 @@ impl Parameters {
             pawn_passed_weak: [0.; 2],
             knight_supported: [0.; 2],
             knight_outpost_table: [[[0.; 8]; 8]; 2],
-            bishop_xray_king: [0.; 2],
-            rook_xray_king: [0.; 2],
-            queen_xray_king: [0.; 2],
             rook_on_open: [0.; 2],
             rook_on_semi_open: [0.; 2],
             queen_on_open: [0.; 2],
@@ -746,9 +722,6 @@ impl Parameters {
                     }
                 }
             }
-            norm += self.bishop_xray_king[i].powf(2.);
-            norm += self.rook_xray_king[i].powf(2.);
-            norm += self.queen_xray_king[i].powf(2.);
             norm += self.rook_on_open[i].powf(2.);
             norm += self.rook_on_semi_open[i].powf(2.);
             norm += self.queen_on_open[i].powf(2.);
@@ -827,9 +800,6 @@ impl Parameters {
             self.rook_behind_enemy_passer[i] += gradient.rook_behind_enemy_passer[i] / norm;
             self.pawn_passed_weak[i] += gradient.pawn_passed_weak[i] / norm;
             self.knight_supported[i] += gradient.knight_supported[i] / norm;
-            self.bishop_xray_king[i] += gradient.bishop_xray_king[i] / norm;
-            self.rook_xray_king[i] += gradient.rook_xray_king[i] / norm;
-            self.queen_xray_king[i] += gradient.queen_xray_king[i] / norm;
             self.rook_on_open[i] += gradient.rook_on_open[i] / norm;
             self.rook_on_semi_open[i] += gradient.rook_on_semi_open[i] / norm;
             self.queen_on_open[i] += gradient.queen_on_open[i] / norm;
