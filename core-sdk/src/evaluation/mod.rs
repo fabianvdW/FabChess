@@ -503,13 +503,13 @@ pub fn piecewise(
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
         let bishop_attack = PieceType::Bishop.attacks(idx, all_pieces ^ square(enemy_king_idx));
-        if (FREEFIELD_BISHOP_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
+        /*if (FREEFIELD_BISHOP_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
             && (movegen::xray_bishop_attacks(bishop_attack, all_pieces, all_pieces, idx)
                 & g.get_piece(PieceType::King, 1 - side))
                 != 0u64
         {
             bishop_xray_king += 1;
-        }
+        }*/
         let diagonally_adjacent_pawns =
             (DIAGONALLY_ADJACENT[idx] & g.get_piece(PieceType::Pawn, side)).count_ones() as usize;
         mb_diag += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[diagonally_adjacent_pawns];
@@ -549,13 +549,13 @@ pub fn piecewise(
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
         let rook_attack = PieceType::Rook.attacks(idx, all_pieces ^ square(enemy_king_idx));
-        if (FREEFIELD_ROOK_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
+        /*if (FREEFIELD_ROOK_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
             && (movegen::xray_rook_attacks(rook_attack, all_pieces, all_pieces, idx)
                 & g.get_piece(PieceType::King, 1 - side))
                 != 0u64
         {
             rook_xray_king += 1;
-        }
+        }*/
         if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
             rooks_onseventh += 1;
         }
@@ -605,7 +605,7 @@ pub fn piecewise(
         let bishoplike_attacks =
             PieceType::Bishop.attacks(idx, all_pieces ^ square(enemy_king_idx));
         let queen_attack = rooklike_attacks | bishoplike_attacks;
-        if (FREEFIELD_BISHOP_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
+        /*if (FREEFIELD_BISHOP_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
             && (movegen::xray_bishop_attacks(bishoplike_attacks, all_pieces, all_pieces, idx)
                 & g.get_piece(PieceType::King, 1 - side))
                 != 0u64
@@ -615,7 +615,7 @@ pub fn piecewise(
                     != 0u64
         {
             queen_xray_king += 1;
-        }
+        }*/
 
         if FILES[idx % 8] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
             queens_onopen += 1;
