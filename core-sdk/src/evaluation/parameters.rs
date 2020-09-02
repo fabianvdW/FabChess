@@ -69,6 +69,8 @@ pub struct Parameters {
     pub rook_check_value: [f32; 2],
     pub queen_check_value: [f32; 2],
     pub psqt: [[[[f32; 8]; 8]; 2]; 6],
+    pub slightly_winning_no_pawn: f32,
+    pub slightly_winning_enemy_can_sac: f32,
 }
 pub fn vectorized_psqt_to_string(psqt: &[[[[f32; 8]; 8]; 2]; 6]) -> String {
     let mut res_str = String::new();
@@ -152,6 +154,14 @@ impl Display for Parameters {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
         res_str.push_str("use super::EvaluationScore;");
+        res_str.push_str(&format!(
+            "pub const SLIGHTLY_WINNING_NO_PAWN: f32 = {};\n",
+            self.slightly_winning_no_pawn,
+        ));
+        res_str.push_str(&format!(
+            "pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f32 = {};\n",
+            self.slightly_winning_enemy_can_sac,
+        ));
         res_str.push_str(&format!(
             "pub const TEMPO_BONUS: EvaluationScore = EvaluationScore({}, {});\n",
             self.tempo_bonus[MG].round() as isize,
@@ -625,6 +635,8 @@ impl Parameters {
             attack_weight,
             safety_table,
             psqt,
+            slightly_winning_no_pawn: SLIGHTLY_WINNING_NO_PAWN,
+            slightly_winning_enemy_can_sac: SLIGHTLY_WINNING_ENEMY_CAN_SAC,
         }
     }
 
@@ -684,6 +696,8 @@ impl Parameters {
             rook_check_value: [0.; 2],
             queen_check_value: [0.; 2],
             psqt: [[[[0.; 8]; 8]; 2]; 6],
+            slightly_winning_no_pawn: 0.,
+            slightly_winning_enemy_can_sac: 0.,
         }
     }
     pub fn calculate_norm(&self) -> f32 {
@@ -770,6 +784,8 @@ impl Parameters {
                 norm += self.safety_table[i].safety_table[j].powf(2.);
             }
         }
+        norm += self.slightly_winning_no_pawn.powf(2.);
+        norm += self.slightly_winning_enemy_can_sac.powf(2.);
         norm = norm.sqrt();
         norm
     }
@@ -892,5 +908,7 @@ impl Parameters {
                 norm,
             );
         }
+        self.slightly_winning_no_pawn += gradient.slightly_winning_no_pawn / norm;
+        self.slightly_winning_enemy_can_sac += gradient.slightly_winning_enemy_can_sac / norm;
     }
 }

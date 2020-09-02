@@ -1,4 +1,7 @@
 use super::EvaluationScore;
+pub const SLIGHTLY_WINNING_NO_PAWN: f32 = 1. / 16.;
+pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f32 = 1. / 8.;
+
 pub const TEMPO_BONUS: EvaluationScore = EvaluationScore(10, 15);
 pub const SHIELDING_PAWN_MISSING: [EvaluationScore; 4] = [
     EvaluationScore(5, -16),

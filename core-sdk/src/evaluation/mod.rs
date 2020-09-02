@@ -111,6 +111,10 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         result.trace.phase = phase;
     }
     if is_guaranteed_draw(&g) {
+        #[cfg(feature = "texel-tuning")]
+        {
+            result.trace.is_guaranteed_draw = true;
+        }
         return result;
     }
     let mut res = EvaluationScore::default();
@@ -303,7 +307,13 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     }
     res += king_w - king_b;
 
-    endgame_rescaling(g, &mut res, phase);
+    endgame_rescaling(
+        g,
+        &mut res,
+        phase,
+        #[cfg(feature = "texel-tuning")]
+        &mut result.trace,
+    );
     res.1 = (f64::from(res.1) / 1.5) as i16;
     //Phasing is done the same way stockfish does it
     let final_res = res.interpolate(phase);
@@ -356,7 +366,12 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
     }
     false
 }
-pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32) {
+pub fn endgame_rescaling(
+    g: &GameState,
+    res: &mut EvaluationScore,
+    phase: f32,
+    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
+) {
     let score = res.interpolate(phase);
     let side_ahead = if score >= 0 { WHITE } else { BLACK };
     let side_losing = 1 - side_ahead;
@@ -369,15 +384,23 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32) {
         let winnable_ahead = score.abs() >= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1;
 
         if !winnable_ahead && (winning_pawns == 0) {
-            let factor = 1. / 16.;
-            *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
+            let factor = SLIGHTLY_WINNING_NO_PAWN;
+            *res = EvaluationScore(res.0, (res.1 as f32 * factor) as i16);
+            #[cfg(feature = "texel-tuning")]
+            {
+                trace.slightly_winning_no_pawn = true;
+            }
         } else if !winnable_ahead
             && losing_minors >= 1
             && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1
                 <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1
         {
-            let factor = 1. / 8.;
-            *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
+            let factor = SLIGHTLY_WINNING_ENEMY_CAN_SAC;
+            *res = EvaluationScore(res.0, (res.1 as f32 * factor) as i16);
+            #[cfg(feature = "texel-tuning")]
+            {
+                trace.slightly_winning_enemy_can_sac = true;
+            }
         }
     }
 }

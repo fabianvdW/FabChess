@@ -50,6 +50,9 @@ pub struct Trace {
     pub queen_safe_check: [u8; 2],
     pub psqt: [[[i8; 8]; 8]; 6],
     pub phase: f32,
+    pub is_guaranteed_draw: bool,
+    pub slightly_winning_no_pawn: bool,
+    pub slightly_winning_enemy_can_sac: bool,
 }
 
 pub fn evaluate_psqt(
@@ -77,6 +80,9 @@ pub fn evaluate_single2(score: &mut (f32, f32), trace: i8, param_mg: f32, param_
 
 impl Trace {
     pub fn evaluate(&self, params: &Parameters) -> f32 {
+        if self.is_guaranteed_draw {
+            return 0.;
+        }
         //PSQT Evaluation
         let mut psqt_res = (0., 0.);
         for pt in PIECE_TYPES.iter() {
@@ -324,7 +330,7 @@ impl Trace {
         let mut tempo_bonus = (0., 0.);
         evaluate_single(&mut tempo_bonus, self.tempo_bonus, &params.tempo_bonus);
 
-        let res = (
+        let mut res = (
             psqt_res.0
                 + knight_res.0
                 + piecewise_res.0
@@ -340,6 +346,11 @@ impl Trace {
                 + piecevalue_res.1
                 + tempo_bonus.1,
         );
+        if self.slightly_winning_no_pawn {
+            res = (res.0, res.1 * params.slightly_winning_no_pawn);
+        } else if self.slightly_winning_enemy_can_sac {
+            res = (res.0, res.1 * params.slightly_winning_enemy_can_sac);
+        }
         #[cfg(feature = "display-eval")]
         {
             println!("PSQT: {},{}", psqt_res.0, psqt_res.1);
@@ -403,6 +414,9 @@ impl Trace {
             queen_safe_check: [0; 2],
             psqt: [[[0; 8]; 8]; 6],
             phase: 0.,
+            is_guaranteed_draw: false,
+            slightly_winning_no_pawn: false,
+            slightly_winning_enemy_can_sac: false,
         }
     }
 }
@@ -425,6 +439,13 @@ mod tests {
         #[cfg(feature = "texel-tuning")]
         {
             let positions: &str = "3r1r1k/pb2b3/1p1q3p/1Pnp1pp1/P7/1QN1PN2/5PPP/1R1R1BK1 w - - 0 21
+8/8/p4pK1/4kPp1/8/8/P5P1/8 w - - 0 1
+8/8/3k4/1p5R/4r3/1K6/8/8 b - - 0 1
+8/p4p2/1p2p3/3kP1Nn/5P2/3K4/P7/8 w - - 0 1
+7R/8/1k6/1p6/1K6/8/8/2r5 b - - 0 1
+1k6/3n4/8/8/5P2/8/4N3/1K6 w - - 0 1
+1k6/3n4/8/8/8/8/8/1K6 w - - 0 1
+1k6/8/8/8/5p2/8/4N3/1K6 w - - 0 1
 r1q1kr2/1bp1n1np/p7/1p3pp1/3N4/NP2R1P1/3PP1BP/R4QK1 w q - 2 21
 4r1k1/1pqnnp1p/p3b1p1/P3p3/8/1NPB4/2P3PP/R3QR1K w - - 0 21
 r1q1rbk1/pp1n2pp/2p1np2/5N1b/N3PP2/6PP/PPQB2B1/4RRK1 w - - 0 21
