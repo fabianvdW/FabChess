@@ -29,7 +29,6 @@ pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
 
 pub const TUNE_KNIGHTS: bool = false;
 pub const TUNE_FILES: bool = true;
-pub const TUNE_XRAY: bool = true;
 
 pub const TUNE_PIECE_VALUES: bool = false;
 pub const TUNE_MOBILITY: bool = false;
@@ -328,32 +327,6 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                 portion,
                 &mut gradient.rook_on_seventh,
                 pos.trace.rook_on_seventh,
-                start_of_gradient,
-                phase,
-            );
-        }
-        if TUNE_XRAY || TUNE_ALL {
-            add_gradient(
-                &tuner.params.bishop_xray_king,
-                portion,
-                &mut gradient.bishop_xray_king,
-                pos.trace.bishop_xray_king,
-                start_of_gradient,
-                phase,
-            );
-            add_gradient(
-                &tuner.params.rook_xray_king,
-                portion,
-                &mut gradient.rook_xray_king,
-                pos.trace.rook_xray_king,
-                start_of_gradient,
-                phase,
-            );
-            add_gradient(
-                &tuner.params.queen_xray_king,
-                portion,
-                &mut gradient.queen_xray_king,
-                pos.trace.queen_xray_king,
                 start_of_gradient,
                 phase,
             );

@@ -236,9 +236,6 @@ pub const KNIGHT_OUTPOST_TABLE: [[EvaluationScore; 8]; 8] = [
         EvaluationScore(0, 0),
     ],
 ];
-pub const BISHOP_XRAY_KING: EvaluationScore = EvaluationScore(6, 16);
-pub const ROOK_XRAY_KING: EvaluationScore = EvaluationScore(11, 18);
-pub const QUEEN_XRAY_KING: EvaluationScore = EvaluationScore(7, 7);
 pub const ROOK_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(57, 19);
 pub const ROOK_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(16, -15);
 pub const QUEEN_ON_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(0, 7);

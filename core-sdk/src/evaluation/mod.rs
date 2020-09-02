@@ -497,19 +497,11 @@ pub fn piecewise(
     //Bishops
     let mut bishop_attackers: i16 = 0;
     let mut bishop_attacker_values = EvaluationScore::default();
-    let mut bishop_xray_king: i16 = 0;
     let (mut mb, mut mb_diag) = (EvaluationScore::default(), EvaluationScore::default());
     let mut bishops = g.get_piece(PieceType::Bishop, side);
     while bishops != 0u64 {
         let idx = bishops.trailing_zeros() as usize;
         let bishop_attack = PieceType::Bishop.attacks(idx, all_pieces ^ square(enemy_king_idx));
-        if (FREEFIELD_BISHOP_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
-            && (movegen::xray_bishop_attacks(bishop_attack, all_pieces, all_pieces, idx)
-                & g.get_piece(PieceType::King, 1 - side))
-                != 0u64
-        {
-            bishop_xray_king += 1;
-        }
         let diagonally_adjacent_pawns =
             (DIAGONALLY_ADJACENT[idx] & g.get_piece(PieceType::Pawn, side)).count_ones() as usize;
         mb_diag += DIAGONALLY_ADJACENT_SQUARES_WITH_OWN_PAWNS[diagonally_adjacent_pawns];
@@ -542,20 +534,12 @@ pub fn piecewise(
     //Rooks
     let mut rook_attackers: i16 = 0;
     let mut rook_attacker_values = EvaluationScore::default();
-    let mut rook_xray_king: i16 = 0;
     let (mut mr, mut rooks_onopen, mut rooks_on_semi_open, mut rooks_onseventh) =
         (EvaluationScore::default(), 0i16, 0i16, 0i16);
     let mut rooks = g.get_piece(PieceType::Rook, side);
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
         let rook_attack = PieceType::Rook.attacks(idx, all_pieces ^ square(enemy_king_idx));
-        if (FREEFIELD_ROOK_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
-            && (movegen::xray_rook_attacks(rook_attack, all_pieces, all_pieces, idx)
-                & g.get_piece(PieceType::King, 1 - side))
-                != 0u64
-        {
-            rook_xray_king += 1;
-        }
         if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
             rooks_onseventh += 1;
         }
@@ -595,7 +579,6 @@ pub fn piecewise(
     //Queens
     let mut queen_attackers: i16 = 0;
     let mut queen_attacker_values = EvaluationScore::default();
-    let mut queen_xray_king: i16 = 0;
     let (mut queens_onopen, mut queens_on_semi_open) = (0i16, 0i16);
     let mut mq = EvaluationScore::default();
     let mut queens = g.get_piece(PieceType::Queen, side);
@@ -605,17 +588,6 @@ pub fn piecewise(
         let bishoplike_attacks =
             PieceType::Bishop.attacks(idx, all_pieces ^ square(enemy_king_idx));
         let queen_attack = rooklike_attacks | bishoplike_attacks;
-        if (FREEFIELD_BISHOP_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
-            && (movegen::xray_bishop_attacks(bishoplike_attacks, all_pieces, all_pieces, idx)
-                & g.get_piece(PieceType::King, 1 - side))
-                != 0u64
-            || (FREEFIELD_ROOK_ATTACKS[idx] & g.get_piece(PieceType::King, 1 - side)) != 0u64
-                && (movegen::xray_rook_attacks(rooklike_attacks, all_pieces, all_pieces, idx)
-                    & g.get_piece(PieceType::King, 1 - side))
-                    != 0u64
-        {
-            queen_xray_king += 1;
-        }
 
         if FILES[idx % 8] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
             queens_onopen += 1;
@@ -657,9 +629,6 @@ pub fn piecewise(
         trace.rook_on_seventh += rooks_onseventh as i8 * if side == WHITE { 1 } else { -1 };
         trace.queen_on_open += queens_onopen as i8 * if side == WHITE { 1 } else { -1 };
         trace.queen_on_semi_open += queens_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
-        trace.bishop_xray_king += bishop_xray_king as i8 * if side == WHITE { 1 } else { -1 };
-        trace.rook_xray_king += rook_xray_king as i8 * if side == WHITE { 1 } else { -1 };
-        trace.queen_xray_king += queen_xray_king as i8 * if side == WHITE { 1 } else { -1 };
     }
 
     let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0
@@ -699,9 +668,6 @@ pub fn piecewise(
         + ROOK_ON_SEVENTH * rooks_onseventh
         + QUEEN_ON_OPEN_FILE_BONUS * queens_onopen
         + QUEEN_ON_SEMI_OPEN_FILE_BONUS * queens_on_semi_open
-        + BISHOP_XRAY_KING * bishop_xray_king
-        + ROOK_XRAY_KING * rook_xray_king
-        + QUEEN_XRAY_KING * queen_xray_king
         + attack;
 
     #[cfg(feature = "display-eval")]
@@ -712,21 +678,6 @@ pub fn piecewise(
         println!("\tBishop Diagonally Adj: {}", mb_diag);
         println!("\tMobility Rook  : {}", mr);
         println!("\tMobility Queen : {}", mq);
-        println!(
-            "\tBishopXrayKing : {} -> {}",
-            bishop_xray_king,
-            BISHOP_XRAY_KING * bishop_xray_king,
-        );
-        println!(
-            "\tRookXrayKing : {} -> {}",
-            rook_xray_king,
-            ROOK_XRAY_KING * rook_xray_king,
-        );
-        println!(
-            "\tQueenXrayKing : {} -> {}",
-            queen_xray_king,
-            QUEEN_XRAY_KING * queen_xray_king,
-        );
         println!(
             "\tRooks on open  : {} -> {}",
             rooks_onopen,
