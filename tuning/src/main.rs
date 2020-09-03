@@ -23,7 +23,7 @@ pub fn main() {
     );
     let mut tuner = Tuner {
         k: 1.1155,
-        positions: init_texel_states(positions),
+        positions: init_texel_states(&mut positions),
         params: Parameters::default(),
     };
     println!("Start tuning for k");

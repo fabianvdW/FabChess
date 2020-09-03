@@ -112,7 +112,7 @@ pub fn load_positions(
             fs::read_to_string(from_file).expect("Unable to read benchmarking positions");
         let new_linesplit = positions.split('\n').collect::<Vec<&str>>();
         for line in new_linesplit {
-            if !line.contains(';') {
+            if line.is_empty() {
                 break;
             }
             let split = line.split(' ').collect::<Vec<&str>>();

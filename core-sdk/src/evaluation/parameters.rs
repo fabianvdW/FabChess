@@ -791,7 +791,8 @@ impl Parameters {
     }
 
     pub fn apply_gradient(&mut self, gradient: &Parameters, lr: f32) {
-        let norm = gradient.calculate_norm() / lr;
+        //let norm = gradient.calculate_norm() / lr;
+        let norm = 1. / lr;
         for i in 0..2 {
             apply_gradient_arr(
                 &mut self.shielding_pawn_missing[i],

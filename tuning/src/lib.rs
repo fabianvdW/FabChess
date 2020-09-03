@@ -11,11 +11,8 @@ use core_sdk::evaluation::trace::Trace;
 use core_sdk::evaluation::{EG, MG};
 use rand::{seq::SliceRandom, thread_rng};
 
-//pub const POSITION_FILE: &str = "D:/FenCollection/Test/all_positions_qsearch.txt";
-pub const POSITION_FILE: &str = "D:/FenCollection/Zuri/quiet-labeled.epd";
-//pub const POSITION_FILE: &str = "D:/FenCollection/Lichess/lichess-quiet.txt";
-pub const PARAM_FILE: &str = "D:/FenCollection/Tuning/";
-
+pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/AndrewOld.epd";
+pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/AndrewOld.tuned";
 //Override for all others if true
 pub const TUNE_ALL: bool = true;
 
@@ -43,9 +40,9 @@ pub const START_LEARNING_RATE: f32 = 10.;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
 
-pub fn init_texel_states(labelledstates: Vec<LabelledGameState>) -> Vec<TexelState> {
+pub fn init_texel_states(labelledstates: &mut Vec<LabelledGameState>) -> Vec<TexelState> {
     let mut res: Vec<TexelState> = Vec::with_capacity(1);
-    for state in labelledstates {
+    while let Some(state) = labelledstates.pop() {
         let eval = eval_game_state(&state.game_state);
         res.push(TexelState {
             label: state.label,
