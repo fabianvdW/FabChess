@@ -1,7 +1,7 @@
-use core_sdk::board_representation::game_state::GameState;
+use super::TexelState;
+use core_sdk::{board_representation::game_state::GameState, evaluation::eval_game_state};
 use std::fmt::{Display, Formatter, Result};
 use std::fs;
-
 pub enum FileFormatSupported {
     OwnEncoding,
     EPD,
@@ -63,7 +63,7 @@ pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
 pub fn load_positions(
     from_file: &str,
     file_format: FileFormatSupported,
-    buf: &mut Vec<LabelledGameState>,
+    buf: &mut Vec<TexelState>,
     stats: &mut Statistics,
 ) {
     if let FileFormatSupported::OwnEncoding = file_format {
@@ -99,10 +99,12 @@ pub fn load_positions(
                         stats.draws += 1;
                     }
                 }
-
-                buf.push(LabelledGameState {
-                    game_state: GameState::from_fen(fen_split[0]),
+                let state = GameState::from_fen(fen_split[0]);
+                let eval = eval_game_state(&state);
+                buf.push(TexelState {
                     label: game_result,
+                    eval: eval.final_eval as f32,
+                    trace: eval.trace,
                 });
             }
         }
@@ -124,9 +126,12 @@ pub fn load_positions(
             } else {
                 0.0
             };
-            buf.push(LabelledGameState {
-                game_state: GameState::from_fen(fen),
+            let state = GameState::from_fen(fen);
+            let eval = eval_game_state(&state);
+            buf.push(TexelState {
                 label: game_result,
+                eval: eval.final_eval as f32,
+                trace: eval.trace,
             });
         }
         return;

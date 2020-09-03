@@ -3,7 +3,7 @@ use tuning::*;
 pub fn main() {
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
     let mut stats = Statistics::default();
-    let mut positions: Vec<LabelledGameState> = Vec::with_capacity(1);
+    let mut positions: Vec<TexelState> = Vec::with_capacity(1);
     load_positions(
         POSITION_FILE,
         if POSITION_FILE.ends_with(".txt") {
@@ -23,7 +23,7 @@ pub fn main() {
     );
     let mut tuner = Tuner {
         k: 1.1155,
-        positions: init_texel_states(&mut positions),
+        positions,
         params: Parameters::default(),
     };
     println!("Start tuning for k");

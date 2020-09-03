@@ -10,8 +10,8 @@ pub use core_sdk::evaluation::parameters::*;
 use core_sdk::evaluation::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/AndrewOld.epd";
-pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/AndrewOld.tuned";
+pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved.epd";
+pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved";
 //Override for all others if true
 pub const TUNE_ALL: bool = true;
 
@@ -34,23 +34,10 @@ pub const TUNE_ATTACK_INDEX: bool = true;
 pub const TUNE_PSQT: bool = true;
 
 pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 6000000;
+pub const BATCH_SIZE: usize = 10000000;
 pub const START_LEARNING_RATE: f32 = 10.;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
-
-pub fn init_texel_states(labelledstates: &mut Vec<LabelledGameState>) -> Vec<TexelState> {
-    let mut res: Vec<TexelState> = Vec::with_capacity(1);
-    while let Some(state) = labelledstates.pop() {
-        let eval = eval_game_state(&state.game_state);
-        res.push(TexelState {
-            label: state.label,
-            eval: eval.final_eval as f32,
-            trace: eval.trace,
-        });
-    }
-    res
-}
 
 pub struct TexelState {
     pub label: f32,
