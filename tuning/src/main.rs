@@ -1,6 +1,9 @@
 use tuning::*;
 
 pub fn main() {
+    let params = core_sdk::evaluation::parameters2::Parameters::default();
+    params.write_to_file("test.txt");
+    panic!("Stop");
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
     let mut stats = Statistics::default();
     let mut positions: Vec<LabelledGameState> = Vec::with_capacity(1);
