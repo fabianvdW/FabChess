@@ -9,7 +9,6 @@ pub use core_sdk::evaluation::parameters::{normal_parameters::*, special_paramet
 use core_sdk::evaluation::trace::CollapsedTrace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved.epd";
 pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved";
 //Override for all others if true
 pub const TUNE_ALL: bool = true;
@@ -34,8 +33,8 @@ pub const TUNE_PSQT: bool = true;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
-pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 10000000;
+pub const OPTIMIZE_K: bool = true;
+pub const BATCH_SIZE: usize = 21000000;
 pub const START_LEARNING_RATE: f32 = 2.;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
