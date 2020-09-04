@@ -126,7 +126,7 @@ impl PositionLoader {
             return Some(TexelState {
                 label: state.label,
                 eval: eval.final_eval as f32,
-                trace: eval.trace,
+                trace: eval.trace.collapse(),
             });
         }
         None

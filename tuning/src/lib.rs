@@ -4,9 +4,9 @@ extern crate rand;
 pub mod loading;
 
 pub use crate::loading::{FileFormatSupported, LabelledGameState, Statistics};
-use core_sdk::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
-pub use core_sdk::evaluation::parameters::*;
-use core_sdk::evaluation::trace::Trace;
+use core_sdk::board_representation::game_state::{BLACK, WHITE};
+pub use core_sdk::evaluation::parameters::{normal_parameters::*, special_parameters::*, *};
+use core_sdk::evaluation::trace::CollapsedTrace;
 use rand::{seq::SliceRandom, thread_rng};
 
 pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved.epd";
@@ -32,16 +32,138 @@ pub const TUNE_ATTACK: bool = true;
 pub const TUNE_ATTACK_INDEX: bool = true;
 pub const TUNE_PSQT: bool = true;
 
+pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
+
 pub const OPTIMIZE_K: bool = false;
 pub const BATCH_SIZE: usize = 10000000;
 pub const START_LEARNING_RATE: f32 = 2.;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
 
+pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
+    let mut res = [false; NORMAL_PARAMS];
+    if TUNE_ALL {
+        res = [true; NORMAL_PARAMS];
+    } else {
+        if TUNE_SHIELDING_PAWNS {
+            let mut i = 0;
+            while i < SIZE_SHIELDING_PAWN_MISSING {
+                res[IDX_SHIELDING_PAWN_MISSING + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_SHIELDING_PAWN_ONOPEN_MISSING {
+                res[IDX_SHIELDING_PAWN_ONOPEN_MISSING + i] = true;
+                i += 1;
+            }
+        }
+        if TUNE_PAWNS {
+            res[IDX_PAWN_DOUBLED] = true;
+            res[IDX_PAWN_ISOLATED] = true;
+            res[IDX_PAWN_BACKWARD] = true;
+            res[IDX_PAWN_ATTACK_CENTER] = true;
+            res[IDX_PAWN_MOBILITY] = true;
+            let mut i = 0;
+            while i < SIZE_PAWN_SUPPORTED {
+                res[IDX_PAWN_SUPPORTED + i] = true;
+                i += 1;
+            }
+        }
+        if TUNE_PASSED {
+            let mut i = 0;
+            while i < SIZE_PAWN_PASSED {
+                res[IDX_PAWN_PASSED + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_PAWN_PASSED_NOTBLOCKED {
+                res[IDX_PAWN_PASSED_NOTBLOCKED + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_PAWN_PASSED_KINGDISTANCE {
+                res[IDX_PAWN_PASSED_KINGDISTANCE + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_PAWN_PASSED_ENEMYKINGDISTANCE {
+                res[IDX_PAWN_PASSED_ENEMYKINGDISTANCE + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_PAWN_PASSED_SUBDISTANCE {
+                res[IDX_PAWN_PASSED_SUBDISTANCE + i] = true;
+                i += 1;
+            }
+            res[IDX_ROOK_BEHIND_SUPPORT_PASSER] = true;
+            res[IDX_ROOK_BEHIND_ENEMY_PASSER] = true;
+            res[IDX_PAWN_PASSED_WEAK] = true;
+        }
+        if TUNE_KNIGHTS {
+            res[IDX_KNIGHT_SUPPORTED] = true;
+            let mut i = 0;
+            while i < SIZE_KNIGHT_OUTPOST_TABLE {
+                res[IDX_KNIGHT_OUTPOST_TABLE + i] = true;
+                i += 1;
+            }
+        }
+        if TUNE_FILES {
+            res[IDX_ROOK_ON_OPEN] = true;
+            res[IDX_ROOK_ON_SEMI_OPEN] = true;
+            res[IDX_QUEEN_ON_OPEN] = true;
+            res[IDX_QUEEN_ON_SEMI_OPEN] = true;
+            res[IDX_ROOK_ON_SEVENTH] = true;
+        }
+        if TUNE_PIECE_VALUES {
+            res[IDX_PAWN_PIECE_VALUE] = true;
+            res[IDX_KNIGHT_PIECE_VALUE] = true;
+            res[IDX_BISHOP_PIECE_VALUE] = true;
+            res[IDX_BISHOP_PAIR] = true;
+            res[IDX_ROOK_PIECE_VALUE] = true;
+            res[IDX_QUEEN_PIECE_VALUE] = true;
+            let mut i = 0;
+            while i < SIZE_DIAGONALLY_ADJ_SQ_WPAWNS {
+                res[IDX_DIAGONALLY_ADJ_SQ_WPAWNS + i] = true;
+                i += 1;
+            }
+        }
+        if TUNE_MOBILITY {
+            let mut i = 0;
+            while i < SIZE_KNIGHT_MOBILITY {
+                res[IDX_KNIGHT_MOBILITY + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_BISHOP_MOBILITY {
+                res[IDX_BISHOP_MOBILITY + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_ROOK_MOBILITY {
+                res[IDX_ROOK_MOBILITY + i] = true;
+                i += 1;
+            }
+            i = 0;
+            while i < SIZE_QUEEN_MOBILITY {
+                res[IDX_QUEEN_MOBILITY + i] = true;
+                i += 1;
+            }
+        }
+        if TUNE_PSQT {
+            let mut i = 0;
+            while i < SIZE_PSQT {
+                res[IDX_PSQT + i] = true;
+                i += 1;
+            }
+        }
+    }
+    res[IDX_TEMPO_BONUS] = TUNE_TEMPO_BONUS;
+    res
+}
 pub struct TexelState {
     pub label: f32,
     pub eval: f32,
-    pub trace: Trace,
+    pub trace: CollapsedTrace,
 }
 
 pub struct Tuner {
@@ -61,47 +183,16 @@ pub fn shuffle_positions(tuner: &mut Tuner) {
 }
 
 pub fn add_regularization(gradient: &mut Parameters, parameters: &Parameters, portion: f32) {
-    for i in 0..gradient.params.len() {
-        gradient.params[i] -= portion * regularization(parameters.params[i]);
+    for i in 0..gradient.normal[0].len() {
+        gradient.normal[0][i] -= portion * regularization(parameters.normal[0][i]);
+        gradient.normal[1][i] -= portion * regularization(parameters.normal[1][i]);
+    }
+    for i in 0..gradient.special.len() {
+        gradient.special[i] -= portion * regularization(parameters.special[i]);
     }
 }
 pub fn regularization(term: f32) -> f32 {
     L1_REGULARIZATION * term.signum() + 2. * L2_REGULARIZATION * term
-}
-pub fn single_gradient(
-    gradient: &mut Parameters,
-    idx: usize,
-    trace: i8,
-    phase: f32,
-    start_of_gradient: f32,
-) {
-    let devaldmg = phase / 128.0;
-    let devaldeg = (1. - phase / 128.0) / 1.5;
-    let x = f32::from(trace);
-    gradient.params[idx] += start_of_gradient * devaldmg * x;
-    gradient.params[idx + 1] += start_of_gradient * devaldeg * x;
-}
-pub fn array_gradient(
-    gradient: &mut Parameters,
-    idx: usize,
-    trace: &[i8],
-    phase: f32,
-    start_of_gradient: f32,
-) {
-    for i in 0..trace.len() {
-        single_gradient(gradient, idx + 2 * i, trace[i], phase, start_of_gradient);
-    }
-}
-pub fn psqt_gradient(
-    gradient: &mut Parameters,
-    idx: usize,
-    psqt: &[[i8; 8]; 8],
-    phase: f32,
-    start_of_gradient: f32,
-) {
-    for i in 0..8 {
-        array_gradient(gradient, idx + 16 * i, &psqt[i], phase, start_of_gradient);
-    }
 }
 
 pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Parameters {
@@ -116,315 +207,43 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
         //Step 2. Calculate first half of gradient
         let s = sigmoid(tuner.k, pos.eval);
         let start_of_gradient = (pos.label - s) * s * (1. - s);
-        let phase = pos.trace.phase;
         let devaldmg = pos.trace.phase / 128.0;
         let devaldeg = (1. - pos.trace.phase / 128.0) / 1.5;
-        //Tempo-bonus
-        if TUNE_TEMPO_BONUS {
-            single_gradient(
-                &mut gradient,
-                IDX_TEMPO_BONUS,
-                pos.trace.tempo_bonus,
-                phase,
-                start_of_gradient,
-            );
-        }
-        //Shielding pawns
-        if TUNE_SHIELDING_PAWNS || TUNE_ALL {
-            array_gradient(
-                &mut gradient,
-                IDX_SHIELDING_PAWN_MISSING,
-                &pos.trace.shielding_pawn_missing,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_SHIELDING_PAWN_ONOPEN_MISSING,
-                &pos.trace.shielding_pawn_onopen_missing,
-                phase,
-                start_of_gradient,
-            );
-        }
-        //Pawn bonuses
-        if TUNE_PAWNS || TUNE_ALL {
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_DOUBLED,
-                pos.trace.pawn_doubled,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_ISOLATED,
-                pos.trace.pawn_isolated,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_BACKWARD,
-                pos.trace.pawn_backward,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_ATTACK_CENTER,
-                pos.trace.pawn_attack_center,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_MOBILITY,
-                pos.trace.pawn_mobility,
-                phase,
-                start_of_gradient,
-            );
-            psqt_gradient(
-                &mut gradient,
-                IDX_PAWN_SUPPORTED,
-                &pos.trace.pawn_supported,
-                phase,
-                start_of_gradient,
-            );
-        }
-        //Passed pawns
-        if TUNE_PASSED || TUNE_ALL {
-            single_gradient(
-                &mut gradient,
-                IDX_ROOK_BEHIND_SUPPORT_PASSER,
-                pos.trace.rook_behind_support_passer,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_ROOK_BEHIND_ENEMY_PASSER,
-                pos.trace.rook_behind_enemy_passer,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_PASSED_WEAK,
-                pos.trace.pawn_passed_weak,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_PAWN_PASSED,
-                &pos.trace.pawn_passed,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_PAWN_PASSED_NOTBLOCKED,
-                &pos.trace.pawn_passed_notblocked,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_PAWN_PASSED_KINGDISTANCE,
-                &pos.trace.pawn_passed_kingdistance,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_PAWN_PASSED_ENEMYKINGDISTANCE,
-                &pos.trace.pawn_passed_enemykingdistance,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_PAWN_PASSED_SUBDISTANCE,
-                &pos.trace.pawn_passed_subdistance,
-                phase,
-                start_of_gradient,
-            );
-        }
-        //Knight supported
-        if TUNE_KNIGHTS || TUNE_ALL {
-            single_gradient(
-                &mut gradient,
-                IDX_KNIGHT_SUPPORTED,
-                pos.trace.knight_supported,
-                phase,
-                start_of_gradient,
-            );
-            psqt_gradient(
-                &mut gradient,
-                IDX_KNIGHT_OUTPOST_TABLE,
-                &pos.trace.knight_outpost_table,
-                phase,
-                start_of_gradient,
-            );
-        }
-        //All PST
-        if TUNE_PSQT || TUNE_ALL {
-            for &pt in PIECE_TYPES.iter() {
-                psqt_gradient(
-                    &mut gradient,
-                    IDX_PSQT + pt as usize * 128,
-                    &pos.trace.psqt[pt as usize],
-                    phase,
-                    start_of_gradient,
-                );
+        for entry in pos.trace.entries.iter() {
+            if TUNABLE_PARAM[entry.0 as usize] {
+                gradient.normal[0][entry.0 as usize] +=
+                    start_of_gradient * devaldmg * f32::from(entry.1);
+                gradient.normal[1][entry.0 as usize] +=
+                    start_of_gradient * devaldeg * f32::from(entry.1);
             }
         }
 
-        //On open File / semi open file
-        if TUNE_FILES || TUNE_ALL {
-            single_gradient(
-                &mut gradient,
-                IDX_ROOK_ON_OPEN,
-                pos.trace.rook_on_open,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_ROOK_ON_SEMI_OPEN,
-                pos.trace.rook_on_semi_open,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_QUEEN_ON_OPEN,
-                pos.trace.queen_on_open,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_QUEEN_ON_SEMI_OPEN,
-                pos.trace.queen_on_semi_open,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_ROOK_ON_SEVENTH,
-                pos.trace.rook_on_seventh,
-                phase,
-                start_of_gradient,
-            );
-        }
         //Piece values
         if TUNE_PIECE_VALUES || TUNE_ALL {
-            single_gradient(
-                &mut gradient,
-                IDX_PAWN_PIECE_VALUE,
-                pos.trace.pawns,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_KNIGHT_PIECE_VALUE,
-                pos.trace.knights,
-                phase,
-                start_of_gradient,
-            );
             let knights = f32::from(pos.trace.knights);
-            gradient.params
-                [IDX_KNIGHT_VALUE_WITH_PAWN + pos.trace.knight_value_with_pawns as usize] +=
+            gradient.special[IDX_KNIGHT_VALUE_WITH_PAWN + pos.trace.pawns_on_board as usize] +=
                 start_of_gradient * knights;
-            single_gradient(
-                &mut gradient,
-                IDX_BISHOP_PIECE_VALUE,
-                pos.trace.bishops,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_BISHOP_PAIR,
-                pos.trace.bishop_bonus,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_ROOK_PIECE_VALUE,
-                pos.trace.rooks,
-                phase,
-                start_of_gradient,
-            );
-            single_gradient(
-                &mut gradient,
-                IDX_QUEEN_PIECE_VALUE,
-                pos.trace.queens,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_DIAGONALLY_ADJ_SQ_WPAWNS,
-                &pos.trace.diagonally_adjacent_squares_withpawns,
-                phase,
-                start_of_gradient,
-            );
-        }
-        //Mobility
-        if TUNE_MOBILITY || TUNE_ALL {
-            array_gradient(
-                &mut gradient,
-                IDX_KNIGHT_MOBILITY,
-                &pos.trace.knight_mobility,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_BISHOP_MOBILITY,
-                &pos.trace.bishop_mobility,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_ROOK_MOBILITY,
-                &pos.trace.rook_mobility,
-                phase,
-                start_of_gradient,
-            );
-            array_gradient(
-                &mut gradient,
-                IDX_QUEEN_MOBILITY,
-                &pos.trace.queen_mobility,
-                phase,
-                start_of_gradient,
-            );
         }
         //Safety
         if TUNE_ATTACK {
             for i in 0..2 {
                 let devaldg = if i == 0 { devaldmg } else { devaldeg };
                 let attack_knight_white = f32::from(pos.trace.knight_attacked_sq[WHITE])
-                    * tuner.params.params[IDX_KNIGHT_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
                 let attack_bishop_white = f32::from(pos.trace.bishop_attacked_sq[WHITE])
-                    * tuner.params.params[IDX_BISHOP_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
                 let attack_rook_white = f32::from(pos.trace.rook_attacked_sq[WHITE])
-                    * tuner.params.params[IDX_ROOK_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
                 let attack_queen_white = f32::from(pos.trace.queen_attacked_sq[WHITE])
-                    * tuner.params.params[IDX_QUEEN_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
                 let knight_check_white = f32::from(pos.trace.knight_safe_check[WHITE])
-                    * tuner.params.params[IDX_KNIGHT_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
                 let bishop_check_white = f32::from(pos.trace.bishop_safe_check[WHITE])
-                    * tuner.params.params[IDX_BISHOP_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
                 let rook_check_white = f32::from(pos.trace.rook_safe_check[WHITE])
-                    * tuner.params.params[IDX_ROOK_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
                 let queen_check_white = f32::from(pos.trace.queen_safe_check[WHITE])
-                    * tuner.params.params[IDX_QUEEN_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
                 let attacker_value_white = (attack_knight_white
                     + attack_bishop_white
                     + attack_rook_white
@@ -436,21 +255,21 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     .max(0.)
                     .min(99.);
                 let attack_knight_black = f32::from(pos.trace.knight_attacked_sq[BLACK])
-                    * tuner.params.params[IDX_KNIGHT_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
                 let attack_bishop_black = f32::from(pos.trace.bishop_attacked_sq[BLACK])
-                    * tuner.params.params[IDX_BISHOP_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
                 let attack_rook_black = f32::from(pos.trace.rook_attacked_sq[BLACK])
-                    * tuner.params.params[IDX_ROOK_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
                 let attack_queen_black = f32::from(pos.trace.queen_attacked_sq[BLACK])
-                    * tuner.params.params[IDX_QUEEN_ATTACK_VALUE + i];
+                    * tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
                 let knight_check_black = f32::from(pos.trace.knight_safe_check[BLACK])
-                    * tuner.params.params[IDX_KNIGHT_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
                 let bishop_check_black = f32::from(pos.trace.bishop_safe_check[BLACK])
-                    * tuner.params.params[IDX_BISHOP_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
                 let rook_check_black = f32::from(pos.trace.rook_safe_check[BLACK])
-                    * tuner.params.params[IDX_ROOK_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
                 let queen_check_black = f32::from(pos.trace.queen_safe_check[BLACK])
-                    * tuner.params.params[IDX_QUEEN_CHECK_VALUE + i];
+                    * tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
                 let attacker_value_black = (attack_knight_black
                     + attack_bishop_black
                     + attack_rook_black
@@ -461,30 +280,32 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     + queen_check_black)
                     .max(0.)
                     .min(99.);
-                gradient.params[IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i] +=
+                gradient.special
+                    [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i] +=
                     start_of_gradient * devaldg / 100.0
-                        * tuner.params.params
+                        * tuner.params.special
                             [IDX_SAFETY_TABLE + 2 * attacker_value_white as usize + i];
-                gradient.params[IDX_SAFETY_TABLE + 2 * attacker_value_white as usize + i] +=
+                gradient.special[IDX_SAFETY_TABLE + 2 * attacker_value_white as usize + i] +=
                     start_of_gradient * devaldg / 100.0
-                        * tuner.params.params
+                        * tuner.params.special
                             [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i];
-                gradient.params[IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i] -=
+                gradient.special
+                    [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i] -=
                     start_of_gradient * devaldg / 100.0
-                        * tuner.params.params
+                        * tuner.params.special
                             [IDX_SAFETY_TABLE + 2 * attacker_value_black as usize + i];
-                gradient.params[IDX_SAFETY_TABLE + 2 * attacker_value_black as usize + i] +=
+                gradient.special[IDX_SAFETY_TABLE + 2 * attacker_value_black as usize + i] +=
                     start_of_gradient * devaldg / 100.0
-                        * tuner.params.params
+                        * tuner.params.special
                             [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i];
                 //Attack constants
                 if TUNE_ATTACK_INDEX {
                     //Knight
                     {
-                        let c = tuner.params.params[IDX_KNIGHT_ATTACK_VALUE + i];
-                        gradient.params[IDX_KNIGHT_ATTACK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
+                        gradient.special[IDX_KNIGHT_ATTACK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -494,9 +315,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_KNIGHT_ATTACK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_KNIGHT_ATTACK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -509,10 +330,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Bishop
                     {
-                        let c = tuner.params.params[IDX_BISHOP_ATTACK_VALUE + i];
-                        gradient.params[IDX_BISHOP_ATTACK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
+                        gradient.special[IDX_BISHOP_ATTACK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -522,9 +343,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_BISHOP_ATTACK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_BISHOP_ATTACK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -537,10 +358,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Rook
                     {
-                        let c = tuner.params.params[IDX_ROOK_ATTACK_VALUE + i];
-                        gradient.params[IDX_ROOK_ATTACK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
+                        gradient.special[IDX_ROOK_ATTACK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -550,9 +371,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_ROOK_ATTACK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_ROOK_ATTACK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -565,10 +386,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Queen
                     {
-                        let c = tuner.params.params[IDX_QUEEN_ATTACK_VALUE + i];
-                        gradient.params[IDX_QUEEN_ATTACK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
+                        gradient.special[IDX_QUEEN_ATTACK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -578,9 +399,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_QUEEN_ATTACK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_QUEEN_ATTACK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -593,10 +414,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Knight check
                     {
-                        let c = tuner.params.params[IDX_KNIGHT_CHECK_VALUE + i];
-                        gradient.params[IDX_KNIGHT_CHECK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
+                        gradient.special[IDX_KNIGHT_CHECK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -606,9 +427,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_KNIGHT_CHECK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_KNIGHT_CHECK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -621,10 +442,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Bishop check
                     {
-                        let c = tuner.params.params[IDX_BISHOP_CHECK_VALUE + i];
-                        gradient.params[IDX_BISHOP_CHECK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
+                        gradient.special[IDX_BISHOP_CHECK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -634,9 +455,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_BISHOP_CHECK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_BISHOP_CHECK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -649,10 +470,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Rook check
                     {
-                        let c = tuner.params.params[IDX_ROOK_CHECK_VALUE + i];
-                        gradient.params[IDX_ROOK_CHECK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
+                        gradient.special[IDX_ROOK_CHECK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -662,9 +483,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_ROOK_CHECK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_ROOK_CHECK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -677,10 +498,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     }
                     //Queen check
                     {
-                        let c = tuner.params.params[IDX_QUEEN_CHECK_VALUE + i];
-                        gradient.params[IDX_QUEEN_CHECK_VALUE + i] += start_of_gradient
+                        let c = tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
+                        gradient.special[IDX_QUEEN_CHECK_VALUE + i] += start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[WHITE] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -690,9 +511,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                                 c,
                             )
                             / 100.0;
-                        gradient.params[IDX_QUEEN_CHECK_VALUE + i] -= start_of_gradient
+                        gradient.special[IDX_QUEEN_CHECK_VALUE + i] -= start_of_gradient
                             * devaldg
-                            * tuner.params.params
+                            * tuner.params.special
                                 [IDX_ATTACK_WEIGHT + 2 * pos.trace.attackers[BLACK] as usize + i]
                             * dsafetytabledconstant(
                                 tuner,
@@ -719,12 +540,12 @@ pub fn dsafetytabledconstant(
     relevant_feature: u8,
     current_constant: f32,
 ) -> f32 {
-    let safety_table_inc = tuner.params.params[IDX_SAFETY_TABLE
+    let safety_table_inc = tuner.params.special[IDX_SAFETY_TABLE
         + 2 * ((other + f32::from(relevant_feature) * (current_constant + 1.)) as usize)
             .max(0)
             .min(99)
         + phase];
-    let safety_table_dec = tuner.params.params[IDX_SAFETY_TABLE
+    let safety_table_dec = tuner.params.special[IDX_SAFETY_TABLE
         + 2 * ((other + f32::from(relevant_feature) * (current_constant - 1.)) as usize)
             .max(0)
             .min(99)
@@ -742,6 +563,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
 
     loop {
         epoch += 1;
+        println!("Starting epoch {}!", epoch);
         shuffle_positions(tuner);
         let mut ada_add = Parameters::zero();
         for batch in 0..=(tuner.positions.len() - 1) / BATCH_SIZE {

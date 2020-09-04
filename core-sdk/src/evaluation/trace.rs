@@ -1,42 +1,12 @@
-use crate::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
-use crate::evaluation::parameters::*;
-pub struct Trace {
-    pub tempo_bonus: i8,
-    pub shielding_pawn_missing: [i8; 4],
-    pub shielding_pawn_onopen_missing: [i8; 4],
-    pub pawn_doubled: i8,
-    pub pawn_isolated: i8,
-    pub pawn_backward: i8,
-    pub pawn_supported: [[i8; 8]; 8],
-    pub pawn_attack_center: i8,
-    pub pawn_mobility: i8,
-    pub pawn_passed: [i8; 7],
-    pub pawn_passed_notblocked: [i8; 7],
-    pub pawn_passed_kingdistance: [i8; 7],
-    pub pawn_passed_enemykingdistance: [i8; 7],
-    pub pawn_passed_subdistance: [i8; 13],
-    pub rook_behind_support_passer: i8,
-    pub rook_behind_enemy_passer: i8,
-    pub pawn_passed_weak: i8,
-    pub knight_supported: i8,
-    pub knight_outpost_table: [[i8; 8]; 8],
-    pub rook_on_open: i8,
-    pub rook_on_semi_open: i8,
-    pub queen_on_open: i8,
-    pub queen_on_semi_open: i8,
-    pub rook_on_seventh: i8,
-    pub pawns: i8,
+use crate::board_representation::game_state::{BLACK, WHITE};
+use crate::evaluation::parameters::{normal_parameters::*, special_parameters::*, *};
+
+pub struct TraceEntry(pub u16, pub i8);
+pub struct CollapsedTrace {
+    pub phase: f32,
+    pub entries: Vec<TraceEntry>,
+    pub pawns_on_board: u8,
     pub knights: i8,
-    pub knight_value_with_pawns: u8,
-    pub bishops: i8,
-    pub bishop_bonus: i8,
-    pub rooks: i8,
-    pub queens: i8,
-    pub diagonally_adjacent_squares_withpawns: [i8; 5],
-    pub knight_mobility: [i8; 9],
-    pub bishop_mobility: [i8; 14],
-    pub rook_mobility: [i8; 15],
-    pub queen_mobility: [i8; 28],
     pub attackers: [u8; 2],
     pub knight_attacked_sq: [u8; 2],
     pub bishop_attacked_sq: [u8; 2],
@@ -46,430 +16,150 @@ pub struct Trace {
     pub bishop_safe_check: [u8; 2],
     pub rook_safe_check: [u8; 2],
     pub queen_safe_check: [u8; 2],
-    pub psqt: [[[i8; 8]; 8]; 6],
-    pub phase: f32,
     pub is_guaranteed_draw: bool,
     pub slightly_winning_no_pawn: bool,
     pub slightly_winning_enemy_can_sac: bool,
 }
-
-pub fn evaluate_psqt(
-    score: &mut (f32, f32),
-    trace_psqt: &[[i8; 8]; 8],
-    params: &Parameters,
-    idx: usize,
-) {
-    for i in 0..8 {
-        evaluate_array(score, &trace_psqt[i], params, idx + 16 * i);
-    }
-}
-pub fn evaluate_array(score: &mut (f32, f32), trace: &[i8], params: &Parameters, idx: usize) {
-    for i in 0..trace.len() {
-        evaluate_single(score, trace[i], params, idx + 2 * i);
-    }
-}
-pub fn evaluate_single(score: &mut (f32, f32), trace: i8, params: &Parameters, idx: usize) {
-    score.0 += f32::from(trace) * params.params[idx];
-    score.1 += f32::from(trace) * params.params[idx + 1];
-}
-
-impl Trace {
+impl CollapsedTrace {
     pub fn evaluate(&self, params: &Parameters) -> f32 {
         if self.is_guaranteed_draw {
             return 0.;
         }
-        //PSQT Evaluation
-        let mut psqt_res = (0., 0.);
-        for pt in PIECE_TYPES.iter() {
-            evaluate_psqt(
-                &mut psqt_res,
-                &self.psqt[*pt as usize],
-                &params,
-                IDX_PSQT + 128 * *pt as usize,
-            )
+        let mut res = (0., 0.);
+        for entry in self.entries.iter() {
+            res.0 += params.normal[0][entry.0 as usize] * f32::from(entry.1);
+            res.1 += params.normal[1][entry.0 as usize] * f32::from(entry.1);
         }
 
-        //Knight evaluation
-        let mut knight_res = (0., 0.);
-        evaluate_single(
-            &mut knight_res,
-            self.knight_supported,
-            &params,
-            IDX_KNIGHT_SUPPORTED,
-        );
-        evaluate_psqt(
-            &mut knight_res,
-            &self.knight_outpost_table,
-            &params,
-            IDX_KNIGHT_OUTPOST_TABLE,
-        );
-
-        //Piecewise
-        let mut piecewise_res = (0., 0.);
-        evaluate_array(
-            &mut piecewise_res,
-            &self.knight_mobility,
-            &params,
-            IDX_KNIGHT_MOBILITY,
-        );
-        evaluate_array(
-            &mut piecewise_res,
-            &self.bishop_mobility,
-            &params,
-            IDX_BISHOP_MOBILITY,
-        );
-        evaluate_array(
-            &mut piecewise_res,
-            &self.diagonally_adjacent_squares_withpawns,
-            &params,
-            IDX_DIAGONALLY_ADJ_SQ_WPAWNS,
-        );
-        evaluate_array(
-            &mut piecewise_res,
-            &self.rook_mobility,
-            &params,
-            IDX_ROOK_MOBILITY,
-        );
-        evaluate_array(
-            &mut piecewise_res,
-            &self.queen_mobility,
-            &params,
-            IDX_QUEEN_MOBILITY,
-        );
-        evaluate_single(
-            &mut piecewise_res,
-            self.rook_on_open,
-            &params,
-            IDX_ROOK_ON_OPEN,
-        );
-        evaluate_single(
-            &mut piecewise_res,
-            self.rook_on_semi_open,
-            &params,
-            IDX_ROOK_ON_SEMI_OPEN,
-        );
-        evaluate_single(
-            &mut piecewise_res,
-            self.queen_on_open,
-            &params,
-            IDX_QUEEN_ON_OPEN,
-        );
-        evaluate_single(
-            &mut piecewise_res,
-            self.queen_on_semi_open,
-            &params,
-            IDX_QUEEN_ON_SEMI_OPEN,
-        );
-        evaluate_single(
-            &mut piecewise_res,
-            self.rook_on_seventh,
-            &params,
-            IDX_ROOK_ON_SEVENTH,
-        );
-        piecewise_res.0 += (params.params[IDX_ATTACK_WEIGHT + 2 * self.attackers[WHITE] as usize]
-            * params.params[IDX_SAFETY_TABLE
+        res.0 += (params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[WHITE] as usize]
+            * params.special[IDX_SAFETY_TABLE
                 + 2 * ((f32::from(self.knight_attacked_sq[WHITE])
-                    * params.params[IDX_KNIGHT_ATTACK_VALUE]
+                    * params.special[IDX_KNIGHT_ATTACK_VALUE]
                     + f32::from(self.bishop_attacked_sq[WHITE])
-                        * params.params[IDX_BISHOP_ATTACK_VALUE]
+                        * params.special[IDX_BISHOP_ATTACK_VALUE]
                     + f32::from(self.rook_attacked_sq[WHITE])
-                        * params.params[IDX_ROOK_ATTACK_VALUE]
+                        * params.special[IDX_ROOK_ATTACK_VALUE]
                     + f32::from(self.queen_attacked_sq[WHITE])
-                        * params.params[IDX_QUEEN_ATTACK_VALUE]
+                        * params.special[IDX_QUEEN_ATTACK_VALUE]
                     + f32::from(self.knight_safe_check[WHITE])
-                        * params.params[IDX_KNIGHT_CHECK_VALUE]
+                        * params.special[IDX_KNIGHT_CHECK_VALUE]
                     + f32::from(self.bishop_safe_check[WHITE])
-                        * params.params[IDX_BISHOP_CHECK_VALUE]
-                    + f32::from(self.rook_safe_check[WHITE]) * params.params[IDX_ROOK_CHECK_VALUE]
+                        * params.special[IDX_BISHOP_CHECK_VALUE]
+                    + f32::from(self.rook_safe_check[WHITE]) * params.special[IDX_ROOK_CHECK_VALUE]
                     + f32::from(self.queen_safe_check[WHITE])
-                        * params.params[IDX_QUEEN_CHECK_VALUE]) as usize)
+                        * params.special[IDX_QUEEN_CHECK_VALUE]) as usize)
                     .max(0)
                     .min(99)]
-            - params.params[IDX_ATTACK_WEIGHT + 2 * self.attackers[BLACK] as usize]
-                * params.params[IDX_SAFETY_TABLE
+            - params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[BLACK] as usize]
+                * params.special[IDX_SAFETY_TABLE
                     + 2 * ((f32::from(self.knight_attacked_sq[BLACK])
-                        * params.params[IDX_KNIGHT_ATTACK_VALUE]
+                        * params.special[IDX_KNIGHT_ATTACK_VALUE]
                         + f32::from(self.bishop_attacked_sq[BLACK])
-                            * params.params[IDX_BISHOP_ATTACK_VALUE]
+                            * params.special[IDX_BISHOP_ATTACK_VALUE]
                         + f32::from(self.rook_attacked_sq[BLACK])
-                            * params.params[IDX_ROOK_ATTACK_VALUE]
+                            * params.special[IDX_ROOK_ATTACK_VALUE]
                         + f32::from(self.queen_attacked_sq[BLACK])
-                            * params.params[IDX_QUEEN_ATTACK_VALUE]
+                            * params.special[IDX_QUEEN_ATTACK_VALUE]
                         + f32::from(self.knight_safe_check[BLACK])
-                            * params.params[IDX_KNIGHT_CHECK_VALUE]
+                            * params.special[IDX_KNIGHT_CHECK_VALUE]
                         + f32::from(self.bishop_safe_check[BLACK])
-                            * params.params[IDX_BISHOP_CHECK_VALUE]
+                            * params.special[IDX_BISHOP_CHECK_VALUE]
                         + f32::from(self.rook_safe_check[BLACK])
-                            * params.params[IDX_ROOK_CHECK_VALUE]
+                            * params.special[IDX_ROOK_CHECK_VALUE]
                         + f32::from(self.queen_safe_check[BLACK])
-                            * params.params[IDX_QUEEN_CHECK_VALUE])
+                            * params.special[IDX_QUEEN_CHECK_VALUE])
                         as usize)
                         .max(0)
                         .min(99)])
             / 100.0;
-        piecewise_res.1 += (params.params
-            [IDX_ATTACK_WEIGHT + 2 * self.attackers[WHITE] as usize + 1]
-            * params.params[IDX_SAFETY_TABLE
+        res.1 += (params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[WHITE] as usize + 1]
+            * params.special[IDX_SAFETY_TABLE
                 + 2 * ((f32::from(self.knight_attacked_sq[WHITE])
-                    * params.params[IDX_KNIGHT_ATTACK_VALUE + 1]
+                    * params.special[IDX_KNIGHT_ATTACK_VALUE + 1]
                     + f32::from(self.bishop_attacked_sq[WHITE])
-                        * params.params[IDX_BISHOP_ATTACK_VALUE + 1]
+                        * params.special[IDX_BISHOP_ATTACK_VALUE + 1]
                     + f32::from(self.rook_attacked_sq[WHITE])
-                        * params.params[IDX_ROOK_ATTACK_VALUE + 1]
+                        * params.special[IDX_ROOK_ATTACK_VALUE + 1]
                     + f32::from(self.queen_attacked_sq[WHITE])
-                        * params.params[IDX_QUEEN_ATTACK_VALUE + 1]
+                        * params.special[IDX_QUEEN_ATTACK_VALUE + 1]
                     + f32::from(self.knight_safe_check[WHITE])
-                        * params.params[IDX_KNIGHT_CHECK_VALUE + 1]
+                        * params.special[IDX_KNIGHT_CHECK_VALUE + 1]
                     + f32::from(self.bishop_safe_check[WHITE])
-                        * params.params[IDX_BISHOP_CHECK_VALUE + 1]
+                        * params.special[IDX_BISHOP_CHECK_VALUE + 1]
                     + f32::from(self.rook_safe_check[WHITE])
-                        * params.params[IDX_ROOK_CHECK_VALUE + 1]
+                        * params.special[IDX_ROOK_CHECK_VALUE + 1]
                     + f32::from(self.queen_safe_check[WHITE])
-                        * params.params[IDX_QUEEN_CHECK_VALUE + 1])
+                        * params.special[IDX_QUEEN_CHECK_VALUE + 1])
                     as usize)
                     .max(0)
                     .min(99)
                 + 1]
-            - params.params[IDX_ATTACK_WEIGHT + 2 * self.attackers[BLACK] as usize + 1]
-                * params.params[IDX_SAFETY_TABLE
+            - params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[BLACK] as usize + 1]
+                * params.special[IDX_SAFETY_TABLE
                     + 2 * ((f32::from(self.knight_attacked_sq[BLACK])
-                        * params.params[IDX_KNIGHT_ATTACK_VALUE + 1]
+                        * params.special[IDX_KNIGHT_ATTACK_VALUE + 1]
                         + f32::from(self.bishop_attacked_sq[BLACK])
-                            * params.params[IDX_BISHOP_ATTACK_VALUE + 1]
+                            * params.special[IDX_BISHOP_ATTACK_VALUE + 1]
                         + f32::from(self.rook_attacked_sq[BLACK])
-                            * params.params[IDX_ROOK_ATTACK_VALUE + 1]
+                            * params.special[IDX_ROOK_ATTACK_VALUE + 1]
                         + f32::from(self.queen_attacked_sq[BLACK])
-                            * params.params[IDX_QUEEN_ATTACK_VALUE + 1]
+                            * params.special[IDX_QUEEN_ATTACK_VALUE + 1]
                         + f32::from(self.knight_safe_check[BLACK])
-                            * params.params[IDX_KNIGHT_CHECK_VALUE + 1]
+                            * params.special[IDX_KNIGHT_CHECK_VALUE + 1]
                         + f32::from(self.bishop_safe_check[BLACK])
-                            * params.params[IDX_BISHOP_CHECK_VALUE + 1]
+                            * params.special[IDX_BISHOP_CHECK_VALUE + 1]
                         + f32::from(self.rook_safe_check[BLACK])
-                            * params.params[IDX_ROOK_CHECK_VALUE + 1]
+                            * params.special[IDX_ROOK_CHECK_VALUE + 1]
                         + f32::from(self.queen_safe_check[BLACK])
-                            * params.params[IDX_QUEEN_CHECK_VALUE + 1])
+                            * params.special[IDX_QUEEN_CHECK_VALUE + 1])
                         as usize)
                         .max(0)
                         .min(99)
                     + 1])
             / 100.0;
 
-        //King-Safety
-        let mut king_res = (0., 0.);
-        evaluate_array(
-            &mut king_res,
-            &self.shielding_pawn_missing,
-            &params,
-            IDX_SHIELDING_PAWN_MISSING,
-        );
-        evaluate_array(
-            &mut king_res,
-            &self.shielding_pawn_onopen_missing,
-            &params,
-            IDX_SHIELDING_PAWN_ONOPEN_MISSING,
-        );
-
-        //Pawns
-        let mut pawn_res = (0., 0.);
-        evaluate_single(&mut pawn_res, self.pawn_doubled, &params, IDX_PAWN_DOUBLED);
-        evaluate_single(
-            &mut pawn_res,
-            self.pawn_isolated,
-            &params,
-            IDX_PAWN_ISOLATED,
-        );
-        evaluate_single(
-            &mut pawn_res,
-            self.pawn_backward,
-            &params,
-            IDX_PAWN_BACKWARD,
-        );
-        evaluate_psqt(
-            &mut pawn_res,
-            &self.pawn_supported,
-            &params,
-            IDX_PAWN_SUPPORTED,
-        );
-        evaluate_single(
-            &mut pawn_res,
-            self.pawn_attack_center,
-            &params,
-            IDX_PAWN_ATTACK_CENTER,
-        );
-        evaluate_single(
-            &mut pawn_res,
-            self.pawn_mobility,
-            &params,
-            IDX_PAWN_MOBILITY,
-        );
-        evaluate_array(&mut pawn_res, &self.pawn_passed, &params, IDX_PAWN_PASSED);
-        evaluate_array(
-            &mut pawn_res,
-            &self.pawn_passed_notblocked,
-            &params,
-            IDX_PAWN_PASSED_NOTBLOCKED,
-        );
-        evaluate_array(
-            &mut pawn_res,
-            &self.pawn_passed_kingdistance,
-            &params,
-            IDX_PAWN_PASSED_KINGDISTANCE,
-        );
-        evaluate_array(
-            &mut pawn_res,
-            &self.pawn_passed_enemykingdistance,
-            &params,
-            IDX_PAWN_PASSED_ENEMYKINGDISTANCE,
-        );
-        evaluate_array(
-            &mut pawn_res,
-            &self.pawn_passed_subdistance,
-            &params,
-            IDX_PAWN_PASSED_SUBDISTANCE,
-        );
-        evaluate_single(
-            &mut pawn_res,
-            self.rook_behind_support_passer,
-            &params,
-            IDX_ROOK_BEHIND_SUPPORT_PASSER,
-        );
-        evaluate_single(
-            &mut pawn_res,
-            self.rook_behind_enemy_passer,
-            &params,
-            IDX_ROOK_BEHIND_ENEMY_PASSER,
-        );
-        evaluate_single(
-            &mut pawn_res,
-            self.pawn_passed_weak,
-            &params,
-            IDX_PAWN_PASSED_WEAK,
-        );
-
-        //Piece values
-        let mut piecevalue_res = (0., 0.);
-        evaluate_single(
-            &mut piecevalue_res,
-            self.pawns,
-            &params,
-            IDX_PAWN_PIECE_VALUE,
-        );
-        evaluate_single(
-            &mut piecevalue_res,
-            self.knights,
-            &params,
-            IDX_KNIGHT_PIECE_VALUE,
-        );
-        piecevalue_res.0 += params.params
-            [IDX_KNIGHT_VALUE_WITH_PAWN + self.knight_value_with_pawns as usize]
+        res.0 += params.special[IDX_KNIGHT_VALUE_WITH_PAWN + self.pawns_on_board as usize]
             * f32::from(self.knights);
-        piecevalue_res.1 += params.params
-            [IDX_KNIGHT_VALUE_WITH_PAWN + self.knight_value_with_pawns as usize]
+        res.1 += params.special[IDX_KNIGHT_VALUE_WITH_PAWN + self.pawns_on_board as usize]
             * f32::from(self.knights);
-        evaluate_single(
-            &mut piecevalue_res,
-            self.bishops,
-            &params,
-            IDX_BISHOP_PIECE_VALUE,
-        );
-        evaluate_single(
-            &mut piecevalue_res,
-            self.bishop_bonus,
-            &params,
-            IDX_BISHOP_PAIR,
-        );
-        evaluate_single(
-            &mut piecevalue_res,
-            self.rooks,
-            &params,
-            IDX_ROOK_PIECE_VALUE,
-        );
-        evaluate_single(
-            &mut piecevalue_res,
-            self.queens,
-            &params,
-            IDX_QUEEN_PIECE_VALUE,
-        );
 
-        let mut tempo_bonus = (0., 0.);
-        evaluate_single(&mut tempo_bonus, self.tempo_bonus, &params, IDX_TEMPO_BONUS);
-
-        let mut res = (
-            psqt_res.0
-                + knight_res.0
-                + piecewise_res.0
-                + king_res.0
-                + pawn_res.0
-                + piecevalue_res.0
-                + tempo_bonus.0,
-            psqt_res.1
-                + knight_res.1
-                + piecewise_res.1
-                + king_res.1
-                + pawn_res.1
-                + piecevalue_res.1
-                + tempo_bonus.1,
-        );
         if self.slightly_winning_no_pawn {
-            res = (res.0, res.1 * params.params[IDX_SLIGHTLY_WINNING_NO_PAWN]);
+            res = (res.0, res.1 * params.special[IDX_SLIGHTLY_WINNING_NO_PAWN]);
         } else if self.slightly_winning_enemy_can_sac {
             res = (
                 res.0,
-                res.1 * params.params[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC],
+                res.1 * params.special[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC],
             );
-        }
-        #[cfg(feature = "display-eval")]
-        {
-            println!("PSQT: {},{}", psqt_res.0, psqt_res.1);
-            println!("KNIGHT:{},{}", knight_res.0, knight_res.1);
-            println!("PIECEWISE:{},{}", piecewise_res.0, piecewise_res.1);
-            println!("KING:{},{}", king_res.0, king_res.1);
-            println!("PAWNS:{},{}", pawn_res.0, pawn_res.1);
-            println!("PieceValue:{},{}", piecevalue_res.0, piecevalue_res.1);
-            println!("Tempo:{},{}", tempo_bonus.0, tempo_bonus.1);
-            println!("Res:{},{}", res.0, res.1);
         }
         (res.0 * self.phase + res.1 / 1.5 * (128.0 - self.phase)) / 128.0
     }
+}
+pub struct LargeTrace {
+    pub phase: f32,
+    pub normal_coeffs: [i8; NORMAL_PARAMS],
+    pub pawns_on_board: u8,
+    pub knights: i8,
+    pub attackers: [u8; 2],
+    pub knight_attacked_sq: [u8; 2],
+    pub bishop_attacked_sq: [u8; 2],
+    pub rook_attacked_sq: [u8; 2],
+    pub queen_attacked_sq: [u8; 2],
+    pub knight_safe_check: [u8; 2],
+    pub bishop_safe_check: [u8; 2],
+    pub rook_safe_check: [u8; 2],
+    pub queen_safe_check: [u8; 2],
+    pub is_guaranteed_draw: bool,
+    pub slightly_winning_no_pawn: bool,
+    pub slightly_winning_enemy_can_sac: bool,
+}
 
+impl LargeTrace {
     pub fn default() -> Self {
-        Trace {
-            tempo_bonus: 0,
-            shielding_pawn_missing: [0; 4],
-            shielding_pawn_onopen_missing: [0; 4],
-            pawn_doubled: 0,
-            pawn_isolated: 0,
-            pawn_backward: 0,
-            pawn_supported: [[0; 8]; 8],
-            pawn_attack_center: 0,
-            pawn_mobility: 0,
-            pawn_passed: [0; 7],
-            pawn_passed_notblocked: [0; 7],
-            pawn_passed_kingdistance: [0; 7],
-            pawn_passed_enemykingdistance: [0; 7],
-            pawn_passed_subdistance: [0; 13],
-            rook_behind_support_passer: 0,
-            rook_behind_enemy_passer: 0,
-            pawn_passed_weak: 0,
-            knight_supported: 0,
-            knight_outpost_table: [[0; 8]; 8],
-            rook_on_open: 0,
-            rook_on_semi_open: 0,
-            queen_on_open: 0,
-            queen_on_semi_open: 0,
-            rook_on_seventh: 0,
-            pawns: 0,
+        LargeTrace {
+            phase: 0.,
+            normal_coeffs: [0; NORMAL_PARAMS],
+            pawns_on_board: 0,
             knights: 0,
-            knight_value_with_pawns: 0,
-            bishops: 0,
-            bishop_bonus: 0,
-            rooks: 0,
-            queens: 0,
-            diagonally_adjacent_squares_withpawns: [0; 5],
-            knight_mobility: [0; 9],
-            bishop_mobility: [0; 14],
-            rook_mobility: [0; 15],
-            queen_mobility: [0; 28],
             attackers: [0; 2],
             knight_attacked_sq: [0; 2],
             bishop_attacked_sq: [0; 2],
@@ -479,11 +169,36 @@ impl Trace {
             bishop_safe_check: [0; 2],
             rook_safe_check: [0; 2],
             queen_safe_check: [0; 2],
-            psqt: [[[0; 8]; 8]; 6],
-            phase: 0.,
             is_guaranteed_draw: false,
             slightly_winning_no_pawn: false,
             slightly_winning_enemy_can_sac: false,
+        }
+    }
+
+    pub fn collapse(self) -> CollapsedTrace {
+        let mut entries = Vec::new();
+        for i in 0..NORMAL_PARAMS {
+            if self.normal_coeffs[i] != 0 {
+                entries.push(TraceEntry(i as u16, self.normal_coeffs[i]));
+            }
+        }
+        CollapsedTrace {
+            phase: self.phase,
+            entries,
+            knights: self.knights,
+            pawns_on_board: self.pawns_on_board,
+            attackers: self.attackers,
+            knight_attacked_sq: self.knight_attacked_sq,
+            bishop_attacked_sq: self.bishop_attacked_sq,
+            rook_attacked_sq: self.rook_attacked_sq,
+            queen_attacked_sq: self.queen_attacked_sq,
+            knight_safe_check: self.knight_safe_check,
+            bishop_safe_check: self.bishop_safe_check,
+            rook_safe_check: self.rook_safe_check,
+            queen_safe_check: self.queen_safe_check,
+            is_guaranteed_draw: self.is_guaranteed_draw,
+            slightly_winning_no_pawn: self.slightly_winning_no_pawn,
+            slightly_winning_enemy_can_sac: self.slightly_winning_enemy_can_sac,
         }
     }
 }
@@ -612,7 +327,7 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
             for line in new_linesplit {
                 let position = GameState::from_fen(line);
                 let evaluation = eval_game_state(&position);
-                let trace_eval = evaluation.trace.evaluate(&params) as i16;
+                let trace_eval = evaluation.trace.collapse().evaluate(&params) as i16;
                 //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
                 if (evaluation.final_eval - trace_eval).abs() > 2 {
                     println!("{}", position.to_fen());

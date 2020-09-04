@@ -224,12 +224,12 @@ mod tests {
             let w_psqt = psqt(
                 &g,
                 WHITE,
-                &mut core_sdk::evaluation::trace::Trace::default(),
+                &mut core_sdk::evaluation::trace::LargeTrace::default(),
             );
             let b_psqt = psqt(
                 &g,
                 BLACK,
-                &mut core_sdk::evaluation::trace::Trace::default(),
+                &mut core_sdk::evaluation::trace::LargeTrace::default(),
             );
             assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
@@ -244,12 +244,12 @@ mod tests {
                 let w_psqt = psqt(
                     &g,
                     WHITE,
-                    &mut core_sdk::evaluation::trace::Trace::default(),
+                    &mut core_sdk::evaluation::trace::LargeTrace::default(),
                 );
                 let b_psqt = psqt(
                     &g,
                     BLACK,
-                    &mut core_sdk::evaluation::trace::Trace::default(),
+                    &mut core_sdk::evaluation::trace::LargeTrace::default(),
                 );
                 assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             }

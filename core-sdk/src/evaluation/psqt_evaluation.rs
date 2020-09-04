@@ -1,9 +1,11 @@
 use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
 use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE};
+#[cfg(feature = "texel-tuning")]
+use crate::evaluation::parameters::normal_parameters::IDX_PSQT;
 use crate::evaluation::params::PSQT;
 #[cfg(feature = "texel-tuning")]
-use crate::evaluation::trace::Trace;
+use crate::evaluation::trace::LargeTrace;
 
 pub const BLACK_INDEX: [usize; 64] = [
     56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -14,7 +16,7 @@ pub const BLACK_INDEX: [usize; 64] = [
 pub fn psqt(
     game_state: &GameState,
     side: usize,
-    #[cfg(feature = "texel-tuning")] trace: &mut Trace,
+    #[cfg(feature = "texel-tuning")] trace: &mut LargeTrace,
 ) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     #[cfg(feature = "display-eval")]
@@ -24,21 +26,22 @@ pub fn psqt(
             if side == WHITE { "White" } else { "Black" }
         );
     }
-    for pt in PIECE_TYPES.iter() {
+    for &pt in PIECE_TYPES.iter() {
         let mut piece_sum = EvaluationScore::default();
-        let mut piece = game_state.get_piece(*pt, side);
+        let mut piece = game_state.get_piece(pt, side);
         while piece > 0 {
             #[allow(unused_mut)]
             let mut idx = piece.trailing_zeros() as usize;
             piece ^= square(idx);
             piece_sum +=
-                PSQT[*pt as usize][side][idx / 8][idx % 8] * if side == WHITE { 1 } else { -1 };
+                PSQT[pt as usize][side][idx / 8][idx % 8] * if side == WHITE { 1 } else { -1 };
             #[cfg(feature = "texel-tuning")]
             {
                 if side != WHITE {
                     idx = BLACK_INDEX[idx];
                 }
-                trace.psqt[*pt as usize][idx / 8][idx % 8] += if side == WHITE { 1 } else { -1 };
+                trace.normal_coeffs[IDX_PSQT + 64 * pt as usize + idx] +=
+                    if side == WHITE { 1 } else { -1 };
             }
         }
         res += piece_sum;
