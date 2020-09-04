@@ -2,9 +2,8 @@ use tuning::*;
 
 pub fn main() {
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
-    let mut stats = Statistics::default();
     let mut positions: Vec<TexelState> = Vec::with_capacity(1);
-    load_positions(
+    tuning::loading::PositionLoader::new(
         POSITION_FILE,
         if POSITION_FILE.ends_with(".txt") {
             FileFormatSupported::OwnEncoding
@@ -13,9 +12,8 @@ pub fn main() {
         } else {
             panic!("Invalid position file encoding!")
         },
-        &mut positions,
-        &mut stats,
-    );
+    )
+    .load_texel_positions(&mut positions);
     println!(
         "Loaded file {} with {} positions!",
         POSITION_FILE,

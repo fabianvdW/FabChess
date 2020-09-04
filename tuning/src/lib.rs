@@ -3,7 +3,7 @@ extern crate rand;
 
 pub mod loading;
 
-pub use crate::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
+pub use crate::loading::{FileFormatSupported, LabelledGameState, Statistics};
 use core_sdk::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
 pub use core_sdk::evaluation::parameters::*;
 use core_sdk::evaluation::trace::Trace;

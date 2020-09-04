@@ -2,6 +2,8 @@ use super::TexelState;
 use core_sdk::{board_representation::game_state::GameState, evaluation::eval_game_state};
 use std::fmt::{Display, Formatter, Result};
 use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 pub enum FileFormatSupported {
     OwnEncoding,
     EPD,
@@ -60,62 +62,43 @@ pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
     fs::write(to_file, res_str).expect("Unable to write positions");
 }
 
-pub fn load_positions(
-    from_file: &str,
+pub struct PositionLoader {
+    reader: BufReader<File>,
     file_format: FileFormatSupported,
-    buf: &mut Vec<TexelState>,
-    stats: &mut Statistics,
-) {
-    if let FileFormatSupported::OwnEncoding = file_format {
-        let positions =
-            fs::read_to_string(from_file).expect("Unable to read benchmarking positions");
-        let new_linesplit = positions.split('\n').collect::<Vec<&str>>();
-        let mut is_newgame = false;
-        for line in new_linesplit {
-            if line.contains("New Game") {
-                is_newgame = true;
-            } else {
-                if !line.contains('|') {
-                    break;
-                }
-                let fen_split = line.split('|').collect::<Vec<&str>>();
-                let game_result = if fen_split[1].contains("Black") {
-                    0.0
-                } else if fen_split[1].contains("White") {
-                    1.0
-                } else if fen_split[1].contains("Draw") {
-                    0.5
-                } else {
-                    panic!(format!("Invalid split {}", fen_split[1]));
-                };
-                if is_newgame {
-                    is_newgame = false;
-                    stats.games += 1;
-                    if game_result - 1.0 < std::f32::EPSILON {
-                        stats.white_wins += 1;
-                    } else if game_result == 0.0 {
-                        stats.black_wins += 1;
-                    } else if game_result - 0.5 < std::f32::EPSILON {
-                        stats.draws += 1;
-                    }
-                }
-                let state = GameState::from_fen(fen_split[0]);
-                let eval = eval_game_state(&state);
-                buf.push(TexelState {
-                    label: game_result,
-                    eval: eval.final_eval as f32,
-                    trace: eval.trace,
-                });
-            }
+}
+impl PositionLoader {
+    pub fn new(from_file: &str, file_format: FileFormatSupported) -> Self {
+        PositionLoader {
+            reader: BufReader::new(File::open(from_file).expect("Could not open file")),
+            file_format,
         }
-        return;
-    } else if let FileFormatSupported::EPD = file_format {
-        let positions =
-            fs::read_to_string(from_file).expect("Unable to read benchmarking positions");
-        let new_linesplit = positions.split('\n').collect::<Vec<&str>>();
-        for line in new_linesplit {
+    }
+    pub fn next_position(&mut self) -> Option<LabelledGameState> {
+        let mut line = String::new();
+        self.reader.read_line(&mut line).unwrap();
+        if let FileFormatSupported::OwnEncoding = self.file_format {
+            if !line.contains('|') {
+                return None;
+            }
+            let fen_split = line.split('|').collect::<Vec<&str>>();
+            let game_result = if fen_split[1].contains("Black") {
+                0.0
+            } else if fen_split[1].contains("White") {
+                1.0
+            } else if fen_split[1].contains("Draw") {
+                0.5
+            } else {
+                panic!(format!("Invalid split {}", fen_split[1]));
+            };
+            let state = GameState::from_fen(fen_split[0]);
+
+            return Some(LabelledGameState {
+                game_state: state,
+                label: game_result,
+            });
+        } else if let FileFormatSupported::EPD = self.file_format {
             if line.is_empty() {
-                break;
+                return None;
             }
             let split = line.split(' ').collect::<Vec<&str>>();
             let fen = &format!("{} {} {} {}", split[0], split[1], split[2], split[3]);
@@ -127,14 +110,37 @@ pub fn load_positions(
                 0.0
             };
             let state = GameState::from_fen(fen);
-            let eval = eval_game_state(&state);
-            buf.push(TexelState {
+            return Some(LabelledGameState {
+                game_state: state,
                 label: game_result,
+            });
+        }
+        None
+    }
+
+    pub fn next_texel_position(&mut self) -> Option<TexelState> {
+        let state = self.next_position();
+        if state.is_some() {
+            let state = state.unwrap();
+            let eval = eval_game_state(&state.game_state);
+            return Some(TexelState {
+                label: state.label,
                 eval: eval.final_eval as f32,
                 trace: eval.trace,
             });
         }
-        return;
+        None
     }
-    panic!("Not implemented");
+
+    pub fn load_positions(&mut self, buf: &mut Vec<LabelledGameState>) {
+        while let Some(pos) = self.next_position() {
+            buf.push(pos);
+        }
+    }
+
+    pub fn load_texel_positions(&mut self, buf: &mut Vec<TexelState>) {
+        while let Some(pos) = self.next_texel_position() {
+            buf.push(pos);
+        }
+    }
 }
