@@ -5,7 +5,6 @@ pub mod loading;
 
 pub use crate::loading::{load_positions, FileFormatSupported, LabelledGameState, Statistics};
 use core_sdk::board_representation::game_state::{BLACK, PIECE_TYPES, WHITE};
-use core_sdk::evaluation::eval_game_state;
 pub use core_sdk::evaluation::parameters::*;
 use core_sdk::evaluation::trace::Trace;
 use rand::{seq::SliceRandom, thread_rng};
@@ -35,7 +34,7 @@ pub const TUNE_PSQT: bool = true;
 
 pub const OPTIMIZE_K: bool = false;
 pub const BATCH_SIZE: usize = 10000000;
-pub const START_LEARNING_RATE: f32 = 10.;
+pub const START_LEARNING_RATE: f32 = 2.;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
 
