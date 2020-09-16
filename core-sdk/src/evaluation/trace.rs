@@ -50,12 +50,12 @@ impl CollapsedTrace {
         }
         let attack_force = [
             [
-                (attack_force_base_value[0][0] / 100.).powf(2.),
-                (attack_force_base_value[0][1] / 100.).powf(2.),
+                (attack_force_base_value[0][0] / 100.),
+                (attack_force_base_value[0][1] / 100.),
             ],
             [
-                (attack_force_base_value[1][0] / 100.).powf(2.),
-                (attack_force_base_value[1][1] / 100.).powf(2.),
+                (attack_force_base_value[1][0] / 100.),
+                (attack_force_base_value[1][1] / 100.),
             ],
         ];
         res.0 += base_attack_value[0][0] * attack_force[0][0]

@@ -680,8 +680,8 @@ pub fn piecewise(
         + PIECE_BASE_ATTACK_FORCE[PieceType::Rook as usize] * (rook_attackers as i16)
         + PIECE_BASE_ATTACK_FORCE[PieceType::Queen as usize] * (queen_attackers as i16);
     let attack_force = (
-        (attack_force_base_value.0 as f32 / 100.0).powf(2.),
-        (attack_force_base_value.1 as f32 / 100.0).powf(2.),
+        (attack_force_base_value.0 as f32 / 100.0),
+        (attack_force_base_value.1 as f32 / 100.0),
     );
     let attack_value = EvaluationScore(
         (base_attack_value.0 as f32 * attack_force.0) as i16,
