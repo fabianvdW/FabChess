@@ -477,6 +477,7 @@ pub fn piecewise(
     let side = if white { WHITE } else { BLACK };
 
     let my_pieces = g.get_pieces_from_side(side);
+    let enemy_pieces = g.get_pieces_from_side(1 - side);
 
     let enemy_king_idx = g.get_king_square(1 - side);
     let enemy_king_attackable = if white {
@@ -493,7 +494,7 @@ pub fn piecewise(
 
     //Pawns and pawn attacks
     let pawns = g.get_piece(PieceType::Pawn, side);
-    let pawn_safe_checks = ((pawn_targets(side, pawns)
+    let pawn_safe_checks = ((pawn_targets(side, pawns) & enemy_pieces
         | single_push_pawn_targets(side, pawns, !all_pieces))
         & pawn_checks
         & !enemy_defended)
@@ -502,7 +503,7 @@ pub fn piecewise(
         (pawn_targets(side, pawns) & !my_pieces & enemy_king_attackable).count_ones();
     let pawn_attackers = ((pawn_targets(1 - side, enemy_king_attackable & !my_pieces)
         | single_push_pawn_targets(1 - side, pawn_checks & !enemy_defended, !all_pieces)
-        | pawn_targets(1 - side, pawn_checks & !enemy_defended))
+        | pawn_targets(1 - side, pawn_checks & !enemy_defended & enemy_pieces))
         & pawns)
         .count_ones();
 

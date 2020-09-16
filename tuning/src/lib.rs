@@ -36,7 +36,7 @@ pub const TUNE_PSQT: bool = false;
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 100_000;
+pub const BATCH_SIZE: usize = 20000000;
 pub const START_LEARNING_RATE: f32 = 2.;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
