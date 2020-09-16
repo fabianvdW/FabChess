@@ -9,12 +9,13 @@ pub fn main() {
     )
     .load_texel_positions(&mut positions);
     println!("Loaded file with {} positions!", positions.len());
-    tuning::loading::PositionLoader::new(
+    /*tuning::loading::PositionLoader::new(
         "D:/FenCollection/Andrews/E12.33-1M-D12-Resolved.epd",
         FileFormatSupported::EPD,
     )
     .load_texel_positions(&mut positions);
     println!("Loaded file with {} positions!", positions.len());
+     */
     let mut tuner = Tuner {
         k: 1.1155,
         positions,

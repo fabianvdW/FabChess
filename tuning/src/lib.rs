@@ -11,7 +11,7 @@ use rand::{seq::SliceRandom, thread_rng};
 
 pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/E12.41-1M-D12-Resolved";
 //Override for all others if true
-pub const TUNE_ALL: bool = false;
+pub const TUNE_ALL: bool = true;
 
 pub const TUNE_TEMPO_BONUS: bool = false;
 pub const TUNE_SHIELDING_PAWNS: bool = false;
