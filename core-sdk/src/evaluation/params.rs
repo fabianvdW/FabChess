@@ -334,27 +334,26 @@ pub const QUEEN_MOBILITY_BONUS: [EvaluationScore; 28] = [
     EvaluationScore(55, 88),
 ];
 pub const PIECE_BASE_ATTACK_VALUE: [EvaluationScore; 5] = [
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
+    EvaluationScore(0, -13),
+    EvaluationScore(26, 23),
+    EvaluationScore(27, 16),
+    EvaluationScore(28, 15),
+    EvaluationScore(36, 36),
 ];
 pub const PIECE_BASE_SAFECHECK_VALUE: [EvaluationScore; 5] = [
     EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
+    EvaluationScore(11, 13),
+    EvaluationScore(5, 8),
+    EvaluationScore(9, 13),
+    EvaluationScore(25, 22),
 ];
 pub const PIECE_BASE_ATTACK_FORCE: [EvaluationScore; 5] = [
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
-    EvaluationScore(1, 1),
+    EvaluationScore(37, 20),
+    EvaluationScore(46, 43),
+    EvaluationScore(45, 42),
+    EvaluationScore(48, 47),
+    EvaluationScore(56, 54),
 ];
-
 pub const PSQT: [[[[EvaluationScore; 8]; 8]; 2]; 6] = [
     [
         [
