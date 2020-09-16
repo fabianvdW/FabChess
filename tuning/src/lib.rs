@@ -9,10 +9,10 @@ pub use core_sdk::evaluation::parameters::{normal_parameters::*, special_paramet
 use core_sdk::evaluation::trace::CollapsedTrace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved.epd";
-pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved";
+pub const POSITION_FILE: &str = "D:/FenCollection/Andrews/E12.41-1M-D12-Resolved.epd";
+pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/E12.41-1M-D12-Resolved";
 //Override for all others if true
-pub const TUNE_ALL: bool = true;
+pub const TUNE_ALL: bool = false;
 
 pub const TUNE_TEMPO_BONUS: bool = true;
 pub const TUNE_SHIELDING_PAWNS: bool = true;
@@ -29,7 +29,7 @@ pub const TUNE_PIECE_VALUES: bool = true;
 pub const TUNE_MOBILITY: bool = true;
 
 pub const TUNE_ATTACK: bool = true;
-pub const TUNE_ATTACK_INDEX: bool = true;
+pub const TUNE_ATTACK_INDEX: bool = false;
 pub const TUNE_PSQT: bool = true;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
