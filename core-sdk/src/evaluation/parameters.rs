@@ -135,37 +135,20 @@ pub mod special_parameters {
     pub const IDX_KNIGHT_VALUE_WITH_PAWN: usize = 0;
     pub const SIZE_KNIGHT_VALUE_WITH_PAWN: usize = 17;
 
-    pub const IDX_ATTACK_WEIGHT: usize = IDX_KNIGHT_VALUE_WITH_PAWN + SIZE_KNIGHT_VALUE_WITH_PAWN;
-    pub const SIZE_ATTACK_WEIGHT: usize = 16;
+    pub const IDX_PIECE_BASE_ATTACK_VALUE: usize =
+        IDX_KNIGHT_VALUE_WITH_PAWN + SIZE_KNIGHT_VALUE_WITH_PAWN;
+    pub const SIZE_PIECE_BASE_ATTACK_VALUE: usize = 10;
 
-    pub const IDX_SAFETY_TABLE: usize = IDX_ATTACK_WEIGHT + SIZE_ATTACK_WEIGHT;
-    pub const SIZE_SAFETY_TABLE: usize = 200;
+    pub const IDX_PIECE_BASE_SAFECHECK_VALUE: usize =
+        IDX_PIECE_BASE_ATTACK_VALUE + SIZE_PIECE_BASE_ATTACK_VALUE;
+    pub const SIZE_PIECE_BASE_SAFECHECK_VALUE: usize = 10;
 
-    pub const IDX_KNIGHT_ATTACK_VALUE: usize = IDX_SAFETY_TABLE + SIZE_SAFETY_TABLE;
-    pub const SIZE_KNIGHT_ATTACK_VALUE: usize = 2;
+    pub const IDX_PIECE_BASE_ATTACK_FORCE: usize =
+        IDX_PIECE_BASE_SAFECHECK_VALUE + SIZE_PIECE_BASE_SAFECHECK_VALUE;
+    pub const SIZE_PIECE_BASE_ATTACK_FORCE: usize = 10;
 
-    pub const IDX_BISHOP_ATTACK_VALUE: usize = IDX_KNIGHT_ATTACK_VALUE + SIZE_KNIGHT_ATTACK_VALUE;
-    pub const SIZE_BISHOP_ATTACK_VALUE: usize = 2;
-
-    pub const IDX_ROOK_ATTACK_VALUE: usize = IDX_BISHOP_ATTACK_VALUE + SIZE_BISHOP_ATTACK_VALUE;
-    pub const SIZE_ROOK_ATTACK_VALUE: usize = 2;
-
-    pub const IDX_QUEEN_ATTACK_VALUE: usize = IDX_ROOK_ATTACK_VALUE + SIZE_ROOK_ATTACK_VALUE;
-    pub const SIZE_QUEEN_ATTACK_VALUE: usize = 2;
-
-    pub const IDX_KNIGHT_CHECK_VALUE: usize = IDX_QUEEN_ATTACK_VALUE + SIZE_QUEEN_ATTACK_VALUE;
-    pub const SIZE_KNIGHT_CHECK_VALUE: usize = 2;
-
-    pub const IDX_BISHOP_CHECK_VALUE: usize = IDX_KNIGHT_CHECK_VALUE + SIZE_KNIGHT_CHECK_VALUE;
-    pub const SIZE_BISHOP_CHECK_VALUE: usize = 2;
-
-    pub const IDX_ROOK_CHECK_VALUE: usize = IDX_BISHOP_CHECK_VALUE + SIZE_BISHOP_CHECK_VALUE;
-    pub const SIZE_ROOK_CHECK_VALUE: usize = 2;
-
-    pub const IDX_QUEEN_CHECK_VALUE: usize = IDX_ROOK_CHECK_VALUE + SIZE_ROOK_CHECK_VALUE;
-    pub const SIZE_QUEEN_CHECK_VALUE: usize = 2;
-
-    pub const IDX_SLIGHTLY_WINNING_NO_PAWN: usize = IDX_QUEEN_CHECK_VALUE + SIZE_QUEEN_CHECK_VALUE;
+    pub const IDX_SLIGHTLY_WINNING_NO_PAWN: usize =
+        IDX_PIECE_BASE_ATTACK_FORCE + SIZE_PIECE_BASE_ATTACK_FORCE;
     pub const SIZE_SLIGHTLY_WINNING_NO_PAWN: usize = 1;
 
     pub const IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC: usize =
@@ -338,41 +321,24 @@ impl Parameters {
         );
         Parameters::init_constants(&mut params, &ROOK_MOBILITY_BONUS, IDX_ROOK_MOBILITY, true);
         Parameters::init_constants(&mut params, &QUEEN_MOBILITY_BONUS, IDX_QUEEN_MOBILITY, true);
-        Parameters::init_constants(&mut params, &ATTACK_WEIGHT, IDX_ATTACK_WEIGHT, false);
-        Parameters::init_constants(&mut params, &SAFETY_TABLE, IDX_SAFETY_TABLE, false);
-        Parameters::init_constant(
+        Parameters::init_constants(
             &mut params,
-            KNIGHT_ATTACK_WORTH,
-            IDX_KNIGHT_ATTACK_VALUE,
+            &PIECE_BASE_ATTACK_VALUE,
+            IDX_PIECE_BASE_ATTACK_VALUE,
             false,
         );
-        Parameters::init_constant(
+        Parameters::init_constants(
             &mut params,
-            BISHOP_ATTACK_WORTH,
-            IDX_BISHOP_ATTACK_VALUE,
+            &PIECE_BASE_SAFECHECK_VALUE,
+            IDX_PIECE_BASE_SAFECHECK_VALUE,
             false,
         );
-        Parameters::init_constant(&mut params, ROOK_ATTACK_WORTH, IDX_ROOK_ATTACK_VALUE, false);
-        Parameters::init_constant(
+        Parameters::init_constants(
             &mut params,
-            QUEEN_ATTACK_WORTH,
-            IDX_QUEEN_ATTACK_VALUE,
+            &PIECE_BASE_ATTACK_FORCE,
+            IDX_PIECE_BASE_ATTACK_FORCE,
             false,
         );
-        Parameters::init_constant(
-            &mut params,
-            KNIGHT_SAFE_CHECK,
-            IDX_KNIGHT_CHECK_VALUE,
-            false,
-        );
-        Parameters::init_constant(
-            &mut params,
-            BISHOP_SAFE_CHECK,
-            IDX_BISHOP_CHECK_VALUE,
-            false,
-        );
-        Parameters::init_constant(&mut params, ROOK_SAFE_CHECK, IDX_ROOK_CHECK_VALUE, false);
-        Parameters::init_constant(&mut params, QUEEN_SAFE_CHECK, IDX_QUEEN_CHECK_VALUE, false);
         for pt in PIECE_TYPES.iter() {
             Parameters::init_psqt(
                 &mut params,
@@ -712,44 +678,28 @@ impl Display for Parameters {
             self.format_constants(IDX_QUEEN_MOBILITY, SIZE_QUEEN_MOBILITY, true),
         ));
         res_str.push_str(&format!(
-            "pub const ATTACK_WEIGHT{}",
-            self.format_constants(IDX_ATTACK_WEIGHT, SIZE_ATTACK_WEIGHT, false),
+            "pub const PIECE_BASE_ATTACK_VALUE{}",
+            self.format_constants(
+                IDX_PIECE_BASE_ATTACK_VALUE,
+                SIZE_PIECE_BASE_ATTACK_VALUE,
+                false
+            ),
         ));
         res_str.push_str(&format!(
-            "pub const SAFETY_TABLE{}",
-            self.format_constants(IDX_SAFETY_TABLE, SIZE_SAFETY_TABLE, false),
+            "pub const PIECE_BASE_SAFECHECK_VALUE{}",
+            self.format_constants(
+                IDX_PIECE_BASE_SAFECHECK_VALUE,
+                SIZE_PIECE_BASE_SAFECHECK_VALUE,
+                false
+            ),
         ));
         res_str.push_str(&format!(
-            "pub const KNIGHT_ATTACK_WORTH{}",
-            self.format_constant(IDX_KNIGHT_ATTACK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_ATTACK_WORTH{}",
-            self.format_constant(IDX_BISHOP_ATTACK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_ATTACK_WORTH{}",
-            self.format_constant(IDX_ROOK_ATTACK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_ATTACK_WORTH{}",
-            self.format_constant(IDX_QUEEN_ATTACK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const KNIGHT_SAFE_CHECK{}",
-            self.format_constant(IDX_KNIGHT_CHECK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const BISHOP_SAFE_CHECK{}",
-            self.format_constant(IDX_BISHOP_CHECK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const ROOK_SAFE_CHECK{}",
-            self.format_constant(IDX_ROOK_CHECK_VALUE, false),
-        ));
-        res_str.push_str(&format!(
-            "pub const QUEEN_SAFE_CHECK{}",
-            self.format_constant(IDX_QUEEN_CHECK_VALUE, false),
+            "pub const PIECE_BASE_ATTACK_FORCE{}",
+            self.format_constants(
+                IDX_PIECE_BASE_ATTACK_FORCE,
+                SIZE_PIECE_BASE_ATTACK_FORCE,
+                false
+            ),
         ));
         res_str.push_str("pub const PSQT: [[[[EvaluationScore; 8]; 8]; 2]; 6] = [");
         for &pt in PIECE_TYPES.iter() {

@@ -47,7 +47,7 @@ pub fn psqt(
         res += piece_sum;
         #[cfg(feature = "display-eval")]
         {
-            println!("\t{:?}  : {}", *pt, piece_sum);
+            println!("\t{:?}  : {}", pt, piece_sum);
         }
     }
     #[cfg(feature = "display-eval")]

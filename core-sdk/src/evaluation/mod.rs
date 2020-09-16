@@ -12,7 +12,9 @@ use crate::evaluation::parameters::normal_parameters::*;
 #[cfg(feature = "texel-tuning")]
 use crate::evaluation::trace::LargeTrace;
 use crate::move_generation::movegen;
-use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
+use crate::move_generation::movegen::{
+    pawn_east_targets, pawn_targets, pawn_west_targets, single_push_pawn_targets,
+};
 use params::*;
 use psqt_evaluation::psqt;
 use psqt_evaluation::BLACK_INDEX;
@@ -474,8 +476,6 @@ pub fn piecewise(
 ) -> EvaluationScore {
     let side = if white { WHITE } else { BLACK };
 
-    let defended_by_minors = enemy_defend_by_minors;
-    let defended_squares = enemy_defended;
     let my_pieces = g.get_pieces_from_side(side);
 
     let enemy_king_idx = g.get_king_square(1 - side);
@@ -483,15 +483,31 @@ pub fn piecewise(
         KING_ZONE_BLACK[enemy_king_idx]
     } else {
         KING_ZONE_WHITE[enemy_king_idx]
-    } & !defended_by_minors;
+    } & !enemy_defend_by_minors;
 
-    let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
     let all_pieces = g.get_all_pieces();
+    let pawn_checks = pawn_targets(1 - side, 1u64 << enemy_king_idx) & !my_pieces;
+    let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
     let bishop_checks = PieceType::Bishop.attacks(enemy_king_idx, all_pieces);
     let rook_checks = PieceType::Rook.attacks(enemy_king_idx, all_pieces);
+
+    //Pawns and pawn attacks
+    let pawns = g.get_piece(PieceType::Pawn, side);
+    let pawn_safe_checks = ((pawn_targets(side, pawns)
+        | single_push_pawn_targets(side, pawns, !all_pieces))
+        & pawn_checks
+        & !enemy_defended)
+        .count_ones();
+    let pawn_attacked_squares =
+        (pawn_targets(side, pawns) & !my_pieces & enemy_king_attackable).count_ones();
+    let pawn_attackers = ((pawn_targets(1 - side, enemy_king_attackable & !my_pieces)
+        | single_push_pawn_targets(1 - side, pawn_checks & !enemy_defended, !all_pieces)
+        | pawn_targets(1 - side, pawn_checks & !enemy_defended))
+        & pawns)
+        .count_ones();
+
     //Knights
-    let mut knight_attackers: i16 = 0;
-    let mut knight_attacker_values = EvaluationScore::default();
+    let (mut knight_safe_checks, mut knight_attacked_squares, mut knight_attackers) = (0, 0, 0);
     let mut mk = EvaluationScore::default();
     let mut knights = g.get_piece(PieceType::Knight, side);
     while knights != 0u64 {
@@ -501,29 +517,24 @@ pub fn piecewise(
         let mobility = targets.count_ones() as usize;
         mk += KNIGHT_MOBILITY_BONUS[mobility];
 
-        let has_safe_check = (targets & knight_checks & !defended_squares) != 0u64;
+        let has_safe_check = (targets & knight_checks & !enemy_defended) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
+        knight_attacked_squares += enemy_king_attacks.count_ones();
         if has_safe_check || enemy_king_attacks != 0u64 {
             knight_attackers += 1;
         }
-        knight_attacker_values += KNIGHT_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         if has_safe_check {
-            knight_attacker_values += KNIGHT_SAFE_CHECK;
+            knight_safe_checks += 1;
         }
         #[cfg(feature = "texel-tuning")]
         {
             trace.normal_coeffs[IDX_KNIGHT_MOBILITY + mobility] +=
                 if side == WHITE { 1 } else { -1 };
-            trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
-            if has_safe_check {
-                trace.knight_safe_check[side] += 1;
-            }
         }
         knights ^= square(idx);
     }
     //Bishops
-    let mut bishop_attackers: i16 = 0;
-    let mut bishop_attacker_values = EvaluationScore::default();
+    let (mut bishop_safe_checks, mut bishop_attacked_squares, mut bishop_attackers) = (0, 0, 0);
     let (mut mb, mut mb_diag) = (EvaluationScore::default(), EvaluationScore::default());
     let mut bishops = g.get_piece(PieceType::Bishop, side);
     while bishops != 0u64 {
@@ -537,14 +548,14 @@ pub fn piecewise(
         let mobility = targets.count_ones() as usize;
         mb += BISHOP_MOBILITY_BONUS[mobility];
 
-        let has_safe_check = (targets & bishop_checks & !defended_squares) != 0u64;
+        let has_safe_check = (targets & bishop_checks & !enemy_defended) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
+        bishop_attacked_squares += enemy_king_attacks.count_ones();
         if has_safe_check || enemy_king_attacks != 0u64 {
             bishop_attackers += 1;
         }
-        bishop_attacker_values += BISHOP_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         if has_safe_check {
-            bishop_attacker_values += BISHOP_SAFE_CHECK;
+            bishop_safe_checks += 1;
         }
         #[cfg(feature = "texel-tuning")]
         {
@@ -552,16 +563,11 @@ pub fn piecewise(
                 if side == WHITE { 1 } else { -1 };
             trace.normal_coeffs[IDX_BISHOP_MOBILITY + mobility] +=
                 if side == WHITE { 1 } else { -1 };
-            trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
-            if has_safe_check {
-                trace.bishop_safe_check[side] += 1;
-            }
         }
         bishops ^= square(idx);
     }
     //Rooks
-    let mut rook_attackers: i16 = 0;
-    let mut rook_attacker_values = EvaluationScore::default();
+    let (mut rook_safe_checks, mut rook_attacked_squares, mut rook_attackers) = (0, 0, 0);
     let (mut mr, mut rooks_onopen, mut rooks_on_semi_open, mut rooks_onseventh) =
         (EvaluationScore::default(), 0i16, 0i16, 0i16);
     let mut rooks = g.get_piece(PieceType::Rook, side);
@@ -584,29 +590,24 @@ pub fn piecewise(
         let mobility = targets.count_ones() as usize;
         mr += ROOK_MOBILITY_BONUS[mobility];
 
-        let has_safe_check = (targets & rook_checks & !defended_squares) != 0u64;
+        let has_safe_check = (targets & rook_checks & !enemy_defended) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
+        rook_attacked_squares += enemy_king_attacks.count_ones();
         if has_safe_check || enemy_king_attacks != 0u64 {
             rook_attackers += 1;
         }
-        rook_attacker_values += ROOK_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         if has_safe_check {
-            rook_attacker_values += ROOK_SAFE_CHECK;
+            rook_safe_checks += 1;
         }
         #[cfg(feature = "texel-tuning")]
         {
             trace.normal_coeffs[IDX_ROOK_MOBILITY + mobility] += if side == WHITE { 1 } else { -1 };
-            trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
-            if has_safe_check {
-                trace.rook_safe_check[side] += 1;
-            }
         }
         rooks ^= square(idx);
     }
 
     //Queens
-    let mut queen_attackers: i16 = 0;
-    let mut queen_attacker_values = EvaluationScore::default();
+    let (mut queen_safe_checks, mut queen_attacked_squares, mut queen_attackers) = (0, 0, 0);
     let (mut queens_onopen, mut queens_on_semi_open) = (0i16, 0i16);
     let mut mq = EvaluationScore::default();
     let mut queens = g.get_piece(PieceType::Queen, side);
@@ -630,24 +631,20 @@ pub fn piecewise(
         let mobility = targets.count_ones() as usize;
         mq += QUEEN_MOBILITY_BONUS[mobility];
 
-        let has_safe_check = (targets & (bishop_checks | rook_checks) & !defended_squares) != 0u64;
+        let has_safe_check = (targets & (bishop_checks | rook_checks) & !enemy_defended) != 0u64;
         let enemy_king_attacks = targets & enemy_king_attackable;
+        queen_attacked_squares += enemy_king_attacks.count_ones();
         if has_safe_check || enemy_king_attacks != 0u64 {
             queen_attackers += 1;
         }
-        queen_attacker_values += QUEEN_ATTACK_WORTH * enemy_king_attacks.count_ones() as i16;
         if has_safe_check {
-            queen_attacker_values += QUEEN_SAFE_CHECK;
+            queen_safe_checks += 1;
         }
 
         #[cfg(feature = "texel-tuning")]
         {
             trace.normal_coeffs[IDX_QUEEN_MOBILITY + mobility] +=
                 if side == WHITE { 1 } else { -1 };
-            trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
-            if has_safe_check {
-                trace.queen_safe_check[side] += 1;
-            }
         }
         queens ^= square(idx);
     }
@@ -664,32 +661,50 @@ pub fn piecewise(
         trace.normal_coeffs[IDX_QUEEN_ON_SEMI_OPEN] +=
             queens_on_semi_open as i8 * if side == WHITE { 1 } else { -1 };
     }
-
-    let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0
-        + bishop_attacker_values.0
-        + rook_attacker_values.0
-        + queen_attacker_values.0)
-        .min(99) as usize]
-        .0 as isize
-        * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-            .min(7) as usize]
-            .0 as isize) as f64
-        / 100.0) as i16;
-    let attack_eg = ((SAFETY_TABLE[(knight_attacker_values.1
-        + bishop_attacker_values.1
-        + rook_attacker_values.1
-        + queen_attacker_values.1)
-        .min(99) as usize]
-        .1 as isize
-        * ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-            .min(7) as usize]
-            .1 as isize) as f64
-        / 100.0) as i16;
-    let attack = EvaluationScore(attack_mg, attack_eg);
+    let base_attack_value = PIECE_BASE_ATTACK_VALUE[PieceType::Pawn as usize]
+        * (pawn_attacked_squares as i16)
+        + PIECE_BASE_ATTACK_VALUE[PieceType::Knight as usize] * (knight_attacked_squares as i16)
+        + PIECE_BASE_ATTACK_VALUE[PieceType::Bishop as usize] * (bishop_attacked_squares as i16)
+        + PIECE_BASE_ATTACK_VALUE[PieceType::Rook as usize] * (rook_attacked_squares as i16)
+        + PIECE_BASE_ATTACK_VALUE[PieceType::Queen as usize] * (queen_attacked_squares as i16)
+        + PIECE_BASE_SAFECHECK_VALUE[PieceType::Pawn as usize] * (pawn_safe_checks as i16)
+        + PIECE_BASE_SAFECHECK_VALUE[PieceType::Knight as usize] * (knight_safe_checks as i16)
+        + PIECE_BASE_SAFECHECK_VALUE[PieceType::Bishop as usize] * (bishop_safe_checks as i16)
+        + PIECE_BASE_SAFECHECK_VALUE[PieceType::Rook as usize] * (rook_safe_checks as i16)
+        + PIECE_BASE_SAFECHECK_VALUE[PieceType::Queen as usize] * (queen_safe_checks as i16);
+    let attack_force_base_value = PIECE_BASE_ATTACK_FORCE[PieceType::Pawn as usize]
+        * (pawn_attackers as i16)
+        + PIECE_BASE_ATTACK_FORCE[PieceType::Knight as usize] * (knight_attackers as i16)
+        + PIECE_BASE_ATTACK_FORCE[PieceType::Bishop as usize] * (bishop_attackers as i16)
+        + PIECE_BASE_ATTACK_FORCE[PieceType::Rook as usize] * (rook_attackers as i16)
+        + PIECE_BASE_ATTACK_FORCE[PieceType::Queen as usize] * (queen_attackers as i16);
+    let attack_force = (
+        (attack_force_base_value.0 as f32 / 100.0).powf(2.),
+        (attack_force_base_value.1 as f32 / 100.0).powf(2.),
+    );
+    let attack_value = EvaluationScore(
+        (base_attack_value.0 as f32 * attack_force.0) as i16,
+        (base_attack_value.1 as f32 * attack_force.1) as i16,
+    );
     #[cfg(feature = "texel-tuning")]
     {
-        trace.attackers[side] =
-            (knight_attackers + bishop_attackers + rook_attackers + queen_attackers).min(7) as u8;
+        trace.attacked_squares[PieceType::Pawn as usize][side] = pawn_attacked_squares as u8;
+        trace.attacked_squares[PieceType::Knight as usize][side] = knight_attacked_squares as u8;
+        trace.attacked_squares[PieceType::Bishop as usize][side] = bishop_attacked_squares as u8;
+        trace.attacked_squares[PieceType::Rook as usize][side] = rook_attacked_squares as u8;
+        trace.attacked_squares[PieceType::Queen as usize][side] = queen_attacked_squares as u8;
+
+        trace.safe_checks[PieceType::Pawn as usize][side] = pawn_safe_checks as u8;
+        trace.safe_checks[PieceType::Knight as usize][side] = knight_safe_checks as u8;
+        trace.safe_checks[PieceType::Bishop as usize][side] = bishop_safe_checks as u8;
+        trace.safe_checks[PieceType::Rook as usize][side] = rook_safe_checks as u8;
+        trace.safe_checks[PieceType::Queen as usize][side] = queen_safe_checks as u8;
+
+        trace.attackers[PieceType::Pawn as usize][side] = pawn_attackers as u8;
+        trace.attackers[PieceType::Knight as usize][side] = knight_attackers as u8;
+        trace.attackers[PieceType::Bishop as usize][side] = bishop_attackers as u8;
+        trace.attackers[PieceType::Rook as usize][side] = rook_attackers as u8;
+        trace.attackers[PieceType::Queen as usize][side] = queen_attackers as u8;
     }
     #[allow(clippy::let_and_return)]
     let res = mk
@@ -702,7 +717,7 @@ pub fn piecewise(
         + ROOK_ON_SEVENTH * rooks_onseventh
         + QUEEN_ON_OPEN_FILE_BONUS * queens_onopen
         + QUEEN_ON_SEMI_OPEN_FILE_BONUS * queens_on_semi_open
-        + attack;
+        + attack_value;
 
     #[cfg(feature = "display-eval")]
     {
@@ -738,54 +753,32 @@ pub fn piecewise(
             ROOK_ON_SEVENTH * rooks_onseventh
         );
         println!(
-            "\tKnight Attackers: Num: {} , Val: {}",
-            knight_attackers, knight_attacker_values
+            "\tPawn Attackers: Squares: {}, Checks: {}, Base Contribution: {} - Num: {}, Force Contribution: {}",
+            pawn_attacked_squares, pawn_safe_checks, PIECE_BASE_ATTACK_VALUE[PieceType::Pawn as usize] * pawn_attacked_squares as i16 + PIECE_BASE_SAFECHECK_VALUE[PieceType::Pawn as usize] * pawn_safe_checks as i16,
+            pawn_attackers, PIECE_BASE_ATTACK_FORCE[PieceType::Pawn as usize] * pawn_attackers as i16
         );
         println!(
-            "\tBishop Attackers: Num: {} , Val: {}",
-            bishop_attackers, bishop_attacker_values
+            "\tKnight Attackers: Squares: {}, Checks: {}, Base Contribution: {} - Num: {}, Force Contribution: {}", 
+            knight_attacked_squares, knight_safe_checks, PIECE_BASE_ATTACK_VALUE[PieceType::Knight as usize] * knight_attacked_squares as i16 + PIECE_BASE_SAFECHECK_VALUE[PieceType::Knight as usize] * knight_safe_checks,
+            knight_attackers, PIECE_BASE_ATTACK_FORCE[PieceType::Knight as usize] * knight_attackers
         );
         println!(
-            "\tRook Attackers: Num: {} , Val: {}",
-            rook_attackers, rook_attacker_values
+            "\tBishop Attackers: Squares: {}, Checks: {}, Base Contribution: {} - Num: {}, Force Contribution: {}",
+            bishop_attacked_squares, bishop_safe_checks, PIECE_BASE_ATTACK_VALUE[PieceType::Bishop as usize] * bishop_attacked_squares as i16 + PIECE_BASE_SAFECHECK_VALUE[PieceType::Bishop as usize] * bishop_safe_checks,
+            bishop_attackers, PIECE_BASE_ATTACK_FORCE[PieceType::Bishop as usize] * bishop_attackers
         );
         println!(
-            "\tQueen Attackers: Num: {} , Val: {}",
-            queen_attackers, queen_attacker_values
+            "\tRook Attackers: Squares: {}, Checks: {}, Base Contribution: {} - Num: {}, Force Contribution: {}",
+            rook_attacked_squares, rook_safe_checks, PIECE_BASE_ATTACK_VALUE[PieceType::Rook as usize] * rook_attacked_squares as i16 + PIECE_BASE_SAFECHECK_VALUE[PieceType::Rook as usize] * rook_safe_checks,
+            rook_attackers, PIECE_BASE_ATTACK_FORCE[PieceType::Rook as usize] * rook_attackers
         );
         println!(
-            "\tSum Attackers: (Num: {} , Val: {}",
-            knight_attackers + bishop_attackers + rook_attackers + queen_attackers,
-            knight_attacker_values
-                + bishop_attacker_values
-                + rook_attacker_values
-                + queen_attacker_values
+            "\tQueen Attackers: Squares: {}, Checks: {}, Base Contribution: {} - Num: {}, Force Contribution: {}",
+            queen_attacked_squares, queen_safe_checks, PIECE_BASE_ATTACK_VALUE[PieceType::Queen as usize] * queen_attacked_squares as i16 + PIECE_BASE_SAFECHECK_VALUE[PieceType::Queen as usize] * queen_safe_checks,
+            queen_attackers, PIECE_BASE_ATTACK_FORCE[PieceType::Queen as usize] * queen_attackers
         );
         println!(
-            "\tAttack MG value: {} * {} / 100.0 -> {}",
-            SAFETY_TABLE[(knight_attacker_values.0
-                + bishop_attacker_values.0
-                + rook_attacker_values.0
-                + queen_attacker_values.0)
-                .min(99) as usize]
-                .0,
-            ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-                .min(7) as usize]
-                .0,
-            attack_mg
-        );
-        println!(
-            "\tAttack EG value: {} * {} / 100.0 -> {}",
-            SAFETY_TABLE[(knight_attacker_values.1
-                + bishop_attacker_values.1
-                + rook_attacker_values.1
-                + queen_attacker_values.1)
-                .min(99) as usize]
-                .1,
-            ATTACK_WEIGHT[(knight_attackers + bishop_attackers + rook_attackers + queen_attackers)
-                .min(7) as usize]
-                .1,
-            attack_eg
+            "\tBase Attack Sum: {}, Base Attack Force: {}, Adjusted Attack Force: {:?}, Final Attack: {}",base_attack_value, attack_force_base_value, attack_force, attack_value
         );
         println!("Sum: {}", res);
     }

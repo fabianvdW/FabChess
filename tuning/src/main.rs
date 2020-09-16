@@ -4,21 +4,17 @@ pub fn main() {
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
     let mut positions: Vec<TexelState> = Vec::with_capacity(1);
     tuning::loading::PositionLoader::new(
-        POSITION_FILE,
-        if POSITION_FILE.ends_with(".txt") {
-            FileFormatSupported::OwnEncoding
-        } else if POSITION_FILE.ends_with("epd") {
-            FileFormatSupported::EPD
-        } else {
-            panic!("Invalid position file encoding!")
-        },
+        "D:/FenCollection/Andrews/E12.41-1M-D12-Resolved.epd",
+        FileFormatSupported::EPD,
     )
     .load_texel_positions(&mut positions);
-    println!(
-        "Loaded file {} with {} positions!",
-        POSITION_FILE,
-        positions.len()
-    );
+    println!("Loaded file with {} positions!", positions.len());
+    tuning::loading::PositionLoader::new(
+        "D:/FenCollection/Andrews/E12.33-1M-D12-Resolved.epd",
+        FileFormatSupported::EPD,
+    )
+    .load_texel_positions(&mut positions);
+    println!("Loaded file with {} positions!", positions.len());
     let mut tuner = Tuner {
         k: 1.1155,
         positions,
