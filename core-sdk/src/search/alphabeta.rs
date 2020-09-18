@@ -489,7 +489,7 @@ pub fn null_move_pruning(
         && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
         && static_evaluation.expect("null move static") * p.color >= p.beta
         && (tt_entry.is_none()
-            || !tt_entry.unwrap().is_lower_bound()
+            || tt_entry.unwrap().is_upper_bound()
             || tt_entry.unwrap().score >= p.beta)
     {
         let nextgs = make_nullmove(p.game_state);
