@@ -485,12 +485,17 @@ pub fn null_move_pruning(
     static_evaluation: Option<i16>,
     tt_entry: &Option<CacheEntry>,
 ) -> SearchInstruction {
+    let tt_do_nmp = tt_entry.is_some()
+        && !tt_entry.unwrap().is_upper_bound()
+        && tt_entry.unwrap().score >= p.beta;
+    let tt_dont_nmp = tt_entry.is_some()
+        && !tt_entry.unwrap().is_lower_bound()
+        && tt_entry.unwrap().score < p.beta;
+    let static_do_nmp = static_evaluation.unwrap() * p.color >= p.beta;
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH
         && p.game_state.has_non_pawns(p.game_state.get_color_to_move())
-        && static_evaluation.expect("null move static") * p.color >= p.beta
-        && (tt_entry.is_none()
-            || !tt_entry.unwrap().is_lower_bound()
-            || tt_entry.unwrap().score >= p.beta)
+        && (tt_do_nmp || static_do_nmp)
+        && !tt_dont_nmp
     {
         let nextgs = make_nullmove(p.game_state);
         let rat = -principal_variation_search(
