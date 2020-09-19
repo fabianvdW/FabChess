@@ -377,20 +377,21 @@ impl Thread {
                 self.id
             );
         }
-        let mut curr_depth = 0;
+        let mut assigned_depth = 0;
         let mut previous_score: Option<i16> = None;
         loop {
-            let temp = self.itcs.get_next_depth(curr_depth);
-            curr_depth = temp.0;
+            let temp = self.itcs.get_next_depth(assigned_depth);
+            assigned_depth = temp.0;
             self.main_thread_in_depth = temp.1;
-            if curr_depth as i16 > max_depth {
+            if assigned_depth as i16 > max_depth {
                 break;
             }
+            let mut actual_depth = assigned_depth;
             //Start Aspiration Window
             if self.uci_options.debug_print {
                 println!(
                     "info String Thread {} starting aspiration window with depth {}",
-                    self.id, curr_depth
+                    self.id, assigned_depth
                 );
             }
             let mut delta = if let Some(ps) = previous_score {
@@ -398,12 +399,12 @@ impl Thread {
             } else {
                 0
             } + 14;
-            let mut alpha = if curr_depth == 1 {
+            let mut alpha = if assigned_depth == 1 {
                 -16000
             } else {
                 self.current_pv.score - delta
             };
-            let mut beta = if curr_depth == 1 {
+            let mut beta = if assigned_depth == 1 {
                 16000
             } else {
                 self.current_pv.score + delta
@@ -413,7 +414,7 @@ impl Thread {
                     CombinedSearchParameters::from(
                         alpha,
                         beta,
-                        curr_depth as i16,
+                        actual_depth as i16,
                         &state,
                         if state.get_color_to_move() == WHITE {
                             1
@@ -428,7 +429,11 @@ impl Thread {
                     break;
                 }
                 if self.current_pv.score > alpha && self.current_pv.score < beta {
-                    break;
+                    if actual_depth < assigned_depth {
+                        actual_depth = assigned_depth
+                    } else {
+                        break;
+                    }
                 }
 
                 if self.current_pv.score <= alpha {
@@ -446,6 +451,11 @@ impl Thread {
                         alpha = -16000;
                     } else {
                         beta += delta;
+                    }
+                    actual_depth = if assigned_depth == 1 {
+                        1
+                    } else {
+                        assigned_depth - 1
                     }
                 }
                 delta = (f64::from(delta) * 1.5) as i16;
