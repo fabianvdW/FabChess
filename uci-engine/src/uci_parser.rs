@@ -2,6 +2,7 @@ use super::uci_engine::UCIEngine;
 use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
+use core_sdk::search::alphabeta::{MAX_FUTILITY_MARGIN, MIN_FUTILITY_MARGIN};
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use core_sdk::search::searcher::{
     search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO,
@@ -9,6 +10,7 @@ use core_sdk::search::searcher::{
 };
 use core_sdk::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHEAD};
 use core_sdk::search::MAX_SEARCH_DEPTH;
+use core_sdk::UCIOptions;
 use std::io;
 use std::sync::{atomic::Ordering, Arc};
 use std::thread;
@@ -21,8 +23,10 @@ pub fn parse_loop() {
     let mut us = UCIEngine::standard();
 
     let itcs = Arc::new(InterThreadCommunicationSystem::default());
-    *itcs.cache() =
-        Cache::with_size_threaded(itcs.uci_options().hash_size, itcs.uci_options().threads);
+    *itcs.cache() = Cache::with_size_threaded(
+        itcs.get_current_uci_options().hash_size,
+        itcs.get_current_uci_options().threads,
+    );
     let mut movelist = movegen::MoveList::default();
 
     let stdin = io::stdin();
@@ -43,13 +47,14 @@ pub fn parse_loop() {
                 continue;
             }
             "uci" => {
-                uci(&us, &itcs);
+                uci(&us);
             }
             "setoption" => setoption(&arg[1..], &itcs),
 
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                itcs.cache().clear_threaded(itcs.uci_options().threads);
+                itcs.cache()
+                    .clear_threaded(itcs.get_current_uci_options().threads);
                 itcs.saved_time.store(0, Ordering::Relaxed);
             }
             "isready" => isready(&itcs, true),
@@ -234,7 +239,7 @@ pub fn scout_and_make_draftmove(
 
 pub fn isready(itcs: &Arc<InterThreadCommunicationSystem>, print_rdy: bool) {
     if itcs.tx.read().unwrap().len() == 0 {
-        let threads = itcs.uci_options().threads;
+        let threads = itcs.get_current_uci_options().threads;
         InterThreadCommunicationSystem::update_thread_count(itcs, threads);
     }
     if print_rdy {
@@ -242,36 +247,33 @@ pub fn isready(itcs: &Arc<InterThreadCommunicationSystem>, print_rdy: bool) {
     }
 }
 
-pub fn uci(engine: &UCIEngine, itcs: &InterThreadCommunicationSystem) {
+pub fn uci(engine: &UCIEngine) {
     engine.id_command();
+    let options = UCIOptions::default();
     println!(
         "option name Hash type spin default {} min {} max {}",
-        itcs.uci_options().hash_size,
-        MIN_HASH_SIZE,
-        MAX_HASH_SIZE
+        options.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
     );
     println!("option name ClearHash type button");
     println!(
         "option name Threads type spin default {} min {} max {}",
-        itcs.uci_options().threads,
-        MIN_THREADS,
-        MAX_THREADS
+        options.threads, MIN_THREADS, MAX_THREADS
     );
     println!(
         "option name MoveOverhead type spin default {} min {} max {}",
-        itcs.uci_options().move_overhead,
-        MIN_MOVE_OVERHEAD,
-        MAX_MOVE_OVERHEAD
+        options.move_overhead, MIN_MOVE_OVERHEAD, MAX_MOVE_OVERHEAD
     );
     println!(
         "option name DebugSMPPrint type check default {}",
-        itcs.uci_options().debug_print
+        options.debug_print
     );
     println!(
         "option name SMPSkipRatio type spin default {} min {} max {}",
-        itcs.uci_options().skip_ratio,
-        MIN_SKIP_RATIO,
-        MAX_SKIP_RATIO
+        options.skip_ratio, MIN_SKIP_RATIO, MAX_SKIP_RATIO
+    );
+    println!(
+        "option name FutilityMargin type spin default {} min {} max {}",
+        options.futility_margin, MIN_FUTILITY_MARGIN, MAX_FUTILITY_MARGIN
     );
     println!("uciok");
 }
@@ -285,14 +287,15 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid Hash value!");
-                itcs.uci_options().hash_size = num;
-                let num_threads = itcs.uci_options().threads;
+                itcs.uci_options.write().unwrap().hash_size = num;
+                let num_threads = itcs.get_current_uci_options().threads;
                 *itcs.cache() = Cache::with_size_threaded(num, num_threads);
                 println!("info String Succesfully set Hash to {}", num);
                 return;
             }
             "clearhash" => {
-                itcs.cache().clear_threaded(itcs.uci_options().threads);
+                itcs.cache()
+                    .clear_threaded(itcs.get_current_uci_options().threads);
                 println!("info String Succesfully cleared hash!");
                 return;
             }
@@ -308,7 +311,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2]
                     .parse::<u64>()
                     .expect("Invalid MoveOverhead value!");
-                itcs.uci_options().move_overhead = num;
+                itcs.uci_options.write().unwrap().move_overhead = num;
                 println!("info String Succesfully set MoveOverhad to {}", num);
                 return;
             }
@@ -316,7 +319,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let val = cmd[index + 2]
                     .parse::<bool>()
                     .expect("Invalid DebugSMPPrint value!");
-                itcs.uci_options().debug_print = val;
+                itcs.uci_options.write().unwrap().debug_print = val;
                 println!("info String Succesfully set DebugSMPPrint to {}", val);
                 return;
             }
@@ -324,8 +327,16 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2]
                     .parse::<usize>()
                     .expect("Invalid SMPSkipRatio value!");
-                itcs.uci_options().skip_ratio = num;
+                itcs.uci_options.write().unwrap().skip_ratio = num;
                 println!("info String Succesfully set SMPSkipRatio to {}", num);
+                return;
+            }
+            "futilitymargin" => {
+                let num = cmd[index + 2]
+                    .parse::<i16>()
+                    .expect("Invalid FutilityMargin value!");
+                itcs.uci_options.write().unwrap().futility_margin = num;
+                println!("info String Succesfully set FutilityMargin to {}", num);
                 return;
             }
             _ => {

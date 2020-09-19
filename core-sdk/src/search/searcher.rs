@@ -39,7 +39,7 @@ pub enum DepthInformation {
     UnSearched,
 }
 pub struct InterThreadCommunicationSystem {
-    pub uci_options: UnsafeCell<UCIOptions>,
+    pub uci_options: RwLock<UCIOptions>,
     pub best_pv: Mutex<ScoredPrincipalVariation>,
     pub stable_pv: AtomicBool,
     pub depth_info: Mutex<[DepthInformation; MAX_SEARCH_DEPTH]>,
@@ -59,7 +59,7 @@ impl Default for InterThreadCommunicationSystem {
     fn default() -> Self {
         let (tx_f, rx_f) = channel();
         InterThreadCommunicationSystem {
-            uci_options: UnsafeCell::new(UCIOptions::default()),
+            uci_options: RwLock::new(UCIOptions::default()),
             best_pv: Mutex::new(ScoredPrincipalVariation::default()),
             stable_pv: AtomicBool::new(false),
             depth_info: Mutex::new([DepthInformation::UnSearched; MAX_SEARCH_DEPTH]),
@@ -81,8 +81,8 @@ impl InterThreadCommunicationSystem {
     pub fn cache(&self) -> &mut Cache {
         unsafe { self.cache.get().as_mut().unwrap() }
     }
-    pub fn uci_options(&self) -> &mut UCIOptions {
-        unsafe { self.uci_options.get().as_mut().unwrap() }
+    pub fn get_current_uci_options(&self) -> UCIOptions {
+        *self.uci_options.read().unwrap()
     }
     pub fn nodes_searched(&self) -> &mut Vec<AtomicU64> {
         unsafe { self.nodes_searched.get().as_mut().unwrap() }
@@ -99,7 +99,7 @@ impl InterThreadCommunicationSystem {
         for _ in 0..itcs.tx.read().unwrap().len() {
             itcs.rx_f.recv().expect("Couldn't receive exit flag!")
         }
-        itcs.uci_options().threads = new_thread_count;
+        itcs.uci_options.write().unwrap().threads = new_thread_count;
         let itcs_tx = &mut *itcs.tx.write().unwrap();
         let itcs_nodes_searched = itcs.nodes_searched();
         *itcs_tx = Vec::with_capacity(new_thread_count);
@@ -225,7 +225,8 @@ impl InterThreadCommunicationSystem {
                 }
                 DepthInformation::CurrentlySearchedBy(other_thread) => {
                     if other_thread as f64
-                        >= self.uci_options().threads as f64 / self.uci_options().skip_ratio as f64
+                        >= self.get_current_uci_options().threads as f64
+                            / self.get_current_uci_options().skip_ratio as f64
                     {
                         next_depth += 1;
                     } else {
@@ -271,6 +272,7 @@ pub struct Thread {
     pub current_pv: ScoredPrincipalVariation,
     pub pv_applicable: Vec<u64>, //Hashes of gamestates the pv plays along
     pub main_thread_in_depth: bool,
+    pub uci_options: UCIOptions, //UCIOptions that were supplied last time we started searching. Will not update during search
     rx: Receiver<ThreadInstruction>,
     tx: Sender<()>,
 }
@@ -331,6 +333,7 @@ impl Thread {
             current_pv: ScoredPrincipalVariation::default(),
             pv_applicable: Vec::with_capacity(MAX_SEARCH_DEPTH),
             main_thread_in_depth: false,
+            uci_options: UCIOptions::default(),
             rx,
             tx,
         }
@@ -359,6 +362,7 @@ impl Thread {
                     self.search_statistics = SearchStatistics::default();
                     self.tc = tc;
                     self.self_stop = false;
+                    self.uci_options = self.itcs.get_current_uci_options();
                     self.search(max_depth, state);
                     self.tx.send(()).expect("Error sending finish flag!");
                 }
@@ -367,7 +371,7 @@ impl Thread {
     }
 
     fn search(&mut self, max_depth: i16, state: GameState) {
-        if self.itcs.uci_options().debug_print {
+        if self.uci_options.debug_print {
             println!(
                 "info String Thread {} starting the search of state!",
                 self.id
@@ -383,7 +387,7 @@ impl Thread {
                 break;
             }
             //Start Aspiration Window
-            if self.itcs.uci_options().debug_print {
+            if self.uci_options.debug_print {
                 println!(
                     "info String Thread {} starting aspiration window with depth {}",
                     self.id, curr_depth
@@ -451,7 +455,7 @@ impl Thread {
                 break;
             }
         }
-        if self.itcs.uci_options().debug_print {
+        if self.uci_options.debug_print {
             println!(
                 "info String Thread {} stopping the search of state!",
                 self.id
@@ -480,6 +484,8 @@ pub fn search_move(
     history: Vec<GameState>,
     tc: TimeControl,
 ) -> Option<i16> {
+    //Lock the uci options
+    let uci_options = itcs.uci_options.read().unwrap();
     //1. Prepare itcs (reset things from previous search)
     *itcs.best_pv.lock().unwrap() = ScoredPrincipalVariation::default();
     itcs.stable_pv.store(false, Ordering::Relaxed);
@@ -502,11 +508,16 @@ pub fn search_move(
     //Step2. Check legal moves
     if movelist.move_list.is_empty() {
         panic!("The root position given does not have any legal move!");
-    } else if movelist.move_list.len() == 1 {
+    } else if movelist.move_list.len() == 1
+        && match tc {
+            TimeControl::Infinite | TimeControl::MoveTime(_) => false,
+            _ => true,
+        }
+    {
         println!("bestmove {:?}", movelist.move_list[0].0);
 
         let new_timesaved: u64 = (time_saved_before as i64
-            + tc.time_saved(0, time_saved_before, itcs.uci_options().move_overhead))
+            + tc.time_saved(0, time_saved_before, uci_options.move_overhead))
         .max(0) as u64;
         itcs.saved_time.store(new_timesaved, Ordering::Relaxed);
         return None;
@@ -538,7 +549,7 @@ pub fn search_move(
     }
 
     //Step 5. Wait until every thread finished up
-    for _ in 0..itcs.uci_options().threads {
+    for _ in 0..uci_options.threads {
         itcs.rx_f
             .recv()
             .expect("Could not receive finish flag from channel");
@@ -549,11 +560,7 @@ pub fn search_move(
     //Store new saved time
     let elapsed_time = itcs.get_time_elapsed();
     let new_timesaved: u64 = (time_saved_before as i64
-        + tc.time_saved(
-            elapsed_time,
-            time_saved_before,
-            itcs.uci_options().move_overhead,
-        ))
+        + tc.time_saved(elapsed_time, time_saved_before, uci_options.move_overhead))
     .max(0) as u64;
     itcs.saved_time.store(new_timesaved, Ordering::Relaxed);
     //And return

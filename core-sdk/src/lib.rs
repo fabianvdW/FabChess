@@ -7,6 +7,7 @@ pub mod search;
 use crate::board_representation::game_state::GameState;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
+use crate::search::alphabeta::DEFAULT_FUTILITY_MARGIN;
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::searcher::{
@@ -23,6 +24,8 @@ pub struct UCIOptions {
     pub move_overhead: u64,
     pub debug_print: bool,
     pub skip_ratio: usize,
+
+    pub futility_margin: i16,
 }
 impl Default for UCIOptions {
     fn default() -> Self {
@@ -32,6 +35,7 @@ impl Default for UCIOptions {
             move_overhead: DEFAULT_MOVE_OVERHEAD,
             debug_print: false,
             skip_ratio: DEFAULT_SKIP_RATIO,
+            futility_margin: DEFAULT_FUTILITY_MARGIN,
         }
     }
 }

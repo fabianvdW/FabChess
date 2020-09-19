@@ -10,7 +10,11 @@ use crate::search::quiescence::{piece_value, see};
 use crate::search::searcher::Thread;
 
 pub const LMP_DEPTH: usize = 4;
-pub const FUTILITY_MARGIN: i16 = 90;
+
+pub const MIN_FUTILITY_MARGIN: i16 = 20;
+pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
+pub const MAX_FUTILITY_MARGIN: i16 = 160;
+
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
 pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
@@ -146,7 +150,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 12. Futil Pruning and margin preparation
-    let futil_margin = prepare_futility_pruning(&p, static_evaluation);
+    let futil_margin = prepare_futility_pruning(&p, thread, static_evaluation);
 
     //Step 14. Iterate through all moves
     let mut current_max_score = STANDARD_SCORE;
@@ -556,11 +560,13 @@ pub fn internal_iterative_deepening(
 #[inline(always)]
 pub fn prepare_futility_pruning(
     p: &CombinedSearchParameters,
+    thread: &Thread,
     static_evaluation: Option<i16>,
 ) -> i16 {
     let futil_pruning = p.depth_left <= FUTILITY_DEPTH && p.current_depth > 0;
     if futil_pruning {
-        static_evaluation.expect("Futil pruning") * p.color + p.depth_left * FUTILITY_MARGIN
+        static_evaluation.expect("Futil pruning") * p.color
+            + p.depth_left * thread.uci_options.futility_margin
     } else {
         MATE_SCORE
     }
