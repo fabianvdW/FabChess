@@ -138,7 +138,7 @@ impl Cache {
         unsafe { *(&*self.cache.get()).get_unchecked(hash as usize % self.buckets) }
     }
 
-    pub fn insert(&self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: Option<i16>) {
+    pub fn insert(&self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: i16) {
         if self.entries == 0 {
             return;
         }
@@ -178,7 +178,7 @@ pub struct CacheBucket([CacheEntry; 3]);
 
 pub const MAXIMUM_AGE_DIFF_REPLACE: usize = 3;
 impl CacheBucket {
-    pub fn replace_entry(&mut self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: Option<i16>, current_age: u8) -> bool {
+    pub fn replace_entry(&mut self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: i16, current_age: u8) -> bool {
         let lower_bound = score >= p.beta;
         let upper_bound = score <= original_alpha;
         let score = Cache::score_to_tt_score(score, p.current_depth as i16);
@@ -342,7 +342,7 @@ impl CacheEntry {
             static_evaluation: INVALID_STATIC_EVALUATION,
         }
     }
-    pub fn write(&mut self, hash: u64, depth: i16, score: i16, static_evaluation: Option<i16>, pv_node: bool, alpha: bool, beta: bool, mv: GameMove, current_age: u8) {
+    pub fn write(&mut self, hash: u64, depth: i16, score: i16, static_evaluation: i16, pv_node: bool, alpha: bool, beta: bool, mv: GameMove, current_age: u8) {
         let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
         self.lower_hash = (hash & 0xFFFF_FFFF) as u32 ^ mv as u32;
@@ -354,7 +354,7 @@ impl CacheEntry {
         self.flags |= (pv_node as u8) << 2;
         self.flags |= current_age << 3;
         self.mv = mv;
-        self.static_evaluation = if let Some(se) = static_evaluation { se } else { INVALID_STATIC_EVALUATION };
+        self.static_evaluation = static_evaluation;
     }
 
     #[inline(always)]
