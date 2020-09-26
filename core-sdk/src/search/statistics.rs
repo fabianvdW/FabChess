@@ -1,11 +1,13 @@
 use std::fmt::{Display, Formatter, Result};
 
 pub struct SearchStatistics {
+    pub improving2: [u64; 2],
     pub depth: usize,
     pub seldepth: usize,
     pub nodes_searched: u64,
     pub q_nodes_searched: u64,
     pub normal_nodes_searched: u64,
+    pub nodes_improving: [u64; 2],
     pub q_delta_cutoffs: u64,
     pub q_see_cutoffs: u64,
     pub q_beta_cutoffs: u64,
@@ -14,6 +16,9 @@ pub struct SearchStatistics {
     pub normal_nodes_beta_cutoffs: u64,
     pub normal_nodes_beta_cutoffs_index: [usize; 32],
     pub normal_nodes_non_beta_cutoffs: u64,
+    pub normal_nodes_fail_lows: u64,
+    pub normal_nodes_improv_cutoffs: [u64; 2],
+    pub normal_nodes_improv_faillows: [u64; 2],
     pub cache_hit: u64,
     pub cache_hit_aj_replaces: u64,
     pub nm_pruned: u64,
@@ -28,11 +33,13 @@ pub struct SearchStatistics {
 impl Default for SearchStatistics {
     fn default() -> Self {
         SearchStatistics {
+            improving2: [0; 2],
             depth: 0,
             seldepth: 0,
             nodes_searched: 0,
             q_nodes_searched: 0,
             normal_nodes_searched: 0,
+            nodes_improving: [0; 2],
             q_delta_cutoffs: 0,
             q_see_cutoffs: 0,
             q_beta_cutoffs: 0,
@@ -41,6 +48,9 @@ impl Default for SearchStatistics {
             normal_nodes_beta_cutoffs: 0,
             normal_nodes_non_beta_cutoffs: 0,
             normal_nodes_beta_cutoffs_index: [0; 32],
+            normal_nodes_fail_lows: 0,
+            normal_nodes_improv_cutoffs: [0; 2],
+            normal_nodes_improv_faillows: [0; 2],
             cache_hit: 0,
             cache_hit_aj_replaces: 0,
             nm_pruned: 0,
@@ -148,6 +158,7 @@ impl SearchStatistics {
 impl Display for SearchStatistics {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
+        res_str.push_str(&format!("Improving2: {:?}\n", self.improving2));
         res_str.push_str(&format!("Nodes searched: {}\n", self.nodes_searched));
         res_str.push_str(&format!("Depth reached: {}/{}\n", self.depth, self.seldepth));
         res_str.push_str("\n");
@@ -156,6 +167,7 @@ impl Display for SearchStatistics {
             self.normal_nodes_searched,
             (self.normal_nodes_searched as f64 / self.nodes_searched as f64 * 100.0)
         ));
+        res_str.push_str(&format!("Nodes improving: {:?}\n", self.nodes_improving));
         res_str.push_str(&format!(
             "Normal-Search Beta  cutoffs: {} ({}%)\n",
             self.normal_nodes_beta_cutoffs,
@@ -167,6 +179,9 @@ impl Display for SearchStatistics {
             self.normal_nodes_non_beta_cutoffs,
             (self.normal_nodes_non_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)
         ));
+        res_str.push_str(&format!("Normal-Search Beta cutoffs by improv: {:?}\n", self.normal_nodes_improv_cutoffs));
+        res_str.push_str(&format!("Normal-Search Faillows: {:?}\n", self.normal_nodes_fail_lows));
+        res_str.push_str(&format!("Normal-Search Faillows by improv: {:?}\n", self.normal_nodes_improv_faillows));
         res_str.push_str(&format!(
             "Cache-Hits:    {} ({}%)\n",
             self.cache_hit,

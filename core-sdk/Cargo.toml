@@ -8,6 +8,7 @@ build = "src/build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
+search-statistics = []
 texel-tuning = []
 display-eval = []
 avoid-adj = []

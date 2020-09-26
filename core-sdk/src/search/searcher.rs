@@ -387,6 +387,10 @@ impl Thread {
                 delta = (f64::from(delta) * 1.5) as i16;
             }
             previous_score = Some(self.current_pv.score);
+            #[cfg(feature = "search-statistics")]
+            {
+                println!("{}", self.search_statistics);
+            }
             if self.self_stop {
                 break;
             }
@@ -394,6 +398,7 @@ impl Thread {
         if self.uci_options.debug_print {
             println!("info String Thread {} stopping the search of state!", self.id);
         }
+
         //Report nodes in the end
         self.itcs.update(self.id, self.search_statistics.nodes_searched, self.search_statistics.seldepth);
         if self.id == 0 {

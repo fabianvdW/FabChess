@@ -3,6 +3,7 @@ use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
+use crate::evaluation::params::TEMPO_BONUS;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
@@ -93,7 +94,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
     #[cfg(feature = "search-statistics")]
     {
-        if tt_move.is_some() {
+        if tt_entry.is_some() {
             thread.search_statistics.add_cache_hit_ns();
         }
     }
@@ -119,11 +120,31 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     } else {
         false
     };
+    let improving2 = if p.current_depth >= 1 {
+        let prev_eval = thread.eval_hist[p.current_depth - 1].unwrap();
+        let mut tempo_bonus = TEMPO_BONUS;
+        tempo_bonus.1 = (f64::from(tempo_bonus.1) / 1.5) as i16;
+        let tempo_bonus = tempo_bonus.interpolate(p.game_state.get_phase().phase);
 
+        if p.color == 1 {
+            //We are white, that means our enemy is black. If the enemy improved his position, then eval(white to move) - 2*tempo < prev_eval
+            static_evaluation - 2 * tempo_bonus < prev_eval
+        } else {
+            // We are black, that means our enemy is white. If the enemy improved his position, then eval(black to move) + 2*tempo > prev_eval
+            static_evaluation + 2 * tempo_bonus > prev_eval
+        }
+    } else {
+        false
+    };
+
+    #[cfg(feature = "search-statistics")]
+    {
+        thread.search_statistics.nodes_improving[improving as usize] += 1;
+    }
     //Step 10. Prunings
     if prunable {
         //Step 10.1 Static Null Move Pruning
-        if let SearchInstruction::StopSearching(res) = static_null_move_pruning(&p, thread, static_evaluation) {
+        if let SearchInstruction::StopSearching(res) = static_null_move_pruning(&p, thread, static_evaluation, improving2) {
             return res;
         }
         //Step 10.2 Null Move Forward Pruning
@@ -273,6 +294,10 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             #[cfg(feature = "search-statistics")]
             {
                 thread.search_statistics.add_normal_node_beta_cutoff(index);
+                thread.search_statistics.normal_nodes_improv_cutoffs[improving as usize] += 1;
+                if !improving2 {
+                    thread.search_statistics.improving2[0] += 1;
+                }
             }
             if !isc {
                 update_quiet_cutoff(&p, thread, mv, quiets_tried);
@@ -301,6 +326,13 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     {
         if p.alpha < p.beta {
             thread.search_statistics.add_normal_node_non_beta_cutoff();
+            if !improving2 {
+                thread.search_statistics.improving2[1] += 1;
+            }
+        }
+        if current_max_score < p.alpha {
+            thread.search_statistics.normal_nodes_fail_lows += 1;
+            thread.search_statistics.normal_nodes_improv_faillows[improving as usize] += 1;
         }
     }
 
@@ -362,7 +394,7 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 }
 
 #[inline(always)]
-pub fn static_null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: i16) -> SearchInstruction {
+pub fn static_null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: i16, improving2: bool) -> SearchInstruction {
     if p.depth_left <= STATIC_NULL_MOVE_DEPTH && static_evaluation * p.color - STATIC_NULL_MOVE_MARGIN * p.depth_left >= p.beta {
         thread.history.pop();
         #[cfg(feature = "search-statistics")]
