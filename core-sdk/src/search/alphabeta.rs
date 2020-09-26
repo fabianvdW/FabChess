@@ -102,20 +102,23 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     } else {
         None
     };
-    let mut static_evaluation = if let Some(ce) = tt_entry {
-        if ce.static_evaluation != INVALID_STATIC_EVALUATION {
-            Some(ce.static_evaluation)
-        } else {
-            None
-        }
+    let static_evaluation = if tt_entry.is_some() && tt_entry.unwrap().static_evaluation != INVALID_STATIC_EVALUATION {
+        tt_entry.unwrap().static_evaluation
     } else {
-        None
+        eval_game_state(p.game_state).final_eval
     };
+    thread.eval_hist[p.current_depth] = Some(static_evaluation);
     thread.history.push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
 
     //Step 9. Static Eval if needed
     let prunable = !is_pv_node && !incheck;
-    make_eval(&p, &mut static_evaluation, prunable);
+    let improving = if p.current_depth >= 2 {
+        assert!(thread.eval_hist[p.current_depth - 2].is_some());
+        let prev_eval = thread.eval_hist[p.current_depth - 2].unwrap();
+        prev_eval < static_evaluation && p.game_state.get_color_to_move() == WHITE || prev_eval > static_evaluation && p.game_state.get_color_to_move() == BLACK
+    } else {
+        false
+    };
 
     //Step 10. Prunings
     if prunable {
@@ -213,7 +216,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
 
         //Step 14.7. Late move reductions. Compute reduction based on move type, node type and depth
         let reduction = if p.depth_left > 2 && (!isc || move_score < 0.) && index >= 2 && (!root || index >= 5) {
-            compute_lmr_reduction(&p, thread, mv, index, isc || isp, gives_check, incheck)
+            compute_lmr_reduction(&p, thread, mv, index, isc || isp, gives_check, incheck, improving)
         } else {
             0
         };
@@ -359,36 +362,24 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 }
 
 #[inline(always)]
-pub fn make_eval(p: &CombinedSearchParameters, static_evaluation: &mut Option<i16>, prunable: bool) {
-    if static_evaluation.is_none() && (prunable && (p.depth_left <= STATIC_NULL_MOVE_DEPTH || p.depth_left >= NULL_MOVE_PRUNING_DEPTH) || p.depth_left <= FUTILITY_DEPTH) {
-        let eval_res = eval_game_state(p.game_state);
-        *static_evaluation = Some(eval_res.final_eval);
-        #[cfg(feature = "search-statistics")]
-        {
-            thread.search_statistics.add_static_eval_node();
-        }
-    }
-}
-
-#[inline(always)]
-pub fn static_null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: Option<i16>) -> SearchInstruction {
-    if p.depth_left <= STATIC_NULL_MOVE_DEPTH && static_evaluation.expect("Static null move") * p.color - STATIC_NULL_MOVE_MARGIN * p.depth_left >= p.beta {
+pub fn static_null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: i16) -> SearchInstruction {
+    if p.depth_left <= STATIC_NULL_MOVE_DEPTH && static_evaluation * p.color - STATIC_NULL_MOVE_MARGIN * p.depth_left >= p.beta {
         thread.history.pop();
         #[cfg(feature = "search-statistics")]
         {
             thread.search_statistics.add_static_null_move_node();
         }
-        SearchInstruction::StopSearching(static_evaluation.expect("Static null move 2") * p.color)
+        SearchInstruction::StopSearching(static_evaluation * p.color)
     } else {
         SearchInstruction::ContinueSearching
     }
 }
 
 #[inline(always)]
-pub fn null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: Option<i16>, tt_entry: &Option<CacheEntry>) -> SearchInstruction {
+pub fn null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: i16, tt_entry: &Option<CacheEntry>) -> SearchInstruction {
     let tt_do_nmp = tt_entry.is_some() && !tt_entry.unwrap().is_upper_bound() && tt_entry.unwrap().score >= p.beta;
     let tt_dont_nmp = tt_entry.is_some() && !tt_entry.unwrap().is_lower_bound() && tt_entry.unwrap().score < p.beta;
-    let static_do_nmp = static_evaluation.unwrap() * p.color >= p.beta;
+    let static_do_nmp = static_evaluation * p.color >= p.beta;
     if p.depth_left >= NULL_MOVE_PRUNING_DEPTH && p.game_state.has_non_pawns(p.game_state.get_color_to_move()) && (tt_do_nmp || static_do_nmp) && !tt_dont_nmp {
         let nextgs = make_nullmove(p.game_state);
         let rat = -principal_variation_search(
@@ -427,23 +418,26 @@ pub fn internal_iterative_deepening(p: &CombinedSearchParameters, thread: &mut T
 }
 
 #[inline(always)]
-pub fn prepare_futility_pruning(p: &CombinedSearchParameters, thread: &Thread, static_evaluation: Option<i16>) -> i16 {
+pub fn prepare_futility_pruning(p: &CombinedSearchParameters, thread: &Thread, static_evaluation: i16) -> i16 {
     let futil_pruning = p.depth_left <= FUTILITY_DEPTH && p.current_depth > 0;
     if futil_pruning {
-        static_evaluation.expect("Futil pruning") * p.color + p.depth_left * thread.uci_options.futility_margin
+        static_evaluation * p.color + p.depth_left * thread.uci_options.futility_margin
     } else {
         MATE_SCORE
     }
 }
 
 #[inline(always)]
-pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: GameMove, index: usize, iscp: bool, gives_check: bool, in_check: bool) -> i16 {
+pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: GameMove, index: usize, iscp: bool, gives_check: bool, in_check: bool, improving: bool) -> i16 {
     let mut reduction = ((f64::from(p.depth_left) / 2. - 1.).max(0.).sqrt() + (index as f64 / 2.0 - 1.).max(0.).sqrt()) as i16;
     if iscp {
         reduction /= 2;
     }
     if p.beta - p.alpha > 1 {
         reduction = (f64::from(reduction) * 0.66) as i16;
+    }
+    if !improving {
+        reduction += 1;
     }
     if gives_check {
         reduction -= 1;
