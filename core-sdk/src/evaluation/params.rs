@@ -2,18 +2,8 @@ use super::EvaluationScore;
 pub const SLIGHTLY_WINNING_NO_PAWN: f32 = 0.0625;
 pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f32 = 0.125;
 pub const TEMPO_BONUS: EvaluationScore = EvaluationScore(10, 20);
-pub const SHIELDING_PAWN_MISSING: [EvaluationScore; 4] = [
-    EvaluationScore(0, -11),
-    EvaluationScore(-25, 1),
-    EvaluationScore(-35, 0),
-    EvaluationScore(-59, 9),
-];
-pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: [EvaluationScore; 4] = [
-    EvaluationScore(1, 7),
-    EvaluationScore(-3, 8),
-    EvaluationScore(-46, 8),
-    EvaluationScore(-73, -23),
-];
+pub const SHIELDING_PAWN_MISSING: [EvaluationScore; 4] = [EvaluationScore(0, -11), EvaluationScore(-25, 1), EvaluationScore(-35, 0), EvaluationScore(-59, 9)];
+pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: [EvaluationScore; 4] = [EvaluationScore(1, 7), EvaluationScore(-3, 8), EvaluationScore(-46, 8), EvaluationScore(-73, -23)];
 pub const PAWN_DOUBLED_VALUE: EvaluationScore = EvaluationScore(-5, -14);
 pub const PAWN_ISOLATED_VALUE: EvaluationScore = EvaluationScore(-9, -21);
 pub const PAWN_BACKWARD_VALUE: EvaluationScore = EvaluationScore(-8, -16);
@@ -245,9 +235,7 @@ pub const QUEEN_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(6, -1
 pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore(28, 45);
 pub const PAWN_PIECE_VALUE: EvaluationScore = EvaluationScore(106, 178);
 pub const KNIGHT_PIECE_VALUE: EvaluationScore = EvaluationScore(449, 736);
-pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [
-    -47, -127, -47, -34, -23, -15, 1, 2, 16, 23, 31, 40, 46, 55, 54, 64, 59,
-];
+pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [-47, -127, -47, -34, -23, -15, 1, 2, 16, 23, 31, 40, 46, 55, 54, 64, 59];
 pub const BISHOP_PIECE_VALUE: EvaluationScore = EvaluationScore(492, 711);
 pub const BISHOP_PAIR_BONUS: EvaluationScore = EvaluationScore(34, 109);
 pub const ROOK_PIECE_VALUE: EvaluationScore = EvaluationScore(651, 1297);

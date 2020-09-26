@@ -14,11 +14,7 @@ pub fn main() {
         },
     )
     .load_texel_positions(&mut positions);
-    println!(
-        "Loaded file {} with {} positions!",
-        POSITION_FILE,
-        positions.len()
-    );
+    println!("Loaded file {} with {} positions!", POSITION_FILE, positions.len());
     let mut tuner = Tuner {
         k: 1.1155,
         positions,

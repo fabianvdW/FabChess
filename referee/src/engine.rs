@@ -1,6 +1,4 @@
-use crate::async_communication::{
-    expect_output, expect_output_and_listen_for_info, stderr_listener, write_all,
-};
+use crate::async_communication::{expect_output, expect_output_and_listen_for_info, stderr_listener, write_all};
 use core_sdk::board_representation::game_state::*;
 use core_sdk::move_generation::movegen::MoveList;
 use core_sdk::search::timecontrol::TimeControl;
@@ -68,10 +66,8 @@ impl EngineStats {
     }
     pub fn add(&mut self, other: &EngineStats) {
         let sum = (self.moves_played + other.moves_played) as f64;
-        self.avg_depth = self.avg_depth * self.moves_played as f64 / sum
-            + other.avg_depth * other.moves_played as f64 / sum;
-        self.avg_nps = self.avg_nps * self.moves_played as f64 / sum
-            + other.avg_nps * other.moves_played as f64 / sum;
+        self.avg_depth = self.avg_depth * self.moves_played as f64 / sum + other.avg_depth * other.moves_played as f64 / sum;
+        self.avg_nps = self.avg_nps * self.moves_played as f64 / sum + other.avg_nps * other.moves_played as f64 / sum;
         self.moves_played += other.moves_played;
     }
 }
@@ -107,9 +103,8 @@ impl Engine {
         let other_games = other.wins + other.draws + other.losses;
         self.stats.add(&other.stats);
         if games + other_games != 0 {
-            self.stats.avg_timeleft = self.stats.avg_timeleft * games as f64
-                / (games + other_games) as f64
-                + other.stats.avg_timeleft * other_games as f64 / (games + other_games) as f64;
+            self.stats.avg_timeleft =
+                self.stats.avg_timeleft * games as f64 / (games + other_games) as f64 + other.stats.avg_timeleft * other_games as f64 / (games + other_games) as f64;
         }
         self.wins += other.wins;
         self.draws += other.draws;
@@ -140,27 +135,17 @@ impl Engine {
                 self.wins,
                 self.draws,
                 self.losses,
-                100. * (self.wins as f64 + self.draws as f64 / 2.)
-                    / (self.wins + self.draws + self.losses) as f64,
+                100. * (self.wins as f64 + self.draws as f64 / 2.) / (self.wins + self.draws + self.losses) as f64,
             ),
             format!(
                 "{:25}disq {} dep {:.2} nps {:.0} time {:.0}",
-                self.name,
-                self.disqs,
-                self.stats.avg_depth,
-                self.stats.avg_nps,
-                self.stats.avg_timeleft
+                self.name, self.disqs, self.stats.avg_depth, self.stats.avg_nps, self.stats.avg_timeleft
             ),
             elo_gain,
         )
     }
 
-    pub async fn from_path(
-        path: &str,
-        id: usize,
-        tc: TimeControl,
-        options: HashMap<String, String>,
-    ) -> Self {
+    pub async fn from_path(path: &str, id: usize, tc: TimeControl, options: HashMap<String, String>) -> Self {
         let mut res = Engine {
             name: "".to_owned(),
             path: path.to_string(),
@@ -176,14 +161,9 @@ impl Engine {
         let (mut child, mut input, mut output, err) = res.get_handles().await;
         let err_listener = tokio::spawn(stderr_listener(err));
         write_all(&mut input, "uci\n").await;
-        let output =
-            expect_output_and_listen_for_info("uciok", "id name", 10000, &mut output).await;
-        child
-            .kill()
-            .unwrap_or_else(|msg| warn!("Could not kill child: {}", msg));
-        err_listener
-            .await
-            .unwrap_or_else(|msg| warn!("Could not await err_listener: {}", msg));
+        let output = expect_output_and_listen_for_info("uciok", "id name", 10000, &mut output).await;
+        child.kill().unwrap_or_else(|msg| warn!("Could not kill child: {}", msg));
+        err_listener.await.unwrap_or_else(|msg| warn!("Could not await err_listener: {}", msg));
         if output.1.contains("id name") {
             let name = output
                 .1
@@ -212,13 +192,7 @@ impl Engine {
             return EngineReaction::DisqualifyEngine;
         }
         write_all(stdin, go_string).await;
-        let output = expect_output_and_listen_for_info(
-            "bestmove",
-            "info",
-            self.time_control.time_left(),
-            stdout,
-        )
-        .await;
+        let output = expect_output_and_listen_for_info("bestmove", "info", self.time_control.time_left(), stdout).await;
         if output.0.is_none() {
             info!(
                 "Engine {} didn't send bestmove in time in game {}! It had {}ms left!\n",
@@ -229,7 +203,12 @@ impl Engine {
             return EngineReaction::DisqualifyEngine;
         }
         if output.2 as u64 > self.time_control.time_left() {
-            warn!("Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",self.time_control.time_left(),self.name ,task_id);
+            warn!(
+                "Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",
+                self.time_control.time_left(),
+                self.name,
+                task_id
+            );
             return EngineReaction::DisqualifyEngine;
         }
         self.time_control.update(output.2 as u64, None);
@@ -241,17 +220,14 @@ impl Engine {
             let mv = GameMove::string_to_move(split_line[1]);
             let found_move = find_move(mv.0, mv.1, mv.2, &movelist);
             if found_move.is_none() {
-                info!(
-                    "Engine {} sent illegal move ({}) in game {}\n",
-                    self.name, line, task_id
-                );
+                info!("Engine {} sent illegal move ({}) in game {}\n", self.name, line, task_id);
                 return EngineReaction::DisqualifyEngine;
             }
             found_move.unwrap()
         } else {
             info!(
                 "Bestmove wasn't first argument after bestmove keyword! Disqualifiying engine {} in game {}\n",
-                self.name,task_id
+                self.name, task_id
             );
             return EngineReaction::DisqualifyEngine;
         };
@@ -286,12 +262,7 @@ impl Engine {
         EngineReaction::ContinueGame((game_move, status))
     }
 
-    pub async fn valid_isready_reaction(
-        &self,
-        stdin: &mut BufWriter<ChildStdin>,
-        stdout: &mut BufReader<ChildStdout>,
-        task_id: usize,
-    ) -> EngineReaction<()> {
+    pub async fn valid_isready_reaction(&self, stdin: &mut BufWriter<ChildStdin>, stdout: &mut BufReader<ChildStdout>, task_id: usize) -> EngineReaction<()> {
         write_all(stdin, "isready\n").await;
         let output = expect_output("readyok", 10000, stdout).await;
         if output.0.is_none() {
@@ -300,12 +271,7 @@ impl Engine {
         }
         EngineReaction::ContinueGame(())
     }
-    pub async fn valid_uci_isready_reaction(
-        &self,
-        stdin: &mut BufWriter<ChildStdin>,
-        stdout: &mut BufReader<ChildStdout>,
-        task_id: usize,
-    ) -> EngineReaction<()> {
+    pub async fn valid_uci_isready_reaction(&self, stdin: &mut BufWriter<ChildStdin>, stdout: &mut BufReader<ChildStdout>, task_id: usize) -> EngineReaction<()> {
         write_all(stdin, "uci\n").await;
         let output = expect_output("uciok", 10000, stdout).await;
         if output.0.is_none() {
@@ -320,18 +286,9 @@ impl Engine {
         self.valid_isready_reaction(stdin, stdout, task_id).await
     }
 
-    pub async fn get_handles(
-        &self,
-    ) -> (
-        Child,
-        BufWriter<ChildStdin>,
-        BufReader<ChildStdout>,
-        BufReader<ChildStderr>,
-    ) {
+    pub async fn get_handles(&self) -> (Child, BufWriter<ChildStdin>, BufReader<ChildStdout>, BufReader<ChildStderr>) {
         let mut cmd = Command::new(&self.path);
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+        cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
         let mut child = cmd.spawn().unwrap();
         let stdin = BufWriter::new(child.stdin.take().unwrap());
         let stdout = BufReader::new(child.stdout.take().unwrap());
@@ -340,12 +297,7 @@ impl Engine {
     }
 }
 
-pub fn find_move(
-    from: usize,
-    to: usize,
-    promo_pieces: Option<PieceType>,
-    move_list: &MoveList,
-) -> Option<GameMove> {
+pub fn find_move(from: usize, to: usize, promo_pieces: Option<PieceType>, move_list: &MoveList) -> Option<GameMove> {
     for gmv in move_list.move_list.iter() {
         let mv = gmv.0;
         if mv.from as usize == from && mv.to as usize == to {
@@ -438,12 +390,7 @@ pub struct TaskResult {
 }
 
 impl TaskResult {
-    pub fn disq(
-        mut task: PlayTask,
-        p1: bool,
-        move_sequence: Vec<GameMove>,
-        final_status: GameResult,
-    ) -> Self {
+    pub fn disq(mut task: PlayTask, p1: bool, move_sequence: Vec<GameMove>, final_status: GameResult) -> Self {
         if p1 {
             task.engine1.disqs += 1;
         } else {

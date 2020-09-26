@@ -10,9 +10,7 @@ use crate::move_generation::movegen;
 use crate::search::alphabeta::DEFAULT_FUTILITY_MARGIN;
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;
-use crate::search::searcher::{
-    InterThreadCommunicationSystem, DEFAULT_SKIP_RATIO, DEFAULT_THREADS,
-};
+use crate::search::searcher::{InterThreadCommunicationSystem, DEFAULT_SKIP_RATIO, DEFAULT_THREADS};
 use crate::search::timecontrol::DEFAULT_MOVE_OVERHEAD;
 use std::sync::Arc;
 use std::time::Instant;
@@ -58,10 +56,7 @@ pub fn perft_div(g: &GameState, depth: usize) -> u64 {
     let after = Instant::now();
     let dur = after.duration_since(now);
     let secs = dur.as_millis() as f64 / 1000.0;
-    println!(
-        "{}",
-        &format!("Time {} ({} nps)", secs, count as f64 / secs)
-    );
+    println!("{}", &format!("Time {} ({} nps)", secs, count as f64 / secs));
     count
 }
 
@@ -143,13 +138,7 @@ pub fn bench(depth: usize) {
     let mut nodes = 0;
     for position in BENCHMARKING_POSITIONS.iter() {
         let state = board_representation::game_state::GameState::from_fen(position);
-        search::searcher::search_move(
-            Arc::clone(&itcs),
-            depth as i16,
-            state,
-            Vec::new(),
-            search::timecontrol::TimeControl::Infinite,
-        );
+        search::searcher::search_move(Arc::clone(&itcs), depth as i16, state, Vec::new(), search::timecontrol::TimeControl::Infinite);
         nodes += itcs.get_nodes_sum();
         itcs.cache().clear_threaded(1);
     }

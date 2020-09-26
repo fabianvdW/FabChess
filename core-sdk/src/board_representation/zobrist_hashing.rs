@@ -87,10 +87,7 @@ impl Display for Zobrist {
         res_str.push_str("#[rustfmt::skip]\n");
         res_str.push_str("pub const ZOBRIST_KEYS : Zobrist = Zobrist{\n");
         res_str.push_str(&format!("side_to_move: 0x{:x}u64,\n", self.side_to_move));
-        res_str.push_str(&format!(
-            "castle_permissions: {:?},\n",
-            self.castle_permissions
-        ));
+        res_str.push_str(&format!("castle_permissions: {:?},\n", self.castle_permissions));
         res_str.push_str(&format!("en_passant: {:?},\n", self.en_passant));
         res_str.push_str(&format!("pieces: {}\n", self.piece_string()));
         res_str.push_str("};");

@@ -16,24 +16,10 @@ use std::time::Duration;
 use tokio::time::delay_for;
 
 pub async fn start_self_play(config: Config) {
-    FileLogger::new("referee_error_log.txt", false)
-        .init()
-        .expect("Could not create File Logger");
-    let tcp1 = TimeControl::Incremental(
-        config.timecontrol_engine_time,
-        config.timecontrol_engine_inc,
-    );
-    let mut gauntlet_engine = Engine::from_path(
-        &config.engine_path.0,
-        999,
-        tcp1,
-        config.engine_path.1.clone(),
-    )
-    .await;
-    let tcp2 = TimeControl::Incremental(
-        config.timecontrol_enemies_time,
-        config.timecontrol_enemies_inc,
-    );
+    FileLogger::new("referee_error_log.txt", false).init().expect("Could not create File Logger");
+    let tcp1 = TimeControl::Incremental(config.timecontrol_engine_time, config.timecontrol_engine_inc);
+    let mut gauntlet_engine = Engine::from_path(&config.engine_path.0, 999, tcp1, config.engine_path.1.clone()).await;
+    let tcp2 = TimeControl::Incremental(config.timecontrol_enemies_time, config.timecontrol_enemies_inc);
     let mut engines: Vec<Engine> = Vec::new();
     for (index, path) in config.enemies_paths.into_iter().enumerate() {
         engines.push(Engine::from_path(&path.0, index, tcp2, path.1).await);
@@ -45,25 +31,12 @@ pub async fn start_self_play(config: Config) {
         db.append(&mut database_loaded.0);
         db_sequences.append(&mut database_loaded.1);
     }
-    println!(
-        "{}",
-        &format!(
-            "Loaded database with {} games found! Preparing games...",
-            db.len()
-        )
-    );
-    let queue: Arc<ThreadSafeQueue<PlayTask>> = Arc::new(load_openings_into_queue(
-        config.games / 2,
-        db,
-        db_sequences,
-        &gauntlet_engine,
-        &engines,
-    ));
+    println!("{}", &format!("Loaded database with {} games found! Preparing games...", db.len()));
+    let queue: Arc<ThreadSafeQueue<PlayTask>> = Arc::new(load_openings_into_queue(config.games / 2, db, db_sequences, &gauntlet_engine, &engines));
     let games = queue.len();
     println!("Prepared {} games! Starting...", games);
 
-    let result_queue: Arc<ThreadSafeQueue<TaskResult>> =
-        Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
+    let result_queue: Arc<ThreadSafeQueue<TaskResult>> = Arc::new(ThreadSafeQueue::new(Vec::with_capacity(100)));
     let pgn_log = FileLogger::new("pgns.pgn", true);
 
     //Start all childs
@@ -71,9 +44,7 @@ pub async fn start_self_play(config: Config) {
     for _ in 0..config.processors {
         let queue_clone = queue.clone();
         let res_clone = result_queue.clone();
-        childs.push(tokio::spawn(async move {
-            start_self_play_thread(queue_clone, res_clone).await
-        }));
+        childs.push(tokio::spawn(async move { start_self_play_thread(queue_clone, res_clone).await }));
     }
 
     //Collect results
@@ -138,8 +109,7 @@ pub async fn start_self_play(config: Config) {
                 } else {
                     let temp = result.endcondition.unwrap();
                     match temp {
-                        EndConditionInformation::DrawByadjudication
-                        | EndConditionInformation::MateByadjudication => "adjudication",
+                        EndConditionInformation::DrawByadjudication | EndConditionInformation::MateByadjudication => "adjudication",
                         _ => "normal",
                     }
                     .to_owned()
@@ -164,10 +134,7 @@ pub async fn start_self_play(config: Config) {
     println!("Testing finished!");
 }
 
-pub async fn start_self_play_thread(
-    queue: Arc<ThreadSafeQueue<PlayTask>>,
-    result_queue: Arc<ThreadSafeQueue<TaskResult>>,
-) {
+pub async fn start_self_play_thread(queue: Arc<ThreadSafeQueue<PlayTask>>, result_queue: Arc<ThreadSafeQueue<TaskResult>>) {
     while let Some(task) = queue.pop() {
         println!("Starting game {}", task.id);
         let res = play_game(task).await;

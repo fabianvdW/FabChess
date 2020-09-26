@@ -38,11 +38,7 @@ impl Default for PGNMetadata {
         }
     }
 }
-pub fn get_pgn_string(
-    metadata: &PGNMetadata,
-    moves: Vec<GameMove>,
-    opening_comment: Option<usize>,
-) -> String {
+pub fn get_pgn_string(metadata: &PGNMetadata, moves: Vec<GameMove>, opening_comment: Option<usize>) -> String {
     let mut res_str = String::new();
     let s = if metadata.event_name.is_some() {
         metadata.event_name.clone().unwrap()
@@ -50,11 +46,7 @@ pub fn get_pgn_string(
         String::from("?")
     };
     res_str.push_str(&format!("[Event \"{}\"]\n", s));
-    let s = if metadata.site.is_some() {
-        metadata.site.clone().unwrap()
-    } else {
-        String::from("?")
-    };
+    let s = if metadata.site.is_some() { metadata.site.clone().unwrap() } else { String::from("?") };
     res_str.push_str(&format!("[Site \"{}\"]\n", s));
     let s = if metadata.date.is_some() {
         metadata.date.clone().unwrap()
@@ -62,23 +54,11 @@ pub fn get_pgn_string(
         String::from("????.??.??")
     };
     res_str.push_str(&format!("[Date \"{}\"]\n", s));
-    let s = if metadata.round.is_some() {
-        metadata.round.clone().unwrap()
-    } else {
-        String::from("?")
-    };
+    let s = if metadata.round.is_some() { metadata.round.clone().unwrap() } else { String::from("?") };
     res_str.push_str(&format!("[Round \"{}\"]\n", s));
-    let s = if metadata.white.is_some() {
-        metadata.white.clone().unwrap()
-    } else {
-        String::from("?")
-    };
+    let s = if metadata.white.is_some() { metadata.white.clone().unwrap() } else { String::from("?") };
     res_str.push_str(&format!("[White \"{}\"]\n", s));
-    let s = if metadata.black.is_some() {
-        metadata.black.clone().unwrap()
-    } else {
-        String::from("?")
-    };
+    let s = if metadata.black.is_some() { metadata.black.clone().unwrap() } else { String::from("?") };
     res_str.push_str(&format!("[Black \"{}\"]\n", s));
     let s = if metadata.result.is_some() {
         metadata.result.clone().unwrap()
@@ -122,11 +102,7 @@ pub fn get_pgn_string(
         }
         current_color = 1 - current_color;
     }
-    move_text.push_str(if metadata.result.is_some() {
-        metadata.result.as_ref().unwrap()
-    } else {
-        "*"
-    });
+    move_text.push_str(if metadata.result.is_some() { metadata.result.as_ref().unwrap() } else { "*" });
     let contents: Vec<&str> = move_text.split_whitespace().collect();
     //Make sure that every line is only 80 long at maximum
     let mut move_text = String::new();
@@ -189,8 +165,7 @@ mod tests {
         let mut metadata = PGNMetadata::default();
         metadata.fill_systemdata();
         metadata.result = Some(res.to_string());
-        metadata.starting_position =
-            "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -".to_owned();
+        metadata.starting_position = "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -".to_owned();
         print!("{}", super::get_pgn_string(&metadata, moves, Some(0)))
     }
 }

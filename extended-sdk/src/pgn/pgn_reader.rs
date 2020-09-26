@@ -1,6 +1,4 @@
-use core_sdk::board_representation::game_state::{
-    char_to_file, char_to_rank, GameMove, GameMoveType, GameState, PieceType, WHITE,
-};
+use core_sdk::board_representation::game_state::{char_to_file, char_to_rank, GameMove, GameMoveType, GameState, PieceType, WHITE};
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use std::fs::File;
@@ -62,16 +60,10 @@ impl Iterator for GameParser {
     }
 }
 
-pub fn find_castle(
-    movelist: &movegen::MoveList,
-    g: &GameState,
-    king_side: bool,
-) -> Result<(GameMove, GameState), ()> {
+pub fn find_castle(movelist: &movegen::MoveList, g: &GameState, king_side: bool) -> Result<(GameMove, GameState), ()> {
     for gmv in movelist.move_list.iter() {
         let mv = gmv.0;
-        if mv.move_type == GameMoveType::Castle
-            && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 }
-        {
+        if mv.move_type == GameMoveType::Castle && mv.to as isize - mv.from as isize == 2 * if king_side { 1 } else { -1 } {
             let state = make_move(g, mv);
             return Ok((mv, state));
         }
@@ -79,11 +71,7 @@ pub fn find_castle(
     Err(())
 }
 
-pub fn find_move(
-    movelist: &movegen::MoveList,
-    g: &GameState,
-    ms: MoveSpecification,
-) -> Result<(GameMove, GameState), ()> {
+pub fn find_move(movelist: &movegen::MoveList, g: &GameState, ms: MoveSpecification) -> Result<(GameMove, GameState), ()> {
     for gmv in movelist.move_list.iter() {
         /*println!("Checking: {:?}", gmv.0);
         if &format!("{:?}", gmv.0) == "e4d4" {
@@ -151,11 +139,7 @@ pub struct MoveSpecification {
 }
 
 impl MoveSpecification {
-    pub fn new(
-        target_square: usize,
-        moving_piece_type: PieceType,
-        promotion_piece: Option<PieceType>,
-    ) -> Self {
+    pub fn new(target_square: usize, moving_piece_type: PieceType, promotion_piece: Option<PieceType>) -> Self {
         MoveSpecification {
             target_square,
             from_square: None,
@@ -180,17 +164,9 @@ impl MoveSpecification {
     }
 }
 
-pub fn parse_move(
-    g: &GameState,
-    move_str: &str,
-    movelist: &mut movegen::MoveList,
-) -> (GameMove, GameState) {
+pub fn parse_move(g: &GameState, move_str: &str, movelist: &mut movegen::MoveList) -> (GameMove, GameState) {
     let mut my_string = move_str.to_string();
-    my_string = my_string
-        .replace("#", "")
-        .replace("+", "")
-        .replace("=", "")
-        .replace("x", "");
+    my_string = my_string.replace("#", "").replace("+", "").replace("=", "").replace("x", "");
     movegen::generate_moves(&g, false, movelist);
     if my_string.contains('-') {
         //Castle
@@ -217,8 +193,7 @@ pub fn parse_move(
     } else {
         let moving_piece_type = get_piece_type(&mut my_string);
         let promotion_piece = is_promotion(&mut my_string);
-        let target_square = 8 * match_rank(my_string.chars().nth(my_string.len() - 1))
-            + match_file(my_string.chars().nth(my_string.len() - 2));
+        let target_square = 8 * match_rank(my_string.chars().nth(my_string.len() - 1)) + match_file(my_string.chars().nth(my_string.len() - 2));
         let mut ms = MoveSpecification::new(target_square, moving_piece_type, promotion_piece);
 
         if my_string.len() == 3 {
@@ -229,9 +204,7 @@ pub fn parse_move(
                 ms.from_rank = Some(match_rank(first));
             }
         } else if my_string.len() == 4 {
-            ms.from_square = Some(
-                8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0)),
-            );
+            ms.from_square = Some(8 * match_rank(my_string.chars().nth(1)) + match_file(my_string.chars().nth(0)));
         }
         if let Ok(res) = find_move(movelist, g, ms) {
             return res;
@@ -290,17 +263,11 @@ impl Iterator for PGNParser {
             if line.contains("1.") && !line.contains('[') {
                 loop {
                     res_str.push_str(&line);
-                    if res_str.contains("1-0")
-                        || res_str.contains("0-1")
-                        || res_str.contains("1/2-1/2")
-                        || res_str.contains('*')
-                    {
+                    if res_str.contains("1-0") || res_str.contains("0-1") || res_str.contains("1/2-1/2") || res_str.contains('*') {
                         break;
                     }
                     line = String::new();
-                    self.reader
-                        .read_line(&mut line)
-                        .expect("Reader had an error reading moves of game!");
+                    self.reader.read_line(&mut line).expect("Reader had an error reading moves of game!");
                 }
                 break;
             }

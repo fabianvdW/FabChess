@@ -3,13 +3,7 @@ use crate::queue::ThreadSafeQueue;
 use core_sdk::board_representation::game_state::*;
 use rand::Rng;
 
-pub fn load_openings_into_queue(
-    n: usize,
-    mut db: Vec<GameState>,
-    mut db_sequences: Vec<Vec<GameMove>>,
-    gauntlet_engine: &Engine,
-    enemies: &[Engine],
-) -> ThreadSafeQueue<PlayTask> {
+pub fn load_openings_into_queue(n: usize, mut db: Vec<GameState>, mut db_sequences: Vec<Vec<GameMove>>, gauntlet_engine: &Engine, enemies: &[Engine]) -> ThreadSafeQueue<PlayTask> {
     let mut rng = rand::thread_rng();
     let mut res: Vec<PlayTask> = Vec::with_capacity(n);
     let mut id = 0;
@@ -50,7 +44,5 @@ pub fn load_openings_into_queue(
 }
 
 pub fn contains(queue: &[PlayTask], state: &GameState) -> bool {
-    queue
-        .iter()
-        .any(|other| other.opening.get_hash() == state.get_hash())
+    queue.iter().any(|other| other.opening.get_hash() == state.get_hash())
 }

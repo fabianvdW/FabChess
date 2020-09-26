@@ -1,9 +1,6 @@
 use crate::board_representation::game_state::{GameMove, PieceType};
 use crate::move_generation::movegen;
-use crate::search::moveordering::MoveOrderingStage::{
-    BadCapture, GoodCapture, GoodCaptureInitialization, Killer, PVMove, Quiet, QuietInitialization,
-    TTMove,
-};
+use crate::search::moveordering::MoveOrderingStage::{BadCapture, GoodCapture, GoodCaptureInitialization, Killer, PVMove, Quiet, QuietInitialization, TTMove};
 use crate::search::quiescence::{see, PIECE_VALUES};
 use crate::search::searcher::Thread;
 use crate::search::{CombinedSearchParameters, GradedMove};
@@ -17,18 +14,8 @@ pub fn mvvlva(mv: GameMove) -> i16 {
     TARGET_VALUE[mv.get_captured_piece() as usize] - ATTACKER_VALUE[mv.piece_type as usize]
 }
 
-pub const NORMAL_STAGES: [MoveOrderingStage; 8] = [
-    PVMove,
-    TTMove,
-    GoodCaptureInitialization,
-    GoodCapture,
-    Killer,
-    QuietInitialization,
-    Quiet,
-    BadCapture,
-];
-pub const QUIESCENCE_STAGES: [MoveOrderingStage; 3] =
-    [TTMove, GoodCaptureInitialization, GoodCapture];
+pub const NORMAL_STAGES: [MoveOrderingStage; 8] = [PVMove, TTMove, GoodCaptureInitialization, GoodCapture, Killer, QuietInitialization, Quiet, BadCapture];
+pub const QUIESCENCE_STAGES: [MoveOrderingStage; 3] = [TTMove, GoodCaptureInitialization, GoodCapture];
 pub enum MoveOrderingStage {
     PVMove,
     TTMove,
@@ -59,8 +46,7 @@ impl MoveOrderer {
         match self.stages[self.stage] {
             MoveOrderingStage::PVMove => {
                 self.stage += 1;
-                if pv_table_move.is_some() && p.game_state.is_valid_tt_move(pv_table_move.unwrap())
-                {
+                if pv_table_move.is_some() && p.game_state.is_valid_tt_move(pv_table_move.unwrap()) {
                     Some((pv_table_move.unwrap(), 0.))
                 } else {
                     self.next(thread, p, pv_table_move, tt_move, search_quiets)
@@ -68,10 +54,7 @@ impl MoveOrderer {
             }
             MoveOrderingStage::TTMove => {
                 self.stage += 1;
-                if tt_move.is_some()
-                    && tt_move != pv_table_move
-                    && p.game_state.is_valid_tt_move(tt_move.unwrap())
-                {
+                if tt_move.is_some() && tt_move != pv_table_move && p.game_state.is_valid_tt_move(tt_move.unwrap()) {
                     Some((tt_move.unwrap(), 0.))
                 } else {
                     self.next(thread, p, pv_table_move, tt_move, search_quiets)
@@ -79,11 +62,7 @@ impl MoveOrderer {
             }
             MoveOrderingStage::GoodCaptureInitialization => {
                 //Generate moves first!
-                movegen::generate_moves(
-                    &p.game_state,
-                    self.gen_only_captures,
-                    &mut thread.movelist.move_lists[p.current_depth],
-                );
+                movegen::generate_moves(&p.game_state, self.gen_only_captures, &mut thread.movelist.move_lists[p.current_depth]);
                 let our_mvlist = &mut thread.movelist.move_lists[p.current_depth];
 
                 if let Some(pv_move) = pv_table_move {
@@ -119,50 +98,28 @@ impl MoveOrderer {
                 } else {
                     let (gm_index, graded_move) = highest_mvv_lva.unwrap();
                     our_list.move_list.remove(gm_index);
-                    if PIECE_VALUES[graded_move.0.get_captured_piece() as usize]
-                        - PIECE_VALUES[graded_move.0.piece_type as usize]
-                        >= 0
+                    if PIECE_VALUES[graded_move.0.get_captured_piece() as usize] - PIECE_VALUES[graded_move.0.piece_type as usize] >= 0
                         || graded_move.0.piece_type == PieceType::King
                     {
                         Some((graded_move.0, 0.))
                     } else {
-                        let see_value = see(
-                            p.game_state,
-                            graded_move.0,
-                            self.stages.len() == NORMAL_STAGES.len(),
-                            &mut thread.see_buffer,
-                        );
+                        let see_value = see(p.game_state, graded_move.0, self.stages.len() == NORMAL_STAGES.len(), &mut thread.see_buffer);
                         if see_value >= 0 {
                             Some((graded_move.0, 0.))
                         } else {
-                            our_list
-                                .move_list
-                                .push(GradedMove(graded_move.0, Some(f64::from(see_value))));
+                            our_list.move_list.push(GradedMove(graded_move.0, Some(f64::from(see_value))));
                             self.next(thread, p, None, None, search_quiets)
                         }
                     }
                 }
             }
             MoveOrderingStage::Killer => {
-                debug_assert!(
-                    thread.killer_moves[p.current_depth][0].is_none()
-                        || !thread.killer_moves[p.current_depth][0]
-                            .unwrap()
-                            .is_capture()
-                );
-                debug_assert!(
-                    thread.killer_moves[p.current_depth][1].is_none()
-                        || !thread.killer_moves[p.current_depth][1]
-                            .unwrap()
-                            .is_capture()
-                );
+                debug_assert!(thread.killer_moves[p.current_depth][0].is_none() || !thread.killer_moves[p.current_depth][0].unwrap().is_capture());
+                debug_assert!(thread.killer_moves[p.current_depth][1].is_none() || !thread.killer_moves[p.current_depth][1].unwrap().is_capture());
                 let our_list = &mut thread.movelist.move_lists[p.current_depth];
                 let mut found_index = our_list.move_list.len();
                 for (index, gmv) in our_list.move_list.iter().enumerate() {
-                    if gmv.1.is_none()
-                        && (Some(gmv.0) == thread.killer_moves[p.current_depth][0]
-                            || Some(gmv.0) == thread.killer_moves[p.current_depth][1])
-                    {
+                    if gmv.1.is_none() && (Some(gmv.0) == thread.killer_moves[p.current_depth][0] || Some(gmv.0) == thread.killer_moves[p.current_depth][1]) {
                         found_index = index;
                         break;
                     }
@@ -178,20 +135,12 @@ impl MoveOrderer {
             }
             MoveOrderingStage::QuietInitialization => {
                 if search_quiets {
-                    for mv in thread.movelist.move_lists[p.current_depth]
-                        .move_list
-                        .iter_mut()
-                    {
+                    for mv in thread.movelist.move_lists[p.current_depth].move_list.iter_mut() {
                         if mv.1.is_none() {
                             debug_assert!(!mv.0.is_capture());
                             mv.1 = Some(
-                                thread.hh_score[p.game_state.get_color_to_move()]
-                                    [mv.0.from as usize][mv.0.to as usize]
-                                    as f64
-                                    / thread.bf_score[p.game_state.get_color_to_move()]
-                                        [mv.0.from as usize]
-                                        [mv.0.to as usize]
-                                        as f64
+                                thread.hh_score[p.game_state.get_color_to_move()][mv.0.from as usize][mv.0.to as usize] as f64
+                                    / thread.bf_score[p.game_state.get_color_to_move()][mv.0.from as usize][mv.0.to as usize] as f64
                                     / 1000.0,
                             );
                         }
@@ -202,9 +151,7 @@ impl MoveOrderer {
             }
             MoveOrderingStage::Quiet => {
                 if !search_quiets {
-                    thread.movelist.move_lists[p.current_depth]
-                        .move_list
-                        .retain(|x| x.0.is_capture());
+                    thread.movelist.move_lists[p.current_depth].move_list.retain(|x| x.0.is_capture());
                     self.stage += 1;
                     return self.next(thread, p, None, None, search_quiets);
                 }

@@ -76,19 +76,12 @@ impl TimeControl {
             TimeControl::Tournament(left, _, _) => *left,
         }
     }
-    pub fn time_over(
-        &self,
-        time_spent: u64,
-        tc_information: &TimeControlInformation,
-        move_overhead: u64,
-    ) -> bool {
+    pub fn time_over(&self, time_spent: u64, tc_information: &TimeControlInformation, move_overhead: u64) -> bool {
         if let TimeControl::Incremental(mytime, myinc) = self {
             if time_spent as isize > *mytime as isize - 4 * move_overhead as isize {
                 return true;
             }
-            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64) / 30.0) as u64
-                + myinc
-                - move_overhead;
+            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64) / 30.0) as u64 + myinc - move_overhead;
             let time_aspired = if tc_information.time_saved < normal_time {
                 ((normal_time as f64 * 0.85) as u64).max(*myinc)
             } else {
@@ -113,10 +106,7 @@ impl TimeControl {
             if time_spent as isize > *mytime as isize - 4 * move_overhead as isize {
                 return true;
             }
-            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64)
-                / *movestogo as f64) as u64
-                + myinc
-                - move_overhead;
+            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64) / *movestogo as f64) as u64 + myinc - move_overhead;
             let time_aspired = if tc_information.time_saved < normal_time {
                 (normal_time as f64 * 0.85) as u64
             } else {
@@ -136,13 +126,10 @@ impl TimeControl {
 
     pub fn time_saved(&self, time_spent: u64, saved: u64, move_overhead: u64) -> i64 {
         if let TimeControl::Incremental(mytime, myinc) = self {
-            let normal_timecontrol =
-                ((*mytime as f64 - saved as f64) / 30.0) as u64 + myinc - move_overhead;
+            let normal_timecontrol = ((*mytime as f64 - saved as f64) / 30.0) as u64 + myinc - move_overhead;
             normal_timecontrol as i64 - time_spent as i64
         } else if let TimeControl::Tournament(mytime, myinc, movestogo) = self {
-            let normal_timecontrol = ((*mytime as f64 - saved as f64) / *movestogo as f64) as u64
-                + myinc
-                - move_overhead;
+            let normal_timecontrol = ((*mytime as f64 - saved as f64) / *movestogo as f64) as u64 + myinc - move_overhead;
             normal_timecontrol as i64 - time_spent as i64
         } else {
             0
@@ -154,19 +141,14 @@ impl TimeControl {
         if let TimeControl::Incremental(mytime, myinc) = self {
             res_str.push_str(&format!("My Time: {}\n", mytime));
             res_str.push_str(&format!("My Inc: {}\n", myinc));
-            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64) / 30.0) as u64
-                + myinc
-                - move_overhead;
+            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64) / 30.0) as u64 + myinc - move_overhead;
             let time_aspired = if tc_information.time_saved < normal_time {
                 ((normal_time as f64 * 0.85) as u64).max(*myinc)
             } else {
                 normal_time.max(*myinc)
             };
             res_str.push_str(&format!("My normal time I would spend: {}\n", normal_time));
-            res_str.push_str(&format!(
-                "My aspired time I would spend: {}\n",
-                time_aspired
-            ));
+            res_str.push_str(&format!("My aspired time I would spend: {}\n", time_aspired));
         } else if let TimeControl::MoveTime(time) = self {
             res_str.push_str(&format!("Limited movetime: {}\n", time));
         } else if let TimeControl::Infinite = self {
@@ -175,20 +157,14 @@ impl TimeControl {
             res_str.push_str(&format!("My Time: {}\n", mytime));
             res_str.push_str(&format!("My Inc: {}\n", myinc));
             res_str.push_str(&format!("Moves to go : {}\n", movestogo));
-            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64)
-                / *movestogo as f64) as u64
-                + myinc
-                - move_overhead;
+            let normal_time = ((*mytime as f64 - tc_information.time_saved as f64) / *movestogo as f64) as u64 + myinc - move_overhead;
             let time_aspired = if tc_information.time_saved < normal_time {
                 (normal_time as f64 * 0.85) as u64
             } else {
                 normal_time
             };
             res_str.push_str(&format!("My normal time I would spend: {}\n", normal_time));
-            res_str.push_str(&format!(
-                "My aspired time I would spend: {}\n",
-                time_aspired
-            ));
+            res_str.push_str(&format!("My aspired time I would spend: {}\n", time_aspired));
         }
 
         res_str

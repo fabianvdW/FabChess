@@ -1,10 +1,7 @@
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
 use crate::bitboards::magic_constants::*;
-use crate::board_representation::game_state::{
-    CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS,
-    CASTLE_WHITE_KS, CASTLE_WHITE_QS,
-};
+use crate::board_representation::game_state::{CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS, CASTLE_WHITE_KS, CASTLE_WHITE_QS};
 use crate::move_generation::magic::Magic;
 use crate::move_generation::movegen::{bishop_attack, rook_attack};
 use std::fmt::Display;
@@ -14,11 +11,7 @@ pub mod bitboards;
 //Code for generating bitboards::
 pub(crate) fn arr_2d_to_string<T: Display>(arr: &[[T; 64]; 64], name: &str) -> String {
     let mut res_str: String = String::new();
-    res_str.push_str(&format!(
-        "#[rustfmt::skip]\npub const {} : [[{};64];64]= [",
-        name,
-        std::any::type_name::<T>(),
-    ));
+    res_str.push_str(&format!("#[rustfmt::skip]\npub const {} : [[{};64];64]= [", name, std::any::type_name::<T>(),));
     for a in arr.iter() {
         res_str.push_str("[");
         for i in a.iter() {
@@ -31,12 +24,7 @@ pub(crate) fn arr_2d_to_string<T: Display>(arr: &[[T; 64]; 64], name: &str) -> S
 }
 pub(crate) fn arr_to_string<T: Display>(arr: &[T], name: &str) -> String {
     let mut res_str: String = String::new();
-    res_str.push_str(&format!(
-        "#[rustfmt::skip]\npub const {} : [{};{}] = [",
-        name,
-        std::any::type_name::<T>(),
-        arr.len()
-    ));
+    res_str.push_str(&format!("#[rustfmt::skip]\npub const {} : [{};{}] = [", name, std::any::type_name::<T>(), arr.len()));
     for i in arr {
         res_str.push_str(&format!("{}{}, ", *i, std::any::type_name::<T>()));
     }
@@ -46,11 +34,7 @@ pub(crate) fn arr_to_string<T: Display>(arr: &[T], name: &str) -> String {
 
 pub(crate) fn magic_arr_to_string(arr: &[Magic], name: &str) -> String {
     let mut res_str = String::new();
-    res_str.push_str(&format!(
-        "#[rustfmt::skip]\npub const {}: [Magic;{}] = [",
-        name,
-        arr.len()
-    ));
+    res_str.push_str(&format!("#[rustfmt::skip]\npub const {}: [Magic;{}] = [", name, arr.len()));
     for i in arr {
         res_str.push_str(&format!("{}, ", *i));
     }
@@ -99,8 +83,7 @@ pub fn print_castle_permisssion() {
 }
 
 pub const fn occupancy_mask_rook(square: usize) -> u64 {
-    ((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7])))
-        & not_square(square)
+    ((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7]))) & not_square(square)
 }
 
 pub fn print_rook_occupancy_masks() {
@@ -141,19 +124,14 @@ pub fn print_bishop_rays() {
     let mut res = [[0u64; 64]; 64];
     for king_sq in 0..64 {
         for bishop_sq in 0..64 {
-            res[king_sq][bishop_sq] =
-                get_bishop_ray_slow(FREEFIELD_BISHOP_ATTACKS[king_sq], king_sq, bishop_sq);
+            res[king_sq][bishop_sq] = get_bishop_ray_slow(FREEFIELD_BISHOP_ATTACKS[king_sq], king_sq, bishop_sq);
         }
     }
     println!("{}", arr_2d_to_string(&res, "BISHOP_RAYS"))
 }
 
 //Gets the ray of one bishop into a specific direction
-pub fn get_bishop_ray_slow(
-    bishop_attack_in_all_directions: u64,
-    target_square: usize,
-    bishop_square: usize,
-) -> u64 {
+pub fn get_bishop_ray_slow(bishop_attack_in_all_directions: u64, target_square: usize, bishop_square: usize) -> u64 {
     let diff = target_square as isize - bishop_square as isize;
     let target_rank = target_square / 8;
     let target_file = target_square % 8;
@@ -161,30 +139,14 @@ pub fn get_bishop_ray_slow(
     let bishop_file = bishop_square % 8;
     if diff > 0 {
         if diff % 9 == 0 {
-            FILES_LESS_THAN[target_file]
-                & FILES_GREATER_THAN[bishop_file]
-                & RANKS_LESS_THAN[target_rank]
-                & RANKS_GREATER_THAN[bishop_rank]
-                & bishop_attack_in_all_directions
+            FILES_LESS_THAN[target_file] & FILES_GREATER_THAN[bishop_file] & RANKS_LESS_THAN[target_rank] & RANKS_GREATER_THAN[bishop_rank] & bishop_attack_in_all_directions
         } else {
-            FILES_GREATER_THAN[target_file]
-                & FILES_LESS_THAN[bishop_file]
-                & RANKS_LESS_THAN[target_rank]
-                & RANKS_GREATER_THAN[bishop_rank]
-                & bishop_attack_in_all_directions
+            FILES_GREATER_THAN[target_file] & FILES_LESS_THAN[bishop_file] & RANKS_LESS_THAN[target_rank] & RANKS_GREATER_THAN[bishop_rank] & bishop_attack_in_all_directions
         }
     } else if diff % -9 == 0 {
-        FILES_GREATER_THAN[target_file]
-            & FILES_LESS_THAN[bishop_file]
-            & RANKS_GREATER_THAN[target_rank]
-            & RANKS_LESS_THAN[bishop_rank]
-            & bishop_attack_in_all_directions
+        FILES_GREATER_THAN[target_file] & FILES_LESS_THAN[bishop_file] & RANKS_GREATER_THAN[target_rank] & RANKS_LESS_THAN[bishop_rank] & bishop_attack_in_all_directions
     } else {
-        FILES_LESS_THAN[target_file]
-            & FILES_GREATER_THAN[bishop_file]
-            & RANKS_GREATER_THAN[target_rank]
-            & RANKS_LESS_THAN[bishop_rank]
-            & bishop_attack_in_all_directions
+        FILES_LESS_THAN[target_file] & FILES_GREATER_THAN[bishop_file] & RANKS_GREATER_THAN[target_rank] & RANKS_LESS_THAN[bishop_rank] & bishop_attack_in_all_directions
     }
 }
 
@@ -192,19 +154,14 @@ pub fn print_rook_rays() {
     let mut res = [[0u64; 64]; 64];
     for king_sq in 0..64 {
         for rook_sq in 0..64 {
-            res[king_sq][rook_sq] =
-                get_rook_ray_slow(FREEFIELD_ROOK_ATTACKS[king_sq], king_sq, rook_sq);
+            res[king_sq][rook_sq] = get_rook_ray_slow(FREEFIELD_ROOK_ATTACKS[king_sq], king_sq, rook_sq);
         }
     }
     println!("{}", arr_2d_to_string(&res, "ROOK_RAYS"));
 }
 
 //Gets the ray of one rook into a specific direction
-pub fn get_rook_ray_slow(
-    rook_attacks_in_all_directions: u64,
-    target_square: usize,
-    rook_square: usize,
-) -> u64 {
+pub fn get_rook_ray_slow(rook_attacks_in_all_directions: u64, target_square: usize, rook_square: usize) -> u64 {
     let diff = target_square as isize - rook_square as isize;
     let target_rank = target_square / 8;
     let target_file = target_square % 8;
@@ -213,22 +170,14 @@ pub fn get_rook_ray_slow(
     if diff > 0 {
         //Same vertical
         if target_rank == rook_rank {
-            FILES_LESS_THAN[target_file]
-                & FILES_GREATER_THAN[rook_file]
-                & rook_attacks_in_all_directions
+            FILES_LESS_THAN[target_file] & FILES_GREATER_THAN[rook_file] & rook_attacks_in_all_directions
         } else {
-            RANKS_LESS_THAN[target_rank]
-                & RANKS_GREATER_THAN[rook_rank]
-                & rook_attacks_in_all_directions
+            RANKS_LESS_THAN[target_rank] & RANKS_GREATER_THAN[rook_rank] & rook_attacks_in_all_directions
         }
     } else if target_rank == rook_rank {
-        FILES_GREATER_THAN[target_file]
-            & FILES_LESS_THAN[rook_file]
-            & rook_attacks_in_all_directions
+        FILES_GREATER_THAN[target_file] & FILES_LESS_THAN[rook_file] & rook_attacks_in_all_directions
     } else {
-        RANKS_GREATER_THAN[target_rank]
-            & RANKS_LESS_THAN[rook_rank]
-            & rook_attacks_in_all_directions
+        RANKS_GREATER_THAN[target_rank] & RANKS_LESS_THAN[rook_rank] & rook_attacks_in_all_directions
     }
 }
 pub fn print_king_zone_white() {
@@ -301,10 +250,7 @@ pub fn print_diagonally_adjacent() {
     let mut res = [0u64; 64];
     for (sq, item) in res.iter_mut().enumerate() {
         let board = 1u64 << sq;
-        *item = north_east_one(board)
-            | north_west_one(board)
-            | south_east_one(board)
-            | south_west_one(board);
+        *item = north_east_one(board) | north_west_one(board) | south_east_one(board) | south_west_one(board);
     }
     println!("{}", arr_to_string(&res, "DIAGONALLY_ADJACENT"))
 }
@@ -376,14 +322,7 @@ pub fn print_ranks() {
     let mut res = [0u64; 8];
     for rank in 0..8 {
         if rank == 0 {
-            res[0] = 1u64
-                | 1u64 << 1
-                | 1u64 << 2
-                | 1u64 << 3
-                | 1u64 << 4
-                | 1u64 << 5
-                | 1u64 << 6
-                | 1u64 << 7;
+            res[0] = 1u64 | 1u64 << 1 | 1u64 << 2 | 1u64 << 3 | 1u64 << 4 | 1u64 << 5 | 1u64 << 6 | 1u64 << 7;
         } else {
             res[rank] = res[rank - 1] << 8;
         }
@@ -394,14 +333,7 @@ pub fn print_file() {
     let mut res = [0u64; 8];
     for file in 0..8 {
         if file == 0 {
-            res[0] = 1u64
-                | 1u64 << 8
-                | 1u64 << 16
-                | 1u64 << 24
-                | 1u64 << 32
-                | 1u64 << 40
-                | 1u64 << 48
-                | 1u64 << 56;
+            res[0] = 1u64 | 1u64 << 8 | 1u64 << 16 | 1u64 << 24 | 1u64 << 32 | 1u64 << 40 | 1u64 << 48 | 1u64 << 56;
         } else {
             res[file] = res[file - 1] << 1;
         }

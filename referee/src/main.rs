@@ -71,10 +71,7 @@ fn main() {
                 continue;
             }
             _ => {
-                println!(
-                    "Invalid argument {}, use config CONFIG_FILE to specify",
-                    &args[index]
-                );
+                println!("Invalid argument {}, use config CONFIG_FILE to specify", &args[index]);
                 index += 1;
             }
         }

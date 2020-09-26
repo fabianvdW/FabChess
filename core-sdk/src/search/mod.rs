@@ -28,14 +28,7 @@ pub struct CombinedSearchParameters<'a> {
     pub current_depth: usize,
 }
 impl<'a> CombinedSearchParameters<'a> {
-    pub fn from(
-        alpha: i16,
-        beta: i16,
-        depth_left: i16,
-        game_state: &'a GameState,
-        color: i16,
-        current_depth: usize,
-    ) -> Self {
+    pub fn from(alpha: i16, beta: i16, depth_left: i16, game_state: &'a GameState, color: i16, current_depth: usize) -> Self {
         CombinedSearchParameters {
             alpha,
             beta,
@@ -74,9 +67,7 @@ pub struct PrincipalVariation {
 
 impl PrincipalVariation {
     pub fn new(depth_left: usize) -> PrincipalVariation {
-        PrincipalVariation {
-            pv: vec![None; depth_left + 1],
-        }
+        PrincipalVariation { pv: vec![None; depth_left + 1] }
     }
 }
 
@@ -110,18 +101,9 @@ pub fn leaf_score(game_status: GameResult, color: i16, current_depth: i16) -> i1
 //Doesn't actually check for stalemate
 #[inline(always)]
 pub fn check_for_draw(game_state: &GameState, history: &History) -> SearchInstruction {
-    if game_state.get_piece_bb(PieceType::Pawn)
-        | game_state.get_piece_bb(PieceType::Rook)
-        | game_state.get_piece_bb(PieceType::Queen)
-        == 0u64
-        && (game_state.get_piece(PieceType::Knight, WHITE)
-            | game_state.get_piece(PieceType::Bishop, WHITE))
-        .count_ones()
-            <= 1
-        && (game_state.get_piece(PieceType::Knight, BLACK)
-            | game_state.get_piece(PieceType::Bishop, BLACK))
-        .count_ones()
-            <= 1
+    if game_state.get_piece_bb(PieceType::Pawn) | game_state.get_piece_bb(PieceType::Rook) | game_state.get_piece_bb(PieceType::Queen) == 0u64
+        && (game_state.get_piece(PieceType::Knight, WHITE) | game_state.get_piece(PieceType::Bishop, WHITE)).count_ones() <= 1
+        && (game_state.get_piece(PieceType::Knight, BLACK) | game_state.get_piece(PieceType::Bishop, BLACK)).count_ones() <= 1
     {
         return SearchInstruction::StopSearching(0);
     }
@@ -137,11 +119,7 @@ pub fn check_for_draw(game_state: &GameState, history: &History) -> SearchInstru
 }
 
 #[inline(always)]
-pub fn check_end_condition(
-    game_state: &GameState,
-    has_legal_moves: bool,
-    in_check: bool,
-) -> GameResult {
+pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_check: bool) -> GameResult {
     if in_check && !has_legal_moves {
         if game_state.get_color_to_move() == WHITE {
             return GameResult::BlackWin;
@@ -185,25 +163,14 @@ pub fn checkup(thread: &mut Thread) {
             &TimeControlInformation {
                 high_score_diff: false,
                 time_saved: thread.time_saved,
-                stable_pv: thread
-                    .itcs
-                    .stable_pv
-                    .load(std::sync::atomic::Ordering::Relaxed),
+                stable_pv: thread.itcs.stable_pv.load(std::sync::atomic::Ordering::Relaxed),
             },
             thread.uci_options.move_overhead,
         ))
-        || *thread
-            .itcs
-            .timeout_flag
-            .read()
-            .expect("Reading posioned timeoutflag")
+        || *thread.itcs.timeout_flag.read().expect("Reading posioned timeoutflag")
     {
         if thread.id == 0 {
-            *thread
-                .itcs
-                .timeout_flag
-                .write()
-                .expect("Writing poisoned timeoutflag") = true;
+            *thread.itcs.timeout_flag.write().expect("Writing poisoned timeoutflag") = true;
         }
         thread.self_stop = true;
     }

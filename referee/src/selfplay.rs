@@ -12,12 +12,8 @@ use tokio::time::delay_for;
 pub async fn cleanup(mut e1: Child, mut e2: Child, e1_err: JoinHandle<()>, e2_err: JoinHandle<()>) {
     let _ = e1.kill();
     let _ = e2.kill();
-    e1_err
-        .await
-        .unwrap_or_else(|msg| warn!("Could not join e1_err task: {}", msg));
-    e2_err
-        .await
-        .unwrap_or_else(|msg| warn!("Could not join e2_err task: {}", msg));
+    e1_err.await.unwrap_or_else(|msg| warn!("Could not join e1_err task: {}", msg));
+    e2_err.await.unwrap_or_else(|msg| warn!("Could not join e2_err task: {}", msg));
 }
 pub async fn play_game(mut task: PlayTask) -> TaskResult {
     let mut movelist = movegen::MoveList::default();
@@ -26,13 +22,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     let opening_fen = task.opening.to_fen();
     let agsi = movegen::generate_moves(&task.opening, false, &mut movelist);
     let mut history: Vec<GameState> = Vec::with_capacity(100);
-    let mut status = check_end_condition(
-        &task.opening,
-        !movelist.move_list.is_empty(),
-        agsi.stm_incheck,
-        &history,
-    )
-    .0;
+    let mut status = check_end_condition(&task.opening, !movelist.move_list.is_empty(), agsi.stm_incheck, &history).0;
     assert_eq!(status, GameResult::Ingame);
     history.push(task.opening.clone());
     let mut move_history: Vec<GameMove> = Vec::with_capacity(100);
@@ -43,13 +33,9 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     //Check uci and isready
     let (mut e1, mut e1_input, mut e1_output, e1_err) = task.engine1.get_handles().await;
     let e1_err = tokio::spawn(stderr_listener(e1_err));
-    let reaction = task
-        .engine1
-        .valid_uci_isready_reaction(&mut e1_input, &mut e1_output, task.id)
-        .await;
+    let reaction = task.engine1.valid_uci_isready_reaction(&mut e1_input, &mut e1_output, task.id).await;
     if let EngineReaction::DisqualifyEngine = reaction {
-        e1.kill()
-            .unwrap_or_else(|msg| warn!("Unable to kill engine 1: {}", msg));
+        e1.kill().unwrap_or_else(|msg| warn!("Unable to kill engine 1: {}", msg));
         e1_err.await.unwrap_or_else(|msg| {
             warn!("Could not join err reading task: {:?}", msg);
         });
@@ -58,10 +44,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
 
     let (e2, mut e2_input, mut e2_output, e2_err) = task.engine2.get_handles().await;
     let e2_err = tokio::spawn(stderr_listener(e2_err));
-    let reaction = task
-        .engine2
-        .valid_uci_isready_reaction(&mut e2_input, &mut e2_output, task.id)
-        .await;
+    let reaction = task.engine2.valid_uci_isready_reaction(&mut e2_input, &mut e2_output, task.id).await;
     if let EngineReaction::DisqualifyEngine = reaction {
         cleanup(e1, e2, e1_err, e2_err).await;
         return TaskResult::disq(task, false, move_history, status);
@@ -75,8 +58,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     while let GameResult::Ingame = status {
         //Request move
         let latest_state = &history[history.len() - 1];
-        let player1_move = task.p1_is_white && latest_state.get_color_to_move() == 0
-            || !task.p1_is_white && latest_state.get_color_to_move() == 1;
+        let player1_move = task.p1_is_white && latest_state.get_color_to_move() == 0 || !task.p1_is_white && latest_state.get_color_to_move() == 1;
         //Prepare position string
         let mut position_string = String::new();
         position_string.push_str("position fen ");
@@ -107,14 +89,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
         if player1_move {
             let reaction = task
                 .engine1
-                .request_move(
-                    &position_string,
-                    &go_string,
-                    &mut e1_input,
-                    &mut e1_output,
-                    task.id,
-                    &movelist,
-                )
+                .request_move(&position_string, &go_string, &mut e1_input, &mut e1_output, task.id, &movelist)
                 .await;
             let engine_status;
             match reaction {
@@ -153,14 +128,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
         } else {
             let reaction = task
                 .engine2
-                .request_move(
-                    &position_string,
-                    &go_string,
-                    &mut e2_input,
-                    &mut e2_output,
-                    task.id,
-                    &movelist,
-                )
+                .request_move(&position_string, &go_string, &mut e2_input, &mut e2_output, task.id, &movelist)
                 .await;
             let engine_status;
             match reaction {
@@ -205,12 +173,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
             draw_adjudication = 0;
         }
         let agsi = movegen::generate_moves(&state, false, &mut movelist);
-        let check = check_end_condition(
-            &state,
-            !movelist.move_list.is_empty(),
-            agsi.stm_incheck,
-            &history,
-        );
+        let check = check_end_condition(&state, !movelist.move_list.is_empty(), agsi.stm_incheck, &history);
         history.push(state);
         status = check.0;
         endcondition = check.1;
@@ -245,8 +208,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     cleanup(e1, e2, e1_err, e2_err).await;
 
     let draw = status == GameResult::Draw;
-    let p1_win = status == GameResult::WhiteWin && task.p1_is_white
-        || status == GameResult::BlackWin && !task.p1_is_white;
+    let p1_win = status == GameResult::WhiteWin && task.p1_is_white || status == GameResult::BlackWin && !task.p1_is_white;
     if draw {
         task.engine1.draws += 1;
         task.engine2.draws += 1;
@@ -270,12 +232,7 @@ pub async fn play_game(mut task: PlayTask) -> TaskResult {
     }
 }
 
-pub fn check_end_condition(
-    game_state: &GameState,
-    has_legal_moves: bool,
-    in_check: bool,
-    history: &[GameState],
-) -> (GameResult, Option<EndConditionInformation>) {
+pub fn check_end_condition(game_state: &GameState, has_legal_moves: bool, in_check: bool, history: &[GameState]) -> (GameResult, Option<EndConditionInformation>) {
     let enemy_win = if game_state.get_color_to_move() == 0 {
         GameResult::BlackWin
     } else {
@@ -289,26 +246,14 @@ pub fn check_end_condition(
     }
 
     //Missing pieces
-    if game_state.get_pieces_from_side_without_king(WHITE)
-        | game_state.get_pieces_from_side_without_king(BLACK)
-        == 0u64
-    {
-        return (
-            GameResult::Draw,
-            Some(EndConditionInformation::DrawByMissingPieces),
-        );
+    if game_state.get_pieces_from_side_without_king(WHITE) | game_state.get_pieces_from_side_without_king(BLACK) == 0u64 {
+        return (GameResult::Draw, Some(EndConditionInformation::DrawByMissingPieces));
     }
     if game_state.get_half_moves() >= 100 {
-        return (
-            GameResult::Draw,
-            Some(EndConditionInformation::HundredMoveDraw),
-        );
+        return (GameResult::Draw, Some(EndConditionInformation::HundredMoveDraw));
     }
     if get_occurences(history, game_state) >= 2 {
-        return (
-            GameResult::Draw,
-            Some(EndConditionInformation::ThreeFoldRepetition),
-        );
+        return (GameResult::Draw, Some(EndConditionInformation::ThreeFoldRepetition));
     }
 
     (GameResult::Ingame, None)

@@ -1,6 +1,4 @@
-use crate::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, PIECE_TYPES,
-};
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType, PIECE_TYPES};
 use crate::search::{CombinedSearchParameters, SearchInstruction, MATED_IN_MAX};
 use std::cell::UnsafeCell;
 
@@ -88,9 +86,7 @@ impl Cache {
             }
 
             for handle in handles {
-                handle
-                    .join()
-                    .expect("Could not unwrap handle while initializing the cache!");
+                handle.join().expect("Could not unwrap handle while initializing the cache!");
             }
         }
         cache_vec
@@ -134,9 +130,7 @@ impl Cache {
 
     pub fn age_entry(&self, hash: u64, new_age: u8) {
         unsafe {
-            (&mut *self.cache.get())
-                .get_unchecked_mut(hash as usize % self.buckets)
-                .age_entry(hash, new_age);
+            (&mut *self.cache.get()).get_unchecked_mut(hash as usize % self.buckets).age_entry(hash, new_age);
         }
     }
 
@@ -144,14 +138,7 @@ impl Cache {
         unsafe { *(&*self.cache.get()).get_unchecked(hash as usize % self.buckets) }
     }
 
-    pub fn insert(
-        &self,
-        p: &CombinedSearchParameters,
-        mv: GameMove,
-        score: i16,
-        original_alpha: i16,
-        static_evaluation: Option<i16>,
-    ) {
+    pub fn insert(&self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: Option<i16>) {
         if self.entries == 0 {
             return;
         }
@@ -159,36 +146,21 @@ impl Cache {
         unsafe {
             (&mut *self.cache.get())
                 .get_unchecked_mut(index)
-                .replace_entry(
-                    p,
-                    mv,
-                    score,
-                    original_alpha,
-                    static_evaluation,
-                    self.current_age,
-                );
+                .replace_entry(p, mv, score, original_alpha, static_evaluation, self.current_age);
         };
     }
 
-    pub fn lookup(
-        &self,
-        p: &CombinedSearchParameters,
-        tt_entry: &mut Option<CacheEntry>,
-    ) -> SearchInstruction {
+    pub fn lookup(&self, p: &CombinedSearchParameters, tt_entry: &mut Option<CacheEntry>) -> SearchInstruction {
         if self.entries == 0 {
             return SearchInstruction::ContinueSearching;
         }
-        let ce = self
-            .get(p.game_state.get_hash())
-            .probe(p.game_state.get_hash());
+        let ce = self.get(p.game_state.get_hash()).probe(p.game_state.get_hash());
         if let Some(mut ce) = ce {
             ce.score = Cache::score_from_tt_score(ce.score, p.current_depth as i16);
             *tt_entry = Some(ce);
             if ce.depth >= p.depth_left as i8
                 && (p.beta - p.alpha <= 1 || p.depth_left <= 0)
-                && (ce.is_exact()
-                    || ce.is_lower_bound() && ce.score >= p.beta
-                    || ce.is_upper_bound() && ce.score <= p.alpha)
+                && (ce.is_exact() || ce.is_lower_bound() && ce.score >= p.beta || ce.is_upper_bound() && ce.score <= p.alpha)
             {
                 return SearchInstruction::StopSearching(ce.score);
             }
@@ -206,15 +178,7 @@ pub struct CacheBucket([CacheEntry; 3]);
 
 pub const MAXIMUM_AGE_DIFF_REPLACE: usize = 3;
 impl CacheBucket {
-    pub fn replace_entry(
-        &mut self,
-        p: &CombinedSearchParameters,
-        mv: GameMove,
-        score: i16,
-        original_alpha: i16,
-        static_evaluation: Option<i16>,
-        current_age: u8,
-    ) -> bool {
+    pub fn replace_entry(&mut self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: Option<i16>, current_age: u8) -> bool {
         let lower_bound = score >= p.beta;
         let upper_bound = score <= original_alpha;
         let score = Cache::score_to_tt_score(score, p.current_depth as i16);
@@ -233,9 +197,7 @@ impl CacheBucket {
             )
         };
         let renew_entry = |cache_entry: &mut CacheEntry| -> bool {
-            if cache_entry.age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-                || cache_entry.get_score() <= p.depth_left as f64 * if pv_node { 1. } else { 0.7 }
-            {
+            if cache_entry.age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE || cache_entry.get_score() <= p.depth_left as f64 * if pv_node { 1. } else { 0.7 } {
                 write_entry(cache_entry);
                 true
             } else {
@@ -243,25 +205,16 @@ impl CacheBucket {
             }
         };
 
-        if self.0[0].is_invalid()
-            || self.0[0].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-            || self.0[0].validate_hash(p.game_state.get_hash())
-        {
+        if self.0[0].is_invalid() || self.0[0].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE || self.0[0].validate_hash(p.game_state.get_hash()) {
             let res = self.0[0].is_invalid();
             renew_entry(&mut self.0[0]);
             return res;
-        } else if self.0[1].is_invalid()
-            || self.0[1].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-            || self.0[1].validate_hash(p.game_state.get_hash())
-        {
+        } else if self.0[1].is_invalid() || self.0[1].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE || self.0[1].validate_hash(p.game_state.get_hash()) {
             let res = self.0[1].is_invalid();
             renew_entry(&mut self.0[1]);
             self.0.swap(0, 1);
             return res;
-        } else if self.0[2].is_invalid()
-            || self.0[2].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE
-            || self.0[2].validate_hash(p.game_state.get_hash())
-        {
+        } else if self.0[2].is_invalid() || self.0[2].age_diff(current_age) >= MAXIMUM_AGE_DIFF_REPLACE || self.0[2].validate_hash(p.game_state.get_hash()) {
             let res = self.0[2].is_invalid();
             renew_entry(&mut self.0[2]);
             self.0.swap(0, 2);
@@ -312,9 +265,7 @@ impl CacheBucket {
     }
 
     pub fn fill_status(&self) -> usize {
-        (if self.0[0].is_invalid() { 0 } else { 1 })
-            + (if self.0[1].is_invalid() { 0 } else { 1 })
-            + (if self.0[2].is_invalid() { 0 } else { 1 })
+        (if self.0[0].is_invalid() { 0 } else { 1 }) + (if self.0[1].is_invalid() { 0 } else { 1 }) + (if self.0[2].is_invalid() { 0 } else { 1 })
     }
 }
 impl Default for CacheBucket {
@@ -358,16 +309,8 @@ impl CacheEntry {
         let my_age = self.get_age();
         let normal_age_diff = (current_age as isize - my_age as isize).abs();
         let wrapping_age_diff = {
-            let my_age = if my_age >= 16 {
-                my_age as isize - 32
-            } else {
-                my_age as isize
-            };
-            let current_age = if current_age >= 16 {
-                current_age as isize - 32
-            } else {
-                current_age as isize
-            };
+            let my_age = if my_age >= 16 { my_age as isize - 32 } else { my_age as isize };
+            let current_age = if current_age >= 16 { current_age as isize - 32 } else { current_age as isize };
             (current_age - my_age).abs()
         };
         normal_age_diff.min(wrapping_age_diff) as usize
@@ -382,8 +325,7 @@ impl CacheEntry {
     }
 
     pub fn validate_hash(&self, hash: u64) -> bool {
-        (self.upper_hash as u64) == (hash >> 32)
-            && ((self.lower_hash ^ self.mv as u32) as u64) == (hash & 0xFFFF_FFFF)
+        (self.upper_hash as u64) == (hash >> 32) && ((self.lower_hash ^ self.mv as u32) as u64) == (hash & 0xFFFF_FFFF)
     }
     //I know this is not idiomatic, but it saves memory...
     pub fn is_invalid(&self) -> bool {
@@ -400,18 +342,7 @@ impl CacheEntry {
             static_evaluation: INVALID_STATIC_EVALUATION,
         }
     }
-    pub fn write(
-        &mut self,
-        hash: u64,
-        depth: i16,
-        score: i16,
-        static_evaluation: Option<i16>,
-        pv_node: bool,
-        alpha: bool,
-        beta: bool,
-        mv: GameMove,
-        current_age: u8,
-    ) {
+    pub fn write(&mut self, hash: u64, depth: i16, score: i16, static_evaluation: Option<i16>, pv_node: bool, alpha: bool, beta: bool, mv: GameMove, current_age: u8) {
         let mv = CacheEntry::mv_to_u16(mv);
         self.upper_hash = (hash >> 32) as u32;
         self.lower_hash = (hash & 0xFFFF_FFFF) as u32 ^ mv as u32;
@@ -423,11 +354,7 @@ impl CacheEntry {
         self.flags |= (pv_node as u8) << 2;
         self.flags |= current_age << 3;
         self.mv = mv;
-        self.static_evaluation = if let Some(se) = static_evaluation {
-            se
-        } else {
-            INVALID_STATIC_EVALUATION
-        };
+        self.static_evaluation = if let Some(se) = static_evaluation { se } else { INVALID_STATIC_EVALUATION };
     }
 
     #[inline(always)]
@@ -501,56 +428,28 @@ impl CacheEntry {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Queen,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
+                    move_type: GameMoveType::Promotion(PieceType::Queen, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
                 }
             } else if typ == 4 {
                 GameMove {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Rook,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
+                    move_type: GameMoveType::Promotion(PieceType::Rook, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
                 }
             } else if typ == 5 {
                 GameMove {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Bishop,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
+                    move_type: GameMoveType::Promotion(PieceType::Bishop, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
                 }
             } else if typ == 6 {
                 GameMove {
                     from,
                     to,
                     piece_type,
-                    move_type: GameMoveType::Promotion(
-                        PieceType::Knight,
-                        if captured_piece_type != PieceType::King {
-                            Some(captured_piece_type)
-                        } else {
-                            None
-                        },
-                    ),
+                    move_type: GameMoveType::Promotion(PieceType::Knight, if captured_piece_type != PieceType::King { Some(captured_piece_type) } else { None }),
                 }
             } else {
                 GameMove {

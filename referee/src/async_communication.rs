@@ -4,14 +4,8 @@ use tokio::prelude::*;
 use tokio::time::timeout;
 
 pub async fn write_all<T: AsyncWrite + Unpin>(stdin: &mut T, msg: &str) {
-    stdin
-        .write_all(msg.as_bytes())
-        .await
-        .unwrap_or_else(|msg| warn!("Could not write: {:?}", msg));
-    stdin
-        .flush()
-        .await
-        .unwrap_or_else(|msg| warn!("Could not flush: {:?}", msg));
+    stdin.write_all(msg.as_bytes()).await.unwrap_or_else(|msg| warn!("Could not write: {:?}", msg));
+    stdin.flush().await.unwrap_or_else(|msg| warn!("Could not flush: {:?}", msg));
 }
 
 pub async fn stderr_listener<T: AsyncBufRead + Unpin>(mut stderr: T) {
@@ -28,11 +22,7 @@ pub fn log_err(msg: &str) {
     info!("StdERR of child:");
     info!("{}", msg);
 }
-pub async fn expect_output<T: AsyncBufRead + Unpin>(
-    starts_with: &str,
-    time_frame: u64,
-    output: &mut T,
-) -> (Option<String>, usize) {
+pub async fn expect_output<T: AsyncBufRead + Unpin>(starts_with: &str, time_frame: u64, output: &mut T) -> (Option<String>, usize) {
     let res = expect_output_and_listen_for_info(starts_with, "", time_frame, output).await;
     (res.0, res.2)
 }

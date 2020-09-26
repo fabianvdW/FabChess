@@ -1,6 +1,4 @@
-use super::super::board_representation::game_state::{
-    GameMove, GameMoveType, GameState, PieceType, BLACK, WHITE,
-};
+use super::super::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType, BLACK, WHITE};
 use super::super::evaluation::eval_game_state;
 use super::super::move_generation::movegen;
 use super::alphabeta::*;
@@ -46,8 +44,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 7. TT Lookup
     let mut tt_entry = None;
     if p.depth_left == 0 {
-        if let SearchInstruction::StopSearching(res) = thread.itcs.cache().lookup(&p, &mut tt_entry)
-        {
+        if let SearchInstruction::StopSearching(res) = thread.itcs.cache().lookup(&p, &mut tt_entry) {
             #[cfg(feature = "search-statistics")]
             {
                 thread.search_statistics.add_cache_hit_aj_replace_ns();
@@ -71,9 +68,7 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         tt_move = None;
     }
 
-    thread
-        .history
-        .push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
+    thread.history.push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
 
     //Step 8. Iterate through moves
 
@@ -92,26 +87,14 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
             break;
         }
         let (capture_move, _) = mv.unwrap();
-        if !passes_delta_pruning(
-            capture_move,
-            p.game_state.get_phase().phase,
-            stand_pat,
-            p.alpha,
-        ) {
+        if !passes_delta_pruning(capture_move, p.game_state.get_phase().phase, stand_pat, p.alpha) {
             continue;
         }
         debug_assert!(capture_move.is_capture());
         let next_g = make_move(p.game_state, capture_move);
         //Step 8.4. Search move
         let score = -q_search(
-            CombinedSearchParameters::from(
-                -p.beta,
-                -p.alpha,
-                p.depth_left - 1,
-                &next_g,
-                -p.color,
-                p.current_depth + 1,
-            ),
+            CombinedSearchParameters::from(-p.beta, -p.alpha, p.depth_left - 1, &next_g, -p.color, p.current_depth + 1),
             thread,
         );
 
@@ -183,28 +166,14 @@ pub fn delta_pruning(p: &CombinedSearchParameters, stand_pat: i16) -> SearchInst
 #[inline(always)]
 pub fn best_move_value(state: &GameState) -> i16 {
     let mut res = 0;
-    for pt in [
-        PieceType::Queen,
-        PieceType::Rook,
-        PieceType::Bishop,
-        PieceType::Knight,
-    ]
-    .iter()
-    {
+    for pt in [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight].iter() {
         if state.get_piece(*pt, 1 - state.get_color_to_move()) > 0 {
             res = PIECE_VALUES[*pt as usize];
             break;
         }
     }
 
-    if (state.get_piece(PieceType::Pawn, state.get_color_to_move())
-        & RANKS[if state.get_color_to_move() == WHITE {
-            6
-        } else {
-            1
-        }])
-        != 0u64
-    {
+    if (state.get_piece(PieceType::Pawn, state.get_color_to_move()) & RANKS[if state.get_color_to_move() == WHITE { 6 } else { 1 }]) != 0u64 {
         res += PIECE_VALUES[PieceType::Queen as usize] - PIECE_VALUES[PieceType::Pawn as usize];
     }
     res
@@ -251,16 +220,13 @@ pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16
         occ ^= from_set;
         if from_set & may_xray != 0u64 {
             //Recalculate rays
-            attadef |= recalculate_sliders(&game_state, color_to_move, mv.to as usize, occ)
-                & (!deleted_pieces);
+            attadef |= recalculate_sliders(&game_state, color_to_move, mv.to as usize, occ) & (!deleted_pieces);
         }
         color_to_move = 1 - color_to_move;
         let res = least_valuable_piece(attadef, color_to_move, &game_state);
         from_set = res.0;
         attacked_piece = res.1;
-        if attacked_piece == 5
-            && least_valuable_piece(attadef, 1 - color_to_move, &game_state).1 != 1000
-        {
+        if attacked_piece == 5 && least_valuable_piece(attadef, 1 - color_to_move, &game_state).1 != 1000 {
             break;
         }
     }
@@ -272,15 +238,9 @@ pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16
 }
 
 #[inline(always)]
-pub fn recalculate_sliders(
-    game_state: &GameState,
-    color_to_move: usize,
-    square: usize,
-    occ: u64,
-) -> u64 {
+pub fn recalculate_sliders(game_state: &GameState, color_to_move: usize, square: usize, occ: u64) -> u64 {
     //Bishops
-    movegen::bishop_attack(square, occ) & game_state.get_bishop_like_bb(color_to_move)
-        | movegen::rook_attack(square, occ) & game_state.get_rook_like_bb(color_to_move)
+    movegen::bishop_attack(square, occ) & game_state.get_bishop_like_bb(color_to_move) | movegen::rook_attack(square, occ) & game_state.get_rook_like_bb(color_to_move)
 }
 
 #[inline(always)]
@@ -288,19 +248,11 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     let square_board = 1u64 << square;
     let mut attacks = 0u64;
     let knights = game_state.get_piece_bb(PieceType::Knight);
-    let bishops =
-        game_state.get_piece_bb(PieceType::Bishop) | game_state.get_piece_bb(PieceType::Queen);
-    let rooks =
-        game_state.get_piece_bb(PieceType::Rook) | game_state.get_piece_bb(PieceType::Queen);
-    attacks |= KNIGHT_ATTACKS[square] & knights
-        | movegen::bishop_attack(square, occ) & bishops
-        | movegen::rook_attack(square, occ) & rooks;
-    attacks |= (movegen::w_pawn_west_targets(square_board)
-        | movegen::w_pawn_east_targets(square_board))
-        & game_state.get_piece(PieceType::Pawn, BLACK);
-    attacks |= (movegen::b_pawn_west_targets(square_board)
-        | movegen::b_pawn_east_targets(square_board))
-        & game_state.get_piece(PieceType::Pawn, WHITE);
+    let bishops = game_state.get_piece_bb(PieceType::Bishop) | game_state.get_piece_bb(PieceType::Queen);
+    let rooks = game_state.get_piece_bb(PieceType::Rook) | game_state.get_piece_bb(PieceType::Queen);
+    attacks |= KNIGHT_ATTACKS[square] & knights | movegen::bishop_attack(square, occ) & bishops | movegen::rook_attack(square, occ) & rooks;
+    attacks |= (movegen::w_pawn_west_targets(square_board) | movegen::w_pawn_east_targets(square_board)) & game_state.get_piece(PieceType::Pawn, BLACK);
+    attacks |= (movegen::b_pawn_west_targets(square_board) | movegen::b_pawn_east_targets(square_board)) & game_state.get_piece(PieceType::Pawn, WHITE);
     attacks |= KING_ATTACKS[square] & game_state.get_piece_bb(PieceType::King);
     attacks
 }
@@ -319,21 +271,8 @@ pub fn piece_value(piece_type: PieceType) -> i16 {
 }
 
 #[inline(always)]
-pub fn least_valuable_piece(
-    from_board: u64,
-    color_to_move: usize,
-    game_state: &GameState,
-) -> (u64, usize) {
-    for pt in [
-        PieceType::Pawn,
-        PieceType::Knight,
-        PieceType::Bishop,
-        PieceType::Rook,
-        PieceType::Queen,
-        PieceType::King,
-    ]
-    .iter()
-    {
+pub fn least_valuable_piece(from_board: u64, color_to_move: usize, game_state: &GameState) -> (u64, usize) {
+    for pt in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King].iter() {
         let subset = game_state.get_piece(*pt, color_to_move) & from_board;
         if subset > 0 {
             return (1 << subset.trailing_zeros(), *pt as usize);
@@ -360,7 +299,7 @@ mod tests {
                     from: 4,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
-                    piece_type: PieceType::Rook,
+                    piece_type: PieceType::Rook
                 },
                 true,
                 &mut see_buffer,
@@ -374,7 +313,7 @@ mod tests {
                     from: 4,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
-                    piece_type: PieceType::Rook,
+                    piece_type: PieceType::Rook
                 },
                 true,
                 &mut see_buffer,
@@ -388,7 +327,7 @@ mod tests {
                     from: 19,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
-                    piece_type: PieceType::Knight,
+                    piece_type: PieceType::Knight
                 },
                 true,
                 &mut see_buffer,
@@ -402,7 +341,7 @@ mod tests {
                     from: 19,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Knight),
-                    piece_type: PieceType::Knight,
+                    piece_type: PieceType::Knight
                 },
                 true,
                 &mut see_buffer,
@@ -416,7 +355,7 @@ mod tests {
                     from: 19,
                     to: 36,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
-                    piece_type: PieceType::Knight,
+                    piece_type: PieceType::Knight
                 },
                 true,
                 &mut see_buffer,
@@ -430,7 +369,7 @@ mod tests {
                     from: 36,
                     to: 28,
                     move_type: GameMoveType::Capture(PieceType::Pawn),
-                    piece_type: PieceType::Rook,
+                    piece_type: PieceType::Rook
                 },
                 true,
                 &mut see_buffer,
@@ -444,7 +383,7 @@ mod tests {
                     from: 19,
                     to: 27,
                     move_type: GameMoveType::Capture(PieceType::Rook),
-                    piece_type: PieceType::Queen,
+                    piece_type: PieceType::Queen
                 },
                 true,
                 &mut see_buffer,
@@ -458,7 +397,7 @@ mod tests {
                     from: 19,
                     to: 27,
                     move_type: GameMoveType::Capture(PieceType::Rook),
-                    piece_type: PieceType::Queen,
+                    piece_type: PieceType::Queen
                 },
                 true,
                 &mut see_buffer,
@@ -472,7 +411,7 @@ mod tests {
                     from: 51,
                     to: 60,
                     move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
-                    piece_type: PieceType::Pawn,
+                    piece_type: PieceType::Pawn
                 },
                 true,
                 &mut see_buffer,
@@ -486,7 +425,7 @@ mod tests {
                     from: 51,
                     to: 60,
                     move_type: GameMoveType::Promotion(PieceType::Queen, Some(PieceType::Pawn)),
-                    piece_type: PieceType::Pawn,
+                    piece_type: PieceType::Pawn
                 },
                 true,
                 &mut see_buffer,

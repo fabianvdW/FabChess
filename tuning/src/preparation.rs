@@ -20,11 +20,7 @@ fn main() {
     let mut positions: Vec<LabelledGameState> = Vec::with_capacity(8_000_000);
     let paths = fs::read_dir(FEN_DIR).unwrap();
     for path in paths {
-        tuning::loading::PositionLoader::new(
-            &format!("{}", path.unwrap().path().display()),
-            FileFormatSupported::EPD,
-        )
-        .load_positions(&mut positions);
+        tuning::loading::PositionLoader::new(&format!("{}", path.unwrap().path().display()), FileFormatSupported::EPD).load_positions(&mut positions);
     }
     println!("Positions: {}", positions.len());
     /*save_positions(
@@ -46,11 +42,7 @@ fn main() {
             -16000,
             16000,
             position.game_state.clone(),
-            if position.game_state.get_color_to_move() == WHITE {
-                1
-            } else {
-                -1
-            },
+            if position.game_state.get_color_to_move() == WHITE { 1 } else { -1 },
             0,
             0,
             &mut history,
@@ -70,10 +62,7 @@ fn main() {
     }
     println!("Quiet positions: {}", quiet_nonstripped.len());
     println!("Quiet and stripped positions: {}", quiet_stripped.len());
-    save_positions(
-        &format!("{}/all_positions_qsearch.txt", FEN_DIR),
-        &quiet_nonstripped,
-    );
+    save_positions(&format!("{}/all_positions_qsearch.txt", FEN_DIR), &quiet_nonstripped);
     /*save_positions(
         &format!("{}/all_positions_qsearchstripped.txt", FEN_DIR),
         &quiet_stripped,
@@ -137,17 +126,7 @@ pub fn stripped_q_search(
         let capture_move = capture_move.0;
         move_list.move_lists[current_depth].move_list.remove(i);
         let next_g = make_move(&game_state, capture_move);
-        let (score, other_state) = stripped_q_search(
-            -beta,
-            -alpha,
-            next_g,
-            -color,
-            current_depth + 1,
-            depth_left - 1,
-            history,
-            move_list,
-            see_buffer,
-        );
+        let (score, other_state) = stripped_q_search(-beta, -alpha, next_g, -color, current_depth + 1, depth_left - 1, history, move_list, see_buffer);
 
         if -score > current_max_score {
             current_max_score = -score;
@@ -161,10 +140,7 @@ pub fn stripped_q_search(
     if current_best_state.is_none() {
         return (stand_pat, game_state);
     }
-    (
-        current_max_score,
-        current_best_state.expect("Couldn't unwrap this"),
-    )
+    (current_max_score, current_best_state.expect("Couldn't unwrap this"))
 }
 
 pub fn make_moves(

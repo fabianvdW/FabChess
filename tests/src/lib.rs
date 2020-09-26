@@ -18,10 +18,7 @@ mod tests {
     #[test]
     fn fen_test() {
         let g = GameState::standard();
-        assert_eq!(
-            &g.to_fen(),
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-        );
+        assert_eq!(&g.to_fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let fen = "4BR1N/1PPPQPp1/p1p2nPP/p1Pr1bp1/p1k3qB/1n1p2N1/1bP2pK1/5R2 w - - 0 1";
         let g = GameState::from_fen(fen);
         assert_eq!(&g.to_fen(), fen);
@@ -147,10 +144,7 @@ mod tests {
 
         for case in cases.iter() {
             println!("{}", case.2);
-            assert_eq!(
-                case.0,
-                perft(&GameState::from_fen(case.2), case.1, &mut movelist,)
-            );
+            assert_eq!(case.0, perft(&GameState::from_fen(case.2), case.1, &mut movelist,));
         }
     }
 
@@ -171,10 +165,7 @@ mod tests {
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                g = make_move(
-                    &g,
-                    movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
-                )
+                g = make_move(&g, movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0)
             }
         }
     }
@@ -199,10 +190,7 @@ mod tests {
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                g = make_move(
-                    &g,
-                    movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
-                );
+                g = make_move(&g, movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0);
                 assert!(
                     (g.get_phase().phase - {
                         let mut other = g.clone();
@@ -221,36 +209,17 @@ mod tests {
         let mut movelist = movegen::MoveList::default();
         for _i in 0..100_000 {
             let mut g = GameState::standard();
-            let w_psqt = psqt(
-                &g,
-                WHITE,
-                &mut core_sdk::evaluation::trace::LargeTrace::default(),
-            );
-            let b_psqt = psqt(
-                &g,
-                BLACK,
-                &mut core_sdk::evaluation::trace::LargeTrace::default(),
-            );
+            let w_psqt = psqt(&g, WHITE, &mut core_sdk::evaluation::trace::LargeTrace::default());
+            let b_psqt = psqt(&g, BLACK, &mut core_sdk::evaluation::trace::LargeTrace::default());
             assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             for _j in 0..200 {
                 movegen::generate_moves(&g, false, &mut movelist);
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                g = make_move(
-                    &g,
-                    movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0,
-                );
-                let w_psqt = psqt(
-                    &g,
-                    WHITE,
-                    &mut core_sdk::evaluation::trace::LargeTrace::default(),
-                );
-                let b_psqt = psqt(
-                    &g,
-                    BLACK,
-                    &mut core_sdk::evaluation::trace::LargeTrace::default(),
-                );
+                g = make_move(&g, movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0);
+                let w_psqt = psqt(&g, WHITE, &mut core_sdk::evaluation::trace::LargeTrace::default());
+                let b_psqt = psqt(&g, BLACK, &mut core_sdk::evaluation::trace::LargeTrace::default());
                 assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             }
         }

@@ -30,17 +30,9 @@ pub fn main() {
         let patterns = generate_rook_patterns(sq);
         let lookup;
         if has_bmi2 {
-            lookup =
-                fill_table(&patterns, |bb| pext(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize).unwrap();
+            lookup = fill_table(&patterns, |bb| pext(bb, OCCUPANCY_MASKS_ROOK[sq]) as usize).unwrap();
         } else {
-            lookup = fill_table(&patterns, |bb| {
-                apply_magic(
-                    MAGICS_ROOK[sq],
-                    bb,
-                    OCCUPANCY_MASKS_ROOK[sq].count_ones() as usize,
-                )
-            })
-            .unwrap();
+            lookup = fill_table(&patterns, |bb| apply_magic(MAGICS_ROOK[sq], bb, OCCUPANCY_MASKS_ROOK[sq].count_ones() as usize)).unwrap();
         }
         for (i, val) in lookup.iter().enumerate() {
             attacks[previous_offset + i] = *val;
@@ -51,19 +43,9 @@ pub fn main() {
         let patterns = generate_bishop_patterns(sq);
         let lookup;
         if has_bmi2 {
-            lookup = fill_table(&patterns, |bb| {
-                pext(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize
-            })
-            .unwrap();
+            lookup = fill_table(&patterns, |bb| pext(bb, OCCUPANCY_MASKS_BISHOP[sq]) as usize).unwrap();
         } else {
-            lookup = fill_table(&patterns, |bb| {
-                apply_magic(
-                    MAGICS_BISHOP[sq],
-                    bb,
-                    OCCUPANCY_MASKS_BISHOP[sq].count_ones() as usize,
-                )
-            })
-            .unwrap();
+            lookup = fill_table(&patterns, |bb| apply_magic(MAGICS_BISHOP[sq], bb, OCCUPANCY_MASKS_BISHOP[sq].count_ones() as usize)).unwrap();
         }
         for (i, val) in lookup.iter().enumerate() {
             attacks[previous_offset + i] = *val;
@@ -128,12 +110,7 @@ pub fn pdep(mut mask: u64, temp: u64) -> u64 {
 
 pub(crate) fn arr_to_string<T: Display>(arr: &[T], name: &str) -> String {
     let mut res_str: String = String::new();
-    res_str.push_str(&format!(
-        "#[rustfmt::skip]\npub const {} : [{};{}] = [",
-        name,
-        std::any::type_name::<T>(),
-        arr.len()
-    ));
+    res_str.push_str(&format!("#[rustfmt::skip]\npub const {} : [{};{}] = [", name, std::any::type_name::<T>(), arr.len()));
     for i in arr {
         res_str.push_str(&format!("{}{}, ", *i, std::any::type_name::<T>()));
     }

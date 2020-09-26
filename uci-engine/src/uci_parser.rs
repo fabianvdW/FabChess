@@ -4,10 +4,7 @@ use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use core_sdk::search::alphabeta::{MAX_FUTILITY_MARGIN, MIN_FUTILITY_MARGIN};
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
-use core_sdk::search::searcher::{
-    search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO,
-    MIN_THREADS,
-};
+use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO, MIN_THREADS};
 use core_sdk::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHEAD};
 use core_sdk::search::MAX_SEARCH_DEPTH;
 use core_sdk::UCIOptions;
@@ -23,10 +20,7 @@ pub fn parse_loop() {
     let mut us = UCIEngine::standard();
 
     let itcs = Arc::new(InterThreadCommunicationSystem::default());
-    *itcs.cache() = Cache::with_size_threaded(
-        itcs.get_current_uci_options().hash_size,
-        itcs.get_current_uci_options().threads,
-    );
+    *itcs.cache() = Cache::with_size_threaded(itcs.get_current_uci_options().hash_size, itcs.get_current_uci_options().threads);
     let mut movelist = movegen::MoveList::default();
 
     let stdin = io::stdin();
@@ -53,8 +47,7 @@ pub fn parse_loop() {
 
             "ucinewgame" | "newgame" => {
                 newgame(&mut us);
-                itcs.cache()
-                    .clear_threaded(itcs.get_current_uci_options().threads);
+                itcs.cache().clear_threaded(itcs.get_current_uci_options().threads);
                 itcs.saved_time.store(0, Ordering::Relaxed);
             }
             "isready" => isready(&itcs, true),
@@ -89,10 +82,7 @@ pub fn parse_loop() {
             }
             "perft" => perft(&us.internal_state, &arg[1..]),
             "static" => {
-                println!(
-                    "cp {}",
-                    core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval
-                );
+                println!("cp {}", core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval);
             }
             _ => {
                 println!("Unknown command {}", line);
@@ -167,11 +157,7 @@ pub fn go(engine: &UCIEngine, cmd: &[&str]) -> (TimeControl, usize) {
     }
 }
 
-pub fn position(
-    engine: &mut UCIEngine,
-    cmd: &[&str],
-    movelist: &mut movegen::MoveList,
-) -> Vec<GameState> {
+pub fn position(engine: &mut UCIEngine, cmd: &[&str], movelist: &mut movegen::MoveList) -> Vec<GameState> {
     let mut move_index = 1;
     match cmd[0] {
         "fen" => {
@@ -198,8 +184,7 @@ pub fn position(
             //Parse the move and make it
             let mv = cmd[move_index];
             let (from, to, promo) = GameMove::string_to_move(mv);
-            engine.internal_state =
-                scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
+            engine.internal_state = scout_and_make_draftmove(from, to, promo, &engine.internal_state, movelist);
             history.push(engine.internal_state.clone());
             move_index += 1;
         }
@@ -208,13 +193,7 @@ pub fn position(
     history
 }
 
-pub fn scout_and_make_draftmove(
-    from: usize,
-    to: usize,
-    promo_pieces: Option<PieceType>,
-    game_state: &GameState,
-    movelist: &mut movegen::MoveList,
-) -> GameState {
+pub fn scout_and_make_draftmove(from: usize, to: usize, promo_pieces: Option<PieceType>, game_state: &GameState, movelist: &mut movegen::MoveList) -> GameState {
     movegen::generate_moves(&game_state, false, movelist);
     for gmv in movelist.move_list.iter() {
         let mv = gmv.0;
@@ -250,23 +229,14 @@ pub fn isready(itcs: &Arc<InterThreadCommunicationSystem>, print_rdy: bool) {
 pub fn uci(engine: &UCIEngine) {
     engine.id_command();
     let options = UCIOptions::default();
-    println!(
-        "option name Hash type spin default {} min {} max {}",
-        options.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE
-    );
+    println!("option name Hash type spin default {} min {} max {}", options.hash_size, MIN_HASH_SIZE, MAX_HASH_SIZE);
     println!("option name ClearHash type button");
-    println!(
-        "option name Threads type spin default {} min {} max {}",
-        options.threads, MIN_THREADS, MAX_THREADS
-    );
+    println!("option name Threads type spin default {} min {} max {}", options.threads, MIN_THREADS, MAX_THREADS);
     println!(
         "option name MoveOverhead type spin default {} min {} max {}",
         options.move_overhead, MIN_MOVE_OVERHEAD, MAX_MOVE_OVERHEAD
     );
-    println!(
-        "option name DebugSMPPrint type check default {}",
-        options.debug_print
-    );
+    println!("option name DebugSMPPrint type check default {}", options.debug_print);
     println!(
         "option name SMPSkipRatio type spin default {} min {} max {}",
         options.skip_ratio, MIN_SKIP_RATIO, MAX_SKIP_RATIO
@@ -284,9 +254,7 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
         let arg = cmd[index];
         match arg.to_lowercase().as_str() {
             "hash" => {
-                let num = cmd[index + 2]
-                    .parse::<usize>()
-                    .expect("Invalid Hash value!");
+                let num = cmd[index + 2].parse::<usize>().expect("Invalid Hash value!");
                 itcs.uci_options.write().unwrap().hash_size = num;
                 let num_threads = itcs.get_current_uci_options().threads;
                 *itcs.cache() = Cache::with_size_threaded(num, num_threads);
@@ -294,47 +262,36 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 return;
             }
             "clearhash" => {
-                itcs.cache()
-                    .clear_threaded(itcs.get_current_uci_options().threads);
+                itcs.cache().clear_threaded(itcs.get_current_uci_options().threads);
                 println!("info String Succesfully cleared hash!");
                 return;
             }
             "threads" => {
-                let num = cmd[index + 2]
-                    .parse::<usize>()
-                    .expect("Invalid Threads value!");
+                let num = cmd[index + 2].parse::<usize>().expect("Invalid Threads value!");
                 InterThreadCommunicationSystem::update_thread_count(&itcs, num);
                 println!("info String Succesfully set Threads to {}", num);
                 return;
             }
             "moveoverhead" => {
-                let num = cmd[index + 2]
-                    .parse::<u64>()
-                    .expect("Invalid MoveOverhead value!");
+                let num = cmd[index + 2].parse::<u64>().expect("Invalid MoveOverhead value!");
                 itcs.uci_options.write().unwrap().move_overhead = num;
                 println!("info String Succesfully set MoveOverhad to {}", num);
                 return;
             }
             "debugsmpprint" => {
-                let val = cmd[index + 2]
-                    .parse::<bool>()
-                    .expect("Invalid DebugSMPPrint value!");
+                let val = cmd[index + 2].parse::<bool>().expect("Invalid DebugSMPPrint value!");
                 itcs.uci_options.write().unwrap().debug_print = val;
                 println!("info String Succesfully set DebugSMPPrint to {}", val);
                 return;
             }
             "smpskipratio" => {
-                let num = cmd[index + 2]
-                    .parse::<usize>()
-                    .expect("Invalid SMPSkipRatio value!");
+                let num = cmd[index + 2].parse::<usize>().expect("Invalid SMPSkipRatio value!");
                 itcs.uci_options.write().unwrap().skip_ratio = num;
                 println!("info String Succesfully set SMPSkipRatio to {}", num);
                 return;
             }
             "futilitymargin" => {
-                let num = cmd[index + 2]
-                    .parse::<i16>()
-                    .expect("Invalid FutilityMargin value!");
+                let num = cmd[index + 2].parse::<i16>().expect("Invalid FutilityMargin value!");
                 itcs.uci_options.write().unwrap().futility_margin = num;
                 println!("info String Succesfully set FutilityMargin to {}", num);
                 return;

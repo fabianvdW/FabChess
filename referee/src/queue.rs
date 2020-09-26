@@ -6,9 +6,7 @@ pub struct ThreadSafeQueue<T> {
 
 impl<T> ThreadSafeQueue<T> {
     pub fn new(vec: Vec<T>) -> Self {
-        ThreadSafeQueue {
-            queue: Mutex::new(vec),
-        }
+        ThreadSafeQueue { queue: Mutex::new(vec) }
     }
     pub fn pop(&self) -> Option<T> {
         let mut data = self.queue.lock().unwrap();

@@ -149,10 +149,7 @@ impl Display for SearchStatistics {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str: String = String::new();
         res_str.push_str(&format!("Nodes searched: {}\n", self.nodes_searched));
-        res_str.push_str(&format!(
-            "Depth reached: {}/{}\n",
-            self.depth, self.seldepth
-        ));
+        res_str.push_str(&format!("Depth reached: {}/{}\n", self.depth, self.seldepth));
         res_str.push_str("\n");
         res_str.push_str(&format!(
             "Normal nodes: {} ({}%)\n",
@@ -164,10 +161,7 @@ impl Display for SearchStatistics {
             self.normal_nodes_beta_cutoffs,
             (self.normal_nodes_beta_cutoffs as f64 / self.normal_nodes_searched as f64 * 100.0)
         ));
-        res_str.push_str(&format!(
-            "Normal-Search Beta  cutoffs: {:?}\n",
-            self.normal_nodes_beta_cutoffs_index
-        ));
+        res_str.push_str(&format!("Normal-Search Beta  cutoffs: {:?}\n", self.normal_nodes_beta_cutoffs_index));
         res_str.push_str(&format!(
             "Normal-Search No    cutoffs: {} ({}%)\n",
             self.normal_nodes_non_beta_cutoffs,
@@ -240,10 +234,7 @@ impl Display for SearchStatistics {
             self.q_beta_cutoffs,
             (self.q_beta_cutoffs as f64 / self.q_nodes_searched as f64 * 100.0)
         ));
-        res_str.push_str(&format!(
-            "Q-Search Beta  cutoffs: {:?}\n",
-            self.q_beta_cutoffs_index
-        ));
+        res_str.push_str(&format!("Q-Search Beta  cutoffs: {:?}\n", self.q_beta_cutoffs_index));
         res_str.push_str(&format!(
             "Q-Search No    cutoffs: {} ({}%)\n",
             self.q_non_beta_cutoffs,

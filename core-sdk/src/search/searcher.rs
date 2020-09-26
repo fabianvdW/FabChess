@@ -43,10 +43,10 @@ pub struct InterThreadCommunicationSystem {
     pub best_pv: Mutex<ScoredPrincipalVariation>,
     pub stable_pv: AtomicBool,
     pub depth_info: Mutex<[DepthInformation; MAX_SEARCH_DEPTH]>,
-    pub start_time: RwLock<Instant>, //Only used for reporting
+    pub start_time: RwLock<Instant>,                //Only used for reporting
     pub nodes_searched: UnsafeCell<Vec<AtomicU64>>, // Only used for reporting
-    pub seldepth: AtomicUsize,       // Only used for reporting
-    pub cache: UnsafeCell<Cache>,    //Only used for reporting
+    pub seldepth: AtomicUsize,                      // Only used for reporting
+    pub cache: UnsafeCell<Cache>,                   //Only used for reporting
     pub cache_status: AtomicUsize,
     pub last_cache_status: Mutex<Option<Instant>>,
     pub timeout_flag: RwLock<bool>,
@@ -88,13 +88,9 @@ impl InterThreadCommunicationSystem {
         unsafe { self.nodes_searched.get().as_mut().unwrap() }
     }
 
-    pub fn update_thread_count(
-        itcs: &Arc<InterThreadCommunicationSystem>,
-        new_thread_count: usize,
-    ) {
+    pub fn update_thread_count(itcs: &Arc<InterThreadCommunicationSystem>, new_thread_count: usize) {
         for tx in itcs.tx.read().unwrap().iter() {
-            tx.send(ThreadInstruction::Exit)
-                .expect("couldn't send exit flag");
+            tx.send(ThreadInstruction::Exit).expect("couldn't send exit flag");
         }
         for _ in 0..itcs.tx.read().unwrap().len() {
             itcs.rx_f.recv().expect("Couldn't receive exit flag!")
@@ -128,16 +124,12 @@ impl InterThreadCommunicationSystem {
 
     pub fn update(&self, thread_id: usize, nodes_searched: u64, seldepth: usize) {
         let curr_seldepth = self.seldepth.load(Ordering::Relaxed);
-        self.seldepth
-            .store(curr_seldepth.max(seldepth), Ordering::Relaxed);
+        self.seldepth.store(curr_seldepth.max(seldepth), Ordering::Relaxed);
         self.nodes_searched()[thread_id].store(nodes_searched, Ordering::Relaxed);
     }
 
     pub fn get_nodes_sum(&self) -> u64 {
-        self.nodes_searched()
-            .iter()
-            .map(|x| x.load(Ordering::Relaxed))
-            .sum()
+        self.nodes_searched().iter().map(|x| x.load(Ordering::Relaxed)).sum()
     }
 
     pub fn register_pv(&self, scored_pv: &ScoredPrincipalVariation, no_fail: bool) {
@@ -149,9 +141,7 @@ impl InterThreadCommunicationSystem {
                 self.stable_pv.store(true, Ordering::Relaxed);
             }
         }
-        if curr_best.depth < scored_pv.depth
-            || (curr_best.depth == scored_pv.depth && curr_best.score < scored_pv.score)
-        {
+        if curr_best.depth < scored_pv.depth || (curr_best.depth == scored_pv.depth && curr_best.score < scored_pv.score) {
             if no_fail {
                 *curr_best = scored_pv.clone();
             }
@@ -159,15 +149,9 @@ impl InterThreadCommunicationSystem {
             let searched_nodes: u64 = self.get_nodes_sum();
             let elapsed_time = self.get_time_elapsed();
             let mut cache_status = self.last_cache_status.lock().unwrap();
-            let fill_status = if cache_status.is_none()
-                || Instant::now()
-                    .duration_since(cache_status.unwrap())
-                    .as_millis()
-                    > 200
-            {
+            let fill_status = if cache_status.is_none() || Instant::now().duration_since(cache_status.unwrap()).as_millis() > 200 {
                 *cache_status = Some(Instant::now());
-                self.cache_status
-                    .store(self.cache().fill_status(), Ordering::Relaxed);
+                self.cache_status.store(self.cache().fill_status(), Ordering::Relaxed);
                 self.cache_status.load(Ordering::Relaxed)
             } else {
                 self.cache_status.load(Ordering::Relaxed)
@@ -201,12 +185,7 @@ impl InterThreadCommunicationSystem {
     }
 
     pub fn report_bestmove(&self) {
-        println!(
-            "bestmove {:?}",
-            self.best_pv.lock().unwrap().pv.pv[0]
-                .as_ref()
-                .expect("Could not unwrap pv for bestmove!")
-        );
+        println!("bestmove {:?}", self.best_pv.lock().unwrap().pv.pv[0].as_ref().expect("Could not unwrap pv for bestmove!"));
     }
 
     pub fn get_next_depth(&self, mut from_depth: usize) -> (usize, bool) {
@@ -224,14 +203,10 @@ impl InterThreadCommunicationSystem {
                     next_depth += 1;
                 }
                 DepthInformation::CurrentlySearchedBy(other_thread) => {
-                    if other_thread as f64
-                        >= self.get_current_uci_options().threads as f64
-                            / self.get_current_uci_options().skip_ratio as f64
-                    {
+                    if other_thread as f64 >= self.get_current_uci_options().threads as f64 / self.get_current_uci_options().skip_ratio as f64 {
                         next_depth += 1;
                     } else {
-                        depth_info[next_depth] =
-                            DepthInformation::CurrentlySearchedBy(other_thread + 1);
+                        depth_info[next_depth] = DepthInformation::CurrentlySearchedBy(other_thread + 1);
                         break;
                     }
                 }
@@ -278,12 +253,7 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub fn replace_current_pv(
-        &mut self,
-        root: &GameState,
-        scored_pv: ScoredPrincipalVariation,
-        no_fail: bool,
-    ) {
+    pub fn replace_current_pv(&mut self, root: &GameState, scored_pv: ScoredPrincipalVariation, no_fail: bool) {
         self.itcs.register_pv(&scored_pv, no_fail);
         self.current_pv = scored_pv;
         self.pv_applicable.clear();
@@ -296,19 +266,13 @@ impl Thread {
                 } else {
                     next_state = Some(make_move(next_state.as_ref().unwrap(), *mv));
                 }
-                self.pv_applicable
-                    .push(next_state.as_ref().unwrap().get_hash());
+                self.pv_applicable.push(next_state.as_ref().unwrap().get_hash());
             } else {
                 break;
             }
         }
     }
-    fn new(
-        id: usize,
-        itcs: Arc<InterThreadCommunicationSystem>,
-        rx: Receiver<ThreadInstruction>,
-        tx: Sender<()>,
-    ) -> Self {
+    fn new(id: usize, itcs: Arc<InterThreadCommunicationSystem>, rx: Receiver<ThreadInstruction>, tx: Sender<()>) -> Self {
         let mut pv_table = Vec::with_capacity(MAX_SEARCH_DEPTH);
         for i in 0..MAX_SEARCH_DEPTH {
             pv_table.push(PrincipalVariation::new(MAX_SEARCH_DEPTH - i));
@@ -348,8 +312,7 @@ impl Thread {
                     break;
                 }
                 ThreadInstruction::StartSearch(max_depth, state, tc, history, time_saved) => {
-                    self.root_plies_played =
-                        (state.get_full_moves() - 1) * 2 + state.get_color_to_move();
+                    self.root_plies_played = (state.get_full_moves() - 1) * 2 + state.get_color_to_move();
                     self.history = history;
                     self.time_saved = time_saved;
                     self.pv_applicable.clear();
@@ -372,10 +335,7 @@ impl Thread {
 
     fn search(&mut self, max_depth: i16, state: GameState) {
         if self.uci_options.debug_print {
-            println!(
-                "info String Thread {} starting the search of state!",
-                self.id
-            );
+            println!("info String Thread {} starting the search of state!", self.id);
         }
         let mut curr_depth = 0;
         let mut previous_score: Option<i16> = None;
@@ -388,40 +348,14 @@ impl Thread {
             }
             //Start Aspiration Window
             if self.uci_options.debug_print {
-                println!(
-                    "info String Thread {} starting aspiration window with depth {}",
-                    self.id, curr_depth
-                );
+                println!("info String Thread {} starting aspiration window with depth {}", self.id, curr_depth);
             }
-            let mut delta = if let Some(ps) = previous_score {
-                ps.abs() / 50
-            } else {
-                0
-            } + 14;
-            let mut alpha = if curr_depth == 1 {
-                -16000
-            } else {
-                self.current_pv.score - delta
-            };
-            let mut beta = if curr_depth == 1 {
-                16000
-            } else {
-                self.current_pv.score + delta
-            };
+            let mut delta = if let Some(ps) = previous_score { ps.abs() / 50 } else { 0 } + 14;
+            let mut alpha = if curr_depth == 1 { -16000 } else { self.current_pv.score - delta };
+            let mut beta = if curr_depth == 1 { 16000 } else { self.current_pv.score + delta };
             loop {
                 principal_variation_search(
-                    CombinedSearchParameters::from(
-                        alpha,
-                        beta,
-                        curr_depth as i16,
-                        &state,
-                        if state.get_color_to_move() == WHITE {
-                            1
-                        } else {
-                            -1
-                        },
-                        0,
-                    ),
+                    CombinedSearchParameters::from(alpha, beta, curr_depth as i16, &state, if state.get_color_to_move() == WHITE { 1 } else { -1 }, 0),
                     self,
                 );
                 if self.self_stop {
@@ -456,43 +390,24 @@ impl Thread {
             }
         }
         if self.uci_options.debug_print {
-            println!(
-                "info String Thread {} stopping the search of state!",
-                self.id
-            );
+            println!("info String Thread {} stopping the search of state!", self.id);
         }
         //Report nodes in the end
-        self.itcs.update(
-            self.id,
-            self.search_statistics.nodes_searched,
-            self.search_statistics.seldepth,
-        );
+        self.itcs.update(self.id, self.search_statistics.nodes_searched, self.search_statistics.seldepth);
         if self.id == 0 {
-            *self
-                .itcs
-                .timeout_flag
-                .write()
-                .expect("Couldn't write to timeout flag") = true;
+            *self.itcs.timeout_flag.write().expect("Couldn't write to timeout flag") = true;
         }
     }
 }
 
-pub fn search_move(
-    itcs: Arc<InterThreadCommunicationSystem>,
-    max_depth: i16,
-    game_state: GameState,
-    history: Vec<GameState>,
-    tc: TimeControl,
-) -> Option<i16> {
+pub fn search_move(itcs: Arc<InterThreadCommunicationSystem>, max_depth: i16, game_state: GameState, history: Vec<GameState>, tc: TimeControl) -> Option<i16> {
     //Lock the uci options
     let uci_options = itcs.uci_options.read().unwrap();
     //1. Prepare itcs (reset things from previous search)
     *itcs.best_pv.lock().unwrap() = ScoredPrincipalVariation::default();
     itcs.stable_pv.store(false, Ordering::Relaxed);
     *itcs.depth_info.lock().unwrap() = [DepthInformation::UnSearched; MAX_SEARCH_DEPTH];
-    itcs.nodes_searched()
-        .iter()
-        .for_each(|x| x.store(0u64, Ordering::Relaxed));
+    itcs.nodes_searched().iter().for_each(|x| x.store(0u64, Ordering::Relaxed));
     itcs.seldepth.store(0, Ordering::Relaxed);
     *itcs.start_time.write().unwrap() = Instant::now();
     *itcs.last_cache_status.lock().unwrap() = None;
@@ -516,9 +431,7 @@ pub fn search_move(
     {
         println!("bestmove {:?}", movelist.move_list[0].0);
 
-        let new_timesaved: u64 = (time_saved_before as i64
-            + tc.time_saved(0, time_saved_before, uci_options.move_overhead))
-        .max(0) as u64;
+        let new_timesaved: u64 = (time_saved_before as i64 + tc.time_saved(0, time_saved_before, uci_options.move_overhead)).max(0) as u64;
         itcs.saved_time.store(new_timesaved, Ordering::Relaxed);
         return None;
     }
@@ -538,30 +451,20 @@ pub fn search_move(
 
     //Step 4. Send search command
     for tx in itcs.tx.read().unwrap().iter() {
-        tx.send(ThreadInstruction::StartSearch(
-            max_depth,
-            game_state.clone(),
-            tc,
-            hist.clone(),
-            time_saved_before,
-        ))
-        .expect("Couldn't send search command!");
+        tx.send(ThreadInstruction::StartSearch(max_depth, game_state.clone(), tc, hist.clone(), time_saved_before))
+            .expect("Couldn't send search command!");
     }
 
     //Step 5. Wait until every thread finished up
     for _ in 0..uci_options.threads {
-        itcs.rx_f
-            .recv()
-            .expect("Could not receive finish flag from channel");
+        itcs.rx_f.recv().expect("Could not receive finish flag from channel");
     }
 
     //Step 6. Report to UCI
     itcs.report_bestmove();
     //Store new saved time
     let elapsed_time = itcs.get_time_elapsed();
-    let new_timesaved: u64 = (time_saved_before as i64
-        + tc.time_saved(elapsed_time, time_saved_before, uci_options.move_overhead))
-    .max(0) as u64;
+    let new_timesaved: u64 = (time_saved_before as i64 + tc.time_saved(elapsed_time, time_saved_before, uci_options.move_overhead)).max(0) as u64;
     itcs.saved_time.store(new_timesaved, Ordering::Relaxed);
     //And return
     let best_score = itcs.best_pv.lock().unwrap().score;

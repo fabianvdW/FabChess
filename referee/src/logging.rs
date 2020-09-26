@@ -9,23 +9,14 @@ impl FileLogger {
         if !append {
             let _ = std::fs::remove_file(path);
         };
-        let file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(append)
-            .open(path)
-            .unwrap();
+        let file = OpenOptions::new().create(true).write(true).append(append).open(path).unwrap();
         FileLogger(Mutex::new(file))
     }
     pub fn init(self) -> Result<(), SetLoggerError> {
         log::set_boxed_logger(Box::new(self)).map(|()| log::set_max_level(LevelFilter::Info))
     }
     pub fn dump_msg(&self, msg: &str) {
-        self.0
-            .lock()
-            .unwrap()
-            .write_all(msg.as_bytes())
-            .expect("Could not log to file!");
+        self.0.lock().unwrap().write_all(msg.as_bytes()).expect("Could not log to file!");
     }
 }
 impl log::Log for FileLogger {
@@ -35,22 +26,13 @@ impl log::Log for FileLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let msg = format!(
-                "{}::{} - {}\n",
-                chrono::Utc::now(),
-                record.level(),
-                record.args()
-            );
+            let msg = format!("{}::{} - {}\n", chrono::Utc::now(), record.level(), record.args());
             self.dump_msg(&msg);
             print!("{}", msg);
         }
     }
 
     fn flush(&self) {
-        self.0
-            .lock()
-            .unwrap()
-            .flush()
-            .expect("Could not flush in FileLogger");
+        self.0.lock().unwrap().flush().expect("Could not flush in FileLogger");
     }
 }
