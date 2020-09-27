@@ -235,7 +235,26 @@ pub const QUEEN_ON_SEMI_OPEN_FILE_BONUS: EvaluationScore = EvaluationScore(6, -1
 pub const ROOK_ON_SEVENTH: EvaluationScore = EvaluationScore(28, 30);
 pub const PAWN_PIECE_VALUE: EvaluationScore = EvaluationScore(106, 119);
 pub const KNIGHT_PIECE_VALUE: EvaluationScore = EvaluationScore(449, 491);
-pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [-47, -127, -47, -34, -23, -15, 1, 2, 16, 23, 31, 40, 46, 55, 54, 64, 59];
+
+pub const KNIGHT_VALUE_WITH_PAWNS: [EvaluationScore; 17] = [
+    EvaluationScore(-47, -47),
+    EvaluationScore(-127, -127),
+    EvaluationScore(-47, -47),
+    EvaluationScore(-34, -34),
+    EvaluationScore(-23, -23),
+    EvaluationScore(-15, -15),
+    EvaluationScore(1, 1),
+    EvaluationScore(2, 2),
+    EvaluationScore(16, 16),
+    EvaluationScore(23, 23),
+    EvaluationScore(31, 31),
+    EvaluationScore(40, 40),
+    EvaluationScore(46, 46),
+    EvaluationScore(55, 55),
+    EvaluationScore(54, 54),
+    EvaluationScore(64, 64),
+    EvaluationScore(59, 59),
+];
 pub const BISHOP_PIECE_VALUE: EvaluationScore = EvaluationScore(492, 474);
 pub const BISHOP_PAIR_BONUS: EvaluationScore = EvaluationScore(34, 73);
 pub const ROOK_PIECE_VALUE: EvaluationScore = EvaluationScore(651, 865);

@@ -90,7 +90,10 @@ pub mod normal_parameters {
     pub const IDX_KNIGHT_PIECE_VALUE: usize = IDX_PAWN_PIECE_VALUE + SIZE_PAWN_PIECE_VALUE;
     pub const SIZE_KNIGHT_PIECE_VALUE: usize = 1;
 
-    pub const IDX_BISHOP_PIECE_VALUE: usize = IDX_KNIGHT_PIECE_VALUE + SIZE_KNIGHT_PIECE_VALUE;
+    pub const IDX_KNIGHT_VALUE_WITH_PAWN: usize = IDX_KNIGHT_PIECE_VALUE + SIZE_KNIGHT_PIECE_VALUE;
+    pub const SIZE_KNIGHT_VALUE_WITH_PAWN: usize = 17;
+
+    pub const IDX_BISHOP_PIECE_VALUE: usize = IDX_KNIGHT_VALUE_WITH_PAWN + SIZE_KNIGHT_VALUE_WITH_PAWN;
     pub const SIZE_BISHOP_PIECE_VALUE: usize = 1;
 
     pub const IDX_BISHOP_PAIR: usize = IDX_BISHOP_PIECE_VALUE + SIZE_BISHOP_PIECE_VALUE;
@@ -124,10 +127,7 @@ pub mod normal_parameters {
 }
 
 pub mod special_parameters {
-    pub const IDX_KNIGHT_VALUE_WITH_PAWN: usize = 0;
-    pub const SIZE_KNIGHT_VALUE_WITH_PAWN: usize = 17;
-
-    pub const IDX_ATTACK_WEIGHT: usize = IDX_KNIGHT_VALUE_WITH_PAWN + SIZE_KNIGHT_VALUE_WITH_PAWN;
+    pub const IDX_ATTACK_WEIGHT: usize = 0;
     pub const SIZE_ATTACK_WEIGHT: usize = 16;
 
     pub const IDX_SAFETY_TABLE: usize = IDX_ATTACK_WEIGHT + SIZE_ATTACK_WEIGHT;
@@ -173,14 +173,6 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn rescale_15(&mut self) {
-        for i in 0..NORMAL_PARAMS {
-            self.normal[1][i] /= 1.5;
-        }
-        for i in 0..SIZE_SAFETY_TABLE / 2 {
-            self.special[IDX_SAFETY_TABLE + 2 * i + 1] /= 1.5;
-        }
-    }
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
@@ -235,9 +227,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, ROOK_ON_SEVENTH, IDX_ROOK_ON_SEVENTH, true);
         Parameters::init_constant(&mut params, PAWN_PIECE_VALUE, IDX_PAWN_PIECE_VALUE, true);
         Parameters::init_constant(&mut params, KNIGHT_PIECE_VALUE, IDX_KNIGHT_PIECE_VALUE, true);
-        for i in 0..17 {
-            params.special[IDX_KNIGHT_VALUE_WITH_PAWN + i] = f32::from(KNIGHT_VALUE_WITH_PAWNS[i]);
-        }
+        Parameters::init_constants(&mut params, &KNIGHT_VALUE_WITH_PAWNS, IDX_KNIGHT_VALUE_WITH_PAWN, true);
         Parameters::init_constant(&mut params, BISHOP_PIECE_VALUE, IDX_BISHOP_PIECE_VALUE, true);
         Parameters::init_constant(&mut params, BISHOP_PAIR_BONUS, IDX_BISHOP_PAIR, true);
         Parameters::init_constant(&mut params, ROOK_PIECE_VALUE, IDX_ROOK_PIECE_VALUE, true);

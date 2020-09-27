@@ -21,7 +21,7 @@ impl<'a> UCIEngine<'a> {
                 }
             },
             author: &"Fabian von der Warth",
-            contributors: &["Erik Imgrund", "Marcin Mielniczuk"],
+            contributors: &["Erik Imgrund", "Marcin Mielniczuk", "Terje Kirstihagen"],
             internal_state: GameState::standard(),
         }
     }

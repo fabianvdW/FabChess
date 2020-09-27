@@ -6,7 +6,6 @@ pub struct TraceEntry(pub u16, pub i8);
 pub struct CollapsedTrace {
     pub phase: f32,
     pub entries: Vec<TraceEntry>,
-    pub pawns_on_board: u8,
     pub knights: i8,
     pub attackers: [u8; 2],
     pub knight_attacked_sq: [u8; 2],
@@ -86,9 +85,6 @@ impl CollapsedTrace {
                     + 1])
             / 100.0;
 
-        res.0 += params.special[IDX_KNIGHT_VALUE_WITH_PAWN + self.pawns_on_board as usize] * f32::from(self.knights);
-        res.1 += params.special[IDX_KNIGHT_VALUE_WITH_PAWN + self.pawns_on_board as usize] * f32::from(self.knights);
-
         if self.slightly_winning_no_pawn {
             res = (res.0, res.1 * params.special[IDX_SLIGHTLY_WINNING_NO_PAWN]);
         } else if self.slightly_winning_enemy_can_sac {
@@ -101,7 +97,6 @@ impl CollapsedTrace {
 pub struct LargeTrace {
     pub phase: f32,
     pub normal_coeffs: [i8; NORMAL_PARAMS],
-    pub pawns_on_board: u8,
     pub knights: i8,
     pub attackers: [u8; 2],
     pub knight_attacked_sq: [u8; 2],
@@ -122,7 +117,6 @@ impl LargeTrace {
         LargeTrace {
             phase: 0.,
             normal_coeffs: [0; NORMAL_PARAMS],
-            pawns_on_board: 0,
             knights: 0,
             attackers: [0; 2],
             knight_attacked_sq: [0; 2],
@@ -150,7 +144,6 @@ impl LargeTrace {
             phase: self.phase,
             entries,
             knights: self.knights,
-            pawns_on_board: self.pawns_on_board,
             attackers: self.attackers,
             knight_attacked_sq: self.knight_attacked_sq,
             bishop_attacked_sq: self.bishop_attacked_sq,

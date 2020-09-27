@@ -215,12 +215,6 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                 gradient.normal[1][entry.0 as usize] += start_of_gradient * devaldeg * f32::from(entry.1);
             }
         }
-
-        //Piece values
-        if TUNE_PIECE_VALUES || TUNE_ALL {
-            let knights = f32::from(pos.trace.knights);
-            gradient.special[IDX_KNIGHT_VALUE_WITH_PAWN + pos.trace.pawns_on_board as usize] += start_of_gradient * knights;
-        }
         //Safety
         if TUNE_ATTACK {
             for i in 0..2 {

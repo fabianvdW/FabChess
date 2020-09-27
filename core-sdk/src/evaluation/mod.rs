@@ -110,11 +110,6 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "texel-tuning")]
         trace: LargeTrace::default(),
     };
-    let phase = g.get_phase().phase;
-    #[cfg(feature = "texel-tuning")]
-    {
-        result.trace.phase = phase;
-    }
     if is_guaranteed_draw(&g) {
         #[cfg(feature = "texel-tuning")]
         {
@@ -272,7 +267,11 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         println!("\nKing Sum: {} - {} -> {}", king_w, king_b, king_w - king_b);
     }
     res += king_w - king_b;
-
+    let phase = g.get_phase().phase;
+    #[cfg(feature = "texel-tuning")]
+    {
+        result.trace.phase = phase;
+    }
     endgame_rescaling(
         g,
         &mut res,
@@ -890,7 +889,7 @@ pub fn piece_values(white: bool, g: &GameState, #[cfg(feature = "texel-tuning")]
     #[cfg(feature = "texel-tuning")]
     {
         trace.normal_coeffs[IDX_PAWN_PIECE_VALUE] += my_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        trace.pawns_on_board = pawns_on_board as u8;
+        trace.normal_coeffs[IDX_KNIGHT_VALUE_WITH_PAWN + pawns_on_board] += my_knights as i8 * if side == WHITE { 1 } else { -1 };
         trace.knights += my_knights as i8 * if side == WHITE { 1 } else { -1 };
         trace.normal_coeffs[IDX_KNIGHT_PIECE_VALUE] += my_knights as i8 * if side == WHITE { 1 } else { -1 };
         trace.normal_coeffs[IDX_BISHOP_PIECE_VALUE] += my_bishops as i8 * if side == WHITE { 1 } else { -1 };
