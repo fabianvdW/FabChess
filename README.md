@@ -28,7 +28,7 @@ cargo run --release -p uci-engine
 go infinite
 ...
 ```
-The binary can in `./target/release/uci-engine(.exe)`
+The binary is in `./target/release/uci-engine(.exe)`
 ## Playing strength
 | Version       | 40/4    |  40/40 | Comment |
 |---------------|---------|--------|---------|

@@ -35,7 +35,7 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "texel-tuning")
         res += piece_sum;
         #[cfg(feature = "display-eval")]
         {
-            println!("\t{:?}  : {}", *pt, piece_sum);
+            println!("\t{:?}  : {}", pt, piece_sum);
         }
     }
     #[cfg(feature = "display-eval")]
