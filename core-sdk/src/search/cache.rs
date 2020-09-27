@@ -7,6 +7,7 @@ pub const DEFAULT_HASH_SIZE: usize = 256; //IN MB
 pub const MIN_HASH_SIZE: usize = 0; //IN MB
 pub const MAX_HASH_SIZE: usize = 131_072; //IN MB
 pub const MAXIMUM_AGE: u8 = 32;
+
 pub struct Cache {
     pub entries: usize,
     pub buckets: usize,
@@ -177,6 +178,7 @@ impl Cache {
 pub struct CacheBucket([CacheEntry; 3]);
 
 pub const MAXIMUM_AGE_DIFF_REPLACE: usize = 3;
+
 impl CacheBucket {
     pub fn replace_entry(&mut self, p: &CombinedSearchParameters, mv: GameMove, score: i16, original_alpha: i16, static_evaluation: i16, current_age: u8) -> bool {
         let lower_bound = score >= p.beta;
@@ -268,6 +270,7 @@ impl CacheBucket {
         (if self.0[0].is_invalid() { 0 } else { 1 }) + (if self.0[1].is_invalid() { 0 } else { 1 }) + (if self.0[2].is_invalid() { 0 } else { 1 })
     }
 }
+
 impl Default for CacheBucket {
     fn default() -> Self {
         CacheBucket([CacheEntry::invalid(); 3])
@@ -277,6 +280,7 @@ impl Default for CacheBucket {
 pub const LOWER_BOUND: u8 = 0x1;
 pub const UPPER_BOUND: u8 = 0x2;
 pub const PV_NODE: u8 = 0x4;
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct CacheEntry {

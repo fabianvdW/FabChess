@@ -27,6 +27,7 @@ pub struct CombinedSearchParameters<'a> {
     pub color: i16,
     pub current_depth: usize,
 }
+
 impl<'a> CombinedSearchParameters<'a> {
     pub fn from(alpha: i16, beta: i16, depth_left: i16, game_state: &'a GameState, color: i16, current_depth: usize) -> Self {
         CombinedSearchParameters {
@@ -39,6 +40,7 @@ impl<'a> CombinedSearchParameters<'a> {
         }
     }
 }
+
 pub enum SearchInstruction {
     SkipMove,
     ContinueSearching,
@@ -51,6 +53,7 @@ pub struct ScoredPrincipalVariation {
     pub pv: PrincipalVariation,
     pub depth: usize,
 }
+
 impl Default for ScoredPrincipalVariation {
     fn default() -> Self {
         ScoredPrincipalVariation {
@@ -60,6 +63,7 @@ impl Default for ScoredPrincipalVariation {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct PrincipalVariation {
     pub pv: Vec<Option<GameMove>>,
