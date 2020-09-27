@@ -1000,3 +1000,9 @@ pub const fn mirror_square(square: usize) -> usize {
 pub const fn white_pov(square: usize, side: usize) -> usize {
     square ^ (56 * (side == BLACK) as usize)
 }
+
+//Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
+#[inline(always)]
+pub const fn ep_pawn_square(to: u8) -> u8 {
+    to ^ 8
+}

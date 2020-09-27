@@ -143,11 +143,6 @@ pub mod constants {
     pub const CASTLE_PERMISSION : [u8;64] = [11u8, 15u8, 15u8, 15u8, 3u8, 15u8, 15u8, 7u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 14u8, 15u8, 15u8, 15u8, 12u8, 15u8, 15u8, 13u8, ];
 }
 
-//Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
-#[inline(always)]
-pub const fn ep_pawn_square(to: u8) -> u8 {
-    to ^ 8
-}
 #[inline(always)]
 pub const fn file_fill(gen: u64) -> u64 {
     nort_fill(gen) | sout_fill(gen)
