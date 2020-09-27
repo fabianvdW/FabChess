@@ -1,4 +1,7 @@
 use constants::*;
+
+use crate::board_representation::game_state::{BLACK};
+
 pub mod square {
     #[rustfmt::skip]
     pub const A1: usize = 0;
@@ -142,12 +145,19 @@ pub mod constants {
     pub const CASTLE_PERMISSION : [u8;64] = [11u8, 15u8, 15u8, 15u8, 3u8, 15u8, 15u8, 7u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 14u8, 15u8, 15u8, 15u8, 12u8, 15u8, 15u8, 13u8, ];
 }
 
-//Mirrors  rank 1 to rank 8, rank 2 to rank 7 rank 3 to rank 6 and rank 4 to rank 5 and vice versa.
+//Mirrors rank 1 to rank 8, rank 2 to rank 7 rank 3 to rank 6 and rank 4 to rank 5 and vice versa.
 //Useful for getting the index to blacks piece square table for example
 #[inline(always)]
 pub const fn mirror_square(square: usize) -> usize {
     square ^ 56
 }
+
+// Mirrors square if side is BLACK
+#[inline(always)]
+pub const fn white_pov(square: usize, side: usize) -> usize {
+    square ^ (56 * (side == BLACK) as usize)
+}
+
 //Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
 #[inline(always)]
 pub const fn ep_pawn_square(to: u8) -> u8 {
