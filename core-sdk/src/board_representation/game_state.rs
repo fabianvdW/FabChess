@@ -29,6 +29,7 @@ pub enum GameResult {
     BlackWin,
     Draw,
 }
+
 impl Display for GameResult {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let res_str = String::from(match self {
@@ -40,6 +41,7 @@ impl Display for GameResult {
         write!(formatter, "{}", res_str)
     }
 }
+
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,
@@ -58,6 +60,7 @@ pub enum PieceType {
     Rook = 3,
     Queen = 4,
 }
+
 impl PieceType {
     pub fn is_valid_promotion_piece(self) -> bool {
         self != PieceType::Pawn && self != PieceType::King
@@ -320,6 +323,7 @@ fn file_to_string(file: usize) -> &'static str {
         _ => panic!("invalid file"),
     }
 }
+
 #[derive(Clone)]
 pub struct Irreversible {
     hash: u64,
@@ -329,6 +333,7 @@ pub struct Irreversible {
     phase: Phase,
     psqt: EvaluationScore,
 }
+
 impl Irreversible {
     pub fn new(hash: u64, en_passant: u64, half_moves: u16, castle_permissions: u8, phase: Phase, psqt: EvaluationScore) -> Self {
         Irreversible {
@@ -341,6 +346,7 @@ impl Irreversible {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct GameState {
     // 0 = White
@@ -365,6 +371,7 @@ pub struct GameState {
 
     full_moves: usize,
 }
+
 //Getters and setters
 impl GameState {
     pub fn get_piece_bb_array(&self) -> [u64; 6] {
@@ -457,13 +464,7 @@ impl GameState {
             full_moves,
         }
     }
-    pub const fn relative_rank(side: usize, sq: usize) -> usize {
-        if side == WHITE {
-            sq / 8
-        } else {
-            7 - sq / 8
-        }
-    }
+
     pub fn get_piece_on(&self, shift: i32) -> &str {
         for side in 0..2 {
             for piece_type in PIECE_TYPES.iter() {
@@ -479,6 +480,7 @@ impl GameState {
         " "
     }
 }
+
 impl GameState {
     pub fn initialize_zobrist_hash(&mut self) {
         self.irreversible.hash = 0u64;
@@ -773,13 +775,13 @@ impl GameState {
         if self.get_piece(mv.piece_type, self.color_to_move) & square(mv.from as usize) == 0u64 {
             return false;
         }
-        if mv.piece_type == PieceType::Pawn && GameState::relative_rank(self.color_to_move, mv.to as usize) == 7 {
+        if mv.piece_type == PieceType::Pawn && relative_rank(self.color_to_move, mv.to as usize) == 7 {
             if let GameMoveType::Promotion(_, _) = mv.move_type {
             } else {
                 return false;
             }
         } else if let GameMoveType::Promotion(_, _) = mv.move_type {
-            if mv.piece_type != PieceType::Pawn || GameState::relative_rank(self.color_to_move, mv.to as usize) != 7 {
+            if mv.piece_type != PieceType::Pawn || relative_rank(self.color_to_move, mv.to as usize) != 7 {
                 return false;
             }
         }
@@ -970,4 +972,35 @@ impl Debug for GameState {
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
+}
+
+#[inline(always)]
+pub const fn file_of(square: usize) -> usize {
+    square % 8
+}
+
+#[inline(always)]
+pub const fn rank_of(square: usize) -> usize {
+    square / 8
+}
+
+pub fn relative_rank(side: usize, sq: usize) -> usize {
+    if side == WHITE {
+        sq / 8
+    } else {
+        7 - sq / 8
+    }
+}
+
+//Mirrors rank 1 to rank 8, rank 2 to rank 7 rank 3 to rank 6 and rank 4 to rank 5 and vice versa.
+//Useful for getting the index to blacks piece square table for example
+#[inline(always)]
+pub const fn mirror_square(square: usize) -> usize {
+    square ^ 56
+}
+
+// Mirrors square if side is BLACK
+#[inline(always)]
+pub const fn white_pov(square: usize, side: usize) -> usize {
+    square ^ (56 * (side == BLACK) as usize)
 }
