@@ -2,6 +2,7 @@ use crate::board_representation::game_state::{BLACK, WHITE};
 use crate::evaluation::parameters::{normal_parameters::*, special_parameters::*, *};
 
 pub struct TraceEntry(pub u16, pub i8);
+
 pub struct CollapsedTrace {
     pub phase: f32,
     pub entries: Vec<TraceEntry>,
@@ -20,6 +21,7 @@ pub struct CollapsedTrace {
     pub slightly_winning_no_pawn: bool,
     pub slightly_winning_enemy_can_sac: bool,
 }
+
 impl CollapsedTrace {
     pub fn evaluate(&self, params: &Parameters) -> f32 {
         if self.is_guaranteed_draw {
@@ -95,6 +97,7 @@ impl CollapsedTrace {
         (res.0 * self.phase + res.1 / 1.5 * (128.0 - self.phase)) / 128.0
     }
 }
+
 pub struct LargeTrace {
     pub phase: f32,
     pub normal_coeffs: [i8; NORMAL_PARAMS],

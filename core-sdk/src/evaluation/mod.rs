@@ -8,22 +8,25 @@ use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::mirror_square;
 use crate::board_representation::game_state::{GameState, PieceType, BLACK, WHITE};
-#[cfg(feature = "texel-tuning")]
-use crate::evaluation::parameters::normal_parameters::*;
-#[cfg(feature = "texel-tuning")]
-use crate::evaluation::trace::LargeTrace;
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
+
 use params::*;
 use psqt_evaluation::psqt;
 use std::fmt::{Debug, Display, Formatter, Result};
 use std::ops;
+
+#[cfg(feature = "texel-tuning")]
+use crate::evaluation::parameters::normal_parameters::*;
+#[cfg(feature = "texel-tuning")]
+use crate::evaluation::trace::LargeTrace;
 
 pub const MG: usize = 0;
 pub const EG: usize = 1;
 
 #[derive(Copy, Clone, PartialEq)]
 pub struct EvaluationScore(pub i16, pub i16);
+
 impl EvaluationScore {
     pub fn interpolate(self, phase: f32) -> i16 {
         ((f32::from(self.0) * phase + f32::from(self.1) * (128.0 - phase)) / 128.0) as i16
@@ -299,6 +302,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     result.final_eval = final_res;
     result
 }
+
 pub fn is_guaranteed_draw(g: &GameState) -> bool {
     if g.get_piece_bb(PieceType::Pawn) | g.get_piece_bb(PieceType::Rook) | g.get_piece_bb(PieceType::Queen) > 0 {
         return false;
@@ -316,6 +320,7 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
     }
     false
 }
+
 pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #[cfg(feature = "texel-tuning")] trace: &mut LargeTrace) {
     let score = res.interpolate(phase);
     let side_ahead = if score >= 0 { WHITE } else { BLACK };
@@ -343,6 +348,7 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #
         }
     }
 }
+
 pub fn knights(white: bool, g: &GameState, #[cfg(feature = "texel-tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let mut res = EvaluationScore::default();
     let side = if white { WHITE } else { BLACK };
