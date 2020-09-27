@@ -755,14 +755,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         trace.normal_coeffs[IDX_PAWN_MOBILITY] += pawn_mobility as i8 * if side == WHITE { 1 } else { -1 };
     }
     //Passers
-    let mut passed_pawns: u64 = pawns
-
-        /*& !if white {
-            bitboards::w_rear_span(g.pieces[PieceType::Pawn as usize][side])
-        } else {
-            bitboards::b_rear_span(g.pieces[PieceType::Pawn as usize][side])
-        }*/
-        & !enemy_front_spans;
+    let mut passed_pawns: u64 = pawns & !enemy_front_spans;
     let (mut passer_score, mut _passer_normal, mut _passer_notblocked) = (EvaluationScore::default(), 0, 0);
     let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;

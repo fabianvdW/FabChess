@@ -23,9 +23,9 @@ fn main() {
     let mut file = File::create(param_file).unwrap();
     write!(file, "{}", param_string).unwrap();
 }
-fn go_infinite_from_startpos() {
-    let itcs = Arc::new(InterThreadCommunicationSystem::default());
-    *itcs.cache() = Cache::with_size_threaded(itcs.get_current_uci_options().hash_size, itcs.get_current_uci_options().threads);
-    InterThreadCommunicationSystem::update_thread_count(&itcs, 1);
-    search_move(itcs, 100, GameState::standard(), Vec::new(), TimeControl::Infinite);
-}
+// fn go_infinite_from_startpos() {
+//     let itcs = Arc::new(InterThreadCommunicationSystem::default());
+//     *itcs.cache() = Cache::with_size_threaded(itcs.get_current_uci_options().hash_size, itcs.get_current_uci_options().threads);
+//     InterThreadCommunicationSystem::update_thread_count(&itcs, 1);
+//     search_move(itcs, 100, GameState::standard(), Vec::new(), TimeControl::Infinite);
+// }

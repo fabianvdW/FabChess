@@ -155,14 +155,6 @@ pub const fn pawn_front_span(pawns: u64, white: bool) -> u64 {
         south_one(sout_fill(pawns))
     }
 }
-#[inline(always)]
-pub const fn w_rear_span(wpawns: u64) -> u64 {
-    south_one(sout_fill(wpawns))
-}
-#[inline(always)]
-pub const fn b_rear_span(bpawns: u64) -> u64 {
-    north_one(nort_fill(bpawns))
-}
 
 #[inline(always)]
 pub const fn north_one(board: u64) -> u64 {
