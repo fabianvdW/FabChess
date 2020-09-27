@@ -435,13 +435,7 @@ impl GameState {
             full_moves,
         }
     }
-    pub const fn relative_rank(side: usize, sq: usize) -> usize {
-        if side == WHITE {
-            sq / 8
-        } else {
-            7 - sq / 8
-        }
-    }
+
     pub fn get_piece_on(&self, shift: i32) -> &str {
         for side in 0..2 {
             for piece_type in PIECE_TYPES.iter() {
@@ -749,13 +743,13 @@ impl GameState {
         if self.get_piece(mv.piece_type, self.color_to_move) & square(mv.from as usize) == 0u64 {
             return false;
         }
-        if mv.piece_type == PieceType::Pawn && GameState::relative_rank(self.color_to_move, mv.to as usize) == 7 {
+        if mv.piece_type == PieceType::Pawn && relative_rank(self.color_to_move, mv.to as usize) == 7 {
             if let GameMoveType::Promotion(_, _) = mv.move_type {
             } else {
                 return false;
             }
         } else if let GameMoveType::Promotion(_, _) = mv.move_type {
-            if mv.piece_type != PieceType::Pawn || GameState::relative_rank(self.color_to_move, mv.to as usize) != 7 {
+            if mv.piece_type != PieceType::Pawn || relative_rank(self.color_to_move, mv.to as usize) != 7 {
                 return false;
             }
         }

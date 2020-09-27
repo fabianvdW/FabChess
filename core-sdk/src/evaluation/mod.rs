@@ -795,10 +795,10 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         let idx = passed_pawns.trailing_zeros() as usize;
         //Passed and blocked
         _passer_normal += 1;
-        passer_score += PAWN_PASSED_VALUES[GameState::relative_rank(side, idx)];
+        passer_score += PAWN_PASSED_VALUES[relative_rank(side, idx)];
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_PAWN_PASSED + GameState::relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
+            trace.normal_coeffs[IDX_PAWN_PASSED + relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
         }
         //A weak passer is an attacked and not defended passer
         let weak_passer = square(idx) & enemy_defended != 0u64 && square(idx) & defended == 0u64;
@@ -818,10 +818,10 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         {
             //Passed and not blocked
             _passer_notblocked += 1;
-            passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[GameState::relative_rank(side, idx)];
+            passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[relative_rank(side, idx)];
             #[cfg(feature = "tuning")]
             {
-                trace.normal_coeffs[IDX_PAWN_PASSED_NOTBLOCKED + GameState::relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
+                trace.normal_coeffs[IDX_PAWN_PASSED_NOTBLOCKED + relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
             }
         }
 
