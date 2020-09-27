@@ -173,6 +173,14 @@ pub struct Parameters {
 }
 
 impl Parameters {
+    pub fn rescale_15(&mut self) {
+        for i in 0..NORMAL_PARAMS {
+            self.normal[1][i] /= 1.5;
+        }
+        for i in 0..SIZE_SAFETY_TABLE / 2 {
+            self.special[IDX_SAFETY_TABLE + 2 * i + 1] /= 1.5;
+        }
+    }
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }

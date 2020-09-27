@@ -280,13 +280,12 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "texel-tuning")]
         &mut result.trace,
     );
-    res.1 = (f64::from(res.1) / 1.5) as i16;
     //Phasing is done the same way stockfish does it
     let final_res = res.interpolate(phase);
     #[cfg(feature = "display-eval")]
     {
         println!(
-            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {} (EG/=1.5)",
+            "\nSum: {} + {} + {} + {} + {} + {} + {} -> {} ",
             psqt_score,
             knights_w - knights_b,
             piecewise_w - piecewise_b,

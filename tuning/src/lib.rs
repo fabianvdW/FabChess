@@ -208,7 +208,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
         let s = sigmoid(tuner.k, pos.eval);
         let start_of_gradient = (pos.label - s) * s * (1. - s);
         let devaldmg = pos.trace.phase / 128.0;
-        let devaldeg = (1. - pos.trace.phase / 128.0) / 1.5;
+        let devaldeg = 1. - pos.trace.phase / 128.0;
         for entry in pos.trace.entries.iter() {
             if TUNABLE_PARAM[entry.0 as usize] {
                 gradient.normal[0][entry.0 as usize] += start_of_gradient * devaldmg * f32::from(entry.1);
