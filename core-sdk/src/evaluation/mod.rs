@@ -128,6 +128,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     {
         result.trace.normal_coeffs[IDX_TEMPO_BONUS] = if g.get_color_to_move() == WHITE { 1 } else { -1 };
     }
+
     //Initialize all attacks
     let (white_defended_by_minors, white_defended_by_majors) = (g.get_minor_attacks_from_side(WHITE), g.get_major_attacks_from_side(WHITE));
     let white_defended = white_defended_by_minors | white_defended_by_majors | KING_ATTACKS[g.get_king_square(WHITE)];
@@ -266,6 +267,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         println!("\nKing Sum: {} - {} -> {}", king_w, king_b, king_w - king_b);
     }
     res += king_w - king_b;
+
     let phase = g.get_phase().phase;
     #[cfg(feature = "tuning")]
     {
@@ -278,8 +280,9 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "tuning")]
         &mut result.trace,
     );
+
     //Phasing is done the same way stockfish does it
-    let final_res = res.interpolate(phase);
+    result.final_eval = res.interpolate(phase);
     #[cfg(feature = "display-eval")]
     {
         println!(
@@ -294,9 +297,9 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
             res
         );
         println!("Phase: {}", phase);
-        println!("\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}", res.0, phase, res.1, phase, final_res,);
+        println!("\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}", res.0, phase, res.1, phase, result.final_eval,);
     }
-    result.final_eval = final_res;
+
     result
 }
 
