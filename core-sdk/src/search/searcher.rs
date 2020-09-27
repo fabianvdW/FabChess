@@ -38,6 +38,7 @@ pub enum DepthInformation {
     CurrentlySearchedBy(usize),
     UnSearched,
 }
+
 pub struct InterThreadCommunicationSystem {
     pub uci_options: RwLock<UCIOptions>,
     pub best_pv: Mutex<ScoredPrincipalVariation>,
@@ -55,6 +56,7 @@ pub struct InterThreadCommunicationSystem {
     rx_f: Receiver<()>,
     tx_f: Sender<()>,
 }
+
 impl Default for InterThreadCommunicationSystem {
     fn default() -> Self {
         let (tx_f, rx_f) = channel();
@@ -77,6 +79,7 @@ impl Default for InterThreadCommunicationSystem {
         }
     }
 }
+
 impl InterThreadCommunicationSystem {
     pub fn cache(&self) -> &mut Cache {
         unsafe { self.cache.get().as_mut().unwrap() }
@@ -221,7 +224,9 @@ impl InterThreadCommunicationSystem {
         (next_depth + 1, main_thread)
     }
 }
+
 unsafe impl std::marker::Sync for InterThreadCommunicationSystem {}
+
 pub enum ThreadInstruction {
     Exit,
     StartSearch(i16, GameState, TimeControl, History, u64),

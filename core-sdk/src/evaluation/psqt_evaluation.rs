@@ -44,10 +44,12 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "texel-tuning")
     }
     res
 }
+
 #[inline(always)]
 pub fn psqt_remove_piece(piece: PieceType, square: usize, side: usize, score: &mut EvaluationScore) {
     *score -= piece.to_psqt(side, square);
 }
+
 #[inline(always)]
 pub fn psqt_add_piece(piece: PieceType, square: usize, side: usize, score: &mut EvaluationScore) {
     *score += piece.to_psqt(side, square);

@@ -16,6 +16,7 @@ pub fn mvvlva(mv: GameMove) -> i16 {
 
 pub const NORMAL_STAGES: [MoveOrderingStage; 8] = [PVMove, TTMove, GoodCaptureInitialization, GoodCapture, Killer, QuietInitialization, Quiet, BadCapture];
 pub const QUIESCENCE_STAGES: [MoveOrderingStage; 3] = [TTMove, GoodCaptureInitialization, GoodCapture];
+
 pub enum MoveOrderingStage {
     PVMove,
     TTMove,
@@ -26,11 +27,13 @@ pub enum MoveOrderingStage {
     Quiet,
     BadCapture,
 }
+
 pub struct MoveOrderer {
     pub stage: usize,
     pub stages: &'static [MoveOrderingStage],
     pub gen_only_captures: bool,
 }
+
 impl MoveOrderer {
     pub fn next(
         &mut self,

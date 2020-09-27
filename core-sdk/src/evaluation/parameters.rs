@@ -122,6 +122,7 @@ pub mod normal_parameters {
 
     pub const NORMAL_PARAMS: usize = IDX_PSQT + SIZE_PSQT;
 }
+
 pub mod special_parameters {
     pub const IDX_KNIGHT_VALUE_WITH_PAWN: usize = 0;
     pub const SIZE_KNIGHT_VALUE_WITH_PAWN: usize = 17;
@@ -170,6 +171,7 @@ pub struct Parameters {
     pub normal: [[f32; NORMAL_PARAMS]; 2],
     pub special: [f32; SPECIAL_PARAMS],
 }
+
 impl Parameters {
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
@@ -376,6 +378,7 @@ impl Parameters {
         }
     }
 }
+
 impl Display for Parameters {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
