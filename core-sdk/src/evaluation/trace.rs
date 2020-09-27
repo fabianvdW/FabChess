@@ -92,7 +92,7 @@ impl CollapsedTrace {
         } else if self.slightly_winning_enemy_can_sac {
             res = (res.0, res.1 * params.special[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC]);
         }
-        (res.0 * self.phase + res.1 / 1.5 * (128.0 - self.phase)) / 128.0
+        (res.0 * self.phase + res.1 * (128.0 - self.phase)) / 128.0
     }
 }
 pub struct LargeTrace {
