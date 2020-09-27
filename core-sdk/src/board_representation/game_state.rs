@@ -457,7 +457,7 @@ impl GameState {
             full_moves,
         }
     }
-    pub fn relative_rank(side: usize, sq: usize) -> usize {
+    pub const fn relative_rank(side: usize, sq: usize) -> usize {
         if side == WHITE {
             sq / 8
         } else {
