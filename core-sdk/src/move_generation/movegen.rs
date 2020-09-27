@@ -2,7 +2,7 @@ use super::magic::{self};
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::{square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, RANKS, ROOK_RAYS};
 use crate::bitboards::bitboards::square;
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType, WHITE};
+use crate::board_representation::game_state::{rank_of, GameMove, GameMoveType, GameState, PieceType, WHITE};
 use crate::search::GradedMove;
 
 impl GameState {
@@ -712,7 +712,7 @@ pub fn generate_moves(g: &GameState, only_captures: bool, movelist: &mut MoveLis
             (pawn_index + 7, pawn_index + 8)
         };
         let all_pieces_without_en_passants = all_pieces & !square(pawn_from) & !square(removed_piece_index);
-        if rook_attack(g.get_king_square(side), all_pieces_without_en_passants) & RANKS[g.get_king_square(side) / 8] & g.get_rook_like_bb(enemy) == 0u64 {
+        if rook_attack(g.get_king_square(side), all_pieces_without_en_passants) & RANKS[rank_of(g.get_king_square(side))] & g.get_rook_like_bb(enemy) == 0u64 {
             add_move_to_movelist(movelist, pawn_from, pawn_index, PieceType::Pawn, GameMoveType::EnPassant);
         }
     }
@@ -741,7 +741,7 @@ pub fn generate_moves(g: &GameState, only_captures: bool, movelist: &mut MoveLis
             (pawn_index + 9, pawn_index + 8)
         };
         let all_pieces_without_en_passants = all_pieces & !square(pawn_from) & !square(removed_piece_index);
-        if rook_attack(g.get_king_square(side), all_pieces_without_en_passants) & RANKS[g.get_king_square(side) / 8] & g.get_rook_like_bb(enemy) == 0u64 {
+        if rook_attack(g.get_king_square(side), all_pieces_without_en_passants) & RANKS[rank_of(g.get_king_square(side))] & g.get_rook_like_bb(enemy) == 0u64 {
             add_move_to_movelist(movelist, pawn_from, pawn_index, PieceType::Pawn, GameMoveType::EnPassant);
         }
     }

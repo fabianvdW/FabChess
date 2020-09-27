@@ -1,4 +1,4 @@
-use core_sdk::board_representation::game_state::{char_to_file, char_to_rank, GameMove, GameMoveType, GameState, PieceType, WHITE};
+use core_sdk::board_representation::game_state::{char_to_file, char_to_rank, file_of, rank_of, GameMove, GameMoveType, GameState, PieceType, WHITE};
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen;
 use std::fs::File;
@@ -153,8 +153,8 @@ impl MoveSpecification {
     pub fn matches(&self, mv: &GameMove) -> bool {
         mv.to as usize == self.target_square
             && (self.from_square.is_none() || self.from_square.unwrap() == mv.from as usize)
-            && (self.from_file.is_none() || self.from_file.unwrap() == mv.from as usize % 8)
-            && (self.from_rank.is_none() || self.from_rank.unwrap() == mv.from as usize / 8)
+            && (self.from_file.is_none() || self.from_file.unwrap() == file_of(mv.from as usize))
+            && (self.from_rank.is_none() || self.from_rank.unwrap() == rank_of(mv.from as usize))
             && (mv.piece_type == self.moving_piece_type || self.from_square.is_some())
             && (self.promotion_piece
                 == match mv.move_type {

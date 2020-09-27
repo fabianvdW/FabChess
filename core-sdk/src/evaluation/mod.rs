@@ -6,8 +6,7 @@ pub mod trace;
 
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::*;
-use crate::bitboards::bitboards::mirror_square;
-use crate::board_representation::game_state::{GameState, PieceType, BLACK, WHITE};
+use crate::board_representation::game_state::{file_of, mirror_square, rank_of, relative_rank, GameState, PieceType, BLACK, WHITE};
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
 
@@ -365,7 +364,7 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     let mut supp = supported_knights;
     while supp != 0u64 {
         let mut idx = supp.trailing_zeros() as usize;
-        supp &= not_file(idx % 8);
+        supp &= not_file(file_of(idx));
         let mut front_span = if white {
             bitboards::w_front_span(square(idx))
         } else {
@@ -377,7 +376,7 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
                 idx = mirror_square(idx);
             }
             _outposts += 1;
-            outpost += KNIGHT_OUTPOST_TABLE[idx / 8][idx % 8];
+            outpost += KNIGHT_OUTPOST_TABLE[rank_of(idx)][file_of(idx)];
             #[cfg(feature = "tuning")]
             {
                 trace.normal_coeffs[IDX_KNIGHT_OUTPOST_TABLE + idx] += if side == WHITE { 1 } else { -1 };
@@ -488,12 +487,12 @@ pub fn piecewise(white: bool, g: &GameState, enemy_defend_by_minors: u64, enemy_
     while rooks != 0u64 {
         let idx = rooks.trailing_zeros() as usize;
         let rook_attack = PieceType::Rook.attacks(idx, all_pieces ^ square(enemy_king_idx));
-        if if white { idx / 8 == 6 } else { idx / 8 == 1 } {
+        if relative_rank(side, idx) == 6 {
             rooks_onseventh += 1;
         }
-        if FILES[idx % 8] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
+        if FILES[file_of(idx)] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
             rooks_onopen += 1;
-        } else if (FILES[idx % 8] & g.get_piece(PieceType::Pawn, 1 - side)).count_ones() == 1 && (FILES[idx % 8] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
+        } else if (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, 1 - side)).count_ones() == 1 && (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
             rooks_on_semi_open += 1;
         }
 
@@ -534,9 +533,9 @@ pub fn piecewise(white: bool, g: &GameState, enemy_defend_by_minors: u64, enemy_
         let bishoplike_attacks = PieceType::Bishop.attacks(idx, all_pieces ^ square(enemy_king_idx));
         let queen_attack = rooklike_attacks | bishoplike_attacks;
 
-        if FILES[idx % 8] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
+        if FILES[file_of(idx)] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
             queens_onopen += 1;
-        } else if (FILES[idx % 8] & g.get_piece(PieceType::Pawn, 1 - side)).count_ones() == 1 && (FILES[idx % 8] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
+        } else if (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, 1 - side)).count_ones() == 1 && (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
             queens_on_semi_open += 1;
         }
 
@@ -654,7 +653,7 @@ pub fn king(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
         bitboards::b_front_span(g.get_piece(PieceType::King, side))
     };
     king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
-    let file = g.get_king_square(side) % 8;
+    let file = file_of(g.get_king_square(side));
     if file == 7 {
         king_front_span |= bitboards::west_one(king_front_span);
     } else if file == 0 {
@@ -665,13 +664,13 @@ pub fn king(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
     if g.get_full_moves() >= 1 {
         while pawn_shield != 0u64 {
             let idx = pawn_shield.trailing_zeros() as usize;
-            if g.get_piece(PieceType::Pawn, side) & pawn_shield & FILES[idx % 8] == 0u64 {
+            if g.get_piece(PieceType::Pawn, side) & pawn_shield & FILES[file_of(idx)] == 0u64 {
                 shields_missing += 1;
-                if g.get_piece(PieceType::Pawn, 1 - side) & FILES[idx % 8] & king_front_span == 0u64 {
+                if g.get_piece(PieceType::Pawn, 1 - side) & FILES[file_of(idx)] & king_front_span == 0u64 {
                     shields_on_open_missing += 1;
                 }
             }
-            pawn_shield &= !FILES[idx % 8];
+            pawn_shield &= !FILES[file_of(idx)];
         }
     }
     #[cfg(feature = "tuning")]
@@ -695,8 +694,10 @@ pub fn king(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
     res
 }
 
-pub fn get_distance(sq: isize, sq2: isize) -> usize {
-    (sq / 8 - sq2 / 8).abs().max((sq % 8 - sq2 % 8).abs()) as usize
+pub fn get_distance(sq: usize, sq2: usize) -> usize {
+    (rank_of(sq) as isize - rank_of(sq2) as isize)
+        .abs()
+        .max((file_of(sq) as isize - file_of(sq2) as isize).abs()) as usize
 }
 
 pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
@@ -733,7 +734,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         if !white {
             index = mirror_square(index);
         }
-        supp += PAWN_SUPPORTED_VALUE[index / 8][index % 8];
+        supp += PAWN_SUPPORTED_VALUE[rank_of(index)][file_of(index)];
         #[cfg(feature = "tuning")]
         {
             trace.normal_coeffs[IDX_PAWN_SUPPORTED + index] += if side == WHITE { 1 } else { -1 };
@@ -822,8 +823,8 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         }
 
         //Distance to kings
-        let d_myking = get_distance(idx as isize, g.get_king_square(side) as isize);
-        let d_enemyking = get_distance(idx as isize, g.get_king_square(1 - side) as isize);
+        let d_myking = get_distance(idx, g.get_king_square(side));
+        let d_enemyking = get_distance(idx, g.get_king_square(1 - side));
         let sub_dist = ((d_myking as isize - d_enemyking as isize) + 6) as usize;
         passer_dist += PASSED_KING_DISTANCE[d_myking - 1] + PASSED_ENEMY_KING_DISTANCE[d_enemyking - 1] + PASSED_SUBTRACT_DISTANCE[sub_dist];
         #[cfg(feature = "tuning")]

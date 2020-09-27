@@ -85,7 +85,7 @@ impl PieceType {
 
     #[inline(always)]
     pub fn to_psqt(self, side: usize, sq: usize) -> EvaluationScore {
-        PSQT[self as usize][side][sq / 8][sq % 8]
+        PSQT[self as usize][side][rank_of(sq)][file_of(sq)]
     }
 
     #[inline(always)]
@@ -207,9 +207,9 @@ impl GameMove {
             for gmv in movelist.move_list.iter() {
                 let other_mv = gmv.0;
                 if other_mv.piece_type == self.piece_type && other_mv.to == self.to && other_mv.from != self.from {
-                    if other_mv.from % 8 != self.from % 8 {
+                    if file_of(other_mv.from as usize) != file_of(self.from as usize) {
                         file_needed = true;
-                    } else if other_mv.from / 8 != self.from / 8 {
+                    } else if rank_of(other_mv.from as usize) != rank_of(self.from as usize) {
                         rank_needed = true;
                     } else {
                         file_needed = true;
@@ -218,19 +218,19 @@ impl GameMove {
                 }
             }
             if file_needed {
-                res_str.push_str(file_to_string((self.from % 8) as usize));
+                res_str.push_str(file_to_string(file_of(self.from as usize)));
             }
             if rank_needed {
-                res_str.push_str(&format!("{}", self.from / 8 + 1))
+                res_str.push_str(&format!("{}", rank_of(self.from as usize) + 1))
             };
             if self.is_capture() {
                 if self.piece_type == PieceType::Pawn && !file_needed {
-                    res_str.push_str(file_to_string((self.from % 8) as usize));
+                    res_str.push_str(file_to_string(file_of(self.from as usize)));
                 }
                 res_str.push_str("x");
             }
-            res_str.push_str(file_to_string((self.to % 8) as usize));
-            res_str.push_str(&format!("{}", self.to / 8 + 1));
+            res_str.push_str(file_to_string(file_of(self.to as usize)));
+            res_str.push_str(&format!("{}", rank_of(self.to as usize) + 1));
             if let GameMoveType::Promotion(promo_piece, _) = self.move_type {
                 assert!(promo_piece.is_valid_promotion_piece());
                 res_str.push_str(&format!("={}", promo_piece.uppercase()));
@@ -252,10 +252,10 @@ impl Debug for GameMove {
         let mut res_str: String = String::new();
         res_str.push_str(&format!(
             "{}{}{}{}",
-            file_to_string((self.from % 8) as usize),
-            self.from / 8 + 1,
-            file_to_string((self.to % 8) as usize),
-            self.to / 8 + 1
+            file_to_string(file_of(self.from as usize)),
+            rank_of(self.from as usize) + 1,
+            file_to_string(file_of(self.to as usize)),
+            rank_of(self.to as usize) + 1
         ));
         if let GameMoveType::Promotion(s, _) = &self.move_type {
             assert!(s.is_valid_promotion_piece());
@@ -487,7 +487,7 @@ impl GameState {
         }
         self.irreversible.hash ^= ZOBRIST_KEYS.castle_permissions[self.castle_permissions() as usize];
         if self.get_en_passant() != 0u64 {
-            let file = self.get_en_passant().trailing_zeros() as usize % 8;
+            let file = file_of(self.get_en_passant().trailing_zeros() as usize);
             self.irreversible.hash ^= ZOBRIST_KEYS.en_passant[file];
         }
         for side in 0..2 {
@@ -675,9 +675,7 @@ impl GameState {
             res_str.push_str("-");
         } else {
             let idx = self.get_en_passant().trailing_zeros() as usize;
-            let rank = idx / 8;
-            let file = idx % 8;
-            res_str.push_str(&format!("{}{}", file_to_string(file), rank + 1));
+            res_str.push_str(&format!("{}{}", file_to_string(file_of(idx)), rank_of(idx) + 1));
         }
         res_str.push_str(" ");
         res_str.push_str(&format!("{} ", self.get_half_moves()));
@@ -970,4 +968,35 @@ impl Debug for GameState {
         res_str.push_str(&format!("FEN: {}\n", self.to_fen()));
         write!(formatter, "{}", res_str)
     }
+}
+
+#[inline(always)]
+pub const fn file_of(square: usize) -> usize {
+    square % 8
+}
+
+#[inline(always)]
+pub const fn rank_of(square: usize) -> usize {
+    square / 8
+}
+
+pub fn relative_rank(side: usize, sq: usize) -> usize {
+    if side == WHITE {
+        rank_of(sq)
+    } else {
+        7 - rank_of(sq)
+    }
+}
+
+//Mirrors rank 1 to rank 8, rank 2 to rank 7 rank 3 to rank 6 and rank 4 to rank 5 and vice versa.
+//Useful for getting the index to blacks piece square table for example
+#[inline(always)]
+pub const fn mirror_square(square: usize) -> usize {
+    square ^ 56
+}
+
+// Mirrors square if side is BLACK
+#[inline(always)]
+pub const fn white_pov(square: usize, side: usize) -> usize {
+    square ^ (56 * (side == BLACK) as usize)
 }

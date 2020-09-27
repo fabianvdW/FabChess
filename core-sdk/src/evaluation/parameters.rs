@@ -1,7 +1,6 @@
 use super::params::*;
 use super::EvaluationScore;
-use crate::bitboards::bitboards::mirror_square;
-use crate::board_representation::game_state::PIECE_TYPES;
+use crate::board_representation::game_state::{file_of, mirror_square, rank_of, PIECE_TYPES};
 use normal_parameters::*;
 use special_parameters::*;
 use std::fmt::{Display, Formatter, Result};
@@ -301,8 +300,8 @@ impl Parameters {
         for i in 0..8 {
             res_str.push_str("[");
             for j in 0..8 {
-                let actual_i = mirror_square(8 * i + j) / 8;
-                let actual_j = mirror_square(8 * i + j) % 8;
+                let actual_i = rank_of(mirror_square(8 * i + j));
+                let actual_j = file_of(mirror_square(8 * i + j));
                 res_str.push_str(&format!(
                     "EvaluationScore({},{}),",
                     -self.normal[0][idx + 8 * actual_i + actual_j].round() as isize,

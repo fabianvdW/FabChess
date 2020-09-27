@@ -1,6 +1,6 @@
 use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::bitboards::bitboards::{ep_pawn_square, square};
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, Irreversible, PieceType};
+use crate::board_representation::game_state::{file_of, GameMove, GameMoveType, GameState, Irreversible, PieceType};
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
 
@@ -17,10 +17,10 @@ pub fn toggle_hash(piece: PieceType, square: u8, color: usize, hash: &mut u64) {
 #[inline(always)]
 pub fn enpassant_hash(old: u64, new: u64, hash: &mut u64) {
     if old != 0u64 {
-        *hash ^= ZOBRIST_KEYS.en_passant[old.trailing_zeros() as usize % 8];
+        *hash ^= ZOBRIST_KEYS.en_passant[file_of(old.trailing_zeros() as usize)];
     }
     if new != 0u64 {
-        *hash ^= ZOBRIST_KEYS.en_passant[new.trailing_zeros() as usize % 8];
+        *hash ^= ZOBRIST_KEYS.en_passant[file_of(new.trailing_zeros() as usize)];
     }
 }
 #[inline(always)]

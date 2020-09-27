@@ -1,7 +1,9 @@
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
 use crate::bitboards::magic_constants::*;
-use crate::board_representation::game_state::{CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS, CASTLE_WHITE_KS, CASTLE_WHITE_QS};
+use crate::board_representation::game_state::{
+    file_of, rank_of, CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS, CASTLE_WHITE_KS, CASTLE_WHITE_QS,
+};
 use crate::move_generation::magic::Magic;
 use crate::move_generation::movegen::{bishop_attack, rook_attack};
 use std::fmt::Display;
@@ -83,7 +85,7 @@ pub fn print_castle_permisssion() {
 }
 
 pub const fn occupancy_mask_rook(square: usize) -> u64 {
-    ((RANKS[square / 8] & !(FILES[0] | FILES[7])) | (FILES[square % 8] & !(RANKS[0] | RANKS[7]))) & not_square(square)
+    ((RANKS[rank_of(square)] & !(FILES[0] | FILES[7])) | (FILES[file_of(square)] & !(RANKS[0] | RANKS[7]))) & not_square(square)
 }
 
 pub fn print_rook_occupancy_masks() {
@@ -96,8 +98,8 @@ pub fn print_rook_occupancy_masks() {
 
 pub fn occupancy_mask_bishops(square: usize) -> u64 {
     let mut res = 0u64;
-    let rk = (square / 8) as isize;
-    let fl = (square % 8) as isize;
+    let rk = rank_of(square) as isize;
+    let fl = file_of(square) as isize;
     let dirs: [(isize, isize); 4] = [(1, 1), (-1, -1), (1, -1), (-1, 1)];
     for dir in dirs.iter() {
         let (file_i, rank_i) = dir;
@@ -133,10 +135,10 @@ pub fn print_bishop_rays() {
 //Gets the ray of one bishop into a specific direction
 pub fn get_bishop_ray_slow(bishop_attack_in_all_directions: u64, target_square: usize, bishop_square: usize) -> u64 {
     let diff = target_square as isize - bishop_square as isize;
-    let target_rank = target_square / 8;
-    let target_file = target_square % 8;
-    let bishop_rank = bishop_square / 8;
-    let bishop_file = bishop_square % 8;
+    let target_rank = rank_of(target_square);
+    let target_file = file_of(target_square);
+    let bishop_rank = rank_of(bishop_square);
+    let bishop_file = file_of(bishop_square);
     if diff > 0 {
         if diff % 9 == 0 {
             FILES_LESS_THAN[target_file] & FILES_GREATER_THAN[bishop_file] & RANKS_LESS_THAN[target_rank] & RANKS_GREATER_THAN[bishop_rank] & bishop_attack_in_all_directions
@@ -163,10 +165,10 @@ pub fn print_rook_rays() {
 //Gets the ray of one rook into a specific direction
 pub fn get_rook_ray_slow(rook_attacks_in_all_directions: u64, target_square: usize, rook_square: usize) -> u64 {
     let diff = target_square as isize - rook_square as isize;
-    let target_rank = target_square / 8;
-    let target_file = target_square % 8;
-    let rook_rank = rook_square / 8;
-    let rook_file = rook_square % 8;
+    let target_rank = rank_of(target_square);
+    let target_file = file_of(target_square);
+    let rook_rank = rank_of(rook_square);
+    let rook_file = file_of(rook_square);
     if diff > 0 {
         //Same vertical
         if target_rank == rook_rank {
@@ -185,9 +187,9 @@ pub fn print_king_zone_white() {
     for king_sq in 0..64 {
         let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
         res[king_sq] = zone | north_one(zone) | south_one(zone);
-        if king_sq % 8 == 0 {
+        if file_of(king_sq) == 0 {
             res[king_sq] |= east_one(res[king_sq]);
-        } else if king_sq % 8 == 7 {
+        } else if file_of(king_sq) == 7 {
             res[king_sq] |= west_one(res[king_sq]);
         }
     }
@@ -198,9 +200,9 @@ pub fn print_king_zone_black() {
     for king_sq in 0..64 {
         let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
         res[king_sq] = zone | south_one(zone) | north_one(zone);
-        if king_sq % 8 == 0 {
+        if file_of(king_sq) == 0 {
             res[king_sq] |= east_one(res[king_sq]);
-        } else if king_sq % 8 == 7 {
+        } else if file_of(king_sq) == 7 {
             res[king_sq] |= west_one(res[king_sq]);
         }
     }
