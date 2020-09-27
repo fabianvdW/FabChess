@@ -14,27 +14,28 @@ If you want to compile from source, make sure you have the latest version of Rus
 ```
 git clone https://github.com/fabianvdW/FabChess.git
 cd FabChess
+set RUSTFLAGS="-C target-cpu=native"
 cargo run --release -p uci-engine
 ...
-uci
-< id name FabChessDev v1.14.1
+< info string Initialization Time: 0ms
+> uci
+< id name FabChess v1.15 BMI2
 < id author Fabian von der Warth
-< id contributors Erik Imgrund, Marcin Mielniczuk
+< id contributors Erik Imgrund, Marcin Mielniczuk, Terje Kirstihagen
+< option name Hash type spin default 256 min 0 max 131072
+...
 < uciok
 go infinite
 ...
 ```
-For a faster compile including popcount operation for new processors, run
-```
-cargo rustc --release -p uci-engine -- -C target-cpu=native
-```
-The binary will be in `./target/release`
+The binary can in `./target/release/uci-engine(.exe)`
 ## Playing strength
 | Version       | 40/4    |  40/40 | Comment |
 |---------------|---------|--------|---------|
-| Current Dev   |     ~   |    ~   |         |
-| Version 1.14  |3017/2924|  2906  | See CCRL|
-| Version 1.13  |2955-4CPU|  2840  | See CCRL|
+| Current Dev   |         |        |         |
+| Version 1.15  |3088/2982|  2943  | See CCRL|
+| Version 1.14  |3017/2924|  2917  | See CCRL|
+| Version 1.13  |2955-4CPU|  2877  | See CCRL|
 | Version 1.12.6| 2788    |  2762  | See CCRL|
 | Version 1.12  | 2785    |  -     | See CCRL|
 | Version 1.11  |  -      |  2606  | See CCRL|
@@ -54,59 +55,62 @@ Use `static` to get a static evaluation of the position
 ```
 ### Display evaluation
 If you compile FabChess with an extra flag, it will also write a detailed overview of the evaluation to a logfile.
+For this, you will have to change `core-sdk/Cargo.toml` to  include the feature in the default features:
+`default = ["display-eval"]`
+
 
 !!! Make sure not to run any `go` command with this, else it will quite literally produce a lot of text !!!
 ```
-> cargo run --features "display-eval"
+> cargo run -p uci-engine
 > position startpos
 > static
 < cp 10
 ```
-Logfile called `log.txt`:
+Stdout:
 ```
 Evaluating GameState fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
-Tempo:(10 , 15)
+Tempo:(10 , 13)
 
 PSQT for White:
-	Pawns  : (-225 , -216)
-	Knights: (-67 , -93)
-	Bishops: (-23 , -35)
-	Rooks: (24 , -56)
-	Queens: (22 , -5)
-	King   : (47 , -88)
-Sum: (-222 , -493)
+	Pawn  : (-228 , -144)
+	Knight  : (-64 , -63)
+	Bishop  : (-18 , -24)
+	Rook  : (22 , -42)
+	Queen  : (17 , -4)
+	King  : (47 , -60)
+Sum: (-224 , -337)
 
 PSQT for Black:
-	Pawns  : (-225 , -216)
-	Knights: (-67 , -93)
-	Bishops: (-23 , -35)
-	Rooks: (24 , -56)
-	Queens: (22 , -5)
-	King   : (47 , -88)
-Sum: (-222 , -493)
+	Pawn  : (-228 , -144)
+	Knight  : (-64 , -63)
+	Bishop  : (-18 , -24)
+	Rook  : (22 , -42)
+	Queen  : (17 , -4)
+	King  : (47 , -60)
+Sum: (-224 , -337)
 
 PSQT Sum: (0 , 0)
 
 Piece values for White
-	Pawns: 8 -> (888 , 1472)
-	Knights: 2 -> (1018 , 1588)
-	Bishops: 2 -> (992 , 1422)
-	Bishop-Pair: 1 -> (41 , 111)
-	Rooks: 2 -> (1310 , 2596)
-	Queens: 1 -> (1541 , 2449)
-Sum: (5790 , 9638)
+	Pawns: 8 -> (848 , 952)
+	Knights: 2 -> (1016 , 1100)
+	Bishops: 2 -> (984 , 948)
+	Bishop-Pair: 1 -> (34 , 73)
+	Rooks: 2 -> (1302 , 1730)
+	Queens: 1 -> (1540 , 1631)
+Sum: (5724 , 6434)
 
 Piece values for Black
-	Pawns: 8 -> (888 , 1472)
-	Knights: 2 -> (1018 , 1588)
-	Bishops: 2 -> (992 , 1422)
-	Bishop-Pair: 1 -> (41 , 111)
-	Rooks: 2 -> (1310 , 2596)
-	Queens: 1 -> (1541 , 2449)
-Sum: (5790 , 9638)
+	Pawns: 8 -> (848 , 952)
+	Knights: 2 -> (1016 , 1100)
+	Bishops: 2 -> (984 , 948)
+	Bishop-Pair: 1 -> (34 , 73)
+	Rooks: 2 -> (1302 , 1730)
+	Queens: 1 -> (1540 , 1631)
+Sum: (5724 , 6434)
 
-Piece value Sum: (5790 , 9638) - (5790 , 9638) -> (0 , 0)
+Piece value Sum: (5724 , 6434) - (5724 , 6434) -> (0 , 0)
 
 Pawns for White:
 	Doubled: 0 -> (0 , 0)
@@ -114,13 +118,13 @@ Pawns for White:
 	Backward: 0 -> (0 , 0)
 	Supported: 0 -> (0 , 0)
 	Attack Center: 0 -> (0 , 0)
-	Mobility: 30 -> (270 , 360)
+	Mobility: 30 -> (180 , 300)
 	Passer Blocked/Not Blocked: 0 , 0 -> (0 , 0)
 	Rook behind passer: 0 -> (0 , 0)
 	Enemy Rook behind passer: 0 -> (0 , 0)
 	Weak passer: 0 -> (0 , 0)
 	Passers distance to kings -> (0 , 0)
-Sum: (270 , 360)
+Sum: (180 , 300)
 
 Pawns for Black:
 	Doubled: 0 -> (0 , 0)
@@ -128,15 +132,15 @@ Pawns for Black:
 	Backward: 0 -> (0 , 0)
 	Supported: 0 -> (0 , 0)
 	Attack Center: 0 -> (0 , 0)
-	Mobility: 30 -> (270 , 360)
+	Mobility: 30 -> (180 , 300)
 	Passer Blocked/Not Blocked: 0 , 0 -> (0 , 0)
 	Rook behind passer: 0 -> (0 , 0)
 	Enemy Rook behind passer: 0 -> (0 , 0)
 	Weak passer: 0 -> (0 , 0)
 	Passers distance to kings -> (0 , 0)
-Sum: (270 , 360)
+Sum: (180 , 300)
 
-Pawn Sum: (270 , 360) - (270 , 360) -> (0 , 0)
+Pawn Sum: (180 , 300) - (180 , 300) -> (0 , 0)
 
 Knights for White:
 	Supported by pawns: 0 -> (0 , 0)
@@ -151,14 +155,11 @@ Sum: (0 , 0)
 Knights Sum: (0 , 0) - (0 , 0) -> (0 , 0)
 
 Piecewise for White:
-	Mobility Knight: (-10 , 22)
-	Mobility Bishop: (-6 , -62)
-	Bishop Diagonally Adj: (-54 , 106)
-	Mobility Rook  : (-48 , -52)
-	Mobility Queen : (-12 , -40)
-	BishopXrayKing : 0 -> (0 , 0)
-	RookXrayKing : 0 -> (0 , 0)
-	QueenXrayKing : 0 -> (0 , 0)
+	Mobility Knight: (-4 , 14)
+	Mobility Bishop: (6 , -42)
+	Bishop Diagonally Adj: (-48 , 70)
+	Mobility Rook  : (-42 , -34)
+	Mobility Queen : (-12 , -27)
 	Rooks on open  : 0 -> (0 , 0)
 	Rooks on semi-open  : 0 -> (0 , 0)
 	Queens on open  : 0 -> (0 , 0)
@@ -171,17 +172,14 @@ Piecewise for White:
 	Sum Attackers: (Num: 0 , Val: (0 , 0)
 	Attack MG value: 0 * 0 / 100.0 -> 0
 	Attack EG value: 0 * -1 / 100.0 -> 0
-Sum: (-130 , -26)
+Sum: (-100 , -19)
 
 Piecewise for Black:
-	Mobility Knight: (-10 , 22)
-	Mobility Bishop: (-6 , -62)
-	Bishop Diagonally Adj: (-54 , 106)
-	Mobility Rook  : (-48 , -52)
-	Mobility Queen : (-12 , -40)
-	BishopXrayKing : 0 -> (0 , 0)
-	RookXrayKing : 0 -> (0 , 0)
-	QueenXrayKing : 0 -> (0 , 0)
+	Mobility Knight: (-4 , 14)
+	Mobility Bishop: (6 , -42)
+	Bishop Diagonally Adj: (-48 , 70)
+	Mobility Rook  : (-42 , -34)
+	Mobility Queen : (-12 , -27)
 	Rooks on open  : 0 -> (0 , 0)
 	Rooks on semi-open  : 0 -> (0 , 0)
 	Queens on open  : 0 -> (0 , 0)
@@ -194,26 +192,28 @@ Piecewise for Black:
 	Sum Attackers: (Num: 0 , Val: (0 , 0)
 	Attack MG value: 0 * 0 / 100.0 -> 0
 	Attack EG value: 0 * -1 / 100.0 -> 0
-Sum: (-130 , -26)
+Sum: (-100 , -19)
 
-Piecewise Sum: (-130 , -26) - (-130 , -26) -> (0 , 0)
+Piecewise Sum: (-100 , -19) - (-100 , -19) -> (0 , 0)
+
 
 King for White:
-	Shield pawn missing: 0 -> (5 , -16)
-	Shield pawn on open file missing: 0 -> (2 , 7)
-Sum: (7 , -9)
+	Shield pawn missing: 0 -> (0 , -7)
+	Shield pawn on open file missing: 0 -> (1 , 5)
+Sum: (1 , -2)
 
 King for Black:
-	Shield pawn missing: 0 -> (5 , -16)
-	Shield pawn on open file missing: 0 -> (2 , 7)
-Sum: (7 , -9)
+	Shield pawn missing: 0 -> (0 , -7)
+	Shield pawn on open file missing: 0 -> (1 , 5)
+Sum: (1 , -2)
 
-King Sum: (7 , -9) - (7 , -9) -> (0 , 0)
+King Sum: (1 , -2) - (1 , -2) -> (0 , 0)
 
-Sum: (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (10 , 15) -> (10 , 10) (EG/=1.5)
+Sum: (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (0 , 0) + (10 , 13) -> (10 , 13) 
 Phase: 128
 
-Final Result: (10 * 128 + 10 * (128.0 - 128))/128.0 -> 10
+Final Result: (10 * 128 + 13 * (128.0 - 128))/128.0 -> 10
+cp 10
 ```
 ### Perft
 You can run perft on an arbitrary position. Note that if there is no king on the board for either side or the position is otherwise illegal, FabChess will crash (intended).
@@ -237,12 +237,12 @@ e2e4: 9771632
 f2f4: 4890429
 g2g4: 5239875
 h2h4: 5385554
-g1f3: 5723523
-g1h3: 4877234
 b1a3: 4856835
 b1c3: 5708064
+g1f3: 5723523
+g1h3: 4877234
 119060324
-Time 1.222 (97430707.03764321 nps)
+Time 0.901 (132142423.97336292 nps)
 ```
 ### Debug print
 Use `d` for a debug print of the board
@@ -251,33 +251,32 @@ Use `d` for a debug print of the board
 > d
 <
 +---+---+---+---+---+---+---+---+
-| r | n | b | q | k | b | n | r |
+| r | n | b | q | k | b | n | r | 
 +---+---+---+---+---+---+---+---+
-| p | p | p | p | p | p | p | p |
+| p | p | p | p | p | p | p | p | 
 +---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
+|   |   |   |   |   |   |   |   | 
 +---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
+|   |   |   |   |   |   |   |   | 
 +---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
+|   |   |   |   |   |   |   |   | 
 +---+---+---+---+---+---+---+---+
-|   |   |   |   |   |   |   |   |
+|   |   |   |   |   |   |   |   | 
 +---+---+---+---+---+---+---+---+
-| P | P | P | P | P | P | P | P |
+| P | P | P | P | P | P | P | P | 
 +---+---+---+---+---+---+---+---+
-| R | N | B | Q | K | B | N | R |
+| R | N | B | Q | K | B | N | R | 
 +---+---+---+---+---+---+---+---+
-Castle Rights:
-White Kingside: true
-White Queenside: true
-Black Kingside: true
-Black Queenside: true
+Castle Rights: 
+CWK: true
+CWQ: true
+CBK: true
+CBQ: true
 En Passant Possible: 0
 Half-Counter: 0
 Full-Counter: 1
 Side to Move: 0
-Hash: 6214150092099736431
-
+Hash: 5939436254971627240
 FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 ```
 ## Inspired heavily by:
