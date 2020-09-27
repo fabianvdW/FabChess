@@ -148,12 +148,12 @@ pub const fn file_fill(gen: u64) -> u64 {
     nort_fill(gen) | sout_fill(gen)
 }
 #[inline(always)]
-pub const fn w_front_span(wpawns: u64) -> u64 {
-    north_one(nort_fill(wpawns))
-}
-#[inline(always)]
-pub const fn b_front_span(bpawns: u64) -> u64 {
-    south_one(sout_fill(bpawns))
+pub const fn pawn_front_span(pawns: u64, white: bool) -> u64 {
+    if white {
+        north_one(nort_fill(pawns))
+    } else {
+        south_one(sout_fill(pawns))
+    }
 }
 #[inline(always)]
 pub const fn w_rear_span(wpawns: u64) -> u64 {
