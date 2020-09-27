@@ -1,7 +1,8 @@
 use super::params::*;
 use super::EvaluationScore;
-use crate::bitboards::bitboards::mirror_square;
-use crate::board_representation::game_state::PIECE_TYPES;
+
+use crate::board_representation::game_state::{mirror_square, PIECE_TYPES};
+
 use normal_parameters::*;
 use special_parameters::*;
 use std::fmt::{Display, Formatter, Result};
