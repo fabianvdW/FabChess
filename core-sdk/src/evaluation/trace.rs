@@ -162,20 +162,20 @@ impl LargeTrace {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "texel-tuning")]
+    #[cfg(feature = "tuning")]
     use super::super::parameters::Parameters;
-    #[cfg(feature = "texel-tuning")]
+    #[cfg(feature = "tuning")]
     use crate::board_representation::game_state::GameState;
-    #[cfg(feature = "texel-tuning")]
+    #[cfg(feature = "tuning")]
     use crate::evaluation::eval_game_state;
 
     #[test]
     #[ignore]
     pub fn traceeval() {
-        if !cfg!(feature = "texel-tuning") {
-            panic!("Feature texel-tuning has to be enabled");
+        if !cfg!(feature = "tuning") {
+            panic!("Feature tuning has to be enabled");
         }
-        #[cfg(feature = "texel-tuning")]
+        #[cfg(feature = "tuning")]
         {
             let positions: &str = "3r1r1k/pb2b3/1p1q3p/1Pnp1pp1/P7/1QN1PN2/5PPP/1R1R1BK1 w - - 0 21
 8/8/p4pK1/4kPp1/8/8/P5P1/8 w - - 0 1

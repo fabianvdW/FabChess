@@ -9,7 +9,7 @@ build = "src/build.rs"
 [features]
 default = []
 search-statistics = []
-texel-tuning = []
+tuning = []
 display-eval = []
 avoid-adj = []
 [dependencies]

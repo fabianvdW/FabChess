@@ -505,13 +505,13 @@ impl GameState {
         let p_w = crate::evaluation::psqt_evaluation::psqt(
             self,
             WHITE,
-            #[cfg(feature = "texel-tuning")]
+            #[cfg(feature = "tuning")]
             &mut crate::evaluation::trace::LargeTrace::default(),
         );
         let p_b = crate::evaluation::psqt_evaluation::psqt(
             self,
             BLACK,
-            #[cfg(feature = "texel-tuning")]
+            #[cfg(feature = "tuning")]
             &mut crate::evaluation::trace::LargeTrace::default(),
         );
         self.irreversible.psqt = p_w - p_b

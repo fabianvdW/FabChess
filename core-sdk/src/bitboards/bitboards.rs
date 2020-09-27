@@ -1,6 +1,6 @@
 use constants::*;
 
-use crate::board_representation::game_state::{BLACK};
+use crate::board_representation::game_state::BLACK;
 
 pub mod square {
     #[rustfmt::skip]

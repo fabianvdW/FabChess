@@ -10,7 +10,7 @@ rand = "0.7.3"
 [dependencies.core-sdk]
 path = "../core-sdk"
 default-features = false
-features = ["texel-tuning"]
+features = ["tuning"]
 [lib]
 name = "tuning"
 path = "src/lib.rs"
