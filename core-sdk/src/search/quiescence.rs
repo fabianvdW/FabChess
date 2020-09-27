@@ -81,13 +81,13 @@ pub fn q_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
         gen_only_captures: true,
     };
 
-    let mut index = 0;
+    //let mut index = 0;
     loop {
         let mv = move_orderer.next(thread, &p, None, tt_move, false);
         if mv.is_none() {
             break;
         }
-        index += 1;
+        //index += 1;
         let (capture_move, _) = mv.unwrap();
         if !passes_delta_pruning(capture_move, p.game_state.get_phase().phase, stand_pat, p.alpha) {
             continue;

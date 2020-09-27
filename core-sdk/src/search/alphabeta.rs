@@ -3,7 +3,6 @@ use super::quiescence::q_search;
 use super::*;
 use super::{MATE_SCORE, MAX_SEARCH_DEPTH, STANDARD_SCORE};
 use crate::evaluation::eval_game_state;
-use crate::evaluation::params::TEMPO_BONUS;
 use crate::move_generation::makemove::{make_move, make_nullmove};
 use crate::search::cache::{CacheEntry, INVALID_STATIC_EVALUATION};
 use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
@@ -120,7 +119,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     } else {
         false
     };
-    let improving2 = if p.current_depth >= 1 {
+    /*let improving2 = if p.current_depth >= 1 {
         let prev_eval = thread.eval_hist[p.current_depth - 1].unwrap();
         let mut tempo_bonus = TEMPO_BONUS;
         tempo_bonus.1 = (f64::from(tempo_bonus.1) / 1.5) as i16;
@@ -135,7 +134,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
         }
     } else {
         false
-    };
+    };*/
 
     #[cfg(feature = "search-statistics")]
     {
@@ -144,7 +143,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     //Step 10. Prunings
     if prunable {
         //Step 10.1 Static Null Move Pruning
-        if let SearchInstruction::StopSearching(res) = static_null_move_pruning(&p, thread, static_evaluation, improving2) {
+        if let SearchInstruction::StopSearching(res) = static_null_move_pruning(&p, thread, static_evaluation) {
             return res;
         }
         //Step 10.2 Null Move Forward Pruning
@@ -295,9 +294,9 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             {
                 thread.search_statistics.add_normal_node_beta_cutoff(index);
                 thread.search_statistics.normal_nodes_improv_cutoffs[improving as usize] += 1;
-                if !improving2 {
+                /*if !improving2 {
                     thread.search_statistics.improving2[0] += 1;
-                }
+                }*/
             }
             if !isc {
                 update_quiet_cutoff(&p, thread, mv, quiets_tried);
@@ -394,7 +393,7 @@ pub fn get_pvtable_move(p: &CombinedSearchParameters, thread: &Thread) -> Option
 }
 
 #[inline(always)]
-pub fn static_null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: i16, improving2: bool) -> SearchInstruction {
+pub fn static_null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, static_evaluation: i16) -> SearchInstruction {
     if p.depth_left <= STATIC_NULL_MOVE_DEPTH && static_evaluation * p.color - STATIC_NULL_MOVE_MARGIN * p.depth_left >= p.beta {
         thread.history.pop();
         #[cfg(feature = "search-statistics")]

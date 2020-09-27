@@ -141,6 +141,18 @@ pub mod constants {
     #[rustfmt::skip]
     pub const CASTLE_PERMISSION : [u8;64] = [11u8, 15u8, 15u8, 15u8, 3u8, 15u8, 15u8, 7u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 14u8, 15u8, 15u8, 15u8, 12u8, 15u8, 15u8, 13u8, ];
 }
+
+//Mirrors  rank 1 to rank 8, rank 2 to rank 7 rank 3 to rank 6 and rank 4 to rank 5 and vice versa.
+//Useful for getting the index to blacks piece square table for example
+#[inline(always)]
+pub const fn mirror_square(square: usize) -> usize {
+    square ^ 56
+}
+//Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
+#[inline(always)]
+pub const fn ep_pawn_square(to: u8) -> u8 {
+    to ^ 8
+}
 #[inline(always)]
 pub const fn file_fill(gen: u64) -> u64 {
     nort_fill(gen) | sout_fill(gen)
@@ -202,6 +214,7 @@ pub const fn east_one(board: u64) -> u64 {
     (board & !FILES[7]) << 1
 }
 
+#[inline(always)]
 pub const fn nort_fill(mut gen: u64) -> u64 {
     gen |= gen << 8;
     gen |= gen << 16;
@@ -209,6 +222,7 @@ pub const fn nort_fill(mut gen: u64) -> u64 {
     gen
 }
 
+#[inline(always)]
 pub const fn sout_fill(mut gen: u64) -> u64 {
     gen |= gen >> 8;
     gen |= gen >> 16;

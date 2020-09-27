@@ -6,6 +6,7 @@ pub mod trace;
 
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::*;
+use crate::bitboards::bitboards::mirror_square;
 use crate::board_representation::game_state::{GameState, PieceType, BLACK, WHITE};
 #[cfg(feature = "texel-tuning")]
 use crate::evaluation::parameters::normal_parameters::*;
@@ -15,7 +16,6 @@ use crate::move_generation::movegen;
 use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
 use params::*;
 use psqt_evaluation::psqt;
-use psqt_evaluation::BLACK_INDEX;
 use std::fmt::{Debug, Display, Formatter, Result};
 use std::ops;
 
@@ -370,7 +370,7 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "texel-tuning")] trac
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         if g.get_piece(PieceType::Pawn, 1 - side) & front_span == 0u64 {
             if !white {
-                idx = BLACK_INDEX[idx];
+                idx = mirror_square(idx);
             }
             _outposts += 1;
             outpost += KNIGHT_OUTPOST_TABLE[idx / 8][idx % 8];
@@ -727,7 +727,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         let mut index = supported_pawns.trailing_zeros() as usize;
         supported_pawns ^= square(index);
         if !white {
-            index = BLACK_INDEX[index];
+            index = mirror_square(index);
         }
         supp += PAWN_SUPPORTED_VALUE[index / 8][index % 8];
         #[cfg(feature = "texel-tuning")]

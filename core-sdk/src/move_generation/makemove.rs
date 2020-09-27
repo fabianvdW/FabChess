@@ -1,6 +1,6 @@
 use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
-use crate::bitboards::bitboards::square;
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, Irreversible, PieceType, WHITE};
+use crate::bitboards::bitboards::{ep_pawn_square, square};
+use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, Irreversible, PieceType};
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
 
@@ -114,11 +114,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     castle_hash(g, castle_permissions, &mut hash);
     //Step 4. Update en passant field
     let en_passant = if mv.move_type == GameMoveType::Quiet && mv.piece_type == PieceType::Pawn && (mv.to as isize - mv.from as isize).abs() == 16 {
-        if g.get_color_to_move() == WHITE {
-            square((mv.to - 8) as usize)
-        } else {
-            square((mv.to + 8) as usize)
-        }
+        square(ep_pawn_square(mv.to) as usize)
     } else {
         0u64
     };
