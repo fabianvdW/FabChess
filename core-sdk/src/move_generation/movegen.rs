@@ -82,6 +82,7 @@ impl GameState {
         self.square_attacked(self.get_king_square(self.get_color_to_move()), self.get_all_pieces(), 0u64)
     }
 }
+
 impl PieceType {
     //Occ not needed for PieceType::King, PieceType::Knight
     #[inline(always)]
@@ -96,6 +97,7 @@ impl PieceType {
         }
     }
 }
+
 #[inline(always)]
 pub fn bishop_attack(square: usize, all_pieces: u64) -> u64 {
     magic::Magic::bishop(square, all_pieces)
@@ -107,7 +109,6 @@ pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
 }
 
 //Pawn single pushes
-
 #[inline(always)]
 pub fn single_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
     if side == WHITE {
@@ -151,6 +152,7 @@ pub fn b_double_push_pawn_targets(pawns: u64, empty: u64) -> u64 {
 pub fn pawn_targets(side: usize, pawns: u64) -> u64 {
     pawn_east_targets(side, pawns) | pawn_west_targets(side, pawns)
 }
+
 //Pawn east targets
 #[inline(always)]
 pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
@@ -393,6 +395,7 @@ pub const MAX_MOVES: usize = 128;
 pub struct MoveList {
     pub move_list: Vec<GradedMove>,
 }
+
 impl Default for MoveList {
     fn default() -> Self {
         let move_list = Vec::with_capacity(MAX_MOVES);

@@ -2,6 +2,7 @@ use crate::bitboards::bitboards::magic_constants::*;
 include!(concat!(env!("OUT_DIR"), "/magic_attacks.rs"));
 
 use std::fmt::Display;
+
 #[derive(Clone)]
 pub struct Magic {
     pub occupancy_mask: u64,
@@ -9,6 +10,7 @@ pub struct Magic {
     pub magic: u64,
     pub offset: usize,
 }
+
 impl Magic {
     #[inline(always)]
     pub fn bishop(square: usize, occ: u64) -> u64 {
@@ -33,6 +35,7 @@ impl Magic {
         ATTACKS[self.offset + apply_magic(self.magic, occ & self.occupancy_mask, self.shift)]
     }
 }
+
 impl Display for Magic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut res_str = String::new();
@@ -43,6 +46,7 @@ impl Display for Magic {
         write!(f, "{}", res_str)
     }
 }
+
 #[inline(always)]
 pub fn apply_magic(magic: u64, bb: u64, bits: usize) -> usize {
     (bb.wrapping_mul(magic) >> (64 - bits)) as usize

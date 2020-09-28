@@ -276,35 +276,13 @@ fn char_to_promotion_piecetype(c: char) -> PieceType {
 }
 
 pub fn char_to_rank(c: char) -> usize {
-    match c {
-        '1' => 0,
-        '2' => 1,
-        '3' => 2,
-        '4' => 3,
-        '5' => 4,
-        '6' => 5,
-        '7' => 6,
-        '8' => 7,
-        _ => {
-            panic!("Invalid rank");
-        }
-    }
+    assert!(['1', '2', '3', '4', '5', '6', '7', '8'].contains(&c));
+    c as usize - '1' as usize
 }
 
 pub fn char_to_file(c: char) -> usize {
-    match c {
-        'a' => 0,
-        'b' => 1,
-        'c' => 2,
-        'd' => 3,
-        'e' => 4,
-        'f' => 5,
-        'g' => 6,
-        'h' => 7,
-        _ => {
-            panic!("Invalid char");
-        }
-    }
+    assert!(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].contains(&c));
+    c as usize - 'a' as usize
 }
 
 fn file_to_string(file: usize) -> &'static str {
@@ -320,6 +298,7 @@ fn file_to_string(file: usize) -> &'static str {
         _ => panic!("invalid file"),
     }
 }
+
 #[derive(Clone)]
 pub struct Irreversible {
     hash: u64,
@@ -329,6 +308,7 @@ pub struct Irreversible {
     phase: Phase,
     psqt: EvaluationScore,
 }
+
 impl Irreversible {
     pub fn new(hash: u64, en_passant: u64, half_moves: u16, castle_permissions: u8, phase: Phase, psqt: EvaluationScore) -> Self {
         Irreversible {
@@ -457,13 +437,7 @@ impl GameState {
             full_moves,
         }
     }
-    pub const fn relative_rank(side: usize, sq: usize) -> usize {
-        if side == WHITE {
-            sq / 8
-        } else {
-            7 - sq / 8
-        }
-    }
+
     pub fn get_piece_on(&self, shift: i32) -> &str {
         for side in 0..2 {
             for piece_type in PIECE_TYPES.iter() {
@@ -771,13 +745,13 @@ impl GameState {
         if self.get_piece(mv.piece_type, self.color_to_move) & square(mv.from as usize) == 0u64 {
             return false;
         }
-        if mv.piece_type == PieceType::Pawn && GameState::relative_rank(self.color_to_move, mv.to as usize) == 7 {
+        if mv.piece_type == PieceType::Pawn && relative_rank(self.color_to_move, mv.to as usize) == 7 {
             if let GameMoveType::Promotion(_, _) = mv.move_type {
             } else {
                 return false;
             }
         } else if let GameMoveType::Promotion(_, _) = mv.move_type {
-            if mv.piece_type != PieceType::Pawn || GameState::relative_rank(self.color_to_move, mv.to as usize) != 7 {
+            if mv.piece_type != PieceType::Pawn || relative_rank(self.color_to_move, mv.to as usize) != 7 {
                 return false;
             }
         }
@@ -999,4 +973,10 @@ pub const fn mirror_square(square: usize) -> usize {
 #[inline(always)]
 pub const fn white_pov(square: usize, side: usize) -> usize {
     square ^ (56 * (side == BLACK) as usize)
+}
+
+//Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
+#[inline(always)]
+pub const fn ep_pawn_square(to: u8) -> u8 {
+    to ^ 8
 }

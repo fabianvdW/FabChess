@@ -128,6 +128,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     {
         result.trace.normal_coeffs[IDX_TEMPO_BONUS] = if g.get_color_to_move() == WHITE { 1 } else { -1 };
     }
+
     //Initialize all attacks
     let (white_defended_by_minors, white_defended_by_majors) = (g.get_minor_attacks_from_side(WHITE), g.get_major_attacks_from_side(WHITE));
     let white_defended = white_defended_by_minors | white_defended_by_majors | KING_ATTACKS[g.get_king_square(WHITE)];
@@ -266,6 +267,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         println!("\nKing Sum: {} - {} -> {}", king_w, king_b, king_w - king_b);
     }
     res += king_w - king_b;
+
     let phase = g.get_phase().phase;
     #[cfg(feature = "tuning")]
     {
@@ -278,8 +280,9 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         #[cfg(feature = "tuning")]
         &mut result.trace,
     );
+
     //Phasing is done the same way stockfish does it
-    let final_res = res.interpolate(phase);
+    result.final_eval = res.interpolate(phase);
     #[cfg(feature = "display-eval")]
     {
         println!(
@@ -294,9 +297,9 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
             res
         );
         println!("Phase: {}", phase);
-        println!("\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}", res.0, phase, res.1, phase, final_res,);
+        println!("\nFinal Result: ({} * {} + {} * (128.0 - {}))/128.0 -> {}", res.0, phase, res.1, phase, result.final_eval,);
     }
-    result.final_eval = final_res;
+
     result
 }
 
@@ -365,11 +368,7 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     while supp != 0u64 {
         let mut idx = supp.trailing_zeros() as usize;
         supp &= not_file(file_of(idx));
-        let mut front_span = if white {
-            bitboards::w_front_span(square(idx))
-        } else {
-            bitboards::b_front_span(square(idx))
-        };
+        let mut front_span = bitboards::pawn_front_span(square(idx), white);
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         if g.get_piece(PieceType::Pawn, 1 - side) & front_span == 0u64 {
             if !white {
@@ -647,11 +646,7 @@ pub fn king(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
     } else {
         SHIELDING_PAWNS_BLACK[g.get_king_square(side)]
     };
-    let mut king_front_span = if white {
-        bitboards::w_front_span(g.get_piece(PieceType::King, side))
-    } else {
-        bitboards::b_front_span(g.get_piece(PieceType::King, side))
-    };
+    let mut king_front_span = bitboards::pawn_front_span(g.get_piece(PieceType::King, side), white);
     king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
     let file = file_of(g.get_king_square(side));
     if file == 7 {
@@ -708,12 +703,8 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let enemy_pawns = g.get_piece(PieceType::Pawn, 1 - side);
     //Bitboards
     let pawn_file_fill = bitboards::file_fill(pawns);
-    let front_span = if white { bitboards::w_front_span(pawns) } else { bitboards::b_front_span(pawns) };
-    let mut enemy_front_spans = if white {
-        bitboards::b_front_span(enemy_pawns)
-    } else {
-        bitboards::w_front_span(enemy_pawns)
-    };
+    let front_span = bitboards::pawn_front_span(pawns, white);
+    let mut enemy_front_spans = bitboards::pawn_front_span(enemy_pawns, !white);
     enemy_front_spans |= bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
     let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (pawn_west_targets(side, pawns), pawn_east_targets(side, pawns), pawn_targets(1 - side, enemy_pawns));
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
@@ -764,22 +755,11 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         trace.normal_coeffs[IDX_PAWN_MOBILITY] += pawn_mobility as i8 * if side == WHITE { 1 } else { -1 };
     }
     //Passers
-    let mut passed_pawns: u64 = pawns
-
-        /*& !if white {
-            bitboards::w_rear_span(g.pieces[PieceType::Pawn as usize][side])
-        } else {
-            bitboards::b_rear_span(g.pieces[PieceType::Pawn as usize][side])
-        }*/
-        & !enemy_front_spans;
+    let mut passed_pawns: u64 = pawns & !enemy_front_spans;
     let (mut passer_score, mut _passer_normal, mut _passer_notblocked) = (EvaluationScore::default(), 0, 0);
     let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;
-    let behind_passers = if white {
-        bitboards::b_front_span(passed_pawns)
-    } else {
-        bitboards::w_front_span(passed_pawns)
-    };
+    let behind_passers = bitboards::pawn_front_span(passed_pawns, !white);
     let rooks_support_passer = (behind_passers & g.get_rook_like_bb(side)).count_ones() as i16;
     let enemy_rooks_attack_passer = (behind_passers & g.get_rook_like_bb(1 - side)).count_ones() as i16;
     res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
@@ -792,10 +772,10 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         let idx = passed_pawns.trailing_zeros() as usize;
         //Passed and blocked
         _passer_normal += 1;
-        passer_score += PAWN_PASSED_VALUES[GameState::relative_rank(side, idx)];
+        passer_score += PAWN_PASSED_VALUES[relative_rank(side, idx)];
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_PAWN_PASSED + GameState::relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
+            trace.normal_coeffs[IDX_PAWN_PASSED + relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
         }
         //A weak passer is an attacked and not defended passer
         let weak_passer = square(idx) & enemy_defended != 0u64 && square(idx) & defended == 0u64;
@@ -805,20 +785,17 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
         }
         //An unblocked passer is a) not weak b) all the squares until conversions are either not attacked or defended and unoccupied or attacked
         if !weak_passer
-            && if white {
-                bitboards::w_front_span(square(idx))
-            } else {
-                bitboards::b_front_span(square(idx))
-            } & (enemy_defended | enemy_pieces)
+            && bitboards::pawn_front_span(square(idx), white)
+                & (enemy_defended | enemy_pieces)
                 & !defended
                 == 0u64
         {
             //Passed and not blocked
             _passer_notblocked += 1;
-            passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[GameState::relative_rank(side, idx)];
+            passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[relative_rank(side, idx)];
             #[cfg(feature = "tuning")]
             {
-                trace.normal_coeffs[IDX_PAWN_PASSED_NOTBLOCKED + GameState::relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
+                trace.normal_coeffs[IDX_PAWN_PASSED_NOTBLOCKED + relative_rank(side, idx)] += if side == WHITE { 1 } else { -1 };
             }
         }
 

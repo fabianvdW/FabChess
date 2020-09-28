@@ -143,60 +143,14 @@ pub mod constants {
     pub const CASTLE_PERMISSION : [u8;64] = [11u8, 15u8, 15u8, 15u8, 3u8, 15u8, 15u8, 7u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 15u8, 14u8, 15u8, 15u8, 15u8, 12u8, 15u8, 15u8, 13u8, ];
 }
 
-//Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
-#[inline(always)]
-pub const fn ep_pawn_square(to: u8) -> u8 {
-    to ^ 8
-}
-#[inline(always)]
-pub const fn file_fill(gen: u64) -> u64 {
-    nort_fill(gen) | sout_fill(gen)
-}
-#[inline(always)]
-pub const fn w_front_span(wpawns: u64) -> u64 {
-    north_one(nort_fill(wpawns))
-}
-#[inline(always)]
-pub const fn b_front_span(bpawns: u64) -> u64 {
-    south_one(sout_fill(bpawns))
-}
-#[inline(always)]
-pub const fn w_rear_span(wpawns: u64) -> u64 {
-    south_one(sout_fill(wpawns))
-}
-#[inline(always)]
-pub const fn b_rear_span(bpawns: u64) -> u64 {
-    north_one(nort_fill(bpawns))
-}
-
 #[inline(always)]
 pub const fn north_one(board: u64) -> u64 {
     board << 8
 }
 
 #[inline(always)]
-pub const fn north_east_one(board: u64) -> u64 {
-    (board & !FILES[7]) << 9
-}
-
-#[inline(always)]
-pub const fn north_west_one(board: u64) -> u64 {
-    (board & !FILES[0]) << 7
-}
-
-#[inline(always)]
 pub const fn south_one(board: u64) -> u64 {
     board >> 8
-}
-
-#[inline(always)]
-pub const fn south_east_one(board: u64) -> u64 {
-    (board & !FILES[7]) >> 7
-}
-
-#[inline(always)]
-pub const fn south_west_one(board: u64) -> u64 {
-    (board & !FILES[0]) >> 9
 }
 
 #[inline(always)]
@@ -210,7 +164,27 @@ pub const fn east_one(board: u64) -> u64 {
 }
 
 #[inline(always)]
-pub const fn nort_fill(mut gen: u64) -> u64 {
+pub const fn north_east_one(board: u64) -> u64 {
+    (board & !FILES[7]) << 9
+}
+
+#[inline(always)]
+pub const fn north_west_one(board: u64) -> u64 {
+    (board & !FILES[0]) << 7
+}
+
+#[inline(always)]
+pub const fn south_east_one(board: u64) -> u64 {
+    (board & !FILES[7]) >> 7
+}
+
+#[inline(always)]
+pub const fn south_west_one(board: u64) -> u64 {
+    (board & !FILES[0]) >> 9
+}
+
+#[inline(always)]
+pub const fn north_fill(mut gen: u64) -> u64 {
     gen |= gen << 8;
     gen |= gen << 16;
     gen |= gen << 32;
@@ -218,9 +192,23 @@ pub const fn nort_fill(mut gen: u64) -> u64 {
 }
 
 #[inline(always)]
-pub const fn sout_fill(mut gen: u64) -> u64 {
+pub const fn south_fill(mut gen: u64) -> u64 {
     gen |= gen >> 8;
     gen |= gen >> 16;
     gen |= gen >> 32;
     gen
+}
+
+#[inline(always)]
+pub const fn file_fill(gen: u64) -> u64 {
+    north_fill(gen) | south_fill(gen)
+}
+
+#[inline(always)]
+pub const fn pawn_front_span(pawns: u64, white: bool) -> u64 {
+    if white {
+        north_one(north_fill(pawns))
+    } else {
+        south_one(south_fill(pawns))
+    }
 }
