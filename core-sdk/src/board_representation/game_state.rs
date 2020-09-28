@@ -276,10 +276,12 @@ fn char_to_promotion_piecetype(c: char) -> PieceType {
 }
 
 pub fn char_to_rank(c: char) -> usize {
+    assert!(['1', '2', '3', '4', '5', '6', '7', '8'].contains(&c));
     c as usize - '1' as usize
 }
 
 pub fn char_to_file(c: char) -> usize {
+    assert!(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].contains(&c));
     c as usize - 'a' as usize
 }
 
