@@ -494,7 +494,7 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const ROOK_SAFE_CHECK{}", self.format_constant(IDX_ROOK_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const QUEEN_SAFE_CHECK{}", self.format_constant(IDX_QUEEN_CHECK_VALUE, false),));
         res_str.push_str(&format!(
-            "#[rustfmt::skip]\npub const KING_ENEMY_PAWN: [[[EvaluationScore;64];64];2] = {}",
+            "#[rustfmt::skip]\npub const KING_ENEMY_PAWN: [[[EvaluationScore;64];64];2] = {};\n",
             self.format_kp_table(IDX_KING_ENEMY_PAWN, true),
         ));
         res_str.push_str("pub const PSQT: [[[EvaluationScore; 64]; 2]; 6] = [");

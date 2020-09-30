@@ -1,6 +1,9 @@
 use tuning::*;
 
 pub fn main() {
+    let mut params = Parameters::default();
+    params.write_to_file("test.txt");
+    panic!("");
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
     let mut positions: Vec<TexelState> = Vec::with_capacity(1);
     tuning::loading::PositionLoader::new(
