@@ -1,6 +1,6 @@
 use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
-use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE, rank_of, file_of};
+use crate::board_representation::game_state::{file_of, rank_of, GameState, PieceType, PIECE_TYPES, WHITE};
 use crate::evaluation::params::PSQT;
 
 #[cfg(feature = "tuning")]
@@ -11,7 +11,6 @@ use crate::evaluation::parameters::normal_parameters::IDX_PSQT;
 use crate::evaluation::trace::LargeTrace;
 
 pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
-
     #[cfg(feature = "display-eval")]
     {
         println!("\nPSQT for {}:", if side == WHITE { "White" } else { "Black" });
@@ -20,12 +19,10 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trac
     let mut res = EvaluationScore::default();
 
     for &pt in PIECE_TYPES.iter() {
-
         let mut piece_sum = EvaluationScore::default();
         let mut piece = game_state.get_piece(pt, side);
 
         while piece > 0 {
-
             let idx = piece.trailing_zeros() as usize;
             piece ^= square(idx);
             piece_sum += PSQT[pt as usize][side][rank_of(idx)][file_of(idx)] * if side == WHITE { 1 } else { -1 };

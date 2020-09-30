@@ -784,12 +784,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
             weak_passers += 1;
         }
         //An unblocked passer is a) not weak b) all the squares until conversions are either not attacked or defended and unoccupied or attacked
-        if !weak_passer
-            && bitboards::pawn_front_span(square(idx), white)
-                & (enemy_defended | enemy_pieces)
-                & !defended
-                == 0u64
-        {
+        if !weak_passer && bitboards::pawn_front_span(square(idx), white) & (enemy_defended | enemy_pieces) & !defended == 0u64 {
             //Passed and not blocked
             _passer_notblocked += 1;
             passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[relative_rank(side, idx)];

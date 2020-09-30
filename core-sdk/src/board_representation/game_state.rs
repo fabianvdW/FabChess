@@ -160,7 +160,6 @@ impl GameMove {
     }
 
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
-
         let mut chars = desc.chars();
 
         let from_file = char_to_file(chars.next().unwrap());
@@ -169,7 +168,7 @@ impl GameMove {
         let to_file = char_to_file(chars.next().unwrap());
         let to_rank = char_to_rank(chars.next().unwrap());
 
-        let promo = chars.next().and_then(|s|Some(char_to_promotion_piecetype(s)));
+        let promo = chars.next().and_then(|s| Some(char_to_promotion_piecetype(s)));
 
         (from_file + 8 * from_rank, to_file + 8 * to_rank, promo)
     }
