@@ -6,11 +6,11 @@ use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
-use crate::move_generation::movegen::{
-    b_pawn_east_targets, b_pawn_west_targets, bishop_attack, double_push_pawn_targets, generate_moves, pawn_east_targets, pawn_west_targets, rook_attack, single_push_pawn_targets,
-    w_pawn_east_targets, w_pawn_west_targets, MoveList,
-};
-use std::fmt::{Debug, Display, Formatter, Result};
+use crate::move_generation::movegen::*;
+
+pub const WHITE: usize = 0;
+pub const BLACK: usize = 1;
+
 pub const CASTLE_WHITE_KS: u8 = 0b1000;
 pub const CASTLE_WHITE_QS: u8 = 0b100;
 pub const CASTLE_BLACK_KS: u8 = 0b10;
@@ -18,9 +18,10 @@ pub const CASTLE_BLACK_QS: u8 = 0b1;
 pub const CASTLE_ALL_WHITE: u8 = CASTLE_WHITE_KS | CASTLE_WHITE_QS;
 pub const CASTLE_ALL_BLACK: u8 = CASTLE_BLACK_KS | CASTLE_BLACK_QS;
 pub const CASTLE_ALL: u8 = CASTLE_ALL_WHITE | CASTLE_ALL_BLACK;
-pub const WHITE: usize = 0;
-pub const BLACK: usize = 1;
+
 pub const PIECE_TYPES: [PieceType; 6] = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
+
+use std::fmt::{Debug, Display, Formatter, Result};
 
 #[derive(PartialEq, Debug)]
 pub enum GameResult {
@@ -29,6 +30,7 @@ pub enum GameResult {
     BlackWin,
     Draw,
 }
+
 impl Display for GameResult {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let res_str = String::from(match self {
@@ -40,6 +42,7 @@ impl Display for GameResult {
         write!(formatter, "{}", res_str)
     }
 }
+
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,
@@ -51,17 +54,19 @@ pub enum GameMoveType {
 
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum PieceType {
-    King = 5,
     Pawn = 0,
     Knight = 1,
     Bishop = 2,
     Rook = 3,
     Queen = 4,
+    King = 5,
 }
+
 impl PieceType {
     pub fn is_valid_promotion_piece(self) -> bool {
         self != PieceType::Pawn && self != PieceType::King
     }
+
     pub fn lowercase(self) -> &'static str {
         match self {
             PieceType::Pawn => "p",
@@ -72,6 +77,7 @@ impl PieceType {
             PieceType::King => "k",
         }
     }
+
     pub fn uppercase(self) -> &'static str {
         match self {
             PieceType::Pawn => "P",
@@ -134,6 +140,7 @@ impl GameMove {
             _ => false,
         }
     }
+
     #[inline(always)]
     pub fn get_captured_piece(self) -> PieceType {
         debug_assert!(self.is_capture());
@@ -143,6 +150,7 @@ impl GameMove {
             _ => panic!("Captured piece type  called on a capture"),
         }
     }
+
     pub fn get_maybe_captured_piece(self) -> Option<PieceType> {
         match self.move_type {
             GameMoveType::Capture(p) | GameMoveType::Promotion(_, Some(p)) => Some(p),
@@ -150,43 +158,19 @@ impl GameMove {
             _ => None,
         }
     }
+
     pub fn string_to_move(desc: &str) -> (usize, usize, Option<PieceType>) {
         let mut chars = desc.chars();
-        let from_file = match chars.next() {
-            Some(s) => char_to_file(s),
-            _ => {
-                panic!("Invalid move desc!");
-            }
-        };
-        let from_rank = match chars.next() {
-            Some(s) => char_to_rank(s),
-            _ => {
-                panic!("Invalid move desc!");
-            }
-        };
-        let to_file = match chars.next() {
-            Some(s) => char_to_file(s),
-            _ => {
-                panic!("Invalid move desc!");
-            }
-        };
-        let to_rank = match chars.next() {
-            Some(s) => char_to_rank(s),
-            _ => {
-                panic!("Invalid move desc!");
-            }
-        };
-        if desc.len() == 5 {
-            return (
-                from_file + 8 * from_rank,
-                to_file + 8 * to_rank,
-                Some(char_to_promotion_piecetype(match chars.next() {
-                    Some(s) => s,
-                    _ => panic!("Invalid move desc!"),
-                })),
-            );
-        }
-        (from_file + 8 * from_rank, to_file + 8 * to_rank, None)
+
+        let from_file = char_to_file(chars.next().unwrap());
+        let from_rank = char_to_rank(chars.next().unwrap());
+
+        let to_file = char_to_file(chars.next().unwrap());
+        let to_rank = char_to_rank(chars.next().unwrap());
+
+        let promo = chars.next().and_then(|s| Some(char_to_promotion_piecetype(s)));
+
+        (from_file + 8 * from_rank, to_file + 8 * to_rank, promo)
     }
 
     pub fn to_san(self, game_state: &GameState) -> String {
@@ -321,6 +305,7 @@ impl Irreversible {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct GameState {
     // 0 = White
@@ -345,6 +330,7 @@ pub struct GameState {
 
     full_moves: usize,
 }
+
 //Getters and setters
 impl GameState {
     pub fn get_piece_bb_array(&self) -> [u64; 6] {
@@ -475,6 +461,7 @@ impl GameState {
             }
         }
     }
+
     pub fn initialize_psqt(&mut self) {
         let p_w = crate::evaluation::psqt_evaluation::psqt(
             self,
@@ -490,14 +477,17 @@ impl GameState {
         );
         self.irreversible.psqt = p_w - p_b
     }
+
     pub fn initialize_phase(&mut self) {
         self.irreversible.phase = Phase::from_state(self);
     }
+
     pub fn initialize(&mut self) {
         self.initialize_zobrist_hash();
         self.initialize_psqt();
         self.initialize_phase();
     }
+
     pub fn from_fen(fen: &str) -> GameState {
         let vec: Vec<&str> = fen.trim().split(' ').collect();
         if vec.len() < 4 {
@@ -954,7 +944,7 @@ pub const fn rank_of(square: usize) -> usize {
     square / 8
 }
 
-pub fn relative_rank(side: usize, sq: usize) -> usize {
+pub const fn relative_rank(side: usize, sq: usize) -> usize {
     if side == WHITE {
         rank_of(sq)
     } else {

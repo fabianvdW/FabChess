@@ -1,6 +1,6 @@
 use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::bitboards::bitboards::square;
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, Irreversible, PieceType, file_of, ep_pawn_square};
+use crate::board_representation::game_state::{ep_pawn_square, file_of, GameMove, GameMoveType, GameState, Irreversible, PieceType};
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
 
