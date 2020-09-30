@@ -10,7 +10,6 @@ use crate::move_generation::movegen::{
     b_pawn_east_targets, b_pawn_west_targets, bishop_attack, double_push_pawn_targets, generate_moves, pawn_east_targets, pawn_west_targets, rook_attack, single_push_pawn_targets,
     w_pawn_east_targets, w_pawn_west_targets, MoveList,
 };
-use std::fmt::{Debug, Display, Formatter, Result};
 pub const CASTLE_WHITE_KS: u8 = 0b1000;
 pub const CASTLE_WHITE_QS: u8 = 0b100;
 pub const CASTLE_BLACK_KS: u8 = 0b10;
@@ -22,6 +21,8 @@ pub const WHITE: usize = 0;
 pub const BLACK: usize = 1;
 pub const PIECE_TYPES: [PieceType; 6] = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
 
+use std::fmt::{Debug, Display, Formatter, Result};
+
 #[derive(PartialEq, Debug)]
 pub enum GameResult {
     Ingame,
@@ -29,6 +30,7 @@ pub enum GameResult {
     BlackWin,
     Draw,
 }
+
 impl Display for GameResult {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let res_str = String::from(match self {
@@ -40,6 +42,7 @@ impl Display for GameResult {
         write!(formatter, "{}", res_str)
     }
 }
+
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum GameMoveType {
     Quiet,
@@ -58,10 +61,12 @@ pub enum PieceType {
     Rook = 3,
     Queen = 4,
 }
+
 impl PieceType {
     pub fn is_valid_promotion_piece(self) -> bool {
         self != PieceType::Pawn && self != PieceType::King
     }
+
     pub fn lowercase(self) -> &'static str {
         match self {
             PieceType::Pawn => "p",
@@ -72,6 +77,7 @@ impl PieceType {
             PieceType::King => "k",
         }
     }
+
     pub fn uppercase(self) -> &'static str {
         match self {
             PieceType::Pawn => "P",
@@ -134,6 +140,7 @@ impl GameMove {
             _ => false,
         }
     }
+
     #[inline(always)]
     pub fn get_captured_piece(self) -> PieceType {
         debug_assert!(self.is_capture());
@@ -143,6 +150,7 @@ impl GameMove {
             _ => panic!("Captured piece type  called on a capture"),
         }
     }
+
     pub fn get_maybe_captured_piece(self) -> Option<PieceType> {
         match self.move_type {
             GameMoveType::Capture(p) | GameMoveType::Promotion(_, Some(p)) => Some(p),
@@ -298,6 +306,7 @@ impl Irreversible {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct GameState {
     // 0 = White
@@ -322,6 +331,7 @@ pub struct GameState {
 
     full_moves: usize,
 }
+
 //Getters and setters
 impl GameState {
     pub fn get_piece_bb_array(&self) -> [u64; 6] {
@@ -452,6 +462,7 @@ impl GameState {
             }
         }
     }
+
     pub fn initialize_psqt(&mut self) {
         let p_w = crate::evaluation::psqt_evaluation::psqt(
             self,
@@ -467,14 +478,17 @@ impl GameState {
         );
         self.irreversible.psqt = p_w - p_b
     }
+
     pub fn initialize_phase(&mut self) {
         self.irreversible.phase = Phase::from_state(self);
     }
+
     pub fn initialize(&mut self) {
         self.initialize_zobrist_hash();
         self.initialize_psqt();
         self.initialize_phase();
     }
+
     pub fn from_fen(fen: &str) -> GameState {
         let vec: Vec<&str> = fen.trim().split(' ').collect();
         if vec.len() < 4 {
