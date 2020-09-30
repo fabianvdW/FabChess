@@ -178,6 +178,12 @@ impl Parameters {
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
+    fn init_pk_table(params: &mut Parameters, pk_table: &[[EvaluationScore; 64]; 64], idx: usize) {
+        for i in 0..64 {
+            Parameters::init_constants(params, &pk_table[i], idx + 64 * i, true);
+        }
+    }
+
     fn init_constants(params: &mut Parameters, s: &[EvaluationScore], idx: usize, normal: bool) {
         for i in 0..s.len() {
             if normal {
@@ -244,6 +250,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, BISHOP_SAFE_CHECK, IDX_BISHOP_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, ROOK_SAFE_CHECK, IDX_ROOK_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, QUEEN_SAFE_CHECK, IDX_QUEEN_CHECK_VALUE, false);
+        Parameters::init_pk_table(&mut params, &KING_ENEMY_PAWN[0], IDX_KING_ENEMY_PAWN);
         for pt in PIECE_TYPES.iter() {
             Parameters::init_constants(&mut params, &PSQT[*pt as usize][0], IDX_PSQT + *pt as usize * 64, true);
         }
@@ -286,12 +293,37 @@ impl Parameters {
         res_black.push_str("[");
         for i in 0..64 {
             res_white.push_str(&format!("{},", self.format_evaluation_score(idx + i, true)));
-            let actual_i = mirror_square(i);
+            let black_i = mirror_square(i);
             res_black.push_str(&format!(
                 "EvaluationScore({},{}),",
-                if negative_black_score { -1 } else { 1 } * self.normal[0][idx + actual_i].round() as isize,
-                if negative_black_score { -1 } else { 1 } * self.normal[1][idx + actual_i].round() as isize
+                if negative_black_score { -1 } else { 1 } * self.normal[0][idx + black_i].round() as isize,
+                if negative_black_score { -1 } else { 1 } * self.normal[1][idx + black_i].round() as isize
             ))
+        }
+        res_white.push_str("]");
+        res_black.push_str("]");
+        format!("[{}, {}]", res_white, res_black)
+    }
+    fn format_kp_table(&self, idx: usize, negative_black_score: bool) -> String {
+        let mut res_white = String::new();
+        let mut res_black = String::new();
+        res_white.push_str("[");
+        res_black.push_str("[");
+        for king_index in 0..64 {
+            res_white.push_str("[");
+            res_black.push_str("[");
+            for p_index in 0..64 {
+                res_white.push_str(&format!("{}, ", self.format_evaluation_score(idx + 64 * king_index + p_index, true)));
+                let black_king_index = mirror_square(king_index);
+                let black_p_index = mirror_square(p_index);
+                res_black.push_str(&format!(
+                    "EvaluationScore({},{}),",
+                    if negative_black_score { -1 } else { 1 } * self.normal[0][idx + 64 * black_king_index + black_p_index].round() as isize,
+                    if negative_black_score { -1 } else { 1 } * self.normal[1][idx + 64 * black_king_index + black_p_index].round() as isize
+                ));
+            }
+            res_white.push_str("],");
+            res_black.push_str("],");
         }
         res_white.push_str("]");
         res_black.push_str("]");
@@ -461,6 +493,10 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const BISHOP_SAFE_CHECK{}", self.format_constant(IDX_BISHOP_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const ROOK_SAFE_CHECK{}", self.format_constant(IDX_ROOK_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const QUEEN_SAFE_CHECK{}", self.format_constant(IDX_QUEEN_CHECK_VALUE, false),));
+        res_str.push_str(&format!(
+            "#[rustfmt::skip]\npub const KING_ENEMY_PAWN: [[[EvaluationScore;64];64];2] = {}",
+            self.format_kp_table(IDX_KING_ENEMY_PAWN, true),
+        ));
         res_str.push_str("pub const PSQT: [[[EvaluationScore; 64]; 2]; 6] = [");
         for &pt in PIECE_TYPES.iter() {
             res_str.push_str(&self.format_psqt(IDX_PSQT + 64 * pt as usize, true));
