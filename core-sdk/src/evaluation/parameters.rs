@@ -119,7 +119,10 @@ pub mod normal_parameters {
     pub const IDX_QUEEN_MOBILITY: usize = IDX_ROOK_MOBILITY + SIZE_ROOK_MOBILITY;
     pub const SIZE_QUEEN_MOBILITY: usize = 28;
 
-    pub const IDX_PSQT: usize = IDX_QUEEN_MOBILITY + SIZE_QUEEN_MOBILITY;
+    pub const IDX_KING_ENEMY_PAWN: usize = IDX_QUEEN_MOBILITY + SIZE_QUEEN_MOBILITY;
+    pub const SIZE_KING_ENEMY_PAWN: usize = 64 * 64;
+
+    pub const IDX_PSQT: usize = IDX_KING_ENEMY_PAWN + SIZE_KING_ENEMY_PAWN;
     pub const SIZE_PSQT: usize = 384;
 
     pub const NORMAL_PARAMS: usize = IDX_PSQT + SIZE_PSQT;
