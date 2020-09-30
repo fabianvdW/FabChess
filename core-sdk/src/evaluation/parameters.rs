@@ -1,6 +1,6 @@
 use super::params::*;
 use super::EvaluationScore;
-use crate::board_representation::game_state::{file_of, mirror_square, rank_of, PIECE_TYPES};
+use crate::board_representation::game_state::{mirror_square, PIECE_TYPES};
 use normal_parameters::*;
 use special_parameters::*;
 use std::fmt::{Display, Formatter, Result};
@@ -175,11 +175,6 @@ impl Parameters {
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
-    fn init_psqt(params: &mut Parameters, s: &[[EvaluationScore; 8]; 8], idx: usize) {
-        for i in 0..8 {
-            Parameters::init_constants(params, &s[i], idx + 8 * i, true)
-        }
-    }
     fn init_constants(params: &mut Parameters, s: &[EvaluationScore], idx: usize, normal: bool) {
         for i in 0..s.len() {
             if normal {
@@ -206,7 +201,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, PAWN_DOUBLED_VALUE, IDX_PAWN_DOUBLED, true);
         Parameters::init_constant(&mut params, PAWN_ISOLATED_VALUE, IDX_PAWN_ISOLATED, true);
         Parameters::init_constant(&mut params, PAWN_BACKWARD_VALUE, IDX_PAWN_BACKWARD, true);
-        Parameters::init_psqt(&mut params, &PAWN_SUPPORTED_VALUE, IDX_PAWN_SUPPORTED);
+        Parameters::init_constants(&mut params, &PAWN_SUPPORTED_VALUE[0], IDX_PAWN_SUPPORTED, true);
         Parameters::init_constant(&mut params, PAWN_ATTACK_CENTER, IDX_PAWN_ATTACK_CENTER, true);
         Parameters::init_constant(&mut params, PAWN_MOBILITY, IDX_PAWN_MOBILITY, true);
         Parameters::init_constants(&mut params, &PAWN_PASSED_VALUES, IDX_PAWN_PASSED, true);
@@ -218,7 +213,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, ROOK_BEHIND_ENEMY_PASSER, IDX_ROOK_BEHIND_ENEMY_PASSER, true);
         Parameters::init_constant(&mut params, PAWN_PASSED_WEAK, IDX_PAWN_PASSED_WEAK, true);
         Parameters::init_constant(&mut params, KNIGHT_SUPPORTED_BY_PAWN, IDX_KNIGHT_SUPPORTED, true);
-        Parameters::init_psqt(&mut params, &KNIGHT_OUTPOST_TABLE, IDX_KNIGHT_OUTPOST_TABLE);
+        Parameters::init_constants(&mut params, &KNIGHT_OUTPOST_TABLE[0], IDX_KNIGHT_OUTPOST_TABLE, true);
         Parameters::init_constant(&mut params, ROOK_ON_OPEN_FILE_BONUS, IDX_ROOK_ON_OPEN, true);
         Parameters::init_constant(&mut params, ROOK_ON_SEMI_OPEN_FILE_BONUS, IDX_ROOK_ON_SEMI_OPEN, true);
         Parameters::init_constant(&mut params, QUEEN_ON_OPEN_FILE_BONUS, IDX_QUEEN_ON_OPEN, true);
@@ -247,7 +242,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, ROOK_SAFE_CHECK, IDX_ROOK_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, QUEEN_SAFE_CHECK, IDX_QUEEN_CHECK_VALUE, false);
         for pt in PIECE_TYPES.iter() {
-            Parameters::init_psqt(&mut params, &PSQT[*pt as usize][0], IDX_PSQT + *pt as usize * 64)
+            Parameters::init_constants(&mut params, &PSQT[*pt as usize][0], IDX_PSQT + *pt as usize * 64, true);
         }
         params.special[IDX_SLIGHTLY_WINNING_NO_PAWN] = SLIGHTLY_WINNING_NO_PAWN;
         params.special[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC] = SLIGHTLY_WINNING_ENEMY_CAN_SAC;
@@ -281,37 +276,23 @@ impl Parameters {
         res_str.push_str("];\n");
         res_str
     }
-    fn format_psqt(&self, idx: usize) -> String {
-        let mut res_str = String::new();
-        res_str.push_str("[");
-        for i in 0..8 {
-            res_str.push_str("[");
-            for j in 0..8 {
-                res_str.push_str(&format!("{},", self.format_evaluation_score(idx + 8 * i + j, true)))
-            }
-            res_str.push_str("],");
+    fn format_psqt(&self, idx: usize, negative_black_score: bool) -> String {
+        let mut res_white = String::new();
+        let mut res_black = String::new();
+        res_white.push_str("[");
+        res_black.push_str("[");
+        for i in 0..64 {
+            res_white.push_str(&format!("{},", self.format_evaluation_score(idx + i, true)));
+            let actual_i = mirror_square(i);
+            res_black.push_str(&format!(
+                "EvaluationScore({},{}),",
+                if negative_black_score { -1 } else { 1 } * self.normal[0][idx + actual_i].round() as isize,
+                if negative_black_score { -1 } else { 1 } * self.normal[1][idx + actual_i].round() as isize
+            ))
         }
-        res_str.push_str("]");
-        res_str
-    }
-    fn format_psqt_for_black(&self, idx: usize) -> String {
-        let mut res_str = String::new();
-        res_str.push_str("[");
-        for i in 0..8 {
-            res_str.push_str("[");
-            for j in 0..8 {
-                let actual_i = rank_of(mirror_square(8 * i + j));
-                let actual_j = file_of(mirror_square(8 * i + j));
-                res_str.push_str(&format!(
-                    "EvaluationScore({},{}),",
-                    -self.normal[0][idx + 8 * actual_i + actual_j].round() as isize,
-                    -self.normal[1][idx + 8 * actual_i + actual_j].round() as isize
-                ))
-            }
-            res_str.push_str("],");
-        }
-        res_str.push_str("]");
-        res_str
+        res_white.push_str("]");
+        res_black.push_str("]");
+        format!("[{}, {}]", res_white, res_black)
     }
 
     pub fn get_norm(&self) -> f32 {
@@ -398,8 +379,8 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const PAWN_ISOLATED_VALUE{}", self.format_constant(IDX_PAWN_ISOLATED, true),));
         res_str.push_str(&format!("pub const PAWN_BACKWARD_VALUE{}", self.format_constant(IDX_PAWN_BACKWARD, true),));
         res_str.push_str(&format!(
-            "pub const PAWN_SUPPORTED_VALUE: [[EvaluationScore; 8];8] = {};\n",
-            self.format_psqt(IDX_PAWN_SUPPORTED),
+            "pub const PAWN_SUPPORTED_VALUE: [[EvaluationScore;64];2] = {};\n",
+            self.format_psqt(IDX_PAWN_SUPPORTED, false),
         ));
         res_str.push_str(&format!("pub const PAWN_ATTACK_CENTER{}", self.format_constant(IDX_PAWN_ATTACK_CENTER, true),));
         res_str.push_str(&format!("pub const PAWN_MOBILITY{}", self.format_constant(IDX_PAWN_MOBILITY, true),));
@@ -429,8 +410,8 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const PAWN_PASSED_WEAK{}", self.format_constant(IDX_PAWN_PASSED_WEAK, true),));
         res_str.push_str(&format!("pub const KNIGHT_SUPPORTED_BY_PAWN{}", self.format_constant(IDX_KNIGHT_SUPPORTED, true),));
         res_str.push_str(&format!(
-            "pub const KNIGHT_OUTPOST_TABLE: [[EvaluationScore; 8];8] = {};\n",
-            self.format_psqt(IDX_KNIGHT_OUTPOST_TABLE),
+            "pub const KNIGHT_OUTPOST_TABLE: [[EvaluationScore; 64];2] = {};\n",
+            self.format_psqt(IDX_KNIGHT_OUTPOST_TABLE, false),
         ));
         res_str.push_str(&format!("pub const ROOK_ON_OPEN_FILE_BONUS{}", self.format_constant(IDX_ROOK_ON_OPEN, true),));
         res_str.push_str(&format!("pub const ROOK_ON_SEMI_OPEN_FILE_BONUS{}", self.format_constant(IDX_ROOK_ON_SEMI_OPEN, true),));
@@ -439,11 +420,10 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const ROOK_ON_SEVENTH{}", self.format_constant(IDX_ROOK_ON_SEVENTH, true),));
         res_str.push_str(&format!("pub const PAWN_PIECE_VALUE{}", self.format_constant(IDX_PAWN_PIECE_VALUE, true),));
         res_str.push_str(&format!("pub const KNIGHT_PIECE_VALUE{}", self.format_constant(IDX_KNIGHT_PIECE_VALUE, true),));
-        res_str.push_str("pub const KNIGHT_VALUE_WITH_PAWNS: [i16; 17] = [");
-        for i in 0..17 {
-            res_str.push_str(&format!("{}, ", self.special[IDX_KNIGHT_VALUE_WITH_PAWN + i].round() as isize));
-        }
-        res_str.push_str("];\n");
+        res_str.push_str(&format!(
+            "pub const KNIGHT_VALUE_WITH_PAWNS{}",
+            self.format_constants(IDX_KNIGHT_VALUE_WITH_PAWN, SIZE_KNIGHT_VALUE_WITH_PAWN, true)
+        ));
         res_str.push_str(&format!("pub const BISHOP_PIECE_VALUE{}", self.format_constant(IDX_BISHOP_PIECE_VALUE, true),));
         res_str.push_str(&format!("pub const BISHOP_PAIR_BONUS{}", self.format_constant(IDX_BISHOP_PAIR, true),));
         res_str.push_str(&format!("pub const ROOK_PIECE_VALUE{}", self.format_constant(IDX_ROOK_PIECE_VALUE, true),));
@@ -478,13 +458,10 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const BISHOP_SAFE_CHECK{}", self.format_constant(IDX_BISHOP_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const ROOK_SAFE_CHECK{}", self.format_constant(IDX_ROOK_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const QUEEN_SAFE_CHECK{}", self.format_constant(IDX_QUEEN_CHECK_VALUE, false),));
-        res_str.push_str("pub const PSQT: [[[[EvaluationScore; 8]; 8]; 2]; 6] = [");
+        res_str.push_str("pub const PSQT: [[[EvaluationScore; 64]; 2]; 6] = [");
         for &pt in PIECE_TYPES.iter() {
-            res_str.push_str("[");
-            res_str.push_str(&(self.format_psqt(IDX_PSQT + 64 * pt as usize)));
+            res_str.push_str(&self.format_psqt(IDX_PSQT + 64 * pt as usize, true));
             res_str.push_str(",");
-            res_str.push_str(&(self.format_psqt_for_black(IDX_PSQT + 64 * pt as usize)));
-            res_str.push_str("],");
         }
         res_str.push_str("];\n");
         write!(formatter, "{}", res_str)

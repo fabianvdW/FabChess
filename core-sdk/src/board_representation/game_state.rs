@@ -91,7 +91,7 @@ impl PieceType {
 
     #[inline(always)]
     pub fn to_psqt(self, side: usize, sq: usize) -> EvaluationScore {
-        PSQT[self as usize][side][rank_of(sq)][file_of(sq)]
+        PSQT[self as usize][side][sq]
     }
 
     #[inline(always)]

@@ -6,19 +6,20 @@ pub mod trace;
 
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::*;
-use crate::board_representation::game_state::{file_of, mirror_square, rank_of, relative_rank, GameState, PieceType, BLACK, WHITE};
+use crate::board_representation::game_state::{file_of, rank_of, relative_rank, GameState, PieceType, BLACK, WHITE};
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
 
-use params::*;
-use psqt_evaluation::psqt;
-use std::fmt::{Debug, Display, Formatter, Result};
-use std::ops;
-
+#[cfg(feature = "tuning")]
+use crate::board_representation::game_state::white_pov;
 #[cfg(feature = "tuning")]
 use crate::evaluation::parameters::normal_parameters::*;
 #[cfg(feature = "tuning")]
 use crate::evaluation::trace::LargeTrace;
+use params::*;
+use psqt_evaluation::psqt;
+use std::fmt::{Debug, Display, Formatter, Result};
+use std::ops;
 
 pub const MG: usize = 0;
 pub const EG: usize = 1;
@@ -366,19 +367,16 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     let mut _outposts = 0;
     let mut supp = supported_knights;
     while supp != 0u64 {
-        let mut idx = supp.trailing_zeros() as usize;
+        let idx = supp.trailing_zeros() as usize;
         supp &= not_file(file_of(idx));
         let mut front_span = bitboards::pawn_front_span(square(idx), white);
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         if g.get_piece(PieceType::Pawn, 1 - side) & front_span == 0u64 {
-            if !white {
-                idx = mirror_square(idx);
-            }
             _outposts += 1;
-            outpost += KNIGHT_OUTPOST_TABLE[rank_of(idx)][file_of(idx)];
+            outpost += KNIGHT_OUTPOST_TABLE[side][idx];
             #[cfg(feature = "tuning")]
             {
-                trace.normal_coeffs[IDX_KNIGHT_OUTPOST_TABLE + idx] += if side == WHITE { 1 } else { -1 };
+                trace.normal_coeffs[IDX_KNIGHT_OUTPOST_TABLE + white_pov(idx, side)] += if side == WHITE { 1 } else { -1 };
             }
         }
     }
@@ -720,15 +718,12 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let _supported_amt = supported_pawns.count_ones() as usize;
     let mut supp = EvaluationScore::default();
     while supported_pawns != 0u64 {
-        let mut index = supported_pawns.trailing_zeros() as usize;
+        let index = supported_pawns.trailing_zeros() as usize;
         supported_pawns ^= square(index);
-        if !white {
-            index = mirror_square(index);
-        }
-        supp += PAWN_SUPPORTED_VALUE[rank_of(index)][file_of(index)];
+        supp += PAWN_SUPPORTED_VALUE[side][index];
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_PAWN_SUPPORTED + index] += if side == WHITE { 1 } else { -1 };
+            trace.normal_coeffs[IDX_PAWN_SUPPORTED + white_pov(index, side)] += if side == WHITE { 1 } else { -1 };
         }
     }
     res += supp;

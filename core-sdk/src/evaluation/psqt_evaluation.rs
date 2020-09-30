@@ -1,6 +1,6 @@
 use super::EvaluationScore;
 use crate::bitboards::bitboards::constants::square;
-use crate::board_representation::game_state::{file_of, rank_of, GameState, PieceType, PIECE_TYPES, WHITE};
+use crate::board_representation::game_state::{GameState, PieceType, PIECE_TYPES, WHITE};
 use crate::evaluation::params::PSQT;
 
 #[cfg(feature = "tuning")]
@@ -25,7 +25,7 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trac
         while piece > 0 {
             let idx = piece.trailing_zeros() as usize;
             piece ^= square(idx);
-            piece_sum += PSQT[pt as usize][side][rank_of(idx)][file_of(idx)] * if side == WHITE { 1 } else { -1 };
+            piece_sum += PSQT[pt as usize][side][idx] * if side == WHITE { 1 } else { -1 };
 
             #[cfg(feature = "tuning")]
             {
