@@ -2,7 +2,7 @@ use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{ep_pawn_square, file_of, GameMove, GameMoveType, GameState, Irreversible, PieceType};
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
-use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
+use crate::evaluation::psqt_evaluation::{kp_add_pawn, kp_move_king, kp_remove_pawn, psqt_add_piece, psqt_remove_piece};
 
 #[inline(always)]
 pub fn toggle_piece(piece_bb: &mut [u64; 6], color_bb: &mut [u64; 2], piece: PieceType, sq: usize, color: usize) {
@@ -78,6 +78,19 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.from as usize, g.get_color_to_move());
     toggle_hash(mv.piece_type, mv.from, g.get_color_to_move(), &mut hash);
     psqt_remove_piece(mv.piece_type, mv.from as usize, g.get_color_to_move(), &mut psqt);
+    if mv.piece_type == PieceType::King {
+        //Update our KP tables
+        kp_move_king(
+            mv.from as usize,
+            mv.to as usize,
+            g.get_piece(PieceType::Pawn, color_to_move),
+            g.get_color_to_move(),
+            &mut psqt,
+        );
+    } else if mv.piece_type == PieceType::Pawn {
+        kp_remove_pawn(g.get_king_square(color_to_move), mv.from as usize, color_to_move, &mut psqt);
+        kp_add_pawn(g.get_king_square(color_to_move), mv.to as usize, color_to_move, &mut psqt);
+    }
     let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
@@ -86,6 +99,9 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         toggle_hash(piece, square, color_to_move, &mut hash);
         psqt_remove_piece(piece, square as usize, color_to_move, &mut psqt);
         phase.delete_piece(piece);
+        if piece == PieceType::Pawn {
+            kp_remove_pawn(g.get_king_square(g.get_color_to_move()), square as usize, g.get_color_to_move(), &mut psqt);
+        }
     }
     //Move rook for castling
     if let GameMoveType::Castle = mv.move_type {

@@ -5,6 +5,7 @@ use crate::evaluation::params::{KING_ENEMY_PAWN, PSQT};
 
 #[cfg(feature = "tuning")]
 use crate::board_representation::game_state::white_pov;
+#[cfg(feature = "tuning")]
 use crate::evaluation::parameters::normal_parameters::IDX_KING_ENEMY_PAWN;
 #[cfg(feature = "tuning")]
 use crate::evaluation::parameters::normal_parameters::IDX_PSQT;
