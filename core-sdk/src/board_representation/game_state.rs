@@ -6,10 +6,11 @@ use crate::evaluation::params::*;
 use crate::evaluation::phase::Phase;
 use crate::evaluation::EvaluationScore;
 use crate::move_generation::makemove::make_move;
-use crate::move_generation::movegen::{
-    b_pawn_east_targets, b_pawn_west_targets, bishop_attack, double_push_pawn_targets, generate_moves, pawn_east_targets, pawn_west_targets, rook_attack, single_push_pawn_targets,
-    w_pawn_east_targets, w_pawn_west_targets, MoveList,
-};
+use crate::move_generation::movegen::*;
+
+pub const WHITE: usize = 0;
+pub const BLACK: usize = 1;
+
 pub const CASTLE_WHITE_KS: u8 = 0b1000;
 pub const CASTLE_WHITE_QS: u8 = 0b100;
 pub const CASTLE_BLACK_KS: u8 = 0b10;
@@ -17,8 +18,7 @@ pub const CASTLE_BLACK_QS: u8 = 0b1;
 pub const CASTLE_ALL_WHITE: u8 = CASTLE_WHITE_KS | CASTLE_WHITE_QS;
 pub const CASTLE_ALL_BLACK: u8 = CASTLE_BLACK_KS | CASTLE_BLACK_QS;
 pub const CASTLE_ALL: u8 = CASTLE_ALL_WHITE | CASTLE_ALL_BLACK;
-pub const WHITE: usize = 0;
-pub const BLACK: usize = 1;
+
 pub const PIECE_TYPES: [PieceType; 6] = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
 
 use std::fmt::{Debug, Display, Formatter, Result};
