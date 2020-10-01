@@ -219,12 +219,3 @@ pub const fn pawn_front_span(pawns: u64, side: usize) -> u64 {
         south_one(south_fill(pawns))
     }
 }
-
-#[inline(always)]
-pub const fn pawn_bitboard_attacks(pawns: u64, side: usize) -> u64 {
-    if side == WHITE {
-        north_east_one(pawns) | north_west_one(pawns)
-    } else {
-        south_east_one(pawns) | south_west_one(pawns)
-    }
-}

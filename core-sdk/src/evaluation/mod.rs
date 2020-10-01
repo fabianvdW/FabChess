@@ -720,7 +720,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     }
     res += supp;
 
-    let center_attack_pawns = (pawns & pawn_bitboard_attacks(INNER_CENTER, if side == WHITE { BLACK } else { WHITE })).count_ones() as i16;
+    let center_attack_pawns = (pawns & pawn_targets(if side == WHITE { BLACK } else { WHITE }, INNER_CENTER)).count_ones() as i16;
     let pawn_mobility = (my_west_attacks.count_ones() + my_east_attacks.count_ones() + my_pawn_pushes.count_ones() + my_pawn_double_pushes.count_ones()) as i16;
     res += PAWN_DOUBLED_VALUE * doubled_pawns
         + PAWN_ISOLATED_VALUE * isolated_pawns
