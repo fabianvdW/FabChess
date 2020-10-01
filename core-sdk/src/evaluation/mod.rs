@@ -401,11 +401,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
     let my_pieces = g.get_pieces_from_side(side);
 
     let enemy_king_idx = g.get_king_square(1 - side);
-    let enemy_king_attackable = if side == WHITE {
-        KING_ZONE_BLACK[enemy_king_idx]
-    } else {
-        KING_ZONE_WHITE[enemy_king_idx]
-    } & !defended_by_minors;
+    let enemy_king_attackable = KING_ZONE[side][enemy_king_idx] & !defended_by_minors;
 
     let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
     let all_pieces = g.get_all_pieces();
