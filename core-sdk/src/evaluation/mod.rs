@@ -705,7 +705,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
 
     let doubled_pawns = (pawns & front_span).count_ones() as i16;
     let isolated_pawns = (pawns & !bitboards::west_one(pawn_file_fill) & !bitboards::east_one(pawn_file_fill)).count_ones() as i16;
-    let backward_pawns = (if side == WHITE { pawns << 8 } else { pawns >> 8 } & enemy_pawn_attacks & !is_attackable & !enemy_pawns).count_ones() as i16;
+    let backward_pawns = (bitboards::forward_one(pawns, side) & enemy_pawn_attacks & !is_attackable & !enemy_pawns).count_ones() as i16;
     let mut supported_pawns = pawns & my_pawn_attacks;
     let _supported_amt = supported_pawns.count_ones() as usize;
     let mut supp = EvaluationScore::default();

@@ -152,6 +152,15 @@ pub const fn south_one(board: u64) -> u64 {
 }
 
 #[inline(always)]
+pub const fn forward_one(board: u64, side: usize) -> u64 {
+    if side == WHITE {
+        north_one(board)
+    } else {
+        south_one(board)
+    }
+}
+
+#[inline(always)]
 pub const fn west_one(board: u64) -> u64 {
     (board & !FILES[0]) >> 1
 }
