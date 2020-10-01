@@ -1,5 +1,7 @@
 use constants::*;
 
+use crate::board_representation::game_state::WHITE;
+
 pub mod square {
     #[rustfmt::skip]
     pub const A1: usize = 0;
@@ -205,8 +207,8 @@ pub const fn file_fill(gen: u64) -> u64 {
 }
 
 #[inline(always)]
-pub const fn pawn_front_span(pawns: u64, white: bool) -> u64 {
-    if white {
+pub const fn pawn_front_span(pawns: u64, side: usize) -> u64 {
+    if side == WHITE {
         north_one(north_fill(pawns))
     } else {
         south_one(south_fill(pawns))

@@ -163,13 +163,13 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
 
     let (pieces_w, pieces_b) = (
         piece_values(
-            true,
+            WHITE,
             g,
             #[cfg(feature = "tuning")]
             &mut result.trace,
         ),
         piece_values(
-            false,
+            BLACK,
             g,
             #[cfg(feature = "tuning")]
             &mut result.trace,
@@ -183,7 +183,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
 
     let (pawns_w, pawns_b) = (
         pawns(
-            true,
+            WHITE,
             g,
             white_defended,
             black_defended,
@@ -191,7 +191,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
             &mut result.trace,
         ),
         pawns(
-            false,
+            BLACK,
             g,
             black_defended,
             white_defended,
@@ -207,13 +207,13 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
 
     let (knights_w, knights_b) = (
         knights(
-            true,
+            WHITE,
             g,
             #[cfg(feature = "tuning")]
             &mut result.trace,
         ),
         knights(
-            false,
+            BLACK,
             g,
             #[cfg(feature = "tuning")]
             &mut result.trace,
@@ -227,7 +227,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
 
     let (piecewise_w, piecewise_b) = (
         piecewise(
-            true,
+            WHITE,
             g,
             black_defended_by_minors,
             black_defended,
@@ -235,7 +235,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
             &mut result.trace,
         ),
         piecewise(
-            false,
+            BLACK,
             g,
             white_defended_by_minors,
             white_defended,
@@ -251,13 +251,13 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
 
     let (king_w, king_b) = (
         king(
-            true,
+            WHITE,
             g,
             #[cfg(feature = "tuning")]
             &mut result.trace,
         ),
         king(
-            false,
+            BLACK,
             g,
             #[cfg(feature = "tuning")]
             &mut result.trace,
@@ -350,9 +350,8 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #
     }
 }
 
-pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
+pub fn knights(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let mut res = EvaluationScore::default();
-    let side = if white { WHITE } else { BLACK };
 
     let my_pawn_attacks = pawn_targets(side, g.get_piece(PieceType::Pawn, side));
 
@@ -369,7 +368,7 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     while supp != 0u64 {
         let idx = supp.trailing_zeros() as usize;
         supp &= not_file(file_of(idx));
-        let mut front_span = bitboards::pawn_front_span(square(idx), white);
+        let mut front_span = bitboards::pawn_front_span(square(idx), side);
         front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
         if g.get_piece(PieceType::Pawn, 1 - side) & front_span == 0u64 {
             _outposts += 1;
@@ -383,7 +382,7 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     res += outpost;
     #[cfg(feature = "display-eval")]
     {
-        println!("\nKnights for {}:", if white { "White" } else { "Black" });
+        println!("\nKnights for {}:", if side == WHITE { "White" } else { "Black" });
         println!(
             "\tSupported by pawns: {} -> {}",
             supported_knights_amount,
@@ -396,15 +395,17 @@ pub fn knights(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     res
 }
 
-pub fn piecewise(white: bool, g: &GameState, enemy_defend_by_minors: u64, enemy_defended: u64, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
-    let side = if white { WHITE } else { BLACK };
-
+pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_defended: u64, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let defended_by_minors = enemy_defend_by_minors;
     let defended_squares = enemy_defended;
     let my_pieces = g.get_pieces_from_side(side);
 
     let enemy_king_idx = g.get_king_square(1 - side);
-    let enemy_king_attackable = if white { KING_ZONE_BLACK[enemy_king_idx] } else { KING_ZONE_WHITE[enemy_king_idx] } & !defended_by_minors;
+    let enemy_king_attackable = if side == WHITE {
+        KING_ZONE_BLACK[enemy_king_idx]
+    } else {
+        KING_ZONE_WHITE[enemy_king_idx]
+    } & !defended_by_minors;
 
     let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
     let all_pieces = g.get_all_pieces();
@@ -596,7 +597,7 @@ pub fn piecewise(white: bool, g: &GameState, enemy_defend_by_minors: u64, enemy_
 
     #[cfg(feature = "display-eval")]
     {
-        println!("\nPiecewise for {}:", if white { "White" } else { "Black" });
+        println!("\nPiecewise for {}:", if side == WHITE { "White" } else { "Black" });
         println!("\tMobility Knight: {}", mk);
         println!("\tMobility Bishop: {}", mb);
         println!("\tBishop Diagonally Adj: {}", mb_diag);
@@ -637,14 +638,13 @@ pub fn piecewise(white: bool, g: &GameState, enemy_defend_by_minors: u64, enemy_
     res
 }
 
-pub fn king(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
-    let side = if white { WHITE } else { BLACK };
-    let mut pawn_shield = if white {
+pub fn king(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
+    let mut pawn_shield = if side == WHITE {
         SHIELDING_PAWNS_WHITE[g.get_king_square(side)]
     } else {
         SHIELDING_PAWNS_BLACK[g.get_king_square(side)]
     };
-    let mut king_front_span = bitboards::pawn_front_span(g.get_piece(PieceType::King, side), white);
+    let mut king_front_span = bitboards::pawn_front_span(g.get_piece(PieceType::King, side), side);
     king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
     let file = file_of(g.get_king_square(side));
     if file == 7 {
@@ -676,7 +676,7 @@ pub fn king(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
 
     #[cfg(feature = "display-eval")]
     {
-        println!("\nKing for {}:", if white { "White" } else { "Black" });
+        println!("\nKing for {}:", if side == WHITE { "White" } else { "Black" });
         println!("\tShield pawn missing: {} -> {}", shields_missing, SHIELDING_PAWN_MISSING[shields_missing],);
         println!(
             "\tShield pawn on open file missing: {} -> {}",
@@ -693,16 +693,16 @@ pub fn get_distance(sq: usize, sq2: usize) -> usize {
         .max((file_of(sq) as isize - file_of(sq2) as isize).abs()) as usize
 }
 
-pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
+pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let mut res = EvaluationScore::default();
-    let side = if white { WHITE } else { BLACK };
+
     let empty = !g.get_all_pieces();
     let pawns = g.get_piece(PieceType::Pawn, side);
     let enemy_pawns = g.get_piece(PieceType::Pawn, 1 - side);
     //Bitboards
     let pawn_file_fill = bitboards::file_fill(pawns);
-    let front_span = bitboards::pawn_front_span(pawns, white);
-    let mut enemy_front_spans = bitboards::pawn_front_span(enemy_pawns, !white);
+    let front_span = bitboards::pawn_front_span(pawns, side);
+    let mut enemy_front_spans = bitboards::pawn_front_span(enemy_pawns, if side == WHITE { BLACK } else { WHITE });
     enemy_front_spans |= bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
     let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (pawn_west_targets(side, pawns), pawn_east_targets(side, pawns), pawn_targets(1 - side, enemy_pawns));
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
@@ -713,7 +713,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
 
     let doubled_pawns = (pawns & front_span).count_ones() as i16;
     let isolated_pawns = (pawns & !bitboards::west_one(pawn_file_fill) & !bitboards::east_one(pawn_file_fill)).count_ones() as i16;
-    let backward_pawns = (if white { pawns << 8 } else { pawns >> 8 } & enemy_pawn_attacks & !is_attackable & !enemy_pawns).count_ones() as i16;
+    let backward_pawns = (if side == WHITE { pawns << 8 } else { pawns >> 8 } & enemy_pawn_attacks & !is_attackable & !enemy_pawns).count_ones() as i16;
     let mut supported_pawns = pawns & my_pawn_attacks;
     let _supported_amt = supported_pawns.count_ones() as usize;
     let mut supp = EvaluationScore::default();
@@ -728,7 +728,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
     }
     res += supp;
     let center_attack_pawns = (pawns
-        & if white {
+        & if side == WHITE {
             bitboards::south_east_one(INNER_CENTER) | bitboards::south_west_one(INNER_CENTER)
         } else {
             bitboards::north_east_one(INNER_CENTER) | bitboards::north_west_one(INNER_CENTER)
@@ -754,7 +754,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let (mut passer_score, mut _passer_normal, mut _passer_notblocked) = (EvaluationScore::default(), 0, 0);
     let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;
-    let behind_passers = bitboards::pawn_front_span(passed_pawns, !white);
+    let behind_passers = bitboards::pawn_front_span(passed_pawns, if side == WHITE { BLACK } else { WHITE });
     let rooks_support_passer = (behind_passers & g.get_rook_like_bb(side)).count_ones() as i16;
     let enemy_rooks_attack_passer = (behind_passers & g.get_rook_like_bb(1 - side)).count_ones() as i16;
     res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
@@ -779,7 +779,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
             weak_passers += 1;
         }
         //An unblocked passer is a) not weak b) all the squares until conversions are either not attacked or defended and unoccupied or attacked
-        if !weak_passer && bitboards::pawn_front_span(square(idx), white) & (enemy_defended | enemy_pieces) & !defended == 0u64 {
+        if !weak_passer && bitboards::pawn_front_span(square(idx), side) & (enemy_defended | enemy_pieces) & !defended == 0u64 {
             //Passed and not blocked
             _passer_notblocked += 1;
             passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[relative_rank(side, idx)];
@@ -809,7 +809,7 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
     res += passer_score + PAWN_PASSED_WEAK * weak_passers + passer_dist;
     #[cfg(feature = "display-eval")]
     {
-        println!("\nPawns for {}:", if white { "White" } else { "Black" });
+        println!("\nPawns for {}:", if side == WHITE { "White" } else { "Black" });
         println!("\tDoubled: {} -> {}", doubled_pawns, PAWN_DOUBLED_VALUE * doubled_pawns);
         println!("\tIsolated: {} -> {}", isolated_pawns, PAWN_ISOLATED_VALUE * isolated_pawns,);
         println!("\tBackward: {} -> {}", backward_pawns, PAWN_BACKWARD_VALUE * backward_pawns,);
@@ -830,9 +830,8 @@ pub fn pawns(white: bool, g: &GameState, defended: u64, enemy_defended: u64, #[c
     res
 }
 
-pub fn piece_values(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
+pub fn piece_values(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let mut res = EvaluationScore::default();
-    let side = if white { WHITE } else { BLACK };
 
     let my_pawns = g.get_piece(PieceType::Pawn, side).count_ones() as i16;
     let my_knights = g.get_piece(PieceType::Knight, side).count_ones() as i16;
@@ -869,7 +868,7 @@ pub fn piece_values(white: bool, g: &GameState, #[cfg(feature = "tuning")] trace
     }
     #[cfg(feature = "display-eval")]
     {
-        println!("\nPiece values for {}", if white { "White" } else { "Black" });
+        println!("\nPiece values for {}", if side == WHITE { "White" } else { "Black" });
         println!("\tPawns: {} -> {}", my_pawns, PAWN_PIECE_VALUE * my_pawns,);
         println!(
             "\tKnights: {} -> {}",
