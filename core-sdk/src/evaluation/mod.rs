@@ -820,30 +820,25 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
 pub fn piece_values(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let mut res = EvaluationScore::default();
 
+    // Piece counts
     let my_pawns = g.get_piece(PieceType::Pawn, side).count_ones() as i16;
     let my_knights = g.get_piece(PieceType::Knight, side).count_ones() as i16;
     let my_bishops = g.get_piece(PieceType::Bishop, side).count_ones() as i16;
     let my_rooks = g.get_piece(PieceType::Rook, side).count_ones() as i16;
     let my_queens = g.get_piece(PieceType::Queen, side).count_ones() as i16;
-    res += PAWN_PIECE_VALUE * my_pawns;
+    let all_pawns = g.get_piece_bb(PieceType::Pawn).count_ones() as usize;
 
-    let pawns_on_board = g.get_piece_bb(PieceType::Pawn).count_ones() as usize;
-
-    res += (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights;
-
-    res += BISHOP_PIECE_VALUE * my_bishops;
-    if my_bishops > 1 {
-        res += BISHOP_PAIR_BONUS;
-    }
-
-    res += ROOK_PIECE_VALUE * my_rooks;
-
-    res += QUEEN_PIECE_VALUE * my_queens;
+    res += PAWN_PIECE_VALUE * my_pawns
+        + (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[all_pawns]) * my_knights
+        + BISHOP_PIECE_VALUE * my_bishops
+        + BISHOP_PAIR_BONUS * (my_bishops > 1) as i16
+        + ROOK_PIECE_VALUE * my_rooks
+        + QUEEN_PIECE_VALUE * my_queens;
 
     #[cfg(feature = "tuning")]
     {
         trace.normal_coeffs[IDX_PAWN_PIECE_VALUE] += my_pawns as i8 * if side == WHITE { 1 } else { -1 };
-        trace.normal_coeffs[IDX_KNIGHT_VALUE_WITH_PAWN + pawns_on_board] += my_knights as i8 * if side == WHITE { 1 } else { -1 };
+        trace.normal_coeffs[IDX_KNIGHT_VALUE_WITH_PAWN + all_pawns] += my_knights as i8 * if side == WHITE { 1 } else { -1 };
         trace.knights += my_knights as i8 * if side == WHITE { 1 } else { -1 };
         trace.normal_coeffs[IDX_KNIGHT_PIECE_VALUE] += my_knights as i8 * if side == WHITE { 1 } else { -1 };
         trace.normal_coeffs[IDX_BISHOP_PIECE_VALUE] += my_bishops as i8 * if side == WHITE { 1 } else { -1 };
