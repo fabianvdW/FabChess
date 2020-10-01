@@ -635,11 +635,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
 }
 
 pub fn king(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
-    let mut pawn_shield = if side == WHITE {
-        SHIELDING_PAWNS_WHITE[g.get_king_square(side)]
-    } else {
-        SHIELDING_PAWNS_BLACK[g.get_king_square(side)]
-    };
+    let mut pawn_shield = SHIELDING_PAWNS[side][g.get_king_square(side)];
     let mut king_front_span = bitboards::pawn_front_span(g.get_piece(PieceType::King, side), side);
     king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
     let file = file_of(g.get_king_square(side));
