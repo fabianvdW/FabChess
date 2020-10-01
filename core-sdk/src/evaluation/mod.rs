@@ -4,8 +4,8 @@ pub mod phase;
 pub mod psqt_evaluation;
 pub mod trace;
 
-use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::*;
+use crate::bitboards::bitboards::*;
 use crate::board_representation::game_state::{file_of, rank_of, relative_rank, GameState, PieceType, BLACK, WHITE};
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
@@ -368,8 +368,8 @@ pub fn knights(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     while supp != 0u64 {
         let idx = supp.trailing_zeros() as usize;
         supp &= not_file(file_of(idx));
-        let mut front_span = bitboards::pawn_front_span(square(idx), side);
-        front_span = bitboards::west_one(front_span) | bitboards::east_one(front_span);
+        let mut front_span = pawn_front_span(square(idx), side);
+        front_span = west_one(front_span) | east_one(front_span);
         if g.get_piece(PieceType::Pawn, 1 - side) & front_span == 0u64 {
             _outposts += 1;
             outpost += KNIGHT_OUTPOST_TABLE[side][idx];
@@ -636,13 +636,13 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
 
 pub fn king(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut LargeTrace) -> EvaluationScore {
     let mut pawn_shield = SHIELDING_PAWNS[side][g.get_king_square(side)];
-    let mut king_front_span = bitboards::pawn_front_span(g.get_piece(PieceType::King, side), side);
-    king_front_span |= bitboards::west_one(king_front_span) | bitboards::east_one(king_front_span);
+    let mut king_front_span = pawn_front_span(g.get_piece(PieceType::King, side), side);
+    king_front_span |= west_one(king_front_span) | east_one(king_front_span);
     let file = file_of(g.get_king_square(side));
     if file == 7 {
-        king_front_span |= bitboards::west_one(king_front_span);
+        king_front_span |= west_one(king_front_span);
     } else if file == 0 {
-        king_front_span |= bitboards::east_one(king_front_span);
+        king_front_span |= east_one(king_front_span);
     }
     let mut shields_missing = 0;
     let mut shields_on_open_missing = 0;
@@ -692,20 +692,20 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let pawns = g.get_piece(PieceType::Pawn, side);
     let enemy_pawns = g.get_piece(PieceType::Pawn, 1 - side);
     //Bitboards
-    let pawn_file_fill = bitboards::file_fill(pawns);
-    let front_span = bitboards::pawn_front_span(pawns, side);
-    let mut enemy_front_spans = bitboards::pawn_front_span(enemy_pawns, if side == WHITE { BLACK } else { WHITE });
-    enemy_front_spans |= bitboards::west_one(enemy_front_spans) | bitboards::east_one(enemy_front_spans);
+    let pawn_file_fill = file_fill(pawns);
+    let front_span = pawn_front_span(pawns, side);
+    let mut enemy_front_spans = pawn_front_span(enemy_pawns, if side == WHITE { BLACK } else { WHITE });
+    enemy_front_spans |= west_one(enemy_front_spans) | east_one(enemy_front_spans);
     let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (pawn_west_targets(side, pawns), pawn_east_targets(side, pawns), pawn_targets(1 - side, enemy_pawns));
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
     let (my_pawn_pushes, my_pawn_double_pushes) = (movegen::single_push_pawn_targets(side, pawns, empty), movegen::double_push_pawn_targets(side, pawns, empty));
 
-    let is_attackable = bitboards::west_one(front_span) | bitboards::east_one(front_span);
+    let is_attackable = west_one(front_span) | east_one(front_span);
     let enemy_pieces = g.get_pieces_from_side(1 - side);
 
     let doubled_pawns = (pawns & front_span).count_ones() as i16;
-    let isolated_pawns = (pawns & !bitboards::west_one(pawn_file_fill) & !bitboards::east_one(pawn_file_fill)).count_ones() as i16;
-    let backward_pawns = (bitboards::forward_one(pawns, side) & enemy_pawn_attacks & !is_attackable & !enemy_pawns).count_ones() as i16;
+    let isolated_pawns = (pawns & !west_one(pawn_file_fill) & !east_one(pawn_file_fill)).count_ones() as i16;
+    let backward_pawns = (forward_one(pawns, side) & enemy_pawn_attacks & !is_attackable & !enemy_pawns).count_ones() as i16;
     let mut supported_pawns = pawns & my_pawn_attacks;
     let _supported_amt = supported_pawns.count_ones() as usize;
     let mut supp = EvaluationScore::default();
@@ -720,7 +720,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     }
     res += supp;
 
-    let center_attack_pawns = (pawns & bitboards::pawn_bitboard_attacks(INNER_CENTER, if side == WHITE { BLACK } else { WHITE })).count_ones() as i16;
+    let center_attack_pawns = (pawns & pawn_bitboard_attacks(INNER_CENTER, if side == WHITE { BLACK } else { WHITE })).count_ones() as i16;
     let pawn_mobility = (my_west_attacks.count_ones() + my_east_attacks.count_ones() + my_pawn_pushes.count_ones() + my_pawn_double_pushes.count_ones()) as i16;
     res += PAWN_DOUBLED_VALUE * doubled_pawns
         + PAWN_ISOLATED_VALUE * isolated_pawns
@@ -741,7 +741,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let (mut passer_score, mut _passer_normal, mut _passer_notblocked) = (EvaluationScore::default(), 0, 0);
     let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;
-    let behind_passers = bitboards::pawn_front_span(passed_pawns, if side == WHITE { BLACK } else { WHITE });
+    let behind_passers = pawn_front_span(passed_pawns, if side == WHITE { BLACK } else { WHITE });
     let rooks_support_passer = (behind_passers & g.get_rook_like_bb(side)).count_ones() as i16;
     let enemy_rooks_attack_passer = (behind_passers & g.get_rook_like_bb(1 - side)).count_ones() as i16;
     res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
@@ -766,7 +766,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
             weak_passers += 1;
         }
         //An unblocked passer is a) not weak b) all the squares until conversions are either not attacked or defended and unoccupied or attacked
-        if !weak_passer && bitboards::pawn_front_span(square(idx), side) & (enemy_defended | enemy_pieces) & !defended == 0u64 {
+        if !weak_passer && pawn_front_span(square(idx), side) & (enemy_defended | enemy_pieces) & !defended == 0u64 {
             //Passed and not blocked
             _passer_notblocked += 1;
             passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[relative_rank(side, idx)];
