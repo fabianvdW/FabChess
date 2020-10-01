@@ -694,7 +694,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     //Bitboards
     let pawn_file_fill = file_fill(pawns);
     let front_span = pawn_front_span(pawns, side);
-    let mut enemy_front_spans = pawn_front_span(enemy_pawns, if side == WHITE { BLACK } else { WHITE });
+    let mut enemy_front_spans = pawn_front_span(enemy_pawns, side ^ 1);
     enemy_front_spans |= west_one(enemy_front_spans) | east_one(enemy_front_spans);
     let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (pawn_west_targets(side, pawns), pawn_east_targets(side, pawns), pawn_targets(1 - side, enemy_pawns));
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
@@ -720,7 +720,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     }
     res += supp;
 
-    let center_attack_pawns = (pawns & pawn_targets(if side == WHITE { BLACK } else { WHITE }, INNER_CENTER)).count_ones() as i16;
+    let center_attack_pawns = (pawns & pawn_targets(side ^ 1, INNER_CENTER)).count_ones() as i16;
     let pawn_mobility = (my_west_attacks.count_ones() + my_east_attacks.count_ones() + my_pawn_pushes.count_ones() + my_pawn_double_pushes.count_ones()) as i16;
     res += PAWN_DOUBLED_VALUE * doubled_pawns
         + PAWN_ISOLATED_VALUE * isolated_pawns
@@ -741,7 +741,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let (mut passer_score, mut _passer_normal, mut _passer_notblocked) = (EvaluationScore::default(), 0, 0);
     let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;
-    let behind_passers = pawn_front_span(passed_pawns, if side == WHITE { BLACK } else { WHITE });
+    let behind_passers = pawn_front_span(passed_pawns, side ^ 1);
     let rooks_support_passer = (behind_passers & g.get_rook_like_bb(side)).count_ones() as i16;
     let enemy_rooks_attack_passer = (behind_passers & g.get_rook_like_bb(1 - side)).count_ones() as i16;
     res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
