@@ -94,6 +94,14 @@ impl CollapsedTrace {
     }
 }
 
+pub const fn trace_count(side: usize) -> i8 {
+    if side == WHITE {
+        1
+    } else {
+        -1
+    }
+}
+
 pub struct LargeTrace {
     pub phase: f32,
     pub normal_coeffs: [i8; NORMAL_PARAMS],
