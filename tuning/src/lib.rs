@@ -9,34 +9,34 @@ pub use core_sdk::evaluation::parameters::{normal_parameters::*, special_paramet
 use core_sdk::evaluation::trace::CollapsedTrace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved.epd";
-pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved";
+pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/20M";
 //Override for all others if true
-pub const TUNE_ALL: bool = true;
+pub const TUNE_ALL: bool = false;
 
-pub const TUNE_TEMPO_BONUS: bool = true;
-pub const TUNE_SHIELDING_PAWNS: bool = true;
-pub const TUNE_PAWNS: bool = true;
+pub const TUNE_TEMPO_BONUS: bool = false;
+pub const TUNE_SHIELDING_PAWNS: bool = false;
+pub const TUNE_PAWNS: bool = false;
 //Category passed pawns
-pub const TUNE_PASSED: bool = true;
-pub const TUNE_PASSED_PAWN: bool = true;
-pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = true;
+pub const TUNE_PASSED: bool = false;
+pub const TUNE_PASSED_PAWN: bool = false;
+pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
 
-pub const TUNE_KNIGHTS: bool = true;
-pub const TUNE_FILES: bool = true;
+pub const TUNE_KNIGHTS: bool = false;
+pub const TUNE_FILES: bool = false;
 
-pub const TUNE_PIECE_VALUES: bool = true;
-pub const TUNE_MOBILITY: bool = true;
+pub const TUNE_PIECE_VALUES: bool = false;
+pub const TUNE_MOBILITY: bool = false;
 
-pub const TUNE_ATTACK: bool = true;
-pub const TUNE_ATTACK_INDEX: bool = true;
-pub const TUNE_PSQT: bool = true;
+pub const TUNE_ATTACK: bool = false;
+pub const TUNE_ATTACK_INDEX: bool = false;
+pub const TUNE_KP_TABLE: bool = true;
+pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 10000000;
-pub const START_LEARNING_RATE: f32 = 2.;
+pub const BATCH_SIZE: usize = 20000000;
+pub const START_LEARNING_RATE: f32 = 0.0002;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
 
@@ -146,6 +146,13 @@ pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
             i = 0;
             while i < SIZE_QUEEN_MOBILITY {
                 res[IDX_QUEEN_MOBILITY + i] = true;
+                i += 1;
+            }
+        }
+        if TUNE_KP_TABLE {
+            let mut i = 0;
+            while i < SIZE_KING_ENEMY_PAWN {
+                res[IDX_KING_ENEMY_PAWN + i] = true;
                 i += 1;
             }
         }
@@ -397,7 +404,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = START_LEARNING_RATE;
+    let lr = START_LEARNING_RATE;
     let mut adagrad = Parameters::zero();
 
     loop {
@@ -415,7 +422,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
             ada_add.add(&gradient, 1.);
 
             let mut ada_lr = adagrad.clone();
-            ada_lr.add_scalar(1e-6);
+            ada_lr.add_scalar(1e-3);
             ada_lr.sqrt();
             gradient.mul_inverse_other(&ada_lr);
             tuner.params.add(&gradient, lr);
@@ -430,8 +437,6 @@ pub fn texel_tuning(tuner: &mut Tuner) {
             best_error = error;
             tuner.params.write_to_file(&format!("{}tunebest.txt", PARAM_FILE));
             println!("Saved new best params in tunebest.txt");
-        } else {
-            lr /= 1.25;
         }
         //Save progress
         if (epoch + 1) % 10 == 0 {
