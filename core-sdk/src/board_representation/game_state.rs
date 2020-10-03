@@ -488,6 +488,20 @@ impl GameState {
         self.initialize_phase();
     }
 
+    fn parse_piece_char(c: char) -> (usize, PieceType) {
+        let side = if c.is_uppercase() { WHITE } else { BLACK };
+        let piecetype = match c.to_ascii_lowercase() {
+            'p' => PieceType::Pawn,
+            'n' => PieceType::Knight,
+            'b' => PieceType::Bishop,
+            'r' => PieceType::Rook,
+            'q' => PieceType::Queen,
+            'k' => PieceType::King,
+            _ => panic!("Invalid fen"),
+        };
+        (side, piecetype)
+    }
+
     pub fn from_fen(fen: &str) -> GameState {
         let vec: Vec<&str> = fen.trim().split(' ').collect();
         if vec.len() < 4 {
@@ -502,35 +516,21 @@ impl GameState {
         //Iterate over all 8 ranks
         let mut piece_bb: [u64; 6] = [0u64; 6];
         let mut color_bb: [u64; 2] = [0u64; 2];
-        for (rank, rank_str) in pieces.iter().enumerate().take(8) {
+        for (rank, rank_str) in pieces.iter().enumerate() {
             let mut file: usize = 0;
-            let mut rank_str_idx: usize = 0;
+            let mut chars = rank_str.chars();
             while file < 8 {
                 let idx = (7 - rank) * 8 + file;
-                let next_char = rank_str.chars().nth(rank_str_idx);
-                rank_str_idx += 1;
-                match next_char {
-                    Some(x) => {
-                        if ['p', 'n', 'b', 'r', 'q', 'k'].contains(&x.to_ascii_lowercase()) {
-                            let side = if x.is_uppercase() { WHITE } else { BLACK };
-                            let piece_type = match x.to_lowercase().next().unwrap() {
-                                'p' => PieceType::Pawn,
-                                'n' => PieceType::Knight,
-                                'b' => PieceType::Bishop,
-                                'r' => PieceType::Rook,
-                                'q' => PieceType::Queen,
-                                'k' => PieceType::King,
-                                _ => panic!("Invalid fen"),
-                            };
-                            color_bb[side] |= square(idx);
-                            piece_bb[piece_type as usize] |= square(idx);
-                            file += 1;
-                        } else {
-                            file += x.to_string().parse::<usize>().expect("Invalid Fen!");
-                        }
+                let c = chars.next().expect("Invalid Fen");
+                match c {
+                    '1'..='8' => file += c.to_digit(10).unwrap() as usize,
+                    _ => {
+                        let (side, piecetype) = GameState::parse_piece_char(c);
+                        color_bb[side] |= square(idx);
+                        piece_bb[piecetype as usize] |= square(idx);
+                        file += 1;
                     }
-                    None => panic!("Invalid FEN"),
-                };
+                }
             }
         }
 
@@ -555,6 +555,7 @@ impl GameState {
         if vec[2].contains('q') {
             castle_permissions |= CASTLE_BLACK_QS
         }
+
         //En passant target square
         let en_passant: u64 = if vec[3] != "-" {
             let mut idx: usize = 0usize;
@@ -566,11 +567,14 @@ impl GameState {
         } else {
             0u64
         };
+
+        // Move counters
         let (half_moves, full_moves) = if vec.len() > 4 {
             (vec[4].parse().expect("unable to parse half moves"), vec[5].parse().expect("unable to parse full moves"))
         } else {
             (0, 1)
         };
+
         let mut res = GameState::new(
             color_to_move,
             piece_bb,
