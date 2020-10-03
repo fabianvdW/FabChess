@@ -1,6 +1,6 @@
 use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::bitboards::bitboards::square;
-use crate::board_representation::game_state::{ep_pawn_square, file_of, GameMove, GameMoveType, GameState, Irreversible, PieceType};
+use crate::board_representation::game_state::{ep_pawn_square, file_of, swap_side, GameMove, GameMoveType, GameState, Irreversible, PieceType};
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
 use crate::evaluation::EvaluationScore;
@@ -71,8 +71,8 @@ pub fn rook_castling(to: usize) -> (usize, usize) {
 
 pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     //Step 1. Update immediate fields
-    let color_to_move = 1 - g.get_color_to_move();
-    let full_moves = g.get_full_moves() + g.get_color_to_move();
+    let color_to_move = g.get_color_to_move();
+    let full_moves = g.get_full_moves() + color_to_move;
     //Step 2. Update pieces, hash and other incremental fields
     let mut piece_bb = g.get_piece_bb_array();
     let mut color_bb = g.get_color_bb_array();
@@ -80,27 +80,27 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     let mut psqt = g.get_psqt();
     let mut phase = g.get_phase().clone();
     //Remove piece from original square
-    remove_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.from as usize, g.get_color_to_move(), &mut hash, &mut psqt);
+    remove_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.from as usize, color_to_move, &mut hash, &mut psqt);
     let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
         let square = mv.to ^ (8 * (mv.move_type == GameMoveType::EnPassant) as u8);
-        remove_piece(&mut piece_bb, &mut color_bb, piece, square as usize, color_to_move, &mut hash, &mut psqt);
+        remove_piece(&mut piece_bb, &mut color_bb, piece, square as usize, swap_side(color_to_move), &mut hash, &mut psqt);
         phase.delete_piece(piece);
     }
     //Move rook for castling
     if let GameMoveType::Castle = mv.move_type {
-        add_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, g.get_color_to_move(), &mut hash, &mut psqt);
+        add_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, color_to_move, &mut hash, &mut psqt);
         let (rook_from, rook_to) = rook_castling(mv.to as usize);
-        remove_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_from, g.get_color_to_move(), &mut hash, &mut psqt);
-        add_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_to, g.get_color_to_move(), &mut hash, &mut psqt);
+        remove_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_from, color_to_move, &mut hash, &mut psqt);
+        add_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_to, color_to_move, &mut hash, &mut psqt);
     } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
         //If promotion, add promotion piece
-        add_piece(&mut piece_bb, &mut color_bb, promo_piece, mv.to as usize, g.get_color_to_move(), &mut hash, &mut psqt);
+        add_piece(&mut piece_bb, &mut color_bb, promo_piece, mv.to as usize, color_to_move, &mut hash, &mut psqt);
         phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
-        add_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, g.get_color_to_move(), &mut hash, &mut psqt);
+        add_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, color_to_move, &mut hash, &mut psqt);
     }
     //Step 3. Update Castling Rights
     let castle_permissions = g.castle_permissions() & CASTLE_PERMISSION[mv.from as usize] & CASTLE_PERMISSION[mv.to as usize];
@@ -119,7 +119,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         0
     };
     GameState::new(
-        color_to_move,
+        swap_side(color_to_move),
         piece_bb,
         color_bb,
         Irreversible::new(hash, en_passant, half_moves as u16, castle_permissions, phase, psqt),
