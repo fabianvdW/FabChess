@@ -5,14 +5,10 @@ use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
 use crate::evaluation::psqt_evaluation::{psqt_add_piece, psqt_remove_piece};
 
 #[inline(always)]
-pub fn toggle_piece(piece_bb: &mut [u64; 6], color_bb: &mut [u64; 2], piece: PieceType, sq: usize, color: usize) {
+pub fn toggle_piece(piece_bb: &mut [u64; 6], color_bb: &mut [u64; 2], piece: PieceType, sq: usize, color: usize, hash: &mut u64) {
     piece_bb[piece as usize] ^= square(sq);
     color_bb[color] ^= square(sq);
-}
-
-#[inline(always)]
-pub fn toggle_hash(piece: PieceType, square: u8, color: usize, hash: &mut u64) {
-    *hash ^= piece.to_zobrist_key(color, square as usize);
+    *hash ^= piece.to_zobrist_key(color, sq);
 }
 
 #[inline(always)]
@@ -71,40 +67,33 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     let mut psqt = g.get_psqt();
     let mut phase = g.get_phase().clone();
     //Remove piece from original square
-    toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.from as usize, g.get_color_to_move());
-    toggle_hash(mv.piece_type, mv.from, g.get_color_to_move(), &mut hash);
+    toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.from as usize, g.get_color_to_move(), &mut hash);
     psqt_remove_piece(mv.piece_type, mv.from as usize, g.get_color_to_move(), &mut psqt);
     let captured_piece = mv.get_maybe_captured_piece();
     //Delete piece if capture
     if let Some(piece) = captured_piece {
         let square = mv.to ^ (8 * (mv.move_type == GameMoveType::EnPassant) as u8);
-        toggle_piece(&mut piece_bb, &mut color_bb, piece, square as usize, color_to_move);
-        toggle_hash(piece, square, color_to_move, &mut hash);
+        toggle_piece(&mut piece_bb, &mut color_bb, piece, square as usize, color_to_move, &mut hash);
         psqt_remove_piece(piece, square as usize, color_to_move, &mut psqt);
         phase.delete_piece(piece);
     }
     //Move rook for castling
     if let GameMoveType::Castle = mv.move_type {
-        toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, g.get_color_to_move());
-        toggle_hash(mv.piece_type, mv.to, g.get_color_to_move(), &mut hash);
+        toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, g.get_color_to_move(), &mut hash);
         psqt_add_piece(mv.piece_type, mv.to as usize, g.get_color_to_move(), &mut psqt);
         let (rook_from, rook_to) = rook_castling(mv.to as usize);
-        toggle_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_from, g.get_color_to_move());
-        toggle_hash(PieceType::Rook, rook_from as u8, g.get_color_to_move(), &mut hash);
+        toggle_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_from, g.get_color_to_move(), &mut hash);
         psqt_remove_piece(PieceType::Rook, rook_from as usize, g.get_color_to_move(), &mut psqt);
-        toggle_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_to, g.get_color_to_move());
-        toggle_hash(PieceType::Rook, rook_to as u8, g.get_color_to_move(), &mut hash);
+        toggle_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_to, g.get_color_to_move(), &mut hash);
         psqt_add_piece(PieceType::Rook, rook_to as usize, g.get_color_to_move(), &mut psqt);
     } else if let GameMoveType::Promotion(promo_piece, _) = mv.move_type {
         //If promotion, add promotion piece
-        toggle_piece(&mut piece_bb, &mut color_bb, promo_piece, mv.to as usize, g.get_color_to_move());
-        toggle_hash(promo_piece, mv.to, g.get_color_to_move(), &mut hash);
+        toggle_piece(&mut piece_bb, &mut color_bb, promo_piece, mv.to as usize, g.get_color_to_move(), &mut hash);
         psqt_add_piece(promo_piece, mv.to as usize, g.get_color_to_move(), &mut psqt);
         phase.add_piece(promo_piece);
     } else {
         //Add piece again at to
-        toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, g.get_color_to_move());
-        toggle_hash(mv.piece_type, mv.to, g.get_color_to_move(), &mut hash);
+        toggle_piece(&mut piece_bb, &mut color_bb, mv.piece_type, mv.to as usize, g.get_color_to_move(), &mut hash);
         psqt_add_piece(mv.piece_type, mv.to as usize, g.get_color_to_move(), &mut psqt);
     }
     //Step 3. Update Castling Rights
