@@ -170,8 +170,8 @@ pub mod special_parameters {
 
 #[derive(Clone)]
 pub struct Parameters {
-    pub normal: [[f32; NORMAL_PARAMS]; 2],
-    pub special: [f32; SPECIAL_PARAMS],
+    pub normal: [[f64; NORMAL_PARAMS]; 2],
+    pub special: [f64; SPECIAL_PARAMS],
 }
 
 impl Parameters {
@@ -195,11 +195,11 @@ impl Parameters {
     }
     fn init_constant(params: &mut Parameters, s: EvaluationScore, idx: usize, normal: bool) {
         if normal {
-            params.normal[0][idx] = f32::from(s.0);
-            params.normal[1][idx] = f32::from(s.1);
+            params.normal[0][idx] = f64::from(s.0);
+            params.normal[1][idx] = f64::from(s.1);
         } else {
-            params.special[idx] = f32::from(s.0);
-            params.special[idx + 1] = f32::from(s.1);
+            params.special[idx] = f64::from(s.0);
+            params.special[idx + 1] = f64::from(s.1);
         }
     }
     pub fn default() -> Self {
@@ -330,7 +330,7 @@ impl Parameters {
         format!("[{}, {}]", res_white, res_black)
     }
 
-    pub fn get_norm(&self) -> f32 {
+    pub fn get_norm(&self) -> f64 {
         let mut norm = 0.;
         for i in 0..self.normal[0].len() {
             norm += self.normal[0][i].powf(2.);
@@ -342,7 +342,7 @@ impl Parameters {
         norm.sqrt()
     }
 
-    pub fn pointwise_operation<F: Fn(f32) -> f32>(&mut self, f: F) {
+    pub fn pointwise_operation<F: Fn(f64) -> f64>(&mut self, f: F) {
         for i in 0..self.normal[0].len() {
             self.normal[0][i] = f(self.normal[0][i]);
             self.normal[1][i] = f(self.normal[1][i]);
@@ -351,7 +351,7 @@ impl Parameters {
             self.special[i] = f(self.special[i]);
         }
     }
-    pub fn add(&mut self, other: &Parameters, scale: f32) {
+    pub fn add(&mut self, other: &Parameters, scale: f64) {
         for i in 0..self.normal[0].len() {
             self.normal[0][i] += other.normal[0][i] * scale;
             self.normal[1][i] += other.normal[1][i] * scale;
@@ -360,7 +360,7 @@ impl Parameters {
             self.special[i] += other.special[i] * scale;
         }
     }
-    pub fn scale(&mut self, scale: f32) {
+    pub fn scale(&mut self, scale: f64) {
         self.pointwise_operation(|x| scale * x);
     }
     pub fn square(&mut self) {
@@ -369,7 +369,7 @@ impl Parameters {
     pub fn sqrt(&mut self) {
         self.pointwise_operation(|x| x.sqrt())
     }
-    pub fn add_scalar(&mut self, scalar: f32) {
+    pub fn add_scalar(&mut self, scalar: f64) {
         self.pointwise_operation(|x| x + scalar)
     }
     pub fn mul(&mut self, other: &Parameters) {
@@ -396,9 +396,9 @@ impl Display for Parameters {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
         res_str.push_str("use super::EvaluationScore;\n");
-        res_str.push_str(&format!("pub const SLIGHTLY_WINNING_NO_PAWN: f32 = {};\n", self.special[IDX_SLIGHTLY_WINNING_NO_PAWN],));
+        res_str.push_str(&format!("pub const SLIGHTLY_WINNING_NO_PAWN: f64 = {};\n", self.special[IDX_SLIGHTLY_WINNING_NO_PAWN],));
         res_str.push_str(&format!(
-            "pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f32 = {};\n",
+            "pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f64 = {};\n",
             self.special[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC],
         ));
         res_str.push_str(&format!("pub const TEMPO_BONUS{}", self.format_constant(IDX_TEMPO_BONUS, true),));

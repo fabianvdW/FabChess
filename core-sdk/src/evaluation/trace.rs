@@ -22,64 +22,64 @@ pub struct CollapsedTrace {
 }
 
 impl CollapsedTrace {
-    pub fn evaluate(&self, params: &Parameters) -> f32 {
+    pub fn evaluate(&self, params: &Parameters) -> f64 {
         if self.is_guaranteed_draw {
             return 0.;
         }
         let mut res = (0., 0.);
         for entry in self.entries.iter() {
-            res.0 += params.normal[0][entry.0 as usize] * f32::from(entry.1);
-            res.1 += params.normal[1][entry.0 as usize] * f32::from(entry.1);
+            res.0 += params.normal[0][entry.0 as usize] * f64::from(entry.1);
+            res.1 += params.normal[1][entry.0 as usize] * f64::from(entry.1);
         }
 
         res.0 += (params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[WHITE] as usize]
             * params.special[IDX_SAFETY_TABLE
-                + 2 * ((f32::from(self.knight_attacked_sq[WHITE]) * params.special[IDX_KNIGHT_ATTACK_VALUE]
-                    + f32::from(self.bishop_attacked_sq[WHITE]) * params.special[IDX_BISHOP_ATTACK_VALUE]
-                    + f32::from(self.rook_attacked_sq[WHITE]) * params.special[IDX_ROOK_ATTACK_VALUE]
-                    + f32::from(self.queen_attacked_sq[WHITE]) * params.special[IDX_QUEEN_ATTACK_VALUE]
-                    + f32::from(self.knight_safe_check[WHITE]) * params.special[IDX_KNIGHT_CHECK_VALUE]
-                    + f32::from(self.bishop_safe_check[WHITE]) * params.special[IDX_BISHOP_CHECK_VALUE]
-                    + f32::from(self.rook_safe_check[WHITE]) * params.special[IDX_ROOK_CHECK_VALUE]
-                    + f32::from(self.queen_safe_check[WHITE]) * params.special[IDX_QUEEN_CHECK_VALUE]) as usize)
+                + 2 * ((f64::from(self.knight_attacked_sq[WHITE]) * params.special[IDX_KNIGHT_ATTACK_VALUE]
+                    + f64::from(self.bishop_attacked_sq[WHITE]) * params.special[IDX_BISHOP_ATTACK_VALUE]
+                    + f64::from(self.rook_attacked_sq[WHITE]) * params.special[IDX_ROOK_ATTACK_VALUE]
+                    + f64::from(self.queen_attacked_sq[WHITE]) * params.special[IDX_QUEEN_ATTACK_VALUE]
+                    + f64::from(self.knight_safe_check[WHITE]) * params.special[IDX_KNIGHT_CHECK_VALUE]
+                    + f64::from(self.bishop_safe_check[WHITE]) * params.special[IDX_BISHOP_CHECK_VALUE]
+                    + f64::from(self.rook_safe_check[WHITE]) * params.special[IDX_ROOK_CHECK_VALUE]
+                    + f64::from(self.queen_safe_check[WHITE]) * params.special[IDX_QUEEN_CHECK_VALUE]) as usize)
                     .max(0)
                     .min(99)]
             - params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[BLACK] as usize]
                 * params.special[IDX_SAFETY_TABLE
-                    + 2 * ((f32::from(self.knight_attacked_sq[BLACK]) * params.special[IDX_KNIGHT_ATTACK_VALUE]
-                        + f32::from(self.bishop_attacked_sq[BLACK]) * params.special[IDX_BISHOP_ATTACK_VALUE]
-                        + f32::from(self.rook_attacked_sq[BLACK]) * params.special[IDX_ROOK_ATTACK_VALUE]
-                        + f32::from(self.queen_attacked_sq[BLACK]) * params.special[IDX_QUEEN_ATTACK_VALUE]
-                        + f32::from(self.knight_safe_check[BLACK]) * params.special[IDX_KNIGHT_CHECK_VALUE]
-                        + f32::from(self.bishop_safe_check[BLACK]) * params.special[IDX_BISHOP_CHECK_VALUE]
-                        + f32::from(self.rook_safe_check[BLACK]) * params.special[IDX_ROOK_CHECK_VALUE]
-                        + f32::from(self.queen_safe_check[BLACK]) * params.special[IDX_QUEEN_CHECK_VALUE]) as usize)
+                    + 2 * ((f64::from(self.knight_attacked_sq[BLACK]) * params.special[IDX_KNIGHT_ATTACK_VALUE]
+                        + f64::from(self.bishop_attacked_sq[BLACK]) * params.special[IDX_BISHOP_ATTACK_VALUE]
+                        + f64::from(self.rook_attacked_sq[BLACK]) * params.special[IDX_ROOK_ATTACK_VALUE]
+                        + f64::from(self.queen_attacked_sq[BLACK]) * params.special[IDX_QUEEN_ATTACK_VALUE]
+                        + f64::from(self.knight_safe_check[BLACK]) * params.special[IDX_KNIGHT_CHECK_VALUE]
+                        + f64::from(self.bishop_safe_check[BLACK]) * params.special[IDX_BISHOP_CHECK_VALUE]
+                        + f64::from(self.rook_safe_check[BLACK]) * params.special[IDX_ROOK_CHECK_VALUE]
+                        + f64::from(self.queen_safe_check[BLACK]) * params.special[IDX_QUEEN_CHECK_VALUE]) as usize)
                         .max(0)
                         .min(99)])
             / 100.0;
         res.1 += (params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[WHITE] as usize + 1]
             * params.special[IDX_SAFETY_TABLE
-                + 2 * ((f32::from(self.knight_attacked_sq[WHITE]) * params.special[IDX_KNIGHT_ATTACK_VALUE + 1]
-                    + f32::from(self.bishop_attacked_sq[WHITE]) * params.special[IDX_BISHOP_ATTACK_VALUE + 1]
-                    + f32::from(self.rook_attacked_sq[WHITE]) * params.special[IDX_ROOK_ATTACK_VALUE + 1]
-                    + f32::from(self.queen_attacked_sq[WHITE]) * params.special[IDX_QUEEN_ATTACK_VALUE + 1]
-                    + f32::from(self.knight_safe_check[WHITE]) * params.special[IDX_KNIGHT_CHECK_VALUE + 1]
-                    + f32::from(self.bishop_safe_check[WHITE]) * params.special[IDX_BISHOP_CHECK_VALUE + 1]
-                    + f32::from(self.rook_safe_check[WHITE]) * params.special[IDX_ROOK_CHECK_VALUE + 1]
-                    + f32::from(self.queen_safe_check[WHITE]) * params.special[IDX_QUEEN_CHECK_VALUE + 1]) as usize)
+                + 2 * ((f64::from(self.knight_attacked_sq[WHITE]) * params.special[IDX_KNIGHT_ATTACK_VALUE + 1]
+                    + f64::from(self.bishop_attacked_sq[WHITE]) * params.special[IDX_BISHOP_ATTACK_VALUE + 1]
+                    + f64::from(self.rook_attacked_sq[WHITE]) * params.special[IDX_ROOK_ATTACK_VALUE + 1]
+                    + f64::from(self.queen_attacked_sq[WHITE]) * params.special[IDX_QUEEN_ATTACK_VALUE + 1]
+                    + f64::from(self.knight_safe_check[WHITE]) * params.special[IDX_KNIGHT_CHECK_VALUE + 1]
+                    + f64::from(self.bishop_safe_check[WHITE]) * params.special[IDX_BISHOP_CHECK_VALUE + 1]
+                    + f64::from(self.rook_safe_check[WHITE]) * params.special[IDX_ROOK_CHECK_VALUE + 1]
+                    + f64::from(self.queen_safe_check[WHITE]) * params.special[IDX_QUEEN_CHECK_VALUE + 1]) as usize)
                     .max(0)
                     .min(99)
                 + 1]
             - params.special[IDX_ATTACK_WEIGHT + 2 * self.attackers[BLACK] as usize + 1]
                 * params.special[IDX_SAFETY_TABLE
-                    + 2 * ((f32::from(self.knight_attacked_sq[BLACK]) * params.special[IDX_KNIGHT_ATTACK_VALUE + 1]
-                        + f32::from(self.bishop_attacked_sq[BLACK]) * params.special[IDX_BISHOP_ATTACK_VALUE + 1]
-                        + f32::from(self.rook_attacked_sq[BLACK]) * params.special[IDX_ROOK_ATTACK_VALUE + 1]
-                        + f32::from(self.queen_attacked_sq[BLACK]) * params.special[IDX_QUEEN_ATTACK_VALUE + 1]
-                        + f32::from(self.knight_safe_check[BLACK]) * params.special[IDX_KNIGHT_CHECK_VALUE + 1]
-                        + f32::from(self.bishop_safe_check[BLACK]) * params.special[IDX_BISHOP_CHECK_VALUE + 1]
-                        + f32::from(self.rook_safe_check[BLACK]) * params.special[IDX_ROOK_CHECK_VALUE + 1]
-                        + f32::from(self.queen_safe_check[BLACK]) * params.special[IDX_QUEEN_CHECK_VALUE + 1]) as usize)
+                    + 2 * ((f64::from(self.knight_attacked_sq[BLACK]) * params.special[IDX_KNIGHT_ATTACK_VALUE + 1]
+                        + f64::from(self.bishop_attacked_sq[BLACK]) * params.special[IDX_BISHOP_ATTACK_VALUE + 1]
+                        + f64::from(self.rook_attacked_sq[BLACK]) * params.special[IDX_ROOK_ATTACK_VALUE + 1]
+                        + f64::from(self.queen_attacked_sq[BLACK]) * params.special[IDX_QUEEN_ATTACK_VALUE + 1]
+                        + f64::from(self.knight_safe_check[BLACK]) * params.special[IDX_KNIGHT_CHECK_VALUE + 1]
+                        + f64::from(self.bishop_safe_check[BLACK]) * params.special[IDX_BISHOP_CHECK_VALUE + 1]
+                        + f64::from(self.rook_safe_check[BLACK]) * params.special[IDX_ROOK_CHECK_VALUE + 1]
+                        + f64::from(self.queen_safe_check[BLACK]) * params.special[IDX_QUEEN_CHECK_VALUE + 1]) as usize)
                         .max(0)
                         .min(99)
                     + 1])
@@ -90,7 +90,7 @@ impl CollapsedTrace {
         } else if self.slightly_winning_enemy_can_sac {
             res = (res.0, res.1 * params.special[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC]);
         }
-        (res.0 * self.phase + res.1 * (128.0 - self.phase)) / 128.0
+        (res.0 * self.phase as f64 + res.1 * (128.0 - self.phase as f64)) / 128.0
     }
 }
 

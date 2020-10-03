@@ -334,14 +334,14 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #
 
         if !winnable_ahead && (winning_pawns == 0) {
             let factor = SLIGHTLY_WINNING_NO_PAWN;
-            *res = EvaluationScore(res.0, (res.1 as f32 * factor) as i16);
+            *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
             #[cfg(feature = "tuning")]
             {
                 trace.slightly_winning_no_pawn = true;
             }
         } else if !winnable_ahead && losing_minors >= 1 && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1 <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1 {
             let factor = SLIGHTLY_WINNING_ENEMY_CAN_SAC;
-            *res = EvaluationScore(res.0, (res.1 as f32 * factor) as i16);
+            *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
             #[cfg(feature = "tuning")]
             {
                 trace.slightly_winning_enemy_can_sac = true;
