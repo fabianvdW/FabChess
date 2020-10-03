@@ -2,7 +2,7 @@ use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
 use crate::bitboards::magic_constants::*;
 use crate::board_representation::game_state::{
-    file_of, rank_of, CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS, CASTLE_WHITE_KS, CASTLE_WHITE_QS,
+    file_of, rank_of, BLACK, CASTLE_ALL, CASTLE_ALL_BLACK, CASTLE_ALL_WHITE, CASTLE_BLACK_KS, CASTLE_BLACK_QS, CASTLE_WHITE_KS, CASTLE_WHITE_QS, WHITE,
 };
 use crate::move_generation::magic::Magic;
 use crate::move_generation::movegen::{bishop_attack, rook_attack};
@@ -20,6 +20,19 @@ pub(crate) fn arr_2d_to_string<T: Display>(arr: &[[T; 64]; 64], name: &str) -> S
             res_str.push_str(&format!("{}{}, ", *i, std::any::type_name::<T>()));
         }
         res_str.push_str("], ");
+    }
+    res_str.push_str("];");
+    res_str
+}
+pub(crate) fn side_arr_to_string<T: Display>(arr: &[[T; 64]; 2], name: &str) -> String {
+    let mut res_str: String = String::new();
+    res_str.push_str(&format!("#[rustfmt::skip]\npub const {} : [[{};64];2] = [", name, std::any::type_name::<T>()));
+    for side in 0..2 {
+        res_str.push_str("[");
+        for i in arr[side].iter() {
+            res_str.push_str(&format!("{}{}, ", *i, std::any::type_name::<T>()));
+        }
+        res_str.push_str("],");
     }
     res_str.push_str("];");
     res_str
@@ -182,7 +195,7 @@ pub fn get_rook_ray_slow(rook_attacks_in_all_directions: u64, target_square: usi
         RANKS_GREATER_THAN[target_rank] & RANKS_LESS_THAN[rook_rank] & rook_attacks_in_all_directions
     }
 }
-pub fn print_king_zone_white() {
+pub fn print_king_zone() {
     let mut res = [0u64; 64];
     for king_sq in 0..64 {
         let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
@@ -193,20 +206,7 @@ pub fn print_king_zone_white() {
             res[king_sq] |= west_one(res[king_sq]);
         }
     }
-    println!("{}", arr_to_string(&res, "KING_ZONE_WHITE"))
-}
-pub fn print_king_zone_black() {
-    let mut res = [0u64; 64];
-    for king_sq in 0..64 {
-        let zone = 1u64 << king_sq | KING_ATTACKS[king_sq];
-        res[king_sq] = zone | south_one(zone) | north_one(zone);
-        if file_of(king_sq) == 0 {
-            res[king_sq] |= east_one(res[king_sq]);
-        } else if file_of(king_sq) == 7 {
-            res[king_sq] |= west_one(res[king_sq]);
-        }
-    }
-    println!("{}", arr_to_string(&res, "KING_ZONE_BLACK"))
+    println!("{}", arr_to_string(&res, "KING_ZONE"))
 }
 pub fn print_freefield_rook_attacks() {
     let mut res = [0u64; 64];
@@ -222,31 +222,22 @@ pub fn print_freefield_bishop_attacks() {
     }
     println!("{}", arr_to_string(&res, "FREEFIELD_BISHOP_ATTACKS"))
 }
-pub fn print_shielding_pawns_white() {
-    let mut res = [0u64; 64];
-    for (sq, item) in res.iter_mut().enumerate() {
+pub fn print_shielding_pawns() {
+    let mut res = [[0u64; 64]; 2];
+    for sq in 0..64 {
         let king = 1u64 << sq;
         let shield = king << 8 | north_west_one(king) | north_east_one(king);
-        *item = shield | shield << 8;
-    }
-    for rank in 0..8 {
-        res[8 * rank] = res[8 * rank + 1];
-        res[8 * rank + 7] = res[8 * rank + 6];
-    }
-    println!("{}", arr_to_string(&res, "SHIELDING_PAWNS_WHITE"))
-}
-pub fn print_shielding_pawns_black() {
-    let mut res = [0u64; 64];
-    for (sq, item) in res.iter_mut().enumerate() {
-        let king = 1u64 << sq;
+        res[WHITE][sq] = shield | shield << 8;
         let shield = king >> 8 | south_west_one(king) | south_east_one(king);
-        *item = shield | shield >> 8;
+        res[BLACK][sq] = shield | shield >> 8;
     }
     for rank in 0..8 {
-        res[8 * rank] = res[8 * rank + 1];
-        res[8 * rank + 7] = res[8 * rank + 6];
+        for side in 0..2 {
+            res[side][8 * rank] = res[side][8 * rank + 1];
+            res[side][8 * rank + 7] = res[side][8 * rank + 6];
+        }
     }
-    println!("{}", arr_to_string(&res, "SHIELDING_PAWNS_BLACK"))
+    println!("{}", side_arr_to_string(&res, "SHIELDING_PAWNS"));
 }
 pub fn print_diagonally_adjacent() {
     let mut res = [0u64; 64];

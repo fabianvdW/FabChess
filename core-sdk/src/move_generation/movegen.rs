@@ -2,7 +2,7 @@ use super::magic::{self};
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::{square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, RANKS, ROOK_RAYS};
 use crate::bitboards::bitboards::square;
-use crate::board_representation::game_state::{rank_of, GameMove, GameMoveType, GameState, PieceType, WHITE};
+use crate::board_representation::game_state::{rank_of, swap_side, GameMove, GameMoveType, GameState, PieceType, WHITE};
 use crate::search::GradedMove;
 
 impl GameState {
@@ -58,21 +58,21 @@ impl GameState {
     //exclude: Exclude all attacks from pieces given in the exclude bitboard
     pub fn square_attacked(&self, sq: usize, occ: u64, exclude: u64) -> bool {
         let square = square(sq);
-        PieceType::King.attacks(sq, occ) & self.get_piece(PieceType::King, 1 - self.get_color_to_move()) & !exclude > 0
-            || PieceType::Knight.attacks(sq, occ) & self.get_piece(PieceType::Knight, 1 - self.get_color_to_move()) & !exclude > 0
-            || PieceType::Bishop.attacks(sq, occ) & self.get_bishop_like_bb(1 - self.get_color_to_move()) & !exclude > 0
-            || PieceType::Rook.attacks(sq, occ) & self.get_rook_like_bb(1 - self.get_color_to_move()) & !exclude > 0
-            || pawn_targets(self.get_color_to_move(), square) & self.get_piece(PieceType::Pawn, 1 - self.get_color_to_move()) & !exclude > 0
+        PieceType::King.attacks(sq, occ) & self.get_piece(PieceType::King, swap_side(self.get_color_to_move())) & !exclude > 0
+            || PieceType::Knight.attacks(sq, occ) & self.get_piece(PieceType::Knight, swap_side(self.get_color_to_move())) & !exclude > 0
+            || PieceType::Bishop.attacks(sq, occ) & self.get_bishop_like_bb(swap_side(self.get_color_to_move())) & !exclude > 0
+            || PieceType::Rook.attacks(sq, occ) & self.get_rook_like_bb(swap_side(self.get_color_to_move())) & !exclude > 0
+            || pawn_targets(self.get_color_to_move(), square) & self.get_piece(PieceType::Pawn, swap_side(self.get_color_to_move())) & !exclude > 0
     }
     //Returns a bitboard of allthe pieces attacking the square
     //Occ: Blockers in the current position. Might be all_pieces or all_pieces without ctm king
     pub fn square_attackers(&self, sq: usize, occ: u64) -> u64 {
         let square = square(sq);
-        PieceType::King.attacks(sq, occ) & self.get_piece(PieceType::King, 1 - self.get_color_to_move())
-            | PieceType::Knight.attacks(sq, occ) & self.get_piece(PieceType::Knight, 1 - self.get_color_to_move())
-            | PieceType::Bishop.attacks(sq, occ) & self.get_bishop_like_bb(1 - self.get_color_to_move())
-            | PieceType::Rook.attacks(sq, occ) & self.get_rook_like_bb(1 - self.get_color_to_move())
-            | pawn_targets(self.get_color_to_move(), square) & self.get_piece(PieceType::Pawn, 1 - self.get_color_to_move())
+        PieceType::King.attacks(sq, occ) & self.get_piece(PieceType::King, swap_side(self.get_color_to_move()))
+            | PieceType::Knight.attacks(sq, occ) & self.get_piece(PieceType::Knight, swap_side(self.get_color_to_move()))
+            | PieceType::Bishop.attacks(sq, occ) & self.get_bishop_like_bb(swap_side(self.get_color_to_move()))
+            | PieceType::Rook.attacks(sq, occ) & self.get_rook_like_bb(swap_side(self.get_color_to_move()))
+            | pawn_targets(self.get_color_to_move(), square) & self.get_piece(PieceType::Pawn, swap_side(self.get_color_to_move()))
     }
 
     pub fn get_checkers(&self) -> u64 {
@@ -201,15 +201,15 @@ pub fn b_pawn_west_targets(pawns: u64) -> u64 {
 pub fn find_captured_piece_type(g: &GameState, to: usize) -> PieceType {
     let to_board = square(to);
     let side = g.get_color_to_move();
-    if g.get_piece(PieceType::Pawn, 1 - side) & to_board != 0u64 {
+    if g.get_piece(PieceType::Pawn, swap_side(side)) & to_board != 0u64 {
         PieceType::Pawn
-    } else if g.get_piece(PieceType::Knight, 1 - side) & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Knight, swap_side(side)) & to_board != 0u64 {
         PieceType::Knight
-    } else if g.get_piece(PieceType::Queen, 1 - side) & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Queen, swap_side(side)) & to_board != 0u64 {
         PieceType::Queen
-    } else if g.get_piece(PieceType::Bishop, 1 - side) & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Bishop, swap_side(side)) & to_board != 0u64 {
         PieceType::Bishop
-    } else if g.get_piece(PieceType::Rook, 1 - side) & to_board != 0u64 {
+    } else if g.get_piece(PieceType::Rook, swap_side(side)) & to_board != 0u64 {
         PieceType::Rook
     } else {
         panic!("Shoudln't get here");
@@ -447,7 +447,7 @@ pub fn generate_moves(g: &GameState, only_captures: bool, movelist: &mut MoveLis
     movelist.move_list.clear();
 
     let side = g.get_color_to_move();
-    let enemy = 1 - side;
+    let enemy = swap_side(side);
     let stm_color_iswhite: bool = side == WHITE;
 
     let mut side_pawns = g.get_piece(PieceType::Pawn, side);

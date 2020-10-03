@@ -6,7 +6,7 @@ pub mod trace;
 
 use crate::bitboards::bitboards::constants::*;
 use crate::bitboards::bitboards::*;
-use crate::board_representation::game_state::{file_of, rank_of, relative_rank, GameState, PieceType, BLACK, WHITE};
+use crate::board_representation::game_state::{file_of, rank_of, relative_rank, swap_side, GameState, PieceType, BLACK, WHITE};
 use crate::move_generation::movegen;
 use crate::move_generation::movegen::{pawn_east_targets, pawn_targets, pawn_west_targets};
 
@@ -325,7 +325,7 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
 pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #[cfg(feature = "tuning")] trace: &mut LargeTrace) {
     let score = res.interpolate(phase);
     let side_ahead = if score >= 0 { WHITE } else { BLACK };
-    let side_losing = 1 - side_ahead;
+    let side_losing = swap_side(side_ahead);
     let winning_pawns = g.get_piece(PieceType::Pawn, side_ahead).count_ones() as usize;
     if winning_pawns <= 1 {
         let losing_minors = (g.get_piece(PieceType::Bishop, side_losing) | g.get_piece(PieceType::Knight, side_losing)).count_ones() as usize;
@@ -370,7 +370,7 @@ pub fn knights(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
         supp &= not_file(file_of(idx));
         let mut front_span = pawn_front_span(square(idx), side);
         front_span = west_one(front_span) | east_one(front_span);
-        if g.get_piece(PieceType::Pawn, 1 - side) & front_span == 0u64 {
+        if g.get_piece(PieceType::Pawn, swap_side(side)) & front_span == 0u64 {
             _outposts += 1;
             outpost += KNIGHT_OUTPOST_TABLE[side][idx];
             #[cfg(feature = "tuning")]
@@ -400,8 +400,8 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
     let defended_squares = enemy_defended;
     let my_pieces = g.get_pieces_from_side(side);
 
-    let enemy_king_idx = g.get_king_square(1 - side);
-    let enemy_king_attackable = KING_ZONE[side][enemy_king_idx] & !defended_by_minors;
+    let enemy_king_idx = g.get_king_square(swap_side(side));
+    let enemy_king_attackable = KING_ZONE[enemy_king_idx] & !defended_by_minors;
 
     let knight_checks = KNIGHT_ATTACKS[enemy_king_idx];
     let all_pieces = g.get_all_pieces();
@@ -486,7 +486,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
         }
         if FILES[file_of(idx)] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
             rooks_onopen += 1;
-        } else if (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, 1 - side)).count_ones() == 1 && (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
+        } else if (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, swap_side(side))).count_ones() == 1 && (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
             rooks_on_semi_open += 1;
         }
 
@@ -529,7 +529,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
 
         if FILES[file_of(idx)] & g.get_piece_bb(PieceType::Pawn) == 0u64 {
             queens_onopen += 1;
-        } else if (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, 1 - side)).count_ones() == 1 && (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
+        } else if (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, swap_side(side))).count_ones() == 1 && (FILES[file_of(idx)] & g.get_piece(PieceType::Pawn, side)) == 0u64 {
             queens_on_semi_open += 1;
         }
 
@@ -651,7 +651,7 @@ pub fn king(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
             let idx = pawn_shield.trailing_zeros() as usize;
             if g.get_piece(PieceType::Pawn, side) & pawn_shield & FILES[file_of(idx)] == 0u64 {
                 shields_missing += 1;
-                if g.get_piece(PieceType::Pawn, 1 - side) & FILES[file_of(idx)] & king_front_span == 0u64 {
+                if g.get_piece(PieceType::Pawn, swap_side(side)) & FILES[file_of(idx)] & king_front_span == 0u64 {
                     shields_on_open_missing += 1;
                 }
             }
@@ -690,18 +690,18 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
 
     let empty = !g.get_all_pieces();
     let pawns = g.get_piece(PieceType::Pawn, side);
-    let enemy_pawns = g.get_piece(PieceType::Pawn, 1 - side);
+    let enemy_pawns = g.get_piece(PieceType::Pawn, swap_side(side));
     //Bitboards
     let pawn_file_fill = file_fill(pawns);
     let front_span = pawn_front_span(pawns, side);
-    let mut enemy_front_spans = pawn_front_span(enemy_pawns, side ^ 1);
+    let mut enemy_front_spans = pawn_front_span(enemy_pawns, swap_side(side));
     enemy_front_spans |= west_one(enemy_front_spans) | east_one(enemy_front_spans);
-    let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (pawn_west_targets(side, pawns), pawn_east_targets(side, pawns), pawn_targets(1 - side, enemy_pawns));
+    let (my_west_attacks, my_east_attacks, enemy_pawn_attacks) = (pawn_west_targets(side, pawns), pawn_east_targets(side, pawns), pawn_targets(swap_side(side), enemy_pawns));
     let my_pawn_attacks = my_west_attacks | my_east_attacks;
     let (my_pawn_pushes, my_pawn_double_pushes) = (movegen::single_push_pawn_targets(side, pawns, empty), movegen::double_push_pawn_targets(side, pawns, empty));
 
     let is_attackable = west_one(front_span) | east_one(front_span);
-    let enemy_pieces = g.get_pieces_from_side(1 - side);
+    let enemy_pieces = g.get_pieces_from_side(swap_side(side));
 
     let doubled_pawns = (pawns & front_span).count_ones() as i16;
     let isolated_pawns = (pawns & !west_one(pawn_file_fill) & !east_one(pawn_file_fill)).count_ones() as i16;
@@ -720,7 +720,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     }
     res += supp;
 
-    let center_attack_pawns = (pawns & pawn_targets(side ^ 1, INNER_CENTER)).count_ones() as i16;
+    let center_attack_pawns = (pawns & pawn_targets(swap_side(side), INNER_CENTER)).count_ones() as i16;
     let pawn_mobility = (my_west_attacks.count_ones() + my_east_attacks.count_ones() + my_pawn_pushes.count_ones() + my_pawn_double_pushes.count_ones()) as i16;
     res += PAWN_DOUBLED_VALUE * doubled_pawns
         + PAWN_ISOLATED_VALUE * isolated_pawns
@@ -741,9 +741,9 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     let (mut passer_score, mut _passer_normal, mut _passer_notblocked) = (EvaluationScore::default(), 0, 0);
     let mut passer_dist = EvaluationScore::default();
     let mut weak_passers = 0;
-    let behind_passers = pawn_front_span(passed_pawns, side ^ 1);
+    let behind_passers = pawn_front_span(passed_pawns, swap_side(side));
     let rooks_support_passer = (behind_passers & g.get_rook_like_bb(side)).count_ones() as i16;
-    let enemy_rooks_attack_passer = (behind_passers & g.get_rook_like_bb(1 - side)).count_ones() as i16;
+    let enemy_rooks_attack_passer = (behind_passers & g.get_rook_like_bb(swap_side(side))).count_ones() as i16;
     res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
     #[cfg(feature = "tuning")]
     {
@@ -778,7 +778,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
 
         //Distance to kings
         let d_myking = get_distance(idx, g.get_king_square(side));
-        let d_enemyking = get_distance(idx, g.get_king_square(1 - side));
+        let d_enemyking = get_distance(idx, g.get_king_square(swap_side(side)));
         let sub_dist = ((d_myking as isize - d_enemyking as isize) + 6) as usize;
         passer_dist += PASSED_KING_DISTANCE[d_myking - 1] + PASSED_ENEMY_KING_DISTANCE[d_enemyking - 1] + PASSED_SUBTRACT_DISTANCE[sub_dist];
         #[cfg(feature = "tuning")]
