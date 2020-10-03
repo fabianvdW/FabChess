@@ -976,6 +976,6 @@ pub const fn swap_side(side: usize) -> usize {
 }
 //Gets the square of the captured pawn in an enpassant move to the target square. swaps rank 5 and 6 and rank 3 and 4.
 #[inline(always)]
-pub const fn ep_pawn_square(to: u8) -> u8 {
+pub const fn ep_pawn_square(to: usize) -> usize {
     to ^ 8
 }
