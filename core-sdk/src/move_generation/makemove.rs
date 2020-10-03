@@ -51,16 +51,12 @@ pub fn make_nullmove(g: &GameState) -> GameState {
 
 #[inline(always)]
 pub fn rook_castling(to: usize) -> (usize, usize) {
-    if to == square::C8 {
-        (square::A8, square::D8)
-    } else if to == square::C1 {
-        (square::A1, square::D1)
-    } else if to == square::G8 {
-        (square::H8, square::F8)
-    } else if to == square::G1 {
-        (square::H1, square::F1)
-    } else {
-        panic!("Invalid castling move!")
+    match to {
+        square::C8 => (square::A8, square::D8),
+        square::C1 => (square::A1, square::D1),
+        square::G8 => (square::H8, square::F8),
+        square::G1 => (square::H1, square::F1),
+        _ => panic!("Invalid castling move!"),
     }
 }
 
