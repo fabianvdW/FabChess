@@ -294,7 +294,7 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
                 let evaluation = eval_game_state(&position);
                 let trace_eval = evaluation.trace.collapse().evaluate(&params) as i16;
                 //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
-                if (evaluation.final_eval - trace_eval).abs() > 2 {
+                if (evaluation.final_eval - trace_eval).abs() > 1 {
                     println!("{}", position.to_fen());
                     panic!(format!("{} != {}", evaluation.final_eval, trace_eval));
                 }

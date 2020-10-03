@@ -29,7 +29,7 @@ pub const TUNE_MOBILITY: bool = false;
 
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_ATTACK_INDEX: bool = false;
-pub const TUNE_KP_TABLE: bool = true;
+pub const TUNE_KP_TABLE: bool = false;
 pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
@@ -39,7 +39,6 @@ pub const BATCH_SIZE: usize = 20000000;
 pub const START_LEARNING_RATE: f32 = 0.0002;
 pub const L1_REGULARIZATION: f32 = 0.;
 pub const L2_REGULARIZATION: f32 = 0.;
-
 pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
     let mut res = [false; NORMAL_PARAMS];
     if TUNE_ALL {
@@ -401,6 +400,7 @@ pub fn dsafetytabledconstant(tuner: &Tuner, phase: usize, other: f32, relevant_f
 }
 
 pub fn texel_tuning(tuner: &mut Tuner) {
+    shuffle_positions(tuner);
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
