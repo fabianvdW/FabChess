@@ -152,7 +152,7 @@ pub const fn south_one(board: u64) -> u64 {
 }
 
 #[inline(always)]
-pub const fn forward_one(board: u64, side: usize) -> u64 {
+pub fn forward_one(board: u64, side: usize) -> u64 {
     if side == WHITE {
         north_one(board)
     } else {
@@ -212,7 +212,7 @@ pub const fn file_fill(gen: u64) -> u64 {
 }
 
 #[inline(always)]
-pub const fn pawn_front_span(pawns: u64, side: usize) -> u64 {
+pub fn pawn_front_span(pawns: u64, side: usize) -> u64 {
     if side == WHITE {
         north_one(north_fill(pawns))
     } else {
