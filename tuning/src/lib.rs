@@ -9,37 +9,36 @@ pub use core_sdk::evaluation::parameters::{normal_parameters::*, special_paramet
 use core_sdk::evaluation::trace::CollapsedTrace;
 use rand::{seq::SliceRandom, thread_rng};
 
-pub const POSITION_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved.epd";
-pub const PARAM_FILE: &str = "D:/Users/fabia/Schach/TuningData/E12.41-1M-D12-Resolved";
+pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/20M";
 //Override for all others if true
-pub const TUNE_ALL: bool = true;
+pub const TUNE_ALL: bool = false;
 
-pub const TUNE_TEMPO_BONUS: bool = true;
-pub const TUNE_SHIELDING_PAWNS: bool = true;
-pub const TUNE_PAWNS: bool = true;
+pub const TUNE_TEMPO_BONUS: bool = false;
+pub const TUNE_SHIELDING_PAWNS: bool = false;
+pub const TUNE_PAWNS: bool = false;
 //Category passed pawns
-pub const TUNE_PASSED: bool = true;
-pub const TUNE_PASSED_PAWN: bool = true;
-pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = true;
+pub const TUNE_PASSED: bool = false;
+pub const TUNE_PASSED_PAWN: bool = false;
+pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
 
-pub const TUNE_KNIGHTS: bool = true;
-pub const TUNE_FILES: bool = true;
+pub const TUNE_KNIGHTS: bool = false;
+pub const TUNE_FILES: bool = false;
 
-pub const TUNE_PIECE_VALUES: bool = true;
-pub const TUNE_MOBILITY: bool = true;
+pub const TUNE_PIECE_VALUES: bool = false;
+pub const TUNE_MOBILITY: bool = false;
 
-pub const TUNE_ATTACK: bool = true;
-pub const TUNE_ATTACK_INDEX: bool = true;
-pub const TUNE_PSQT: bool = true;
+pub const TUNE_ATTACK: bool = false;
+pub const TUNE_ATTACK_INDEX: bool = false;
+pub const TUNE_KP_TABLE: bool = true;
+pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 10000000;
-pub const START_LEARNING_RATE: f32 = 2.;
-pub const L1_REGULARIZATION: f32 = 0.;
-pub const L2_REGULARIZATION: f32 = 0.;
-
+pub const BATCH_SIZE: usize = 20000000;
+pub const START_LEARNING_RATE: f64 = 2.;
+pub const L1_REGULARIZATION: f64 = 0.;
+pub const L2_REGULARIZATION: f64 = 0.;
 pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
     let mut res = [false; NORMAL_PARAMS];
     if TUNE_ALL {
@@ -149,6 +148,13 @@ pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
                 i += 1;
             }
         }
+        if TUNE_KP_TABLE {
+            let mut i = 0;
+            while i < SIZE_KING_ENEMY_PAWN {
+                res[IDX_KING_ENEMY_PAWN + i] = true;
+                i += 1;
+            }
+        }
         if TUNE_PSQT {
             let mut i = 0;
             while i < SIZE_PSQT {
@@ -162,12 +168,12 @@ pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
 }
 pub struct TexelState {
     pub label: f32,
-    pub eval: f32,
+    pub eval: f64,
     pub trace: CollapsedTrace,
 }
 
 pub struct Tuner {
-    pub k: f32,
+    pub k: f64,
     pub positions: Vec<TexelState>,
     pub params: Parameters,
 }
@@ -182,7 +188,7 @@ pub fn shuffle_positions(tuner: &mut Tuner) {
     tuner.positions.shuffle(&mut thread_rng());
 }
 
-pub fn add_regularization(gradient: &mut Parameters, parameters: &Parameters, portion: f32) {
+pub fn add_regularization(gradient: &mut Parameters, parameters: &Parameters, portion: f64) {
     for i in 0..gradient.normal[0].len() {
         gradient.normal[0][i] -= portion * regularization(parameters.normal[0][i]);
         gradient.normal[1][i] -= portion * regularization(parameters.normal[1][i]);
@@ -191,7 +197,7 @@ pub fn add_regularization(gradient: &mut Parameters, parameters: &Parameters, po
         gradient.special[i] -= portion * regularization(parameters.special[i]);
     }
 }
-pub fn regularization(term: f32) -> f32 {
+pub fn regularization(term: f64) -> f64 {
     L1_REGULARIZATION * term.signum() + 2. * L2_REGULARIZATION * term
 }
 
@@ -201,32 +207,32 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
         //Step 1. Update evaluation
         pos.eval = pos.trace.evaluate(&tuner.params);
     }
-    //let g = tuner.k * 10f32.ln() / 400.0;
-    let portion = 2. / (to - from) as f32;
+    //let g = tuner.k * 10f64.ln() / 400.0;
+    let portion = 2. / (to - from) as f64;
     for pos in tuner.positions[from..to].iter() {
         //Step 2. Calculate first half of gradient
         let s = sigmoid(tuner.k, pos.eval);
-        let start_of_gradient = (pos.label - s) * s * (1. - s);
-        let devaldmg = pos.trace.phase / 128.0;
-        let devaldeg = 1. - pos.trace.phase / 128.0;
+        let start_of_gradient = (pos.label as f64 - s) * s * (1. - s);
+        let devaldmg = pos.trace.phase as f64 / 128.0;
+        let devaldeg = 1. - pos.trace.phase as f64 / 128.0;
         for entry in pos.trace.entries.iter() {
             if TUNABLE_PARAM[entry.0 as usize] {
-                gradient.normal[0][entry.0 as usize] += start_of_gradient * devaldmg * f32::from(entry.1);
-                gradient.normal[1][entry.0 as usize] += start_of_gradient * devaldeg * f32::from(entry.1);
+                gradient.normal[0][entry.0 as usize] += start_of_gradient * devaldmg * f64::from(entry.1);
+                gradient.normal[1][entry.0 as usize] += start_of_gradient * devaldeg * f64::from(entry.1);
             }
         }
         //Safety
         if TUNE_ATTACK {
             for i in 0..2 {
                 let devaldg = if i == 0 { devaldmg } else { devaldeg };
-                let attack_knight_white = f32::from(pos.trace.knight_attacked_sq[WHITE]) * tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
-                let attack_bishop_white = f32::from(pos.trace.bishop_attacked_sq[WHITE]) * tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
-                let attack_rook_white = f32::from(pos.trace.rook_attacked_sq[WHITE]) * tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
-                let attack_queen_white = f32::from(pos.trace.queen_attacked_sq[WHITE]) * tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
-                let knight_check_white = f32::from(pos.trace.knight_safe_check[WHITE]) * tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
-                let bishop_check_white = f32::from(pos.trace.bishop_safe_check[WHITE]) * tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
-                let rook_check_white = f32::from(pos.trace.rook_safe_check[WHITE]) * tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
-                let queen_check_white = f32::from(pos.trace.queen_safe_check[WHITE]) * tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
+                let attack_knight_white = f64::from(pos.trace.knight_attacked_sq[WHITE]) * tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
+                let attack_bishop_white = f64::from(pos.trace.bishop_attacked_sq[WHITE]) * tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
+                let attack_rook_white = f64::from(pos.trace.rook_attacked_sq[WHITE]) * tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
+                let attack_queen_white = f64::from(pos.trace.queen_attacked_sq[WHITE]) * tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
+                let knight_check_white = f64::from(pos.trace.knight_safe_check[WHITE]) * tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
+                let bishop_check_white = f64::from(pos.trace.bishop_safe_check[WHITE]) * tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
+                let rook_check_white = f64::from(pos.trace.rook_safe_check[WHITE]) * tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
+                let queen_check_white = f64::from(pos.trace.queen_safe_check[WHITE]) * tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
                 let attacker_value_white = (attack_knight_white
                     + attack_bishop_white
                     + attack_rook_white
@@ -237,14 +243,14 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
                     + queen_check_white)
                     .max(0.)
                     .min(99.);
-                let attack_knight_black = f32::from(pos.trace.knight_attacked_sq[BLACK]) * tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
-                let attack_bishop_black = f32::from(pos.trace.bishop_attacked_sq[BLACK]) * tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
-                let attack_rook_black = f32::from(pos.trace.rook_attacked_sq[BLACK]) * tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
-                let attack_queen_black = f32::from(pos.trace.queen_attacked_sq[BLACK]) * tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
-                let knight_check_black = f32::from(pos.trace.knight_safe_check[BLACK]) * tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
-                let bishop_check_black = f32::from(pos.trace.bishop_safe_check[BLACK]) * tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
-                let rook_check_black = f32::from(pos.trace.rook_safe_check[BLACK]) * tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
-                let queen_check_black = f32::from(pos.trace.queen_safe_check[BLACK]) * tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
+                let attack_knight_black = f64::from(pos.trace.knight_attacked_sq[BLACK]) * tuner.params.special[IDX_KNIGHT_ATTACK_VALUE + i];
+                let attack_bishop_black = f64::from(pos.trace.bishop_attacked_sq[BLACK]) * tuner.params.special[IDX_BISHOP_ATTACK_VALUE + i];
+                let attack_rook_black = f64::from(pos.trace.rook_attacked_sq[BLACK]) * tuner.params.special[IDX_ROOK_ATTACK_VALUE + i];
+                let attack_queen_black = f64::from(pos.trace.queen_attacked_sq[BLACK]) * tuner.params.special[IDX_QUEEN_ATTACK_VALUE + i];
+                let knight_check_black = f64::from(pos.trace.knight_safe_check[BLACK]) * tuner.params.special[IDX_KNIGHT_CHECK_VALUE + i];
+                let bishop_check_black = f64::from(pos.trace.bishop_safe_check[BLACK]) * tuner.params.special[IDX_BISHOP_CHECK_VALUE + i];
+                let rook_check_black = f64::from(pos.trace.rook_safe_check[BLACK]) * tuner.params.special[IDX_ROOK_CHECK_VALUE + i];
+                let queen_check_black = f64::from(pos.trace.queen_safe_check[BLACK]) * tuner.params.special[IDX_QUEEN_CHECK_VALUE + i];
                 let attacker_value_black = (attack_knight_black
                     + attack_bishop_black
                     + attack_rook_black
@@ -386,9 +392,9 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
     gradient
 }
 
-pub fn dsafetytabledconstant(tuner: &Tuner, phase: usize, other: f32, relevant_feature: u8, current_constant: f32) -> f32 {
-    let safety_table_inc = tuner.params.special[IDX_SAFETY_TABLE + 2 * ((other + f32::from(relevant_feature) * (current_constant + 1.)) as usize).max(0).min(99) + phase];
-    let safety_table_dec = tuner.params.special[IDX_SAFETY_TABLE + 2 * ((other + f32::from(relevant_feature) * (current_constant - 1.)) as usize).max(0).min(99) + phase];
+pub fn dsafetytabledconstant(tuner: &Tuner, phase: usize, other: f64, relevant_feature: u8, current_constant: f64) -> f64 {
+    let safety_table_inc = tuner.params.special[IDX_SAFETY_TABLE + 2 * ((other + f64::from(relevant_feature) * (current_constant + 1.)) as usize).max(0).min(99) + phase];
+    let safety_table_dec = tuner.params.special[IDX_SAFETY_TABLE + 2 * ((other + f64::from(relevant_feature) * (current_constant - 1.)) as usize).max(0).min(99) + phase];
 
     (safety_table_inc - safety_table_dec) / 2.
 }
@@ -397,7 +403,7 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
-    let mut lr = START_LEARNING_RATE;
+    let lr = START_LEARNING_RATE;
     let mut adagrad = Parameters::zero();
 
     loop {
@@ -430,8 +436,6 @@ pub fn texel_tuning(tuner: &mut Tuner) {
             best_error = error;
             tuner.params.write_to_file(&format!("{}tunebest.txt", PARAM_FILE));
             println!("Saved new best params in tunebest.txt");
-        } else {
-            lr /= 1.25;
         }
         //Save progress
         if (epoch + 1) % 10 == 0 {
@@ -441,15 +445,15 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     }
 }
 
-pub fn average_evaluation_error(tuner: &Tuner) -> f32 {
+pub fn average_evaluation_error(tuner: &Tuner) -> f64 {
     let mut res = 0.;
     for pos in &tuner.positions {
-        res += (pos.label - sigmoid(tuner.k, pos.eval)).powf(2.0);
+        res += (pos.label as f64 - sigmoid(tuner.k, pos.eval)).powf(2.0);
     }
-    res / tuner.positions.len() as f32
+    res / tuner.positions.len() as f64
 }
 
-pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f32 {
+pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f64 {
     let mut best_k = tuner.k;
     let mut best_error = average_evaluation_error(&tuner);
     println!("Error in epoch 0: {}", best_error);
@@ -469,9 +473,9 @@ pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f32 {
             let mut dedk = 0.;
             for pos in &tuner.positions[from..to] {
                 let eval = pos.eval;
-                dedk += (pos.label - sigmoid(tuner.k, eval)) * dsigmoiddk(tuner.k, eval);
+                dedk += (pos.label as f64 - sigmoid(tuner.k, eval)) * dsigmoiddk(tuner.k, eval);
             }
-            dedk *= -2.0 / (to - from) as f32;
+            dedk *= -2.0 / (to - from) as f64;
             tuner.k += -lr * dedk;
         }
 
@@ -491,10 +495,10 @@ pub fn minimize_evaluation_error_fork(tuner: &mut Tuner) -> f32 {
     best_k
 }
 
-pub fn sigmoid(k: f32, s: f32) -> f32 {
-    1. / (1. + 10f32.powf(-k * s / 400.0))
+pub fn sigmoid(k: f64, s: f64) -> f64 {
+    1. / (1. + 10f64.powf(-k * s / 400.0))
 }
 
-pub fn dsigmoiddk(k: f32, s: f32) -> f32 {
-    sigmoid(k, s).powf(2.0) * 10f32.ln() * s * 10f32.powf(-k * s / 400.0) / 400.0
+pub fn dsigmoiddk(k: f64, s: f64) -> f64 {
+    sigmoid(k, s).powf(2.0) * 10f64.ln() * s * 10f64.powf(-k * s / 400.0) / 400.0
 }

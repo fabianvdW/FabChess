@@ -217,9 +217,15 @@ mod tests {
                 if movelist.move_list.is_empty() {
                     break;
                 }
-                g = make_move(&g, movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0);
+                let mv = movelist.move_list[rng.gen_range(0, movelist.move_list.len())].0;
+                let old_g = g.clone();
+                g = make_move(&g, mv);
                 let w_psqt = psqt(&g, WHITE, &mut core_sdk::evaluation::trace::LargeTrace::default());
                 let b_psqt = psqt(&g, BLACK, &mut core_sdk::evaluation::trace::LargeTrace::default());
+                if g.get_psqt() != w_psqt - b_psqt {
+                    println!("G: {}", old_g.to_fen());
+                    println!("Mv: {:?}", mv);
+                }
                 assert_eq!(g.get_psqt(), w_psqt - b_psqt);
             }
         }

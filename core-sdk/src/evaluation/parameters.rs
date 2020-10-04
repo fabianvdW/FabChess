@@ -119,7 +119,10 @@ pub mod normal_parameters {
     pub const IDX_QUEEN_MOBILITY: usize = IDX_ROOK_MOBILITY + SIZE_ROOK_MOBILITY;
     pub const SIZE_QUEEN_MOBILITY: usize = 28;
 
-    pub const IDX_PSQT: usize = IDX_QUEEN_MOBILITY + SIZE_QUEEN_MOBILITY;
+    pub const IDX_KING_ENEMY_PAWN: usize = IDX_QUEEN_MOBILITY + SIZE_QUEEN_MOBILITY;
+    pub const SIZE_KING_ENEMY_PAWN: usize = 64 * 64;
+
+    pub const IDX_PSQT: usize = IDX_KING_ENEMY_PAWN + SIZE_KING_ENEMY_PAWN;
     pub const SIZE_PSQT: usize = 384;
 
     pub const NORMAL_PARAMS: usize = IDX_PSQT + SIZE_PSQT;
@@ -167,14 +170,20 @@ pub mod special_parameters {
 
 #[derive(Clone)]
 pub struct Parameters {
-    pub normal: [[f32; NORMAL_PARAMS]; 2],
-    pub special: [f32; SPECIAL_PARAMS],
+    pub normal: [[f64; NORMAL_PARAMS]; 2],
+    pub special: [f64; SPECIAL_PARAMS],
 }
 
 impl Parameters {
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
+    fn init_pk_table(params: &mut Parameters, pk_table: &[[EvaluationScore; 64]; 64], idx: usize) {
+        for i in 0..64 {
+            Parameters::init_constants(params, &pk_table[i], idx + 64 * i, true);
+        }
+    }
+
     fn init_constants(params: &mut Parameters, s: &[EvaluationScore], idx: usize, normal: bool) {
         for i in 0..s.len() {
             if normal {
@@ -186,11 +195,11 @@ impl Parameters {
     }
     fn init_constant(params: &mut Parameters, s: EvaluationScore, idx: usize, normal: bool) {
         if normal {
-            params.normal[0][idx] = f32::from(s.0);
-            params.normal[1][idx] = f32::from(s.1);
+            params.normal[0][idx] = f64::from(s.0);
+            params.normal[1][idx] = f64::from(s.1);
         } else {
-            params.special[idx] = f32::from(s.0);
-            params.special[idx + 1] = f32::from(s.1);
+            params.special[idx] = f64::from(s.0);
+            params.special[idx + 1] = f64::from(s.1);
         }
     }
     pub fn default() -> Self {
@@ -241,6 +250,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, BISHOP_SAFE_CHECK, IDX_BISHOP_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, ROOK_SAFE_CHECK, IDX_ROOK_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, QUEEN_SAFE_CHECK, IDX_QUEEN_CHECK_VALUE, false);
+        Parameters::init_pk_table(&mut params, &KING_ENEMY_PAWN[0], IDX_KING_ENEMY_PAWN);
         for pt in PIECE_TYPES.iter() {
             Parameters::init_constants(&mut params, &PSQT[*pt as usize][0], IDX_PSQT + *pt as usize * 64, true);
         }
@@ -283,19 +293,44 @@ impl Parameters {
         res_black.push_str("[");
         for i in 0..64 {
             res_white.push_str(&format!("{},", self.format_evaluation_score(idx + i, true)));
-            let actual_i = mirror_square(i);
+            let black_i = mirror_square(i);
             res_black.push_str(&format!(
                 "EvaluationScore({},{}),",
-                if negative_black_score { -1 } else { 1 } * self.normal[0][idx + actual_i].round() as isize,
-                if negative_black_score { -1 } else { 1 } * self.normal[1][idx + actual_i].round() as isize
+                if negative_black_score { -1 } else { 1 } * self.normal[0][idx + black_i].round() as isize,
+                if negative_black_score { -1 } else { 1 } * self.normal[1][idx + black_i].round() as isize
             ))
         }
         res_white.push_str("]");
         res_black.push_str("]");
         format!("[{}, {}]", res_white, res_black)
     }
+    fn format_kp_table(&self, idx: usize, negative_black_score: bool) -> String {
+        let mut res_white = String::new();
+        let mut res_black = String::new();
+        res_white.push_str("[");
+        res_black.push_str("[");
+        for king_index in 0..64 {
+            res_white.push_str("[");
+            res_black.push_str("[");
+            for p_index in 0..64 {
+                res_white.push_str(&format!("{}, ", self.format_evaluation_score(idx + 64 * king_index + p_index, true)));
+                let black_king_index = mirror_square(king_index);
+                let black_p_index = mirror_square(p_index);
+                res_black.push_str(&format!(
+                    "EvaluationScore({},{}),",
+                    if negative_black_score { -1 } else { 1 } * self.normal[0][idx + 64 * black_king_index + black_p_index].round() as isize,
+                    if negative_black_score { -1 } else { 1 } * self.normal[1][idx + 64 * black_king_index + black_p_index].round() as isize
+                ));
+            }
+            res_white.push_str("],");
+            res_black.push_str("],");
+        }
+        res_white.push_str("]");
+        res_black.push_str("]");
+        format!("[{}, {}]", res_white, res_black)
+    }
 
-    pub fn get_norm(&self) -> f32 {
+    pub fn get_norm(&self) -> f64 {
         let mut norm = 0.;
         for i in 0..self.normal[0].len() {
             norm += self.normal[0][i].powf(2.);
@@ -307,7 +342,7 @@ impl Parameters {
         norm.sqrt()
     }
 
-    pub fn pointwise_operation<F: Fn(f32) -> f32>(&mut self, f: F) {
+    pub fn pointwise_operation<F: Fn(f64) -> f64>(&mut self, f: F) {
         for i in 0..self.normal[0].len() {
             self.normal[0][i] = f(self.normal[0][i]);
             self.normal[1][i] = f(self.normal[1][i]);
@@ -316,7 +351,7 @@ impl Parameters {
             self.special[i] = f(self.special[i]);
         }
     }
-    pub fn add(&mut self, other: &Parameters, scale: f32) {
+    pub fn add(&mut self, other: &Parameters, scale: f64) {
         for i in 0..self.normal[0].len() {
             self.normal[0][i] += other.normal[0][i] * scale;
             self.normal[1][i] += other.normal[1][i] * scale;
@@ -325,7 +360,7 @@ impl Parameters {
             self.special[i] += other.special[i] * scale;
         }
     }
-    pub fn scale(&mut self, scale: f32) {
+    pub fn scale(&mut self, scale: f64) {
         self.pointwise_operation(|x| scale * x);
     }
     pub fn square(&mut self) {
@@ -334,7 +369,7 @@ impl Parameters {
     pub fn sqrt(&mut self) {
         self.pointwise_operation(|x| x.sqrt())
     }
-    pub fn add_scalar(&mut self, scalar: f32) {
+    pub fn add_scalar(&mut self, scalar: f64) {
         self.pointwise_operation(|x| x + scalar)
     }
     pub fn mul(&mut self, other: &Parameters) {
@@ -361,9 +396,9 @@ impl Display for Parameters {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         let mut res_str = String::new();
         res_str.push_str("use super::EvaluationScore;\n");
-        res_str.push_str(&format!("pub const SLIGHTLY_WINNING_NO_PAWN: f32 = {};\n", self.special[IDX_SLIGHTLY_WINNING_NO_PAWN],));
+        res_str.push_str(&format!("pub const SLIGHTLY_WINNING_NO_PAWN: f64 = {};\n", self.special[IDX_SLIGHTLY_WINNING_NO_PAWN],));
         res_str.push_str(&format!(
-            "pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f32 = {};\n",
+            "pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f64 = {};\n",
             self.special[IDX_SLIGHTLY_WINNING_ENEMY_CAN_SAC],
         ));
         res_str.push_str(&format!("pub const TEMPO_BONUS{}", self.format_constant(IDX_TEMPO_BONUS, true),));
@@ -458,6 +493,10 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const BISHOP_SAFE_CHECK{}", self.format_constant(IDX_BISHOP_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const ROOK_SAFE_CHECK{}", self.format_constant(IDX_ROOK_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const QUEEN_SAFE_CHECK{}", self.format_constant(IDX_QUEEN_CHECK_VALUE, false),));
+        res_str.push_str(&format!(
+            "#[rustfmt::skip]\npub const KING_ENEMY_PAWN: [[[EvaluationScore;64];64];2] = {};\n",
+            self.format_kp_table(IDX_KING_ENEMY_PAWN, true),
+        ));
         res_str.push_str("pub const PSQT: [[[EvaluationScore; 64]; 2]; 6] = [");
         for &pt in PIECE_TYPES.iter() {
             res_str.push_str(&self.format_psqt(IDX_PSQT + 64 * pt as usize, true));

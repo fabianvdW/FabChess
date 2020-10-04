@@ -1,9 +1,11 @@
 use super::TexelState;
+use core_sdk::evaluation::parameters::Parameters;
 use core_sdk::{board_representation::game_state::GameState, evaluation::eval_game_state};
 use std::fmt::{Display, Formatter, Result};
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+
 pub enum FileFormatSupported {
     OwnEncoding,
     EPD,
@@ -65,12 +67,14 @@ pub fn save_positions(to_file: &str, positions: &[LabelledGameState]) {
 pub struct PositionLoader {
     reader: BufReader<File>,
     file_format: FileFormatSupported,
+    parameter: Parameters,
 }
 impl PositionLoader {
     pub fn new(from_file: &str, file_format: FileFormatSupported) -> Self {
         PositionLoader {
             reader: BufReader::new(File::open(from_file).expect("Could not open file")),
             file_format,
+            parameter: Parameters::default(),
         }
     }
     pub fn next_position(&mut self) -> Option<LabelledGameState> {
@@ -123,11 +127,9 @@ impl PositionLoader {
         if state.is_some() {
             let state = state.unwrap();
             let eval = eval_game_state(&state.game_state);
-            return Some(TexelState {
-                label: state.label,
-                eval: eval.final_eval as f32,
-                trace: eval.trace.collapse(),
-            });
+            let trace = eval.trace.collapse();
+            let eval = trace.evaluate(&self.parameter);
+            return Some(TexelState { label: state.label, eval, trace });
         }
         None
     }
