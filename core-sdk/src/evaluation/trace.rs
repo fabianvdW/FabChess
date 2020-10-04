@@ -94,7 +94,7 @@ impl CollapsedTrace {
     }
 }
 
-pub const fn trace_count(side: usize) -> i8 {
+pub fn trace_count(side: usize) -> i8 {
     if side == WHITE {
         1
     } else {

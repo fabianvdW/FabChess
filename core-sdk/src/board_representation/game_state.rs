@@ -948,7 +948,7 @@ pub const fn rank_of(square: usize) -> usize {
     square / 8
 }
 
-pub const fn relative_rank(side: usize, sq: usize) -> usize {
+pub fn relative_rank(side: usize, sq: usize) -> usize {
     if side == WHITE {
         rank_of(sq)
     } else {
