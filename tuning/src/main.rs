@@ -1,4 +1,4 @@
-use core_sdk::evaluation::params::{KING_ENEMY_PAWN, KING_PIECE_TABLE};
+use core_sdk::evaluation::params::KING_PIECE_TABLE;
 use tuning::*;
 
 pub fn main() {

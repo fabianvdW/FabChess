@@ -30,7 +30,7 @@ pub const TUNE_MOBILITY: bool = false;
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_ATTACK_INDEX: bool = false;
 pub const TUNE_KP_TABLE: bool = true;
-pub const TUNE_KP: [[bool; 5]; 2] = [[false, false, false, false, false], [false, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
+pub const TUNE_KP: [[bool; 5]; 2] = [[true, false, false, false, false], [false, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
 pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
