@@ -119,10 +119,10 @@ pub mod normal_parameters {
     pub const IDX_QUEEN_MOBILITY: usize = IDX_ROOK_MOBILITY + SIZE_ROOK_MOBILITY;
     pub const SIZE_QUEEN_MOBILITY: usize = 28;
 
-    pub const IDX_KING_ENEMY_PAWN: usize = IDX_QUEEN_MOBILITY + SIZE_QUEEN_MOBILITY;
-    pub const SIZE_KING_ENEMY_PAWN: usize = 64 * 64;
+    pub const IDX_KING_PIECE_TABLE: usize = IDX_QUEEN_MOBILITY + SIZE_QUEEN_MOBILITY;
+    pub const SIZE_KING_PIECE_TABLE: usize = 64 * 64 * 10;
 
-    pub const IDX_PSQT: usize = IDX_KING_ENEMY_PAWN + SIZE_KING_ENEMY_PAWN;
+    pub const IDX_PSQT: usize = IDX_KING_PIECE_TABLE + SIZE_KING_PIECE_TABLE;
     pub const SIZE_PSQT: usize = 384;
 
     pub const NORMAL_PARAMS: usize = IDX_PSQT + SIZE_PSQT;
@@ -178,9 +178,11 @@ impl Parameters {
     pub fn write_to_file(&self, file: &str) {
         fs::write(file, &format!("{}", self)).expect("Unable to write file");
     }
-    fn init_pk_table(params: &mut Parameters, pk_table: &[[EvaluationScore; 64]; 64], idx: usize) {
-        for i in 0..64 {
-            Parameters::init_constants(params, &pk_table[i], idx + 64 * i, true);
+    fn init_pk_table(params: &mut Parameters, pk_table: &[[[[EvaluationScore; 64]; 5]; 2]; 64], idx: usize) {
+        for table in 0..10 {
+            for king_square in 0..64 {
+                Parameters::init_constants(params, &pk_table[king_square][table / 5][table % 5], idx + 64 * 64 * table + 64 * king_square, true);
+            }
         }
     }
 
@@ -250,7 +252,7 @@ impl Parameters {
         Parameters::init_constant(&mut params, BISHOP_SAFE_CHECK, IDX_BISHOP_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, ROOK_SAFE_CHECK, IDX_ROOK_CHECK_VALUE, false);
         Parameters::init_constant(&mut params, QUEEN_SAFE_CHECK, IDX_QUEEN_CHECK_VALUE, false);
-        Parameters::init_pk_table(&mut params, &KING_ENEMY_PAWN[0], IDX_KING_ENEMY_PAWN);
+        Parameters::init_pk_table(&mut params, &KING_PIECE_TABLE[0], IDX_KING_PIECE_TABLE);
         for pt in PIECE_TYPES.iter() {
             Parameters::init_constants(&mut params, &PSQT[*pt as usize][0], IDX_PSQT + *pt as usize * 64, true);
         }
@@ -307,20 +309,34 @@ impl Parameters {
     fn format_kp_table(&self, idx: usize, negative_black_score: bool) -> String {
         let mut res_white = String::new();
         let mut res_black = String::new();
+        //KP Table format: [side][king_square][side][piece][piece_square]
         res_white.push_str("[");
         res_black.push_str("[");
-        for king_index in 0..64 {
+        for king_square in 0..64 {
             res_white.push_str("[");
             res_black.push_str("[");
-            for p_index in 0..64 {
-                res_white.push_str(&format!("{}, ", self.format_evaluation_score(idx + 64 * king_index + p_index, true)));
-                let black_king_index = mirror_square(king_index);
-                let black_p_index = mirror_square(p_index);
-                res_black.push_str(&format!(
-                    "EvaluationScore({},{}),",
-                    if negative_black_score { -1 } else { 1 } * self.normal[0][idx + 64 * black_king_index + black_p_index].round() as isize,
-                    if negative_black_score { -1 } else { 1 } * self.normal[1][idx + 64 * black_king_index + black_p_index].round() as isize
-                ));
+            for piece_side in 0..2 {
+                res_white.push_str("[");
+                res_black.push_str("[");
+                for pt in 0..5 {
+                    res_white.push_str("[");
+                    res_black.push_str("[");
+                    for piece_square in 0..64 {
+                        let base_index = idx + 64 * 64 * (5 * piece_side + pt);
+                        res_white.push_str(&format!("{}, ", self.format_evaluation_score(base_index + 64 * king_square + piece_square, true)));
+                        let black_king_square = mirror_square(king_square);
+                        let black_p_square = mirror_square(piece_square);
+                        res_black.push_str(&format!(
+                            "EvaluationScore({},{}),",
+                            if negative_black_score { -1 } else { 1 } * self.normal[0][base_index + 64 * black_king_square + black_p_square].round() as isize,
+                            if negative_black_score { -1 } else { 1 } * self.normal[1][base_index + 64 * black_king_square + black_p_square].round() as isize
+                        ));
+                    }
+                    res_white.push_str("],");
+                    res_black.push_str("],");
+                }
+                res_white.push_str("],");
+                res_black.push_str("],");
             }
             res_white.push_str("],");
             res_black.push_str("],");
@@ -494,8 +510,8 @@ impl Display for Parameters {
         res_str.push_str(&format!("pub const ROOK_SAFE_CHECK{}", self.format_constant(IDX_ROOK_CHECK_VALUE, false),));
         res_str.push_str(&format!("pub const QUEEN_SAFE_CHECK{}", self.format_constant(IDX_QUEEN_CHECK_VALUE, false),));
         res_str.push_str(&format!(
-            "#[rustfmt::skip]\npub const KING_ENEMY_PAWN: [[[EvaluationScore;64];64];2] = {};\n",
-            self.format_kp_table(IDX_KING_ENEMY_PAWN, true),
+            "#[rustfmt::skip]\npub const KING_PIECE_TABLE: [[[[[EvaluationScore;64];5];2];64];2] = {};\n",
+            self.format_kp_table(IDX_KING_PIECE_TABLE, true),
         ));
         res_str.push_str("pub const PSQT: [[[EvaluationScore; 64]; 2]; 6] = [");
         for &pt in PIECE_TYPES.iter() {
