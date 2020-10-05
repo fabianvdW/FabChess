@@ -1,7 +1,17 @@
-use core_sdk::evaluation::params::KING_PIECE_TABLE;
+use std::thread;
 use tuning::*;
 
 pub fn main() {
+    let t = thread::Builder::new()
+        .stack_size(12 * 1024 * 1024)
+        .spawn(move || {
+            actual_main();
+        })
+        .expect("Couldn't start thread");
+    t.join().expect("Could not join thread");
+}
+
+pub fn actual_main() {
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
     let mut positions: Vec<TexelState> = Vec::with_capacity(1);
     tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.33-1M-D12-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
