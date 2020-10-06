@@ -2,7 +2,7 @@ use crate::bitboards::bitboards::constants::{square, CASTLE_PERMISSION};
 use crate::bitboards::bitboards::square;
 use crate::board_representation::game_state::{ep_pawn_square, file_of, swap_side, GameMove, GameMoveType, GameState, Irreversible, PieceType};
 use crate::board_representation::zobrist_hashing::ZOBRIST_KEYS;
-use crate::evaluation::psqt_evaluation::{kp_add_pawn, kp_move_king, kp_remove_pawn, psqt_add_piece, psqt_remove_piece};
+use crate::evaluation::psqt_evaluation::{kp_add_piece, kp_move_king, kp_remove_piece, psqt_add_piece, psqt_remove_piece};
 use crate::evaluation::EvaluationScore;
 
 #[inline(always)]
@@ -85,11 +85,22 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
     //Remove piece from original square
     if mv.piece_type == PieceType::King {
         //Update our KP tables
-        kp_move_king(from, to, g.get_piece(PieceType::Pawn, swap_side(color)), color, &mut psqt);
+        kp_move_king(
+            from,
+            to,
+            g.get_piece(PieceType::Pawn, color),
+            g.get_piece(PieceType::Pawn, swap_side(color)),
+            color,
+            &mut psqt,
+        );
         our_king_square = to;
     } else if mv.piece_type == PieceType::Pawn {
-        kp_remove_pawn(g.get_king_square(swap_side(color)), from, swap_side(color), &mut psqt);
-        kp_add_pawn(g.get_king_square(swap_side(color)), to, swap_side(color), &mut psqt);
+        //Move pawn for enemy king
+        kp_remove_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Pawn, from, &mut psqt);
+        kp_add_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Pawn, to, &mut psqt);
+        //Move pawn for our king
+        kp_remove_piece(color, our_king_square, true, PieceType::Pawn, from, &mut psqt);
+        kp_add_piece(color, our_king_square, true, PieceType::Pawn, to, &mut psqt);
     }
     remove_piece(&mut piece_bb, &mut color_bb, mv.piece_type, from, color, &mut hash, &mut psqt);
     //Delete piece if capture
@@ -98,7 +109,10 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         remove_piece(&mut piece_bb, &mut color_bb, piece, square, swap_side(color), &mut hash, &mut psqt);
         phase.delete_piece(piece);
         if piece == PieceType::Pawn {
-            kp_remove_pawn(our_king_square, square as usize, color, &mut psqt);
+            //Remove piece for our king
+            kp_remove_piece(color, our_king_square, false, PieceType::Pawn, square as usize, &mut psqt);
+            //Remove piece for enemy king
+            kp_remove_piece(swap_side(color), g.get_king_square(swap_side(color)), true, PieceType::Pawn, square as usize, &mut psqt);
         }
     }
     //Move rook for castling

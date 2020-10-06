@@ -30,6 +30,7 @@ pub const TUNE_MOBILITY: bool = false;
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_ATTACK_INDEX: bool = false;
 pub const TUNE_KP_TABLE: bool = true;
+pub const TUNE_KP: [[bool; 5]; 2] = [[true, false, false, false, false], [false, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
 pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
@@ -150,8 +151,14 @@ pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
         }
         if TUNE_KP_TABLE {
             let mut i = 0;
-            while i < SIZE_KING_ENEMY_PAWN {
-                res[IDX_KING_ENEMY_PAWN + i] = true;
+            while i < 10 {
+                if TUNE_KP[i / 5][i % 5] {
+                    let mut j = 0;
+                    while j < 64 * 64 {
+                        res[IDX_KING_PIECE_TABLE + 64 * 64 * i + j] = true;
+                        j += 1;
+                    }
+                }
                 i += 1;
             }
         }
