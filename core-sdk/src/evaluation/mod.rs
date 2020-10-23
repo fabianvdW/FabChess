@@ -333,8 +333,8 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, p
         let score = score.abs();
         let knight_value = KNIGHT_PIECE_VALUE.1;
         let pawn_value = PAWN_PIECE_VALUE.1;
-        let pawn_evaluation = if side_ahead == WHITE { pawn_eval.0 } else { pawn_eval.1 }.1;
-        let threshold = knight_value + pawn_value;
+        let pawn_evaluation = if side_ahead == WHITE { pawn_eval.0 } else { pawn_eval.1 }.1.max(0);
+        let threshold = knight_value + (1.5f64 * pawn_value as f64) as i16;
         let winnable_ahead = score.abs() >= threshold;
 
         if !winnable_ahead && (winning_pawns == 0) {

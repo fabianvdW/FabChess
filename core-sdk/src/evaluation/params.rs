@@ -1,6 +1,6 @@
 use super::EvaluationScore;
 pub const SLIGHTLY_WINNING_NO_PAWN: f64 = 0.0625;
-pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f64 = 0.1;
+pub const SLIGHTLY_WINNING_ENEMY_CAN_SAC: f64 = 0.125;
 pub const TEMPO_BONUS: EvaluationScore = EvaluationScore(10, 13);
 pub const SHIELDING_PAWN_MISSING: [EvaluationScore; 4] = [EvaluationScore(0, -7), EvaluationScore(-25, 1), EvaluationScore(-35, 0), EvaluationScore(-59, 6)];
 pub const SHIELDING_PAWN_MISSING_ON_OPEN_FILE: [EvaluationScore; 4] = [EvaluationScore(1, 5), EvaluationScore(-3, 5), EvaluationScore(-46, 5), EvaluationScore(-73, -15)];
