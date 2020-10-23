@@ -331,10 +331,10 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, p
     if winning_pawns <= 1 {
         let losing_minors = (g.get_piece(PieceType::Bishop, side_losing) | g.get_piece(PieceType::Knight, side_losing)).count_ones() as usize;
         let score = score.abs();
-        let knight_value = KNIGHT_PIECE_VALUE.interpolate(phase);
-        let pawn_value = PAWN_PIECE_VALUE.interpolate(phase);
-        let pawn_evaluation = if side_ahead == WHITE { pawn_eval.0 } else { pawn_eval.1 }.interpolate(phase);
-        let threshold = knight_value + 2 * pawn_value;
+        let knight_value = KNIGHT_PIECE_VALUE.1;
+        let pawn_value = PAWN_PIECE_VALUE.1;
+        let pawn_evaluation = if side_ahead == WHITE { pawn_eval.0 } else { pawn_eval.1 }.1;
+        let threshold = knight_value + pawn_value;
         let winnable_ahead = score.abs() >= threshold;
 
         if !winnable_ahead && (winning_pawns == 0) {
