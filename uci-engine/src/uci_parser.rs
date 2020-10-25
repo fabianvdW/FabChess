@@ -1,5 +1,5 @@
 use super::uci_engine::UCIEngine;
-use core_sdk::search::alphabeta::{MAX_FUTILITY_MARGIN, MAX_LMP_B, MAX_LMP_C, MAX_LMP_D, MIN_FUTILITY_MARGIN, MIN_LMP_B, MIN_LMP_C, MIN_LMP_D};
+use core_sdk::search::alphabeta::{MAX_FUTILITY_MARGIN, MAX_LMP_B, MAX_LMP_C, MIN_FUTILITY_MARGIN, MIN_LMP_B, MIN_LMP_C};
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO, MIN_THREADS};
 use core_sdk::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHEAD};
@@ -255,7 +255,6 @@ pub fn uci(engine: &UCIEngine) {
     println!("option name Lmp_A type string default {} min {} max {}", options.lmp_a, MIN_LMP_A, MAX_LMP_A);
     println!("option name Lmp_B type string default {} min {} max {}", options.lmp_b, MIN_LMP_B, MAX_LMP_B);
     println!("option name Lmp_C type string default {} min {} max {}", options.lmp_c, MIN_LMP_C, MAX_LMP_C);
-    println!("option name Lmp_D type string default {} min {} max {}", options.lmp_d, MIN_LMP_D, MAX_LMP_D);
     println!("uciok");
 }
 
@@ -329,12 +328,6 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2].parse::<f64>().expect("Invalid Lmp_C value!");
                 itcs.uci_options.write().unwrap().lmp_c = num;
                 println!("info String Succesfully set Lmp_C to {}", num);
-                return;
-            }
-            "lmp_d" => {
-                let num = cmd[index + 2].parse::<f64>().expect("Invalid Lmp_D value!");
-                itcs.uci_options.write().unwrap().lmp_d = num;
-                println!("info String Succesfully set Lmp_D to {}", num);
                 return;
             }
             _ => {
