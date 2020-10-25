@@ -1,13 +1,19 @@
 use super::uci_engine::UCIEngine;
-use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType};
-use core_sdk::move_generation::makemove::make_move;
-use core_sdk::move_generation::movegen;
-use core_sdk::search::alphabeta::{MAX_FUTILITY_MARGIN, MIN_FUTILITY_MARGIN};
+use core_sdk::search::alphabeta::{MAX_FUTILITY_MARGIN, MAX_LMP_B, MAX_LMP_C, MAX_LMP_D, MIN_FUTILITY_MARGIN, MIN_LMP_B, MIN_LMP_C, MIN_LMP_D};
 use core_sdk::search::cache::{Cache, MAX_HASH_SIZE, MIN_HASH_SIZE};
 use core_sdk::search::searcher::{search_move, InterThreadCommunicationSystem, MAX_SKIP_RATIO, MAX_THREADS, MIN_SKIP_RATIO, MIN_THREADS};
 use core_sdk::search::timecontrol::{TimeControl, MAX_MOVE_OVERHEAD, MIN_MOVE_OVERHEAD};
 use core_sdk::search::MAX_SEARCH_DEPTH;
 use core_sdk::UCIOptions;
+use core_sdk::{
+    board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType},
+    search::alphabeta::MIN_LMP_DEPTH,
+};
+use core_sdk::{move_generation::makemove::make_move, search::alphabeta::MAX_LMP_DEPTH};
+use core_sdk::{
+    move_generation::movegen,
+    search::alphabeta::{MAX_LMP_A, MIN_LMP_A},
+};
 use std::io;
 use std::sync::{atomic::Ordering, Arc};
 use std::thread;
@@ -245,6 +251,11 @@ pub fn uci(engine: &UCIEngine) {
         "option name FutilityMargin type spin default {} min {} max {}",
         options.futility_margin, MIN_FUTILITY_MARGIN, MAX_FUTILITY_MARGIN
     );
+    println!("option name Lmp_Depth type spin default {} min {} max {}", options.lmp_depth, MIN_LMP_DEPTH, MAX_LMP_DEPTH);
+    println!("option name Lmp_A type string default {} min {} max {}", options.lmp_a, MIN_LMP_A, MAX_LMP_A);
+    println!("option name Lmp_B type string default {} min {} max {}", options.lmp_b, MIN_LMP_B, MAX_LMP_B);
+    println!("option name Lmp_C type string default {} min {} max {}", options.lmp_c, MIN_LMP_C, MAX_LMP_C);
+    println!("option name Lmp_D type string default {} min {} max {}", options.lmp_d, MIN_LMP_D, MAX_LMP_D);
     println!("uciok");
 }
 
@@ -294,6 +305,36 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2].parse::<i16>().expect("Invalid FutilityMargin value!");
                 itcs.uci_options.write().unwrap().futility_margin = num;
                 println!("info String Succesfully set FutilityMargin to {}", num);
+                return;
+            }
+            "lmp_depth" => {
+                let num = cmd[index + 2].parse::<usize>().expect("Invalid LmpDepth value!");
+                itcs.uci_options.write().unwrap().lmp_depth = num;
+                println!("info String Succesfully set LmpDepth to {}", num);
+                return;
+            }
+            "lmp_a" => {
+                let num = cmd[index + 2].parse::<f64>().expect("Invalid Lmp_A value!");
+                itcs.uci_options.write().unwrap().lmp_a = num;
+                println!("info String Succesfully set Lmp_A to {}", num);
+                return;
+            }
+            "lmp_b" => {
+                let num = cmd[index + 2].parse::<f64>().expect("Invalid Lmp_B value!");
+                itcs.uci_options.write().unwrap().lmp_b = num;
+                println!("info String Succesfully set Lmp_B to {}", num);
+                return;
+            }
+            "lmp_c" => {
+                let num = cmd[index + 2].parse::<f64>().expect("Invalid Lmp_C value!");
+                itcs.uci_options.write().unwrap().lmp_c = num;
+                println!("info String Succesfully set Lmp_C to {}", num);
+                return;
+            }
+            "lmp_d" => {
+                let num = cmd[index + 2].parse::<f64>().expect("Invalid Lmp_D value!");
+                itcs.uci_options.write().unwrap().lmp_d = num;
+                println!("info String Succesfully set Lmp_D to {}", num);
                 return;
             }
             _ => {

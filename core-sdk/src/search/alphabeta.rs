@@ -9,7 +9,22 @@ use crate::search::moveordering::{MoveOrderer, NORMAL_STAGES};
 use crate::search::quiescence::{piece_value, see};
 use crate::search::searcher::Thread;
 
-pub const LMP_DEPTH: usize = 4;
+pub const MIN_LMP_DEPTH: usize = 1;
+pub const DEFAULT_LMP_DEPTH: usize = 6;
+pub const MAX_LMP_DEPTH: usize = MAX_SEARCH_DEPTH;
+
+pub const MIN_LMP_A: f64 = 0.;
+pub const MIN_LMP_B: f64 = 0.;
+pub const MIN_LMP_C: f64 = 0.;
+pub const MIN_LMP_D: f64 = -35.;
+pub const DEFAULT_LMP_A: f64 = 2.0942912055489766;
+pub const DEFAULT_LMP_B: f64 = 1.5596636016073322;
+pub const DEFAULT_LMP_C: f64 = 1.5;
+pub const DEFAULT_LMP_D: f64 = 4.840504866509509;
+pub const MAX_LMP_A: f64 = 10.;
+pub const MAX_LMP_B: f64 = 10.;
+pub const MAX_LMP_C: f64 = 10.;
+pub const MAX_LMP_D: f64 = 35.;
 
 pub const MIN_FUTILITY_MARGIN: i16 = 20;
 pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
@@ -207,8 +222,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 index += 1;
                 continue;
             }
-
-            if !incheck && p.depth_left <= LMP_DEPTH as i16 && quiets_tried > (3 * 2u32.pow((p.depth_left - 1) as u32)) as usize {
+            if !incheck
+                && p.depth_left <= thread.uci_options.lmp_depth as i16
+                && quiets_tried as isize
+                    > (thread.uci_options.lmp_a * thread.uci_options.lmp_b.powf(thread.uci_options.lmp_c * (p.depth_left - 1) as f64) + thread.uci_options.lmp_d) as isize
+            {
                 index += 1;
                 search_quiets = false;
                 continue;

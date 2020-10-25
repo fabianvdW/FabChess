@@ -4,6 +4,8 @@ pub mod evaluation;
 pub mod move_generation;
 pub mod search;
 
+use search::alphabeta::{DEFAULT_LMP_A, DEFAULT_LMP_B, DEFAULT_LMP_C, DEFAULT_LMP_D, DEFAULT_LMP_DEPTH};
+
 use crate::board_representation::game_state::GameState;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
@@ -24,6 +26,11 @@ pub struct UCIOptions {
     pub skip_ratio: usize,
 
     pub futility_margin: i16,
+    pub lmp_depth: usize,
+    pub lmp_a: f64,
+    pub lmp_b: f64,
+    pub lmp_c: f64,
+    pub lmp_d: f64,
 }
 impl Default for UCIOptions {
     fn default() -> Self {
@@ -34,6 +41,11 @@ impl Default for UCIOptions {
             debug_print: false,
             skip_ratio: DEFAULT_SKIP_RATIO,
             futility_margin: DEFAULT_FUTILITY_MARGIN,
+            lmp_depth: DEFAULT_LMP_DEPTH,
+            lmp_a: DEFAULT_LMP_A,
+            lmp_b: DEFAULT_LMP_B,
+            lmp_c: DEFAULT_LMP_C,
+            lmp_d: DEFAULT_LMP_D,
         }
     }
 }
