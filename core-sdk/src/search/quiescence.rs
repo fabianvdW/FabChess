@@ -253,8 +253,8 @@ pub fn attacks_to(game_state: &GameState, square: usize, occ: u64) -> u64 {
     let bishops = game_state.get_piece_bb(PieceType::Bishop) | game_state.get_piece_bb(PieceType::Queen);
     let rooks = game_state.get_piece_bb(PieceType::Rook) | game_state.get_piece_bb(PieceType::Queen);
     attacks |= KNIGHT_ATTACKS[square] & knights | movegen::bishop_attack(square, occ) & bishops | movegen::rook_attack(square, occ) & rooks;
-    attacks |= (movegen::w_pawn_west_targets(square_board) | movegen::w_pawn_east_targets(square_board)) & game_state.get_piece(PieceType::Pawn, BLACK);
-    attacks |= (movegen::b_pawn_west_targets(square_board) | movegen::b_pawn_east_targets(square_board)) & game_state.get_piece(PieceType::Pawn, WHITE);
+    attacks |= movegen::pawn_targets(WHITE, square_board) & game_state.get_piece(PieceType::Pawn, BLACK);
+    attacks |= movegen::pawn_targets(BLACK, square_board) & game_state.get_piece(PieceType::Pawn, WHITE);
     attacks |= KING_ATTACKS[square] & game_state.get_piece_bb(PieceType::King);
     attacks
 }
