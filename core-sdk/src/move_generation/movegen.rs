@@ -1,7 +1,7 @@
 use super::magic::{self};
 use crate::bitboards::bitboards;
 use crate::bitboards::bitboards::constants::{square, BISHOP_RAYS, FREEFIELD_BISHOP_ATTACKS, FREEFIELD_ROOK_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, RANKS, ROOK_RAYS};
-use crate::bitboards::bitboards::square;
+use crate::bitboards::bitboards::{forward_one, square};
 use crate::board_representation::game_state::{rank_of, swap_side, GameMove, GameMoveType, GameState, PieceType, WHITE};
 use crate::search::GradedMove;
 
@@ -668,28 +668,20 @@ pub fn generate_moves(g: &GameState, only_captures: bool, movelist: &mut MoveLis
     //**********************************************************************
     //5. Pawn pushes, captures, and promotions (captures, capture-enpassant, capture-promotion, normal-promotion)
     //5.1 Single push (promotions and pushes)
-    let stm_pawns_single_push = if stm_color_iswhite {
-        w_single_push_pawn_targets(side_pawns, empty_squares)
-    } else {
-        b_single_push_pawn_targets(side_pawns, empty_squares)
-    } & push_mask;
-    let stm_pawn_promotions = stm_pawns_single_push & RANKS[if stm_color_iswhite { 7 } else { 0 }];
     if !only_captures {
+        let stm_pawns_single_push = (forward_one(side_pawns, side) & empty_squares) & push_mask;
+        let stm_pawn_promotions = stm_pawns_single_push & RANKS[if stm_color_iswhite { 7 } else { 0 }];
         add_pawn_moves_to_movelist(g, movelist, stm_pawn_promotions, 8, false, true, pinned_pieces);
-    }
-    if !only_captures {
         let stm_pawns_quiet_single_push = stm_pawns_single_push & !stm_pawn_promotions;
         add_pawn_moves_to_movelist(g, movelist, stm_pawns_quiet_single_push, 8, false, false, pinned_pieces);
     }
+
     //5.2 Double push
     if !only_captures {
-        let stm_pawns_double_push = if stm_color_iswhite {
-            w_double_push_pawn_targets(side_pawns, empty_squares)
-        } else {
-            b_double_push_pawn_targets(side_pawns, empty_squares)
-        } & push_mask;
+        let stm_pawns_double_push = double_push_pawn_targets(side, side_pawns, empty_squares) & push_mask;
         add_pawn_moves_to_movelist(g, movelist, stm_pawns_double_push, 16, false, false, pinned_pieces);
     }
+
     //5.3 West captures (normal capture, promotion capture, en passant)
     let west_targets = pawn_west_targets(side, side_pawns);
     let stm_pawn_west_captures = west_targets & capture_mask & enemy_pieces;
