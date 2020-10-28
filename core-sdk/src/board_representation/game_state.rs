@@ -717,11 +717,7 @@ impl GameState {
             PieceType::Rook => rook_like_attack & square(mv.to as usize) != 0u64,
             PieceType::Pawn => match mv.move_type {
                 GameMoveType::Quiet | GameMoveType::Capture(_) | GameMoveType::EnPassant => {
-                    if self.color_to_move == WHITE {
-                        (w_pawn_east_targets(square(mv.to as usize)) | w_pawn_west_targets(square(mv.to as usize))) & square(king_position) != 0u64
-                    } else {
-                        (b_pawn_east_targets(square(mv.to as usize)) | b_pawn_west_targets(square(mv.to as usize))) & square(king_position) != 0u64
-                    }
+                    (pawn_targets(self.color_to_move, square(mv.to as usize)) & square(king_position)) != 0u64
                 }
                 GameMoveType::Promotion(p, _) => match p {
                     PieceType::Rook => rook_like_attack & square(mv.to as usize) != 0u64,
