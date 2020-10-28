@@ -613,12 +613,7 @@ pub fn generate_moves(g: &GameState, only_captures: bool, movelist: &mut MoveLis
             } else if pinned_piece & side_pawns != 0u64 {
                 //Add possible pawn captures
                 side_pawns ^= pinned_piece;
-
-                let stm_pawn_pin_target = if stm_color_iswhite {
-                    w_pawn_east_targets(pinned_piece) | w_pawn_west_targets(pinned_piece)
-                } else {
-                    b_pawn_east_targets(pinned_piece) | b_pawn_west_targets(pinned_piece)
-                };
+                let stm_pawn_pin_target = pawn_targets(side, pinned_piece);
                 //Normal captures
                 let stm_pawn_pin_captures = stm_pawn_pin_target & capture_mask & enemy_bishop;
                 let stm_pawn_pin_promotion_capture = stm_pawn_pin_captures & RANKS[if stm_color_iswhite { 7 } else { 0 }];
