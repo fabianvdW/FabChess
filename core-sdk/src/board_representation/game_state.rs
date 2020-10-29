@@ -393,7 +393,7 @@ impl GameState {
         self.get_pieces_from_side(WHITE) | self.get_pieces_from_side(BLACK)
     }
     pub fn get_all_pieces_without_ctm_king(&self) -> u64 {
-        self.get_pieces_from_side_without_king(self.color_to_move) | self.get_pieces_from_side(1 - self.color_to_move)
+        self.get_pieces_from_side_without_king(self.color_to_move) | self.get_pieces_from_side(swap_side(self.color_to_move))
     }
     pub fn castle_white_kingside(&self) -> bool {
         self.irreversible.castle_permissions & CASTLE_WHITE_KS > 0
@@ -702,7 +702,7 @@ impl GameState {
         let mut occ_board = self.get_all_pieces();
         occ_board ^= square(mv.from as usize);
         occ_board |= square(mv.to as usize);
-        let king_position = self.get_king_square(1 - self.color_to_move);
+        let king_position = self.get_king_square(swap_side(self.color_to_move));
         let bishop_like_attack = bishop_attack(king_position, occ_board);
         let rook_like_attack = rook_attack(king_position, occ_board);
         //Check discovered check
@@ -795,7 +795,7 @@ impl GameState {
                 if self.get_all_pieces() & square(mv.to as usize) != 0u64 {
                     return false;
                 }
-            } else if self.get_piece(captured_piece.unwrap(), 1 - self.color_to_move) & square(mv.to as usize) == 0u64 {
+            } else if self.get_piece(captured_piece.unwrap(), swap_side(self.color_to_move)) & square(mv.to as usize) == 0u64 {
                 return false;
             }
         }
@@ -857,17 +857,17 @@ impl GameState {
             } else {
                 self.get_king_square(self.color_to_move)
             };
-            if bishop_attack(king_square, all_pieces) & self.get_bishop_like_bb(1 - self.color_to_move) & !cap_piece != 0u64 {
+            if bishop_attack(king_square, all_pieces) & self.get_bishop_like_bb(swap_side(self.color_to_move)) & !cap_piece != 0u64 {
                 return false;
             }
-            if rook_attack(king_square, all_pieces) & self.get_rook_like_bb(1 - self.color_to_move) & !cap_piece != 0u64 {
+            if rook_attack(king_square, all_pieces) & self.get_rook_like_bb(swap_side(self.color_to_move)) & !cap_piece != 0u64 {
                 return false;
             }
-            if KNIGHT_ATTACKS[king_square] & self.get_piece(PieceType::Knight, 1 - self.color_to_move) & !cap_piece != 0u64 {
+            if KNIGHT_ATTACKS[king_square] & self.get_piece(PieceType::Knight, swap_side(self.color_to_move)) & !cap_piece != 0u64 {
                 return false;
             }
             if (pawn_east_targets(self.color_to_move, square(king_square)) | pawn_west_targets(self.color_to_move, square(king_square)))
-                & self.get_piece(PieceType::Pawn, 1 - self.color_to_move)
+                & self.get_piece(PieceType::Pawn, swap_side(self.color_to_move))
                 & !cap_piece
                 > 0
             {

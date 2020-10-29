@@ -169,7 +169,7 @@ pub fn delta_pruning(p: &CombinedSearchParameters, stand_pat: i16) -> SearchInst
 pub fn best_move_value(state: &GameState) -> i16 {
     let mut res = 0;
     for pt in [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight].iter() {
-        if state.get_piece(*pt, 1 - state.get_color_to_move()) > 0 {
+        if state.get_piece(*pt, swap_side(state.get_color_to_move())) > 0 {
             res = PIECE_VALUES[*pt as usize];
             break;
         }
@@ -224,11 +224,11 @@ pub fn see(game_state: &GameState, mv: GameMove, exact: bool, gain: &mut Vec<i16
             //Recalculate rays
             attadef |= recalculate_sliders(&game_state, color_to_move, mv.to as usize, occ) & (!deleted_pieces);
         }
-        color_to_move = 1 - color_to_move;
+        color_to_move = swap_side(color_to_move);
         let res = least_valuable_piece(attadef, color_to_move, &game_state);
         from_set = res.0;
         attacked_piece = res.1;
-        if attacked_piece == 5 && least_valuable_piece(attadef, 1 - color_to_move, &game_state).1 != 1000 {
+        if attacked_piece == 5 && least_valuable_piece(attadef, swap_side(color_to_move), &game_state).1 != 1000 {
             break;
         }
     }

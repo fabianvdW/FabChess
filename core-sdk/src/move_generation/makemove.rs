@@ -41,7 +41,7 @@ pub fn castle_hash(old: &GameState, new: u8, hash: &mut u64) {
 }
 
 pub fn make_nullmove(g: &GameState) -> GameState {
-    let color_to_move = 1 - g.get_color_to_move();
+    let color_to_move = swap_side(g.get_color_to_move());
     let piece_bb = g.get_piece_bb_array();
     let color_bb = g.get_color_bb_array();
     let en_passant = 0u64;

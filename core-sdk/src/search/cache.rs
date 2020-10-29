@@ -1,4 +1,4 @@
-use crate::board_representation::game_state::{GameMove, GameMoveType, GameState, PieceType, PIECE_TYPES};
+use crate::board_representation::game_state::{swap_side, GameMove, GameMoveType, GameState, PieceType, PIECE_TYPES};
 use crate::search::{CombinedSearchParameters, SearchInstruction, MATED_IN_MAX};
 use std::cell::UnsafeCell;
 
@@ -390,7 +390,7 @@ impl CacheEntry {
         let to = ((mv & 0x03F0) >> 4) as u8;
         let to_board = 1u64 << to;
         let color_to_move = game_state.get_color_to_move();
-        let enemy_color = 1 - color_to_move;
+        let enemy_color = swap_side(color_to_move);
         let mut piece_type = PieceType::Pawn;
         for pt in PIECE_TYPES.iter() {
             if game_state.get_piece(*pt, color_to_move) & from_board > 0 {
