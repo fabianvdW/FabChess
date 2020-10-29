@@ -1,4 +1,4 @@
-use core_sdk::board_representation::game_state::{GameMove, GameMoveType, GameState, WHITE};
+use core_sdk::board_representation::game_state::{swap_side, GameMove, GameMoveType, GameState, WHITE};
 use core_sdk::evaluation::eval_game_state;
 use core_sdk::move_generation::makemove::make_move;
 use core_sdk::move_generation::movegen::{self, AdditionalGameStateInformation, MoveList};
@@ -37,7 +37,7 @@ fn main() {
 
     for position in positions {
         let mut other = position.game_state.clone();
-        other.set_color_to_move(1 - other.get_color_to_move());
+        other.set_color_to_move(swap_side(other.get_color_to_move()));
         let (score, state) = stripped_q_search(
             -16000,
             16000,

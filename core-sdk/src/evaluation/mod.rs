@@ -278,6 +278,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
         g,
         &mut res,
         phase,
+        (pawns_w, pawns_b),
         #[cfg(feature = "tuning")]
         &mut result.trace,
     );
@@ -322,7 +323,7 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
     false
 }
 
-pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #[cfg(feature = "tuning")] trace: &mut LargeTrace) {
+pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, pawn_eval: (EvaluationScore, EvaluationScore), #[cfg(feature = "tuning")] trace: &mut LargeTrace) {
     let score = res.interpolate(phase);
     let side_ahead = if score >= 0 { WHITE } else { BLACK };
     let side_losing = swap_side(side_ahead);
@@ -330,7 +331,11 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #
     if winning_pawns <= 1 {
         let losing_minors = (g.get_piece(PieceType::Bishop, side_losing) | g.get_piece(PieceType::Knight, side_losing)).count_ones() as usize;
         let score = score.abs();
-        let winnable_ahead = score.abs() >= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1;
+        let knight_value = KNIGHT_PIECE_VALUE.1;
+        let pawn_value = PAWN_PIECE_VALUE.1;
+        let pawn_evaluation = if side_ahead == WHITE { pawn_eval.0 } else { pawn_eval.1 }.1.max(0);
+        let threshold = knight_value + (1.5f64 * pawn_value as f64) as i16;
+        let winnable_ahead = score.abs() >= threshold;
 
         if !winnable_ahead && (winning_pawns == 0) {
             let factor = SLIGHTLY_WINNING_NO_PAWN;
@@ -339,7 +344,7 @@ pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, #
             {
                 trace.slightly_winning_no_pawn = true;
             }
-        } else if !winnable_ahead && losing_minors >= 1 && score.abs() + KNIGHT_PIECE_VALUE.1 - PAWN_PIECE_VALUE.1 <= KNIGHT_PIECE_VALUE.1 + PAWN_PIECE_VALUE.1 {
+        } else if !winnable_ahead && losing_minors >= 1 && score.abs() + knight_value - pawn_value - pawn_evaluation <= threshold {
             let factor = SLIGHTLY_WINNING_ENEMY_CAN_SAC;
             *res = EvaluationScore(res.0, (res.1 as f64 * factor) as i16);
             #[cfg(feature = "tuning")]
