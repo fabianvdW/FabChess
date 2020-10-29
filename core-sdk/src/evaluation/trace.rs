@@ -1,4 +1,5 @@
 use crate::board_representation::game_state::{BLACK, WHITE};
+use crate::evaluation::parameters::normal_parameters::NORMAL_PARAMS;
 use crate::evaluation::parameters::{special_parameters::*, *};
 use std::collections::HashMap;
 
@@ -12,8 +13,9 @@ pub const fn trace_count(side: usize) -> i8 {
     }
 }
 pub struct CollapsedTrace {
+    pub base_eval: (f64, f64),
     pub phase: f32,
-    pub normal_coeffs: Vec<TraceEntry>,
+    pub normal_tunable_coeffs: Vec<TraceEntry>,
     pub knights: i8,
     pub attackers: [u8; 2],
     pub knight_attacked_sq: [u8; 2],
@@ -33,8 +35,8 @@ impl CollapsedTrace {
         if self.is_guaranteed_draw {
             return 0.;
         }
-        let mut res = (0., 0.);
-        for entry in self.normal_coeffs.iter() {
+        let mut res = self.base_eval;
+        for entry in self.normal_tunable_coeffs.iter() {
             res.0 += params.normal[0][entry.0 as usize] * f64::from(entry.1);
             res.1 += params.normal[1][entry.0 as usize] * f64::from(entry.1);
         }
@@ -138,17 +140,24 @@ impl LargeTrace {
             slightly_winning_enemy_can_sac: false,
         }
     }
-    pub fn collapse(mut self) -> CollapsedTrace {
+    pub fn collapse(mut self, tunable_params: &[bool; NORMAL_PARAMS], params: &Parameters) -> CollapsedTrace {
         self.normal_coeffs.retain(|_, value| *value != 0);
-        let mut entries = Vec::with_capacity(self.normal_coeffs.len());
+        let mut base_eval = (0., 0.);
+        let mut entries = Vec::with_capacity(16);
         for (&key, &value) in self.normal_coeffs.iter() {
             if value != 0 {
-                entries.push(TraceEntry(key, value));
+                if tunable_params[key as usize] {
+                    entries.push(TraceEntry(key, value));
+                } else {
+                    base_eval.0 += params.normal[0][key as usize] * f64::from(value);
+                    base_eval.1 += params.normal[1][key as usize] * f64::from(value);
+                }
             }
         }
         CollapsedTrace {
+            base_eval,
             phase: self.phase,
-            normal_coeffs: entries,
+            normal_tunable_coeffs: entries,
             knights: self.knights,
             attackers: self.attackers,
             knight_attacked_sq: self.knight_attacked_sq,
@@ -177,6 +186,8 @@ mod tests {
     use crate::board_representation::game_state::GameState;
     #[cfg(feature = "tuning")]
     use crate::evaluation::eval_game_state;
+    #[cfg(feature = "tuning")]
+    use crate::evaluation::parameters::normal_parameters::NORMAL_PARAMS;
 
     #[test]
     #[ignore]
@@ -290,10 +301,11 @@ r3k2r/1pqb2p1/p4p2/P2npP2/2pB2Bp/2P4P/2P1Q1P1/R4RK1 w kq - 0 21
 
             let params = Parameters::default();
             let new_linesplit = positions.split("\n").collect::<Vec<&str>>();
+            let tunable = [true; NORMAL_PARAMS];
             for line in new_linesplit {
                 let position = GameState::from_fen(line);
                 let evaluation = eval_game_state(&position);
-                let trace_eval = evaluation.trace.collapse().evaluate(&params) as i16;
+                let trace_eval = evaluation.trace.collapse(&tunable, &params).evaluate(&params) as i16;
                 //Rounding erros can make up for max 2 error (only 2 place where rounding can make a difference )
                 if (evaluation.final_eval - trace_eval).abs() > 1 {
                     println!("{}", position.to_fen());

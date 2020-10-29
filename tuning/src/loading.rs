@@ -1,4 +1,5 @@
 use super::TexelState;
+use crate::TUNABLE_PARAM;
 use core_sdk::evaluation::parameters::Parameters;
 use core_sdk::{board_representation::game_state::GameState, evaluation::eval_game_state};
 use std::fmt::{Display, Formatter, Result};
@@ -104,9 +105,7 @@ impl PositionLoader {
             if line.is_empty() {
                 return None;
             }
-            let split = line.split(' ').collect::<Vec<&str>>();
-            let result = split[split.len() - 1];
-            let fen = split[..split.len() - 1].join(" ").to_string();
+            let (fen, result) = line.rsplit_once(' ').unwrap();
             let game_result = if result.contains("1.0") || result.contains("1-0") {
                 1.0
             } else if result.contains("0.5") || result.contains("1/2-1/2") {
@@ -114,7 +113,7 @@ impl PositionLoader {
             } else {
                 0.0
             };
-            let state = GameState::from_fen(&fen);
+            let state = GameState::from_fen(fen);
             return Some(LabelledGameState {
                 game_state: state,
                 label: game_result,
@@ -128,7 +127,7 @@ impl PositionLoader {
         if state.is_some() {
             let state = state.unwrap();
             let eval = eval_game_state(&state.game_state);
-            let trace = eval.trace.collapse();
+            let trace = eval.trace.collapse(&TUNABLE_PARAM, &self.parameter);
             let eval = trace.evaluate(&self.parameter);
             return Some(TexelState { label: state.label, eval, trace });
         }
