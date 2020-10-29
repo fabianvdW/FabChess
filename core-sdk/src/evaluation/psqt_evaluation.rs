@@ -31,7 +31,7 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trac
 
             #[cfg(feature = "tuning")]
             {
-                trace.normal_coeffs[IDX_PSQT + 64 * pt as usize + white_pov(idx, side)] += if side == WHITE { 1 } else { -1 };
+                trace.add(IDX_PSQT + 64 * pt as usize + white_pov(idx, side), if side == WHITE { 1 } else { -1 });
             }
         }
         res += piece_sum;
@@ -53,10 +53,10 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trac
                 king_piece_sum += KING_PIECE_TABLE[side][game_state.get_king_square(side)][piece_side][piece_type as usize][idx] * if side == WHITE { 1 } else { -1 };
                 #[cfg(feature = "tuning")]
                 {
-                    trace.normal_coeffs[IDX_KING_PIECE_TABLE
-                        + 64 * 64 * (5 * piece_side + piece_type as usize)
-                        + 64 * white_pov(game_state.get_king_square(side), side)
-                        + white_pov(idx, side)] += if side == WHITE { 1 } else { -1 };
+                    trace.add(
+                        IDX_KING_PIECE_TABLE + 64 * 64 * (5 * piece_side + piece_type as usize) + 64 * white_pov(game_state.get_king_square(side), side) + white_pov(idx, side),
+                        if side == WHITE { 1 } else { -1 },
+                    );
                 }
             }
             res += king_piece_sum;

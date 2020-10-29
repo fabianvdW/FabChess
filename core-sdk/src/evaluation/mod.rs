@@ -127,7 +127,7 @@ pub fn eval_game_state(g: &GameState) -> EvaluationResult {
     }
     #[cfg(feature = "tuning")]
     {
-        result.trace.normal_coeffs[IDX_TEMPO_BONUS] = trace_count(g.get_color_to_move());
+        result.trace.add(IDX_TEMPO_BONUS, trace_count(g.get_color_to_move()));
     }
 
     //Initialize all attacks
@@ -360,7 +360,7 @@ pub fn knights(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     res += KNIGHT_SUPPORTED_BY_PAWN * supported_knights_amount;
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_KNIGHT_SUPPORTED] += supported_knights_amount as i8 * trace_count(side);
+        trace.add(IDX_KNIGHT_SUPPORTED, supported_knights_amount as i8 * trace_count(side));
     }
     let mut outpost = EvaluationScore::default();
     let mut _outposts = 0;
@@ -375,7 +375,7 @@ pub fn knights(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
             outpost += KNIGHT_OUTPOST_TABLE[side][idx];
             #[cfg(feature = "tuning")]
             {
-                trace.normal_coeffs[IDX_KNIGHT_OUTPOST_TABLE + white_pov(idx, side)] += trace_count(side);
+                trace.add(IDX_KNIGHT_OUTPOST_TABLE + white_pov(idx, side), trace_count(side));
             }
         }
     }
@@ -430,7 +430,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
         }
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_KNIGHT_MOBILITY + mobility] += trace_count(side);
+            trace.add(IDX_KNIGHT_MOBILITY + mobility, trace_count(side));
             trace.knight_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 trace.knight_safe_check[side] += 1;
@@ -464,8 +464,8 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
         }
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_DIAGONALLY_ADJ_SQ_WPAWNS + diagonally_adjacent_pawns] += trace_count(side);
-            trace.normal_coeffs[IDX_BISHOP_MOBILITY + mobility] += trace_count(side);
+            trace.add(IDX_DIAGONALLY_ADJ_SQ_WPAWNS + diagonally_adjacent_pawns, trace_count(side));
+            trace.add(IDX_BISHOP_MOBILITY + mobility, trace_count(side));
             trace.bishop_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 trace.bishop_safe_check[side] += 1;
@@ -506,7 +506,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
         }
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_ROOK_MOBILITY + mobility] += trace_count(side);
+            trace.add(IDX_ROOK_MOBILITY + mobility, trace_count(side));
             trace.rook_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 trace.rook_safe_check[side] += 1;
@@ -550,7 +550,7 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
 
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_QUEEN_MOBILITY + mobility] += trace_count(side);
+            trace.add(IDX_QUEEN_MOBILITY + mobility, trace_count(side));
             trace.queen_attacked_sq[side] += enemy_king_attacks.count_ones() as u8;
             if has_safe_check {
                 trace.queen_safe_check[side] += 1;
@@ -560,11 +560,11 @@ pub fn piecewise(side: usize, g: &GameState, enemy_defend_by_minors: u64, enemy_
     }
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_ROOK_ON_OPEN] += rooks_onopen as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_ROOK_ON_SEMI_OPEN] += rooks_on_semi_open as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_ROOK_ON_SEVENTH] += rooks_onseventh as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_QUEEN_ON_OPEN] += queens_onopen as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_QUEEN_ON_SEMI_OPEN] += queens_on_semi_open as i8 * trace_count(side);
+        trace.add(IDX_ROOK_ON_OPEN, rooks_onopen as i8 * trace_count(side));
+        trace.add(IDX_ROOK_ON_SEMI_OPEN, rooks_on_semi_open as i8 * trace_count(side));
+        trace.add(IDX_ROOK_ON_SEVENTH, rooks_onseventh as i8 * trace_count(side));
+        trace.add(IDX_QUEEN_ON_OPEN, queens_onopen as i8 * trace_count(side));
+        trace.add(IDX_QUEEN_ON_SEMI_OPEN, queens_on_semi_open as i8 * trace_count(side));
     }
 
     let attack_mg = ((SAFETY_TABLE[(knight_attacker_values.0 + bishop_attacker_values.0 + rook_attacker_values.0 + queen_attacker_values.0).min(99) as usize].0 as isize
@@ -660,8 +660,8 @@ pub fn king(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mut L
     }
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_SHIELDING_PAWN_MISSING + shields_missing] += trace_count(side);
-        trace.normal_coeffs[IDX_SHIELDING_PAWN_ONOPEN_MISSING + shields_on_open_missing] += trace_count(side);
+        trace.add(IDX_SHIELDING_PAWN_MISSING + shields_missing, trace_count(side));
+        trace.add(IDX_SHIELDING_PAWN_ONOPEN_MISSING + shields_on_open_missing, trace_count(side));
     }
     #[allow(clippy::let_and_return)]
     let res = SHIELDING_PAWN_MISSING[shields_missing] + SHIELDING_PAWN_MISSING_ON_OPEN_FILE[shields_on_open_missing];
@@ -715,7 +715,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
         supp += PAWN_SUPPORTED_VALUE[side][index];
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_PAWN_SUPPORTED + white_pov(index, side)] += trace_count(side);
+            trace.add(IDX_PAWN_SUPPORTED + white_pov(index, side), trace_count(side));
         }
     }
     res += supp;
@@ -730,11 +730,11 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
 
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_PAWN_DOUBLED] += doubled_pawns as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_PAWN_ISOLATED] += isolated_pawns as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_PAWN_BACKWARD] += backward_pawns as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_PAWN_ATTACK_CENTER] += center_attack_pawns as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_PAWN_MOBILITY] += pawn_mobility as i8 * trace_count(side);
+        trace.add(IDX_PAWN_DOUBLED, doubled_pawns as i8 * trace_count(side));
+        trace.add(IDX_PAWN_ISOLATED, isolated_pawns as i8 * trace_count(side));
+        trace.add(IDX_PAWN_BACKWARD, backward_pawns as i8 * trace_count(side));
+        trace.add(IDX_PAWN_ATTACK_CENTER, center_attack_pawns as i8 * trace_count(side));
+        trace.add(IDX_PAWN_MOBILITY, pawn_mobility as i8 * trace_count(side));
     }
     //Passers
     let mut passed_pawns: u64 = pawns & !enemy_front_spans;
@@ -747,8 +747,8 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
     res += ROOK_BEHIND_SUPPORT_PASSER * rooks_support_passer + ROOK_BEHIND_ENEMY_PASSER * enemy_rooks_attack_passer;
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_ROOK_BEHIND_SUPPORT_PASSER] += rooks_support_passer as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_ROOK_BEHIND_ENEMY_PASSER] += enemy_rooks_attack_passer as i8 * trace_count(side);
+        trace.add(IDX_ROOK_BEHIND_SUPPORT_PASSER, rooks_support_passer as i8 * trace_count(side));
+        trace.add(IDX_ROOK_BEHIND_ENEMY_PASSER, enemy_rooks_attack_passer as i8 * trace_count(side));
     }
     while passed_pawns != 0u64 {
         let idx = passed_pawns.trailing_zeros() as usize;
@@ -757,7 +757,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
         passer_score += PAWN_PASSED_VALUES[relative_rank(side, idx)];
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_PAWN_PASSED + relative_rank(side, idx)] += trace_count(side);
+            trace.add(IDX_PAWN_PASSED + relative_rank(side, idx), trace_count(side));
         }
         //A weak passer is an attacked and not defended passer
         let weak_passer = square(idx) & enemy_defended != 0u64 && square(idx) & defended == 0u64;
@@ -772,7 +772,7 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
             passer_score += PAWN_PASSED_NOT_BLOCKED_VALUES[relative_rank(side, idx)];
             #[cfg(feature = "tuning")]
             {
-                trace.normal_coeffs[IDX_PAWN_PASSED_NOTBLOCKED + relative_rank(side, idx)] += trace_count(side);
+                trace.add(IDX_PAWN_PASSED_NOTBLOCKED + relative_rank(side, idx), trace_count(side));
             }
         }
 
@@ -783,15 +783,15 @@ pub fn pawns(side: usize, g: &GameState, defended: u64, enemy_defended: u64, #[c
         passer_dist += PASSED_KING_DISTANCE[d_myking - 1] + PASSED_ENEMY_KING_DISTANCE[d_enemyking - 1] + PASSED_SUBTRACT_DISTANCE[sub_dist];
         #[cfg(feature = "tuning")]
         {
-            trace.normal_coeffs[IDX_PAWN_PASSED_KINGDISTANCE + d_myking - 1] += trace_count(side);
-            trace.normal_coeffs[IDX_PAWN_PASSED_ENEMYKINGDISTANCE + d_enemyking - 1] += trace_count(side);
-            trace.normal_coeffs[IDX_PAWN_PASSED_SUBDISTANCE + sub_dist] += trace_count(side);
+            trace.add(IDX_PAWN_PASSED_KINGDISTANCE + d_myking - 1, trace_count(side));
+            trace.add(IDX_PAWN_PASSED_ENEMYKINGDISTANCE + d_enemyking - 1, trace_count(side));
+            trace.add(IDX_PAWN_PASSED_SUBDISTANCE + sub_dist, trace_count(side));
         }
         passed_pawns ^= square(idx);
     }
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_PAWN_PASSED_WEAK] += weak_passers as i8 * trace_count(side);
+        trace.add(IDX_PAWN_PASSED_WEAK, weak_passers as i8 * trace_count(side));
     }
     res += passer_score + PAWN_PASSED_WEAK * weak_passers + passer_dist;
     #[cfg(feature = "display-eval")]
@@ -837,16 +837,16 @@ pub fn piece_values(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace
 
     #[cfg(feature = "tuning")]
     {
-        trace.normal_coeffs[IDX_PAWN_PIECE_VALUE] += my_pawns as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_KNIGHT_VALUE_WITH_PAWN + all_pawns] += my_knights as i8 * trace_count(side);
+        trace.add(IDX_PAWN_PIECE_VALUE, my_pawns as i8 * trace_count(side));
+        trace.add(IDX_KNIGHT_VALUE_WITH_PAWN + all_pawns, my_knights as i8 * trace_count(side));
         trace.knights += my_knights as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_KNIGHT_PIECE_VALUE] += my_knights as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_BISHOP_PIECE_VALUE] += my_bishops as i8 * trace_count(side);
+        trace.add(IDX_KNIGHT_PIECE_VALUE, my_knights as i8 * trace_count(side));
+        trace.add(IDX_BISHOP_PIECE_VALUE, my_bishops as i8 * trace_count(side));
         if my_bishops > 1 {
-            trace.normal_coeffs[IDX_BISHOP_PAIR] += trace_count(side);
+            trace.add(IDX_BISHOP_PAIR, trace_count(side));
         }
-        trace.normal_coeffs[IDX_ROOK_PIECE_VALUE] += my_rooks as i8 * trace_count(side);
-        trace.normal_coeffs[IDX_QUEEN_PIECE_VALUE] += my_queens as i8 * trace_count(side);
+        trace.add(IDX_ROOK_PIECE_VALUE, my_rooks as i8 * trace_count(side));
+        trace.add(IDX_QUEEN_PIECE_VALUE, my_queens as i8 * trace_count(side));
     }
     #[cfg(feature = "display-eval")]
     {

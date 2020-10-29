@@ -222,7 +222,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
         let start_of_gradient = (pos.label as f64 - s) * s * (1. - s);
         let devaldmg = pos.trace.phase as f64 / 128.0;
         let devaldeg = 1. - pos.trace.phase as f64 / 128.0;
-        for entry in pos.trace.entries.iter() {
+        for entry in pos.trace.normal_coeffs.iter() {
             if TUNABLE_PARAM[entry.0 as usize] {
                 gradient.normal[0][entry.0 as usize] += start_of_gradient * devaldmg * f64::from(entry.1);
                 gradient.normal[1][entry.0 as usize] += start_of_gradient * devaldeg * f64::from(entry.1);
