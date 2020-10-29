@@ -100,7 +100,7 @@ pub fn get_pgn_string(metadata: &PGNMetadata, moves: Vec<GameMove>, opening_comm
         if current_color == BLACK && index < moves.len() - 1 {
             move_text.push_str(&format!("{}. ", start_pos.get_full_moves()));
         }
-        current_color = 1 - current_color;
+        current_color = swap_side(current_color);
     }
     move_text.push_str(if metadata.result.is_some() { metadata.result.as_ref().unwrap() } else { "*" });
     let contents: Vec<&str> = move_text.split_whitespace().collect();
