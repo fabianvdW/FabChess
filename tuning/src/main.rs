@@ -14,12 +14,12 @@ pub fn main() {
 pub fn actual_main() {
     //Step 1. Load all positions from a file. Those positions should already be the q-searched positions.
     let mut positions: Vec<TexelState> = Vec::with_capacity(10000000);
-    //tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.33-1M-D12-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
-    //println!("Loaded file with {} positions!", positions.len());
-    //tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.41-1M-D12-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
-    //println!("Loaded file with {} positions!", positions.len());
-    //tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.46FRC-1250k-D12-1s-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
-    //println!("Loaded file with {} positions!", positions.len());
+    tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.33-1M-D12-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
+    println!("Loaded file with {} positions!", positions.len());
+    tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.41-1M-D12-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
+    println!("Loaded file with {} positions!", positions.len());
+    tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.46FRC-1250k-D12-1s-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
+    println!("Loaded file with {} positions!", positions.len());
     tuning::loading::PositionLoader::new("D:/FenCollection/Andrews/E12.52-1M-D12-Resolved.epd", FileFormatSupported::EPD).load_texel_positions(&mut positions);
     println!("Loaded file with {} positions!", positions.len());
     let mut tuner = Tuner {
