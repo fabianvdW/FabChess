@@ -1,3 +1,4 @@
+#![feature(str_split_once)]
 extern crate core;
 extern crate rand;
 
@@ -30,13 +31,13 @@ pub const TUNE_MOBILITY: bool = false;
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_ATTACK_INDEX: bool = false;
 pub const TUNE_KP_TABLE: bool = true;
-pub const TUNE_KP: [[bool; 5]; 2] = [[true, false, false, false, false], [false, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
+pub const TUNE_KP: [[bool; 5]; 2] = [[true, false, false, false, false], [true, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
 pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 20000000;
+pub const BATCH_SIZE: usize = 1_000_000;
 pub const START_LEARNING_RATE: f64 = 2.;
 pub const L1_REGULARIZATION: f64 = 0.;
 pub const L2_REGULARIZATION: f64 = 0.;
@@ -222,11 +223,10 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
         let start_of_gradient = (pos.label as f64 - s) * s * (1. - s);
         let devaldmg = pos.trace.phase as f64 / 128.0;
         let devaldeg = 1. - pos.trace.phase as f64 / 128.0;
-        for entry in pos.trace.entries.iter() {
-            if TUNABLE_PARAM[entry.0 as usize] {
-                gradient.normal[0][entry.0 as usize] += start_of_gradient * devaldmg * f64::from(entry.1);
-                gradient.normal[1][entry.0 as usize] += start_of_gradient * devaldeg * f64::from(entry.1);
-            }
+        for entry in pos.trace.normal_tunable_coeffs.iter() {
+            //All entries left in the trace are tunable, others are collapsed.
+            gradient.normal[0][entry.0 as usize] += start_of_gradient * devaldmg * f64::from(entry.1);
+            gradient.normal[1][entry.0 as usize] += start_of_gradient * devaldeg * f64::from(entry.1);
         }
         //Safety
         if TUNE_ATTACK {
