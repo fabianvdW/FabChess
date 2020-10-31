@@ -14,31 +14,31 @@ pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/20M";
 //Override for all others if true
 pub const TUNE_ALL: bool = false;
 
-pub const TUNE_TEMPO_BONUS: bool = false;
-pub const TUNE_SHIELDING_PAWNS: bool = false;
-pub const TUNE_PAWNS: bool = false;
+pub const TUNE_TEMPO_BONUS: bool = true;
+pub const TUNE_SHIELDING_PAWNS: bool = true;
+pub const TUNE_PAWNS: bool = true;
 //Category passed pawns
-pub const TUNE_PASSED: bool = false;
-pub const TUNE_PASSED_PAWN: bool = false;
-pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
+pub const TUNE_PASSED: bool = true;
+pub const TUNE_PASSED_PAWN: bool = true;
+pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = true;
 
-pub const TUNE_KNIGHTS: bool = false;
-pub const TUNE_FILES: bool = false;
+pub const TUNE_KNIGHTS: bool = true;
+pub const TUNE_FILES: bool = true;
 
-pub const TUNE_PIECE_VALUES: bool = false;
-pub const TUNE_MOBILITY: bool = false;
+pub const TUNE_PIECE_VALUES: bool = true;
+pub const TUNE_MOBILITY: bool = true;
 
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_ATTACK_INDEX: bool = false;
-pub const TUNE_KP_TABLE: bool = true;
-pub const TUNE_KP: [[bool; 5]; 2] = [[true, false, false, false, false], [true, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
-pub const TUNE_PSQT: bool = false;
+pub const TUNE_KP_TABLE: bool = false;
+pub const TUNE_KP: [[bool; 5]; 2] = [[false, false, false, false, false], [false, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
+pub const TUNE_PSQT: bool = true;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
-pub const BATCH_SIZE: usize = 1_000_000;
-pub const START_LEARNING_RATE: f64 = 2.;
+pub const BATCH_SIZE: usize = 5_000_000;
+pub const START_LEARNING_RATE: f64 = 0.5;
 pub const L1_REGULARIZATION: f64 = 0.;
 pub const L2_REGULARIZATION: f64 = 0.;
 pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
