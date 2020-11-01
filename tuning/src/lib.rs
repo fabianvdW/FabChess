@@ -9,6 +9,9 @@ use core_sdk::board_representation::game_state::{BLACK, WHITE};
 pub use core_sdk::evaluation::parameters::{normal_parameters::*, special_parameters::*, *};
 use core_sdk::evaluation::trace::CollapsedTrace;
 use rand::{seq::SliceRandom, thread_rng};
+use std::cell::UnsafeCell;
+use std::sync::Arc;
+use std::thread;
 
 pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/20M";
 //Override for all others if true
@@ -185,6 +188,13 @@ pub struct Tuner {
     pub positions: Vec<TexelState>,
     pub params: Parameters,
 }
+pub struct TunerWrapper(UnsafeCell<Tuner>);
+impl TunerWrapper {
+    pub unsafe fn get(&self) -> &mut Tuner {
+        self.0.get().as_mut().unwrap()
+    }
+}
+unsafe impl std::marker::Sync for TunerWrapper {}
 
 pub fn update_evaluations(tuner: &mut Tuner) {
     for pos in tuner.positions.iter_mut() {
@@ -406,8 +416,9 @@ pub fn dsafetytabledconstant(tuner: &Tuner, phase: usize, other: f64, relevant_f
     (safety_table_inc - safety_table_dec) / 2.
 }
 
-pub fn texel_tuning(tuner: &mut Tuner) {
-    let mut best_error = average_evaluation_error(&tuner);
+pub unsafe fn texel_tuning(tuner: Tuner, threads: usize) {
+    let tuner = Arc::new(TunerWrapper(UnsafeCell::new(tuner)));
+    let mut best_error = average_evaluation_error(tuner.get());
     println!("Error in epoch 0: {}", best_error);
     let mut epoch = 0;
     let lr = START_LEARNING_RATE;
@@ -416,37 +427,50 @@ pub fn texel_tuning(tuner: &mut Tuner) {
     loop {
         epoch += 1;
         println!("Starting epoch {}!", epoch);
-        shuffle_positions(tuner);
+        shuffle_positions(tuner.get());
         let mut ada_add = Parameters::zero();
-        for batch in 0..=(tuner.positions.len() - 1) / BATCH_SIZE {
+        for batch in 0..=(tuner.get().positions.len() - 1) / BATCH_SIZE {
             let from = batch * BATCH_SIZE;
-            let mut to = (batch + 1) * BATCH_SIZE;
-            if to > tuner.positions.len() {
-                to = tuner.positions.len();
-            }
-            let mut gradient = calculate_gradient(tuner, from, to);
+            let to = ((batch + 1) * BATCH_SIZE).min(tuner.get().positions.len());
+	
+			let mut thread_handles = vec![];
+			for i in 0..threads {
+				let tuner = Arc::clone(&tuner);
+				let pos_per_thread = ((to - from) as f64 / threads as f64).ceil() as usize;
+				let (from, to) = (from + i * pos_per_thread, (from + (i + 1) * pos_per_thread).min(to));
+				thread_handles.push(
+					thread::Builder::new()
+						.stack_size(12 * 1024 * 1024)
+						.spawn(move || calculate_gradient(tuner.get(), from, to))
+						.expect("Could not spawn thread!"),
+				);
+			}
+			let mut gradient = Parameters::zero();
+			for handle in thread_handles.into_iter() {
+				gradient.add(&handle.join().unwrap(), 1./threads as f64);
+			}
             ada_add.add(&gradient, 1.);
 
             let mut ada_lr = adagrad.clone();
             ada_lr.add_scalar(1e-6);
             ada_lr.sqrt();
             gradient.mul_inverse_other(&ada_lr);
-            tuner.params.add(&gradient, lr);
+            tuner.get().params.add(&gradient, lr);
         }
         ada_add.square();
         adagrad.add(&ada_add, 1.);
 
-        update_evaluations(tuner);
-        let error = average_evaluation_error(tuner);
+        update_evaluations(tuner.get());
+        let error = average_evaluation_error(tuner.get());
         println!("Error in epoch {}: {}", epoch, error);
         if error < best_error {
             best_error = error;
-            tuner.params.write_to_file(&format!("{}tunebest.txt", PARAM_FILE));
+            tuner.get().params.write_to_file(&format!("{}tunebest.txt", PARAM_FILE));
             println!("Saved new best params in tunebest.txt");
         }
         //Save progress
         if (epoch + 1) % 10 == 0 {
-            tuner.params.write_to_file(&format!("{}tune{}.txt", PARAM_FILE, epoch + 1));
+            tuner.get().params.write_to_file(&format!("{}tune{}.txt", PARAM_FILE, epoch + 1));
             println!("Saved general progress params in tune.txt");
         }
     }
