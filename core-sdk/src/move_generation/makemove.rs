@@ -138,6 +138,9 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         //If promotion, add promotion piece
         add_piece(&mut piece_bb, &mut color_bb, promo, to, color, &mut hash, &mut psqt);
         phase.add_piece(promo);
+        if promo == PieceType::Rook {
+            kp_add_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Rook, to, &mut psqt);
+        }
     } else {
         //Add piece again at to
         add_piece(&mut piece_bb, &mut color_bb, mv.piece_type, to, color, &mut hash, &mut psqt);

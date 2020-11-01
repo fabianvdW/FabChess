@@ -45,11 +45,8 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trac
     //KP table
     for piece_side in 0..2 {
         for &piece_type in [PieceType::Pawn, PieceType::Rook].iter() {
-            if piece_type == PieceType::Rook && piece_side != 1 {
-                continue;
-            }
             let mut king_piece_sum = EvaluationScore::default();
-            let mut piece = game_state.get_piece(PieceType::Pawn, side ^ piece_side);
+            let mut piece = game_state.get_piece(piece_type, side ^ piece_side);
             while piece > 0 {
                 let idx = piece.trailing_zeros() as usize;
                 piece ^= square(idx);
