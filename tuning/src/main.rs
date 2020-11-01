@@ -26,7 +26,6 @@ pub fn actual_main(threads: usize) {
         "D:/FenCollection/Andrews/E12.46FRC-1250k-D12-1s-Resolved.epd",
         "D:/FenCollection/Andrews/E12.52-1M-D12-Resolved.epd",
     ];
-    let position_files = ["D:/FenCollection/Andrews/a.epd"];
     let now = Instant::now();
     let mut positions = Vec::with_capacity(1);
     let mut thread_handles = Vec::with_capacity(threads);

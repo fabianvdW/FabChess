@@ -41,7 +41,7 @@ pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
 pub const BATCH_SIZE: usize = 5_000_000;
-pub const START_LEARNING_RATE: f64 = 2.;
+pub const START_LEARNING_RATE: f64 = 20.;
 pub const L1_REGULARIZATION: f64 = 0.;
 pub const L2_REGULARIZATION: f64 = 0.;
 pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {

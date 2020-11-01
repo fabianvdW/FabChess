@@ -90,6 +90,7 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             to,
             g.get_piece(PieceType::Pawn, color),
             g.get_piece(PieceType::Pawn, swap_side(color)),
+            g.get_piece(PieceType::Rook, swap_side(color)),
             color,
             &mut psqt,
         );
@@ -101,6 +102,10 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
         //Move pawn for our king
         kp_remove_piece(color, our_king_square, true, PieceType::Pawn, from, &mut psqt);
         kp_add_piece(color, our_king_square, true, PieceType::Pawn, to, &mut psqt);
+    } else if mv.piece_type == PieceType::Rook {
+        //Move rook for enemy king
+        kp_remove_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Rook, from, &mut psqt);
+        kp_add_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Rook, to, &mut psqt);
     }
     remove_piece(&mut piece_bb, &mut color_bb, mv.piece_type, from, color, &mut hash, &mut psqt);
     //Delete piece if capture
@@ -113,14 +118,22 @@ pub fn make_move(g: &GameState, mv: GameMove) -> GameState {
             kp_remove_piece(color, our_king_square, false, PieceType::Pawn, square as usize, &mut psqt);
             //Remove piece for enemy king
             kp_remove_piece(swap_side(color), g.get_king_square(swap_side(color)), true, PieceType::Pawn, square as usize, &mut psqt);
+        } else if piece == PieceType::Rook {
+            //Remove enemy rook for our king
+            kp_remove_piece(color, our_king_square, false, PieceType::Rook, square as usize, &mut psqt);
         }
     }
     //Move rook for castling
     if let GameMoveType::Castle = mv.move_type {
         add_piece(&mut piece_bb, &mut color_bb, mv.piece_type, to, color, &mut hash, &mut psqt);
         let (rook_from, rook_to) = rook_castling(to);
+
         remove_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_from, color, &mut hash, &mut psqt);
         add_piece(&mut piece_bb, &mut color_bb, PieceType::Rook, rook_to, color, &mut hash, &mut psqt);
+        //Also move rook for kp tables
+        //Move our rook for the enemy king
+        kp_remove_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Rook, rook_from, &mut psqt);
+        kp_add_piece(swap_side(color), g.get_king_square(swap_side(color)), false, PieceType::Rook, rook_to, &mut psqt);
     } else if let GameMoveType::Promotion(promo, _) = mv.move_type {
         //If promotion, add promotion piece
         add_piece(&mut piece_bb, &mut color_bb, promo, to, color, &mut hash, &mut psqt);
