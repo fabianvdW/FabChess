@@ -26,12 +26,13 @@ pub fn actual_main(threads: usize) {
         "D:/FenCollection/Andrews/E12.46FRC-1250k-D12-1s-Resolved.epd",
         "D:/FenCollection/Andrews/E12.52-1M-D12-Resolved.epd",
     ];
+    let position_files = ["D:/FenCollection/Andrews/a.epd"];
     let now = Instant::now();
     let mut positions = Vec::with_capacity(1);
     let mut thread_handles = Vec::with_capacity(threads);
     for i in 0..threads {
         let pos_per_thread = (position_files.len() as f64 / threads as f64).ceil() as usize;
-        let my_pos = (i * pos_per_thread, (i + 1) * pos_per_thread.min(position_files.len()));
+        let my_pos = ((i * pos_per_thread).min(position_files.len()), ((i + 1) * pos_per_thread).min(position_files.len()));
         let my_pos = position_files[my_pos.0..my_pos.1].to_vec();
         println!("i: {}, {:?}", i, my_pos);
         thread_handles.push(

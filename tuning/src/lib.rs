@@ -17,31 +17,31 @@ pub const PARAM_FILE: &str = "D:/FenCollection/Andrews/20M";
 //Override for all others if true
 pub const TUNE_ALL: bool = false;
 
-pub const TUNE_TEMPO_BONUS: bool = true;
-pub const TUNE_SHIELDING_PAWNS: bool = true;
-pub const TUNE_PAWNS: bool = true;
+pub const TUNE_TEMPO_BONUS: bool = false;
+pub const TUNE_SHIELDING_PAWNS: bool = false;
+pub const TUNE_PAWNS: bool = false;
 //Category passed pawns
-pub const TUNE_PASSED: bool = true;
-pub const TUNE_PASSED_PAWN: bool = true;
-pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = true;
+pub const TUNE_PASSED: bool = false;
+pub const TUNE_PASSED_PAWN: bool = false;
+pub const TUNE_PASSED_PAWN_NOT_BLOCKED: bool = false;
 
-pub const TUNE_KNIGHTS: bool = true;
-pub const TUNE_FILES: bool = true;
+pub const TUNE_KNIGHTS: bool = false;
+pub const TUNE_FILES: bool = false;
 
-pub const TUNE_PIECE_VALUES: bool = true;
-pub const TUNE_MOBILITY: bool = true;
+pub const TUNE_PIECE_VALUES: bool = false;
+pub const TUNE_MOBILITY: bool = false;
 
 pub const TUNE_ATTACK: bool = false;
 pub const TUNE_ATTACK_INDEX: bool = false;
-pub const TUNE_KP_TABLE: bool = false;
-pub const TUNE_KP: [[bool; 5]; 2] = [[false, false, false, false, false], [false, false, false, false, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
-pub const TUNE_PSQT: bool = true;
+pub const TUNE_KP_TABLE: bool = true;
+pub const TUNE_KP: [[bool; 5]; 2] = [[false, false, false, false, false], [false, false, false, true, false]]; //Own: P, N, B, R, Q Enemy: P,N,B,R,Q
+pub const TUNE_PSQT: bool = false;
 
 pub const TUNABLE_PARAM: [bool; NORMAL_PARAMS] = init_tunable_param();
 
 pub const OPTIMIZE_K: bool = false;
 pub const BATCH_SIZE: usize = 5_000_000;
-pub const START_LEARNING_RATE: f64 = 0.5;
+pub const START_LEARNING_RATE: f64 = 2.;
 pub const L1_REGULARIZATION: f64 = 0.;
 pub const L2_REGULARIZATION: f64 = 0.;
 pub const fn init_tunable_param() -> [bool; NORMAL_PARAMS] {
@@ -226,7 +226,6 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
         pos.eval = pos.trace.evaluate(&tuner.params);
     }
     //let g = tuner.k * 10f64.ln() / 400.0;
-    let portion = 2. / (to - from) as f64;
     for pos in tuner.positions[from..to].iter() {
         //Step 2. Calculate first half of gradient
         let s = sigmoid(tuner.k, pos.eval);
@@ -404,8 +403,7 @@ pub fn calculate_gradient(tuner: &mut Tuner, from: usize, to: usize) -> Paramete
             }
         }
     }
-    gradient.scale(portion);
-    add_regularization(&mut gradient, &tuner.params, portion);
+    //add_regularization(&mut gradient, &tuner.params, portion);
     gradient
 }
 
@@ -432,23 +430,24 @@ pub unsafe fn texel_tuning(tuner: Tuner, threads: usize) {
         for batch in 0..=(tuner.get().positions.len() - 1) / BATCH_SIZE {
             let from = batch * BATCH_SIZE;
             let to = ((batch + 1) * BATCH_SIZE).min(tuner.get().positions.len());
-	
-			let mut thread_handles = vec![];
-			for i in 0..threads {
-				let tuner = Arc::clone(&tuner);
-				let pos_per_thread = ((to - from) as f64 / threads as f64).ceil() as usize;
-				let (from, to) = (from + i * pos_per_thread, (from + (i + 1) * pos_per_thread).min(to));
-				thread_handles.push(
-					thread::Builder::new()
-						.stack_size(12 * 1024 * 1024)
-						.spawn(move || calculate_gradient(tuner.get(), from, to))
-						.expect("Could not spawn thread!"),
-				);
-			}
-			let mut gradient = Parameters::zero();
-			for handle in thread_handles.into_iter() {
-				gradient.add(&handle.join().unwrap(), 1./threads as f64);
-			}
+
+            let mut thread_handles = vec![];
+            for i in 0..threads {
+                let tuner = Arc::clone(&tuner);
+                let pos_per_thread = ((to - from) as f64 / threads as f64).ceil() as usize;
+                let (from, to) = (from + i * pos_per_thread, (from + (i + 1) * pos_per_thread).min(to));
+                thread_handles.push(
+                    thread::Builder::new()
+                        .stack_size(12 * 1024 * 1024)
+                        .spawn(move || calculate_gradient(tuner.get(), from, to))
+                        .expect("Could not spawn thread!"),
+                );
+            }
+            let mut gradient = Parameters::zero();
+            for handle in thread_handles.into_iter() {
+                gradient.add(&handle.join().unwrap(), 1.);
+            }
+            gradient.scale(2. / ((to - from) as f64));
             ada_add.add(&gradient, 1.);
 
             let mut ada_lr = adagrad.clone();
