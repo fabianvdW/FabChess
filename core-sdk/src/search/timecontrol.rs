@@ -4,15 +4,12 @@ pub const MAX_MOVE_OVERHEAD: u64 = 20000;
 
 pub struct TimeControlInformation {
     pub stable_pv: bool,
-    pub high_score_diff: bool,
+    pub time_saved: u64,
 }
 
 impl TimeControlInformation {
     pub fn new(time_saved: u64) -> Self {
-        TimeControlInformation {
-            stable_pv: false,
-            high_score_diff: false,
-        }
+        TimeControlInformation { stable_pv: false, time_saved }
     }
 }
 
@@ -106,14 +103,13 @@ impl TimeControl {
             //Non stable pv so we increase time
             return time_spent as f64 > 1.15 * (normal_time + tc_information.time_saved) as f64;
         }
-        panic!("Invalid Timecontrol");
     }
 
     pub fn time_saved(&self, time_spent: u64, saved: u64, move_overhead: u64) -> i64 {
         match self {
             TimeControl::Incremental(_, _) | TimeControl::Tournament(_, _, _) => {
                 let (mytime, myinc, movestogo) = self.get_normal_tc_info();
-                let normal_tc = ((mytime - saved) as f64 / movestogo) as u64 + myinc - move_overhead;
+                let normal_tc = ((mytime - saved) as f64 / movestogo as f64) as u64 + myinc - move_overhead;
                 normal_tc as i64 - time_spent as i64
             }
             _ => 0,
