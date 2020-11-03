@@ -165,7 +165,6 @@ pub fn checkup(thread: &mut Thread) {
         && thread.tc.time_over(
             thread.itcs.get_time_elapsed(),
             &TimeControlInformation {
-                high_score_diff: false,
                 time_saved: thread.time_saved,
                 stable_pv: thread.itcs.stable_pv.load(std::sync::atomic::Ordering::Relaxed),
             },
