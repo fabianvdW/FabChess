@@ -13,11 +13,11 @@ impl<'a> UCIEngine<'a> {
             name: {
                 #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
                 {
-                    &"FabChess v1.15 BMI2"
+                    &"FabChess v1.16 BMI2"
                 }
                 #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
                 {
-                    &"FabChess v1.15"
+                    &"FabChess v1.16"
                 }
             },
             author: &"Fabian von der Warth",
