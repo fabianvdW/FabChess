@@ -12,7 +12,7 @@ use crate::search::searcher::Thread;
 pub const LMP_DEPTH: usize = 4;
 
 pub const MIN_FUTILITY_MARGIN: i16 = 20;
-pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
+pub const DEFAULT_FUTILITY_MARGIN: i16 = 57;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
 
 pub const FUTILITY_DEPTH: i16 = 6;
