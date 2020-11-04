@@ -19,7 +19,7 @@ pub const LMP_A: [f32; 2] = [0.5, 0.4];
 pub const LMP_B: [f32; 2] = [0., 0.];
 pub const LMP_C: [f32; 2] = [0., 0.];
 pub const LMP_D: [f32; 2] = [0., 0.];
-pub const LMP_E: [f32; 2] = [0.1, 0.8];
+pub const LMP_E: [f32; 2] = [0.1, 0.08];
 pub const LMP_F: [f32; 2] = [1., 0.8];
 
 pub const FUTILITY_DEPTH: i16 = 6;
