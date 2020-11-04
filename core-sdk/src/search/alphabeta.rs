@@ -15,12 +15,12 @@ pub const MIN_FUTILITY_MARGIN: i16 = 20;
 pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
 
-pub const LMP_A: [f32; 2] = [0.45, 0.4];
-pub const LMP_B: [f32; 2] = [0., 0.];
-pub const LMP_C: [f32; 2] = [0., 0.];
-pub const LMP_D: [f32; 2] = [0., 0.];
-pub const LMP_E: [f32; 2] = [0.08, 0.08];
-pub const LMP_F: [f32; 2] = [1.2, 0.8];
+pub const LMR_A: [f32; 2] = [0.45, 0.4];
+pub const LMR_B: [f32; 2] = [0., 0.];
+pub const LMR_C: [f32; 2] = [0., 0.];
+pub const LMR_D: [f32; 2] = [0., 0.];
+pub const LMR_E: [f32; 2] = [0.08, 0.08];
+pub const LMR_F: [f32; 2] = [1.2, 0.8];
 
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
@@ -472,8 +472,12 @@ pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: 
     let depth = p.depth_left as f32;
     let depth_ln = depth.ln();
     let improving = improving as usize;
-    let mut reduction =
-        LMP_A[improving] * index_ln * depth_ln + LMP_B[improving] * index_ln + LMP_C[improving] * depth_ln + LMP_D[improving] * index + LMP_E[improving] * depth + LMP_F[improving];
+    let mut reduction = thread.uci_options.lmr_a[improving] * index_ln * depth_ln
+        + thread.uci_options.lmr_b[improving] * index_ln
+        + thread.uci_options.lmr_c[improving] * depth_ln
+        + thread.uci_options.lmr_d[improving] * index
+        + thread.uci_options.lmr_e[improving] * depth
+        + thread.uci_options.lmr_f[improving];
     if iscp {
         reduction /= 2.;
     }
