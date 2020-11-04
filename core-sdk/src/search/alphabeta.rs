@@ -12,8 +12,15 @@ use crate::search::searcher::Thread;
 pub const LMP_DEPTH: usize = 4;
 
 pub const MIN_FUTILITY_MARGIN: i16 = 20;
-pub const DEFAULT_FUTILITY_MARGIN: i16 = 57;
+pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
+
+pub const LMP_A: [f32; 2] = [0.5, 0.4];
+pub const LMP_B: [f32; 2] = [0., 0.];
+pub const LMP_C: [f32; 2] = [0., 0.];
+pub const LMP_D: [f32; 2] = [0., 0.];
+pub const LMP_E: [f32; 2] = [0.1, 0.8];
+pub const LMP_F: [f32; 2] = [1., 0.8];
 
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
@@ -460,27 +467,33 @@ pub fn prepare_futility_pruning(p: &CombinedSearchParameters, thread: &Thread, s
 
 #[inline(always)]
 pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: GameMove, index: usize, iscp: bool, gives_check: bool, in_check: bool, improving: bool) -> i16 {
-    let mut reduction = ((f64::from(p.depth_left) / 2. - 1.).max(0.).sqrt() + (index as f64 / 2.0 - 1.).max(0.).sqrt()) as i16;
+    let index = index as f32;
+    let index_ln = index.ln();
+    let depth = p.depth_left as f32;
+    let depth_ln = depth.ln();
+    let improving = improving as usize;
+    let mut reduction =
+        LMP_A[improving] * index_ln * depth_ln + LMP_B[improving] * index_ln + LMP_C[improving] * depth_ln + LMP_D[improving] * index + LMP_E[improving] * depth + LMP_F[improving];
     if iscp {
-        reduction /= 2;
+        reduction /= 2.;
     }
     if p.beta - p.alpha > 1 {
-        reduction = (f64::from(reduction) * 0.66) as i16;
+        reduction = reduction * 0.66;
     }
-    if !improving {
-        reduction += 1;
+    if improving == 0 {
+        reduction += 1.;
     }
     if gives_check {
-        reduction -= 1;
+        reduction -= 1.;
     }
     if in_check {
-        reduction -= 2;
+        reduction -= 2.;
     }
     if thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] > 0 {
-        reduction -= 1;
+        reduction -= 1.;
     }
-    reduction = reduction.min(p.depth_left - 1);
-    reduction.max(1)
+    reduction = reduction.min(p.depth_left as f32 - 1.);
+    reduction.max(1.) as i16
 }
 
 #[inline(always)]
