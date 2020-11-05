@@ -386,6 +386,15 @@ impl Thread {
                         beta = 16000;
                         alpha = -16000;
                     } else {
+                        for side in 0..2 {
+                            for i in 0..64 {
+                                for j in 0..64 {
+                                    self.bf_score[side][i][j] = (self.bf_score[side][i][j] / 2).max(1);
+                                    self.hh_score[side][i][j] /= 2;
+                                    self.history_score[side][i][j] /= 2;
+                                }
+                            }
+                        }
                         beta += delta;
                     }
                 }
