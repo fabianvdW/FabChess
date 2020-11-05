@@ -24,12 +24,12 @@ pub struct UCIOptions {
     pub skip_ratio: usize,
 
     pub futility_margin: i16,
-    pub lmr_a: [f32; 2],
-    pub lmr_b: [f32; 2],
-    pub lmr_c: [f32; 2],
-    pub lmr_d: [f32; 2],
-    pub lmr_e: [f32; 2],
-    pub lmr_f: [f32; 2],
+    pub lmr_a: f32,
+    pub lmr_b: f32,
+    pub lmr_c: f32,
+    pub lmr_d: f32,
+    pub lmr_e: f32,
+    pub lmr_f: f32,
 }
 impl Default for UCIOptions {
     fn default() -> Self {

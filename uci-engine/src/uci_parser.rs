@@ -296,64 +296,34 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 println!("info String Succesfully set FutilityMargin to {}", num);
                 return;
             }
-            "lmr_a_0" => {
+            "lmr_a" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_a[0] = num;
+                itcs.uci_options.write().unwrap().lmr_a = num;
                 return;
             }
-            "lmr_a_1" => {
+            "lmr_b" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_a[1] = num;
+                itcs.uci_options.write().unwrap().lmr_b = num;
                 return;
             }
-            "lmr_b_0" => {
+            "lmr_c" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_b[0] = num;
+                itcs.uci_options.write().unwrap().lmr_c = num;
                 return;
             }
-            "lmr_b_1" => {
+            "lmr_d" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_b[1] = num;
+                itcs.uci_options.write().unwrap().lmr_d = num;
                 return;
             }
-            "lmr_c_0" => {
+            "lmr_e" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_c[0] = num;
+                itcs.uci_options.write().unwrap().lmr_e = num;
                 return;
             }
-            "lmr_c_1" => {
+            "lmr_f" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_c[1] = num;
-                return;
-            }
-            "lmr_d_0" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_d[0] = num;
-                return;
-            }
-            "lmr_d_1" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_d[1] = num;
-                return;
-            }
-            "lmr_e_0" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_e[0] = num;
-                return;
-            }
-            "lmr_e_1" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_e[1] = num;
-                return;
-            }
-            "lmr_f_0" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_f[0] = num;
-                return;
-            }
-            "lmr_f_1" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_f[1] = num;
+                itcs.uci_options.write().unwrap().lmr_f = num;
                 return;
             }
             _ => {
