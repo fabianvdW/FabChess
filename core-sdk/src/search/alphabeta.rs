@@ -14,13 +14,12 @@ pub const LMP_DEPTH: usize = 4;
 pub const MIN_FUTILITY_MARGIN: i16 = 20;
 pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
-
-pub const LMR_A: f32 = 0.4;
-pub const LMR_B: f32 = 0.;
-pub const LMR_C: f32 = 0.;
-pub const LMR_D: f32 = 0.;
-pub const LMR_E: f32 = 0.08;
-pub const LMR_F: f32 = 0.8;
+pub const LMR_A: f32 = 0.6505533985316609;
+pub const LMR_B: f32 = -0.29921517838442513;
+pub const LMR_C: f32 = -0.060110224814182156;
+pub const LMR_D: f32 = 0.023247802504899495;
+pub const LMR_E: f32 = 0.07291867907277189;
+pub const LMR_F: f32 = 0.18775502717229342;
 
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
