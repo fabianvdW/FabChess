@@ -153,11 +153,9 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 11. Internal Iterative Deepening
-    if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
-        if let SearchInstruction::StopSearching(res) = internal_iterative_deepening(&p, thread, &mut tt_move) {
-            return res;
-        }
-    }
+    /*if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
+
+    }*/
 
     //Step 12. Futil Pruning and margin preparation
     let futil_margin = prepare_futility_pruning(&p, thread, static_evaluation);
@@ -426,25 +424,6 @@ pub fn null_move_pruning(p: &CombinedSearchParameters, thread: &mut Thread, stat
             return SearchInstruction::StopSearching(rat);
         }
     }
-    SearchInstruction::ContinueSearching
-}
-
-#[inline(always)]
-pub fn internal_iterative_deepening(p: &CombinedSearchParameters, thread: &mut Thread, tt_move: &mut Option<GameMove>) -> SearchInstruction {
-    thread.history.pop();
-    principal_variation_search(
-        CombinedSearchParameters::from(p.alpha, p.beta, p.depth_left - 2, &p.game_state, p.color, p.current_depth),
-        thread,
-    );
-    #[cfg(feature = "search-statistics")]
-    {
-        thread.search_statistics.add_iid_node();
-    }
-    if thread.self_stop {
-        return SearchInstruction::StopSearching(STANDARD_SCORE);
-    }
-    thread.history.push(p.game_state.get_hash(), p.game_state.get_half_moves() == 0);
-    *tt_move = thread.pv_table[p.current_depth].pv[0];
     SearchInstruction::ContinueSearching
 }
 
