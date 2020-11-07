@@ -153,11 +153,11 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
     }
 
     //Step 11. Internal Iterative Deepening
-    if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
+    /*if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
         if let SearchInstruction::StopSearching(res) = internal_iterative_deepening(&p, thread, &mut tt_move) {
             return res;
         }
-    }
+    }*/
 
     //Step 12. Futil Pruning and margin preparation
     let futil_margin = prepare_futility_pruning(&p, thread, static_evaluation);
