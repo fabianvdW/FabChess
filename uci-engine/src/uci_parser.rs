@@ -82,7 +82,7 @@ pub fn parse_loop() {
             }
             "perft" => perft(&us.internal_state, &arg[1..]),
             "static"|"eval" => {
-                println!("cp {}", core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval);
+                println!("{}", core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval);
             }
             _ => {
                 println!("Unknown command {}", line);
