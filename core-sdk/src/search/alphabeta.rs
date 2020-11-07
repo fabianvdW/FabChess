@@ -97,7 +97,7 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             thread.search_statistics.add_cache_hit_ns();
         }
     }
-    let mut tt_move = if let Some(ce) = tt_entry {
+    let tt_move = if let Some(ce) = tt_entry {
         Some(CacheEntry::u16_to_mv(ce.mv, p.game_state))
     } else {
         None
@@ -151,12 +151,6 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
             return res;
         }
     }
-
-    //Step 11. Internal Iterative Deepening
-    /*if is_pv_node && !incheck && pv_table_move.is_none() && tt_move.is_none() && p.depth_left > 6 {
-
-    }*/
-
     //Step 12. Futil Pruning and margin preparation
     let futil_margin = prepare_futility_pruning(&p, thread, static_evaluation);
 
