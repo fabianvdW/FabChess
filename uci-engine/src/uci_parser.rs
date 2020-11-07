@@ -81,7 +81,7 @@ pub fn parse_loop() {
                 print_internal_state(&us);
             }
             "perft" => perft(&us.internal_state, &arg[1..]),
-            "static" => {
+            "static"|"eval" => {
                 println!("cp {}", core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval);
             }
             _ => {
