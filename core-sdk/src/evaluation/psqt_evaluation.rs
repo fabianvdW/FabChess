@@ -62,7 +62,7 @@ pub fn psqt(game_state: &GameState, side: usize, #[cfg(feature = "tuning")] trac
             res += king_piece_sum;
             #[cfg(feature = "display-eval")]
             {
-                println!("\t King-Piece{:?}-PSQT: {}", piece_type, king_enemy_pawn_sum);
+                println!("\t King-Piece{:?}-PSQT: {}", piece_type, king_piece_sum);
                 println!("Sum: {}", res);
             }
         }
