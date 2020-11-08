@@ -325,7 +325,10 @@ pub fn is_guaranteed_draw(g: &GameState) -> bool {
 
 pub fn endgame_rescaling(g: &GameState, res: &mut EvaluationScore, phase: f32, pawn_eval: (EvaluationScore, EvaluationScore), #[cfg(feature = "tuning")] trace: &mut LargeTrace) {
     let score = res.interpolate(phase);
-    let side_ahead = if score >= 0 { WHITE } else { BLACK };
+    if score == 0{
+        return;
+    }
+    let side_ahead = if score > 0 { WHITE } else { BLACK };
     let side_losing = swap_side(side_ahead);
     let winning_pawns = g.get_piece(PieceType::Pawn, side_ahead).count_ones() as usize;
     if winning_pawns <= 1 {
@@ -372,7 +375,7 @@ pub fn knights(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace: &mu
     let mut supp = supported_knights;
     while supp != 0u64 {
         let idx = supp.trailing_zeros() as usize;
-        supp &= not_file(file_of(idx));
+        supp ^= 1u64 << idx;
         let mut front_span = pawn_front_span(square(idx), side);
         front_span = west_one(front_span) | east_one(front_span);
         if g.get_piece(PieceType::Pawn, swap_side(side)) & front_span == 0u64 {
@@ -860,7 +863,7 @@ pub fn piece_values(side: usize, g: &GameState, #[cfg(feature = "tuning")] trace
         println!(
             "\tKnights: {} -> {}",
             my_knights,
-            (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[pawns_on_board]) * my_knights,
+            (KNIGHT_PIECE_VALUE + KNIGHT_VALUE_WITH_PAWNS[all_pawns]) * my_knights,
         );
         println!("\tBishops: {} -> {}", my_bishops, BISHOP_PIECE_VALUE * my_bishops,);
         if my_bishops > 1 {
