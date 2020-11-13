@@ -81,7 +81,7 @@ pub fn parse_loop() {
                 print_internal_state(&us);
             }
             "perft" => perft(&us.internal_state, &arg[1..]),
-            "static"|"eval" => {
+            "static" | "eval" => {
                 println!("{}", core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval);
             }
             _ => {
@@ -314,16 +314,6 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
             "lmr_d" => {
                 let num = cmd[index + 2].parse::<f32>().unwrap();
                 itcs.uci_options.write().unwrap().lmr_d = num;
-                return;
-            }
-            "lmr_e" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_e = num;
-                return;
-            }
-            "lmr_f" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_f = num;
                 return;
             }
             _ => {
