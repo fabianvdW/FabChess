@@ -215,6 +215,15 @@ pub fn print_freefield_rook_attacks() {
     }
     println!("{}", arr_to_string(&res, "FREEFIELD_ROOK_ATTACKS"))
 }
+pub const fn init_freefield_bishop_attacks() -> [u64; 64] {
+    let mut res = [0u64; 64];
+    let mut sq = 0;
+    while sq < 64 {
+        //res[sq] = bishop_attack()
+        sq += 1;
+    }
+    res
+}
 pub fn print_freefield_bishop_attacks() {
     let mut res = [0u64; 64];
     for (sq, item) in res.iter_mut().enumerate() {
@@ -222,77 +231,107 @@ pub fn print_freefield_bishop_attacks() {
     }
     println!("{}", arr_to_string(&res, "FREEFIELD_BISHOP_ATTACKS"))
 }
-pub fn print_shielding_pawns() {
+
+pub const fn init_shielding_pawns() -> [[u64; 64]; 2] {
     let mut res = [[0u64; 64]; 2];
-    for sq in 0..64 {
-        let king = 1u64 << sq;
-        let shield = king << 8 | north_west_one(king) | north_east_one(king);
-        res[WHITE][sq] = shield | shield << 8;
-        let shield = king >> 8 | south_west_one(king) | south_east_one(king);
-        res[BLACK][sq] = shield | shield >> 8;
+    let mut sq = 0;
+    while sq < 64 {
+        let king = square(sq);
+        let shield = north_one(king) | north_west_one(king) | north_east_one(king);
+        res[WHITE][sq] = shield | north_one(shield);
+        let shield = south_one(king) | south_west_one(king) | south_east_one(king);
+        res[BLACK][sq] = shield | south_one(shield);
+        sq += 1;
     }
-    for rank in 0..8 {
-        for side in 0..2 {
+    let mut rank = 0;
+    while rank < 8 {
+        let mut side = 0;
+        while side < 2 {
             res[side][8 * rank] = res[side][8 * rank + 1];
             res[side][8 * rank + 7] = res[side][8 * rank + 6];
+            side += 1;
         }
+        rank += 1;
     }
-    println!("{}", side_arr_to_string(&res, "SHIELDING_PAWNS"));
+    res
 }
-pub fn print_diagonally_adjacent() {
+
+pub const fn init_diagonally_adjacent() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for (sq, item) in res.iter_mut().enumerate() {
-        let board = 1u64 << sq;
-        *item = north_east_one(board) | north_west_one(board) | south_east_one(board) | south_west_one(board);
+    let mut sq = 0;
+    while sq < 64 {
+        res[sq] = north_east_one(square(sq)) | north_west_one(square(sq)) | south_east_one(square(sq)) | south_west_one(square(sq));
+        sq += 1;
     }
-    println!("{}", arr_to_string(&res, "DIAGONALLY_ADJACENT"))
+    res
 }
-pub fn print_files_less_than() {
+
+pub const fn init_files_less_than() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for (files, item) in res.iter_mut().enumerate() {
-        for files_less_than in 0..files {
-            *item |= FILES[files_less_than];
+    let mut file = 0;
+    while file < 8 {
+        let mut file_less_than = 0;
+        while file_less_than < file {
+            res[file] |= FILES[file_less_than];
+            file_less_than += 1;
         }
+        file += 1;
     }
-    println!("{}", arr_to_string(&res, "FILES_LESS_THAN"))
+    res
 }
-pub fn print_ranks_less_than() {
+
+pub const fn init_ranks_less_than() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for (ranks, item) in res.iter_mut().enumerate() {
-        for ranks_less_than in 0..ranks {
-            *item |= RANKS[ranks_less_than];
+    let mut rank = 0;
+    while rank < 8 {
+        let mut rank_less_than = 0;
+        while rank_less_than < rank {
+            res[rank] |= RANKS[rank_less_than];
+            rank_less_than += 1;
         }
+        rank += 1;
     }
-    println!("{}", arr_to_string(&res, "RANKS_LESS_THAN"))
+    res
 }
-pub fn print_files_greater_than() {
+
+pub const fn init_files_greater_than() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for files in 0..8 {
-        res[files] = !FILES_LESS_THAN[files] & !FILES[files];
+    let mut file = 0;
+    while file < 8 {
+        res[file] = !FILES_LESS_THAN[file] & !FILES[file];
+        file += 1;
     }
-    println!("{}", arr_to_string(&res, "FILES_GREATER_THAN"))
+    res
 }
-pub fn print_ranks_greater_than() {
+
+pub const fn init_ranks_greater_than() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for ranks in 0..8 {
-        res[ranks] = !RANKS_LESS_THAN[ranks] & !RANKS[ranks];
+    let mut rank = 0;
+    while rank < 8 {
+        res[rank] = !RANKS_LESS_THAN[rank] & !RANKS[rank];
+        rank += 1;
     }
-    println!("{}", arr_to_string(&res, "RANKS_GREATER_THAN"))
+    res
 }
-fn king_attack(mut king_board: u64) -> u64 {
+
+const fn king_attack(mut king_board: u64) -> u64 {
     let mut attacks = east_one(king_board) | west_one(king_board);
     king_board |= attacks;
     attacks |= south_one(king_board) | north_one(king_board);
     attacks
 }
-pub fn print_king_attacks() {
+
+pub const fn init_king_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for (square, item) in res.iter_mut().enumerate() {
-        *item = king_attack(1u64 << square);
+    let mut sq = 0;
+    while sq < 64 {
+        res[sq] = king_attack(1u64 << sq);
+        sq += 1;
     }
-    println!("{}", arr_to_string(&res, "KING_ATTACKS"))
+    res
 }
-fn knight_attack(knight: u64) -> u64 {
+
+const fn knight_attack(knight: u64) -> u64 {
     let mut attacks;
     let mut east = east_one(knight);
     let mut west = west_one(knight);
@@ -304,32 +343,41 @@ fn knight_attack(knight: u64) -> u64 {
     attacks |= (east | west) >> 8;
     attacks
 }
-pub fn print_knight_attacks() {
+
+pub const fn init_knight_attacks() -> [u64; 64] {
     let mut res = [0u64; 64];
-    for (square, item) in res.iter_mut().enumerate() {
-        *item = knight_attack(1u64 << square);
+    let mut sq = 0;
+    while sq < 64 {
+        res[sq] = knight_attack(1u64 << sq);
+        sq += 1;
     }
-    println!("{}", arr_to_string(&res, "KNIGHT_ATTACKS"));
+    res
 }
-pub fn print_ranks() {
+
+pub const fn init_ranks() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for rank in 0..8 {
+    let mut rank = 0;
+    while rank < 8 {
         if rank == 0 {
             res[0] = 1u64 | 1u64 << 1 | 1u64 << 2 | 1u64 << 3 | 1u64 << 4 | 1u64 << 5 | 1u64 << 6 | 1u64 << 7;
         } else {
             res[rank] = res[rank - 1] << 8;
         }
+        rank += 1;
     }
-    println!("{}", arr_to_string(&res, "RANKS"));
+    res
 }
-pub fn print_file() {
+
+pub const fn init_files() -> [u64; 8] {
     let mut res = [0u64; 8];
-    for file in 0..8 {
+    let mut file = 0;
+    while file < 8 {
         if file == 0 {
             res[0] = 1u64 | 1u64 << 8 | 1u64 << 16 | 1u64 << 24 | 1u64 << 32 | 1u64 << 40 | 1u64 << 48 | 1u64 << 56;
         } else {
             res[file] = res[file - 1] << 1;
         }
+        file += 1;
     }
-    println!("{}", arr_to_string(&res, "FILES"))
+    res
 }

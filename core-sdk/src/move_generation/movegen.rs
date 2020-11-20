@@ -110,7 +110,7 @@ pub fn rook_attack(square: usize, all_pieces: u64) -> u64 {
 
 //Pawn single pushes
 #[inline(always)]
-pub fn single_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
+pub const fn single_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
     if side == WHITE {
         bitboards::north_one(pawns) & empty
     } else {
@@ -120,7 +120,7 @@ pub fn single_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
 
 //Pawn double pushes
 #[inline(always)]
-pub fn double_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
+pub const fn double_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
     if side == WHITE {
         bitboards::north_one(bitboards::north_one(pawns & RANKS[1]) & empty) & empty
     } else {
@@ -129,13 +129,13 @@ pub fn double_push_pawn_targets(side: usize, pawns: u64, empty: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn pawn_targets(side: usize, pawns: u64) -> u64 {
+pub const fn pawn_targets(side: usize, pawns: u64) -> u64 {
     pawn_east_targets(side, pawns) | pawn_west_targets(side, pawns)
 }
 
 //Pawn east targets
 #[inline(always)]
-pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
+pub const fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
     if side == WHITE {
         bitboards::north_east_one(pawns)
     } else {
@@ -145,7 +145,7 @@ pub fn pawn_east_targets(side: usize, pawns: u64) -> u64 {
 
 //Pawn west targets
 #[inline(always)]
-pub fn pawn_west_targets(side: usize, pawns: u64) -> u64 {
+pub const fn pawn_west_targets(side: usize, pawns: u64) -> u64 {
     if side == WHITE {
         bitboards::north_west_one(pawns)
     } else {

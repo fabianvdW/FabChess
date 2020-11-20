@@ -31,7 +31,7 @@ impl Magic {
 
     #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
     #[inline(always)]
-    pub fn apply(&self, occ: u64) -> u64 {
+    pub const fn apply(&self, occ: u64) -> u64 {
         ATTACKS[self.offset + apply_magic(self.magic, occ & self.occupancy_mask, self.shift)]
     }
 }
@@ -48,6 +48,6 @@ impl Display for Magic {
 }
 
 #[inline(always)]
-pub fn apply_magic(magic: u64, bb: u64, bits: usize) -> usize {
+pub const fn apply_magic(magic: u64, bb: u64, bits: usize) -> usize {
     (bb.wrapping_mul(magic) >> (64 - bits)) as usize
 }
