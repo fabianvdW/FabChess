@@ -311,11 +311,6 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 itcs.uci_options.write().unwrap().lmr_c = num;
                 return;
             }
-            "lmr_d" => {
-                let num = cmd[index + 2].parse::<f32>().unwrap();
-                itcs.uci_options.write().unwrap().lmr_d = num;
-                return;
-            }
             _ => {
                 index += 1;
             }

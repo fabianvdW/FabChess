@@ -15,10 +15,9 @@ pub const MIN_FUTILITY_MARGIN: i16 = 20;
 pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
 
-pub const LMR_A: f32 = 0.8281605440549383;
-pub const LMR_B: f32 = -0.2714043167234452;
-pub const LMR_C: f32 = -0.2657859434877192;
-pub const LMR_D: f32 = 1.5864033879212531;
+pub const LMR_A: f32 = 0.2714043167234452;
+pub const LMR_B: f32 = 0.2657859434877192;
+pub const LMR_C: f32 = 0.8;
 
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
@@ -443,7 +442,7 @@ pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: 
     let depth = p.depth_left as f32;
     let depth_ln = depth.ln();
     let improving = improving as usize;
-    let mut reduction = thread.uci_options.lmr_a * index_ln * depth_ln + thread.uci_options.lmr_b * index_ln + thread.uci_options.lmr_c * depth_ln + thread.uci_options.lmr_d;
+    let mut reduction = (thread.uci_options.lmr_a * index_ln + thread.uci_options.lmr_b * depth_ln + thread.uci_options.lmr_c).max(0.);
     if iscp {
         reduction /= 2.;
     }
