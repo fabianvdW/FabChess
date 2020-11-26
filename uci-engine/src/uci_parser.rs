@@ -81,7 +81,7 @@ pub fn parse_loop() {
                 print_internal_state(&us);
             }
             "perft" => perft(&us.internal_state, &arg[1..]),
-            "static"|"eval" => {
+            "static" | "eval" => {
                 println!("{}", core_sdk::evaluation::eval_game_state(&us.internal_state).final_eval);
             }
             _ => {
@@ -294,6 +294,26 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 let num = cmd[index + 2].parse::<i16>().expect("Invalid FutilityMargin value!");
                 itcs.uci_options.write().unwrap().futility_margin = num;
                 println!("info String Succesfully set FutilityMargin to {}", num);
+                return;
+            }
+            "lmr_a" => {
+                let num = cmd[index + 2].parse::<f32>().unwrap();
+                itcs.uci_options.write().unwrap().lmr_a = num;
+                return;
+            }
+            "lmr_b" => {
+                let num = cmd[index + 2].parse::<f32>().unwrap();
+                itcs.uci_options.write().unwrap().lmr_b = num;
+                return;
+            }
+            "lmr_c" => {
+                let num = cmd[index + 2].parse::<f32>().unwrap();
+                itcs.uci_options.write().unwrap().lmr_c = num;
+                return;
+            }
+            "lmr_d" => {
+                let num = cmd[index + 2].parse::<f32>().unwrap();
+                itcs.uci_options.write().unwrap().lmr_d = num;
                 return;
             }
             _ => {

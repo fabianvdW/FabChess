@@ -7,7 +7,7 @@ pub mod search;
 use crate::board_representation::game_state::GameState;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
-use crate::search::alphabeta::DEFAULT_FUTILITY_MARGIN;
+use crate::search::alphabeta::{DEFAULT_FUTILITY_MARGIN, LMR_A, LMR_B, LMR_C, LMR_D};
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::searcher::{InterThreadCommunicationSystem, DEFAULT_SKIP_RATIO, DEFAULT_THREADS};
@@ -24,6 +24,10 @@ pub struct UCIOptions {
     pub skip_ratio: usize,
 
     pub futility_margin: i16,
+    pub lmr_a: f32,
+    pub lmr_b: f32,
+    pub lmr_c: f32,
+    pub lmr_d: f32,
 }
 impl Default for UCIOptions {
     fn default() -> Self {
@@ -34,6 +38,10 @@ impl Default for UCIOptions {
             debug_print: false,
             skip_ratio: DEFAULT_SKIP_RATIO,
             futility_margin: DEFAULT_FUTILITY_MARGIN,
+            lmr_a: LMR_A,
+            lmr_b: LMR_B,
+            lmr_c: LMR_C,
+            lmr_d: LMR_D,
         }
     }
 }

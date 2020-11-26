@@ -15,6 +15,11 @@ pub const MIN_FUTILITY_MARGIN: i16 = 20;
 pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
 
+pub const LMR_A: f32 = 0.8422840719846748;
+pub const LMR_B: f32 = -0.4;
+pub const LMR_C: f32 = -0.22572624883839026;
+pub const LMR_D: f32 = 1.2;
+
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
 pub const STATIC_NULL_MOVE_DEPTH: i16 = 5;
@@ -433,27 +438,33 @@ pub fn prepare_futility_pruning(p: &CombinedSearchParameters, thread: &Thread, s
 
 #[inline(always)]
 pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: GameMove, index: usize, iscp: bool, gives_check: bool, in_check: bool, improving: bool) -> i16 {
-    let mut reduction = ((f64::from(p.depth_left) / 2. - 1.).max(0.).sqrt() + (index as f64 / 2.0 - 1.).max(0.).sqrt()) as i16;
+    let index = index as f32;
+    let index_ln = index.ln();
+    let depth = p.depth_left as f32;
+    let depth_ln = depth.ln();
+    let improving = improving as usize;
+    let mut reduction =
+        (thread.uci_options.lmr_a * index_ln * depth_ln + thread.uci_options.lmr_b * index_ln + thread.uci_options.lmr_c * depth_ln + thread.uci_options.lmr_d).max(0.);
     if iscp {
-        reduction /= 2;
+        reduction /= 2.;
     }
     if p.beta - p.alpha > 1 {
-        reduction = (f64::from(reduction) * 0.66) as i16;
+        reduction = reduction * 0.66;
     }
-    if !improving {
-        reduction += 1;
+    if improving == 0 {
+        reduction += 1.;
     }
     if gives_check {
-        reduction -= 1;
+        reduction -= 1.;
     }
     if in_check {
-        reduction -= 2;
+        reduction -= 2.;
     }
     if thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] > 0 {
-        reduction -= 1;
+        reduction -= 1.;
     }
-    reduction = reduction.min(p.depth_left - 1);
-    reduction.max(1)
+    reduction = reduction.min(p.depth_left as f32 - 1.);
+    reduction.max(1.) as i16
 }
 
 #[inline(always)]
