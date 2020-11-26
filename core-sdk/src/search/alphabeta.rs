@@ -443,7 +443,8 @@ pub fn compute_lmr_reduction(p: &CombinedSearchParameters, thread: &Thread, mv: 
     let depth = p.depth_left as f32;
     let depth_ln = depth.ln();
     let improving = improving as usize;
-    let mut reduction = thread.uci_options.lmr_a * index_ln * depth_ln + thread.uci_options.lmr_b * index_ln + thread.uci_options.lmr_c * depth_ln + thread.uci_options.lmr_d;
+    let mut reduction =
+        (thread.uci_options.lmr_a * index_ln * depth_ln + thread.uci_options.lmr_b * index_ln + thread.uci_options.lmr_c * depth_ln + thread.uci_options.lmr_d).max(0.);
     if iscp {
         reduction /= 2.;
     }
