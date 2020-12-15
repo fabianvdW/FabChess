@@ -15,10 +15,10 @@ pub const MIN_FUTILITY_MARGIN: i16 = 20;
 pub const DEFAULT_FUTILITY_MARGIN: i16 = 90;
 pub const MAX_FUTILITY_MARGIN: i16 = 160;
 
-pub const LMR_A: f32 = 0.8422840719846748;
-pub const LMR_B: f32 = -0.4;
-pub const LMR_C: f32 = -0.22572624883839026;
-pub const LMR_D: f32 = 1.2;
+pub const LMR_A: f32 = 0.8624212320355498;
+pub const LMR_B: f32 = -0.29553584631534924;
+pub const LMR_C: f32 = -0.4;
+pub const LMR_D: f32 = 1.5203489099846914;
 
 pub const FUTILITY_DEPTH: i16 = 6;
 pub const STATIC_NULL_MOVE_MARGIN: i16 = 120;
