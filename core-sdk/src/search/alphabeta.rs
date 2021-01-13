@@ -27,8 +27,8 @@ pub const NULL_MOVE_PRUNING_DEPTH: i16 = 3;
 pub const HISTORY_PRUNING_DEPTH: i16 = 2;
 pub const HISTORY_PRUNING_THRESHOLD: isize = 0;
 pub const SEE_PRUNING_DEPTH: i16 = 11;
-pub const SEE_PRUNING_CAPTURE_MULT: f64 = -48.;
-pub const SEE_PRUNING_QUIET_MULT: f64 = -7.;
+pub const SEE_PRUNING_CAPTURE_MULT: f64 = -40.;
+pub const SEE_PRUNING_QUIET_MULT: f64 = -6.;
 
 pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut Thread) -> i16 {
     //Step 0. Prepare variables
