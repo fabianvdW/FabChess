@@ -7,7 +7,7 @@ pub mod search;
 use crate::board_representation::game_state::GameState;
 use crate::move_generation::makemove::make_move;
 use crate::move_generation::movegen;
-use crate::search::alphabeta::{DEFAULT_FUTILITY_MARGIN, LMR_A, LMR_B, LMR_C, LMR_D};
+use crate::search::alphabeta::{DEFAULT_FUTILITY_MARGIN, HISTORY_PRUNING_DEPTH, HISTORY_PRUNING_THRESHOLD, LMR_A, LMR_B, LMR_C, LMR_D};
 use crate::search::cache::DEFAULT_HASH_SIZE;
 use crate::search::reserved_memory::ReservedMoveList;
 use crate::search::searcher::{InterThreadCommunicationSystem, DEFAULT_SKIP_RATIO, DEFAULT_THREADS};
@@ -28,6 +28,8 @@ pub struct UCIOptions {
     pub lmr_b: f32,
     pub lmr_c: f32,
     pub lmr_d: f32,
+    pub history_pruning_depth: i16,
+    pub history_pruning_threshold: isize,
 }
 impl Default for UCIOptions {
     fn default() -> Self {
@@ -42,6 +44,8 @@ impl Default for UCIOptions {
             lmr_b: LMR_B,
             lmr_c: LMR_C,
             lmr_d: LMR_D,
+            history_pruning_depth: HISTORY_PRUNING_DEPTH,
+            history_pruning_threshold: HISTORY_PRUNING_THRESHOLD,
         }
     }
 }

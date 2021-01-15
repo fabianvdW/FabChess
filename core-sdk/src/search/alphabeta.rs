@@ -196,7 +196,9 @@ pub fn principal_variation_search(mut p: CombinedSearchParameters, thread: &mut 
                 continue;
             }
             //Step 14.6. History Pruning. Skip quiet moves in low depths if they are below threshold
-            if p.depth_left <= HISTORY_PRUNING_DEPTH && thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] < HISTORY_PRUNING_THRESHOLD {
+            if p.depth_left <= thread.uci_options.history_pruning_depth
+                && thread.history_score[p.game_state.get_color_to_move()][mv.from as usize][mv.to as usize] < thread.uci_options.history_pruning_threshold
+            {
                 #[cfg(feature = "search-statistics")]
                 {
                     thread.search_statistics.add_history_pruned();

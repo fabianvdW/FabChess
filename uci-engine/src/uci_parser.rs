@@ -316,6 +316,16 @@ pub fn setoption(cmd: &[&str], itcs: &Arc<InterThreadCommunicationSystem>) {
                 itcs.uci_options.write().unwrap().lmr_d = num;
                 return;
             }
+            "history_pruning_depth" => {
+                let num = cmd[index + 2].parse().unwrap();
+                itcs.uci_options.write().unwrap().history_pruning_depth = num;
+                return;
+            }
+            "history_pruning_threshold" => {
+                let num = cmd[index + 2].parse().unwrap();
+                itcs.uci_options.write().unwrap().history_pruning_threshold = num;
+                return;
+            }
             _ => {
                 index += 1;
             }
