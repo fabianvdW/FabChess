@@ -120,7 +120,7 @@ impl InterThreadCommunicationSystem {
     }
 
     pub fn get_time_elapsed(&self) -> u64 {
-        self.start_time.read().unwrap().saturating_duration_since(Instant::now()).as_millis() as u64
+        Instant::now().saturating_duration_since(*self.start_time.read().unwrap()).as_millis() as u64
     }
 
     pub fn update(&self, thread_id: usize, nodes_searched: u64, seldepth: usize) {
