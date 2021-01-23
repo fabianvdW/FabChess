@@ -202,7 +202,7 @@ impl Engine {
             );
             return EngineReaction::DisqualifyEngine;
         }
-        if output.2 as u64 > self.time_control.time_left() {
+        if output.2 as u64 >= self.time_control.time_left() {
             warn!(
                 "Mistake in Referee! Bestmove found but it took longer than time still left ({}) for engine {}! Disqualifying engine illegitimately in game {}\n",
                 self.time_control.time_left(),
